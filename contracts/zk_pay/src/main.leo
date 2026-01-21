@@ -1,4 +1,4 @@
-program zk_pay.aleo {
+program zk_pay_proofs_privacy.aleo {
     
     // Invoice data structure
     struct InvoiceData {
