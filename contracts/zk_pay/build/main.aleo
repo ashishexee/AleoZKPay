@@ -1,3 +1,4 @@
+import credits.aleo;
 program zk_pay_proofs_privacy.aleo;
 
 struct InvoiceData:
@@ -25,20 +26,22 @@ finalize create_invoice:
     set r6 into invoices[r0];
 
 function pay_invoice:
-    input r0 as address.private;
-    input r1 as u64.private;
-    input r2 as field.private;
+    input r0 as credits.aleo/credits.record;
+    input r1 as address.private;
+    input r2 as u64.private;
     input r3 as field.private;
     input r4 as field.public;
-    hash.bhp256 r0 into r5 as field;
-    hash.bhp256 r1 into r6 as field;
-    hash.bhp256 r2 into r7 as field;
-    add r5 r6 into r8;
-    add r8 r7 into r9;
-    add r9 r3 into r10;
-    assert.eq r4 r10;
-    async pay_invoice r4 into r11;
-    output r11 as zk_pay_proofs_privacy.aleo/pay_invoice.future;
+    call credits.aleo/transfer_private r0 r1 r2 into r5 r6;
+    hash.bhp256 r1 into r7 as field;
+    hash.bhp256 r2 into r8 as field;
+    hash.bhp256 r3 into r9 as field;
+    add r7 r8 into r10;
+    add r10 r9 into r11;
+    assert.eq r4 r11;
+    async pay_invoice r4 into r12;
+    output r5 as credits.aleo/credits.record;
+    output r6 as credits.aleo/credits.record;
+    output r12 as zk_pay_proofs_privacy.aleo/pay_invoice.future;
 
 finalize pay_invoice:
     input r0 as field.public;
