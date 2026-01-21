@@ -1,3 +1,5 @@
+import credits.aleo;
+
 program zk_pay_proofs_privacy.aleo {
 
     @noupgrade
@@ -36,24 +38,26 @@ program zk_pay_proofs_privacy.aleo {
     }
 
     async transition pay_invoice(
+        pay_record: credits.aleo/credits,
         merchant: address,
         amount: u64,
         salt: field,
-        memo_hash: field,
         public invoice_hash: field
-    ) -> Future {
+    ) -> (credits.aleo/credits, credits.aleo/credits, Future) {
+        let (r1, r2): (credits.aleo/credits, credits.aleo/credits) = 
+            credits.aleo/transfer_private(pay_record, merchant, amount);
 
         let hash_merchant: field = BHP256::hash_to_field(merchant);
         let hash_amount: field = BHP256::hash_to_field(amount);
         let hash_salt: field = BHP256::hash_to_field(salt);
-        let hash_memo: field = memo_hash;
 
         let computed_hash: field =
-            hash_merchant + hash_amount + hash_salt + hash_memo;
+            hash_merchant + hash_amount + hash_salt;
 
         assert_eq(invoice_hash, computed_hash);
 
-        return finalize_pay_invoice(invoice_hash);
+        let f0: Future = finalize_pay_invoice(invoice_hash);
+        return (r1, r2, f0);
     }
 
     async function finalize_pay_invoice(invoice_hash: field) {
