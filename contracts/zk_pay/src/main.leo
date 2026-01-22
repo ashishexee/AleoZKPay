@@ -1,6 +1,6 @@
 import credits.aleo;
 
-program zk_pay_proofs_privacy.aleo {
+program zk_pay_proofs_privacy_v2.aleo {
 
     @noupgrade
     async constructor() {
