@@ -3,36 +3,40 @@ import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { useState, useEffect } from 'react';
 import StatusBadge from '../components/StatusBadge';
 
+interface Invoice {
+    id: string;
+    amount: string;
+    status: string;
+    date: string;
+}
+
 const Profile = () => {
     const { address } = useWallet();
     const publicKey = address; // Alias for compatibility
     const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (publicKey) {
-            loadMerchantData();
-        }
-    }, [publicKey]);
-
-    const loadMerchantData = async () => {
-        if (!publicKey) return;
-        setLoading(true);
-        try {
-            const data = await fetchInvoices({ merchant: publicKey });
-            setInvoices(data);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const myInvoices = [
+    // Mock data for now since fetchInvoices is not implemented
+    const myInvoices: Invoice[] = [
         { id: '#1001', amount: '500 USDC', status: 'SETTLED', date: '2023-10-25' },
         { id: '#1002', amount: '120 USDC', status: 'PENDING', date: '2023-10-26' },
         { id: '#1003', amount: '2,000 USDC', status: 'SETTLED', date: '2023-10-27' },
     ];
+
+    const merchant = {
+        address: publicKey ? `${publicKey.slice(0, 10)}...${publicKey.slice(-5)}` : 'Not Connected',
+        balance: '5,420 USDC', // Mock
+        totalSales: '150,000 USDC', // Mock
+        invoices: myInvoices.length
+    };
+
+    useEffect(() => {
+        if (publicKey) {
+            // loadMerchantData();
+            setInvoices(myInvoices);
+        }
+    }, [publicKey]);
+
+
 
     return (
         <div className="page-container">
@@ -42,17 +46,19 @@ const Profile = () => {
                     <h1 className="text-gradient" style={{ fontSize: '32px' }}>Merchant Dashboard</h1>
                     <p className="text-label">Manage your earnings and invoices</p>
                 </div>
-                <div className="glass-card flex-center" style={{ padding: '12px 24px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span style={{
-                        display: 'inline-block', width: '8px', height: '8px', background: '#fff', borderRadius: '50%', marginRight: '12px',
-                        boxShadow: '0 0 10px rgba(255,255,255,0.5)'
-                    }}></span>
-                    <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{merchant.address}</span>
-                </div>
+                {publicKey && (
+                    <div className="glass-card flex-center" style={{ padding: '12px 24px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <span style={{
+                            display: 'inline-block', width: '8px', height: '8px', background: '#fff', borderRadius: '50%', marginRight: '12px',
+                            boxShadow: '0 0 10px rgba(255,255,255,0.5)'
+                        }}></span>
+                        <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{merchant.address}</span>
+                    </div>
+                )}
             </div>
 
             {/* STATS */}
-            <div className="grid-cols-5 mb-8" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="grid-cols-3 mb-8" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
                 <div className="glass-card">
                     <span className="text-label">Wallet Balance</span>
                     <h2 className="text-highlight" style={{ fontSize: '36px' }}>{merchant.balance}</h2>
@@ -86,7 +92,7 @@ const Profile = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {myInvoices.map((inv, i) => (
+                            {invoices.map((inv, i) => (
                                 <tr key={i}>
                                     <td style={{ fontFamily: 'monospace', color: '#888' }}>{inv.id}</td>
                                     <td style={{ fontWeight: '600', color: '#fff' }}>{inv.amount}</td>

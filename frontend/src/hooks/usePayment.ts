@@ -247,6 +247,15 @@ export const usePayment = () => {
         }
     };
 
+    const handleConnect = async () => {
+        if (!publicKey) return;
+        setStep('VERIFY');
+
+        // Optional: Check balance here to auto-skip to CONVERT if needed
+        // For now, we trust payInvoice's check logic 
+        setStep('PAY');
+    };
+
     return {
         step,
         status,
@@ -257,6 +266,7 @@ export const usePayment = () => {
         conversionTxId,
         publicKey,
         payInvoice,
-        convertPublicToPrivate
+        convertPublicToPrivate,
+        handleConnect
     };
 };

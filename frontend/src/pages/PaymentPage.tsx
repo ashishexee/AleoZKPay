@@ -1,28 +1,35 @@
 import { usePayment, PaymentStep } from '../hooks/usePayment';
-import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 
 const PaymentPage = () => {
-    const [searchParams] = useSearchParams();
-    const { address } = useWallet();
-
-    // Parse invoice details from URL
-    const invoice = {
-        merchant: searchParams.get('merchant') || '',
-        amount: searchParams.get('amount') || '0',
-        memo: searchParams.get('memo') || '',
-        salt: searchParams.get('salt') || '',
-        hash: searchParams.get('hash') || '',
-    };
-
+    // usePayment handles parsing and state
     const {
         step,
-        currentStatus,
-        handleConnect,
-        handlePay,
-        isProcess
-    } = usePayment(invoice);
+        status,
+        loading,
+        error,
+        invoice,
+        txId,
+        conversionTxId,
+        payInvoice,
+        convertPublicToPrivate,
+        handleConnect
+    } = usePayment();
+
+    const { address } = useWallet();
+
+    // Aliases for compatibility with existing render logic
+    const currentStatus = status;
+    const isProcess = loading;
+
+    const handlePay = async () => {
+        if (step === 'CONVERT') {
+            await convertPublicToPrivate();
+        } else {
+            await payInvoice();
+        }
+    };
 
     const renderStepIndicator = () => {
         const steps: { key: PaymentStep; label: string }[] = [
@@ -70,14 +77,14 @@ const PaymentPage = () => {
                         <div className="flex-between mb-2">
                             <span className="text-label">Merchant</span>
                             <span className="text-value" style={{ fontFamily: 'monospace' }}>
-                                {invoice.merchant ? `${invoice.merchant.slice(0, 10)}...` : 'Unknown'}
+                                {invoice?.merchant ? `${invoice.merchant.slice(0, 10)}...` : 'Unknown'}
                             </span>
                         </div>
                         <div className="flex-between mb-2">
                             <span className="text-label">Amount</span>
-                            <span className="text-xl text-highlight">{invoice.amount} Microcredits</span>
+                            <span className="text-xl text-highlight">{invoice?.amount} Microcredits</span>
                         </div>
-                        {invoice.memo && (
+                        {invoice?.memo && (
                             <div className="flex-between">
                                 <span className="text-label">Memo</span>
                                 <span className="text-value">{invoice.memo}</span>
@@ -105,7 +112,7 @@ const PaymentPage = () => {
                     ) : (
                         <div className="mt-6">
                             {/* ERROR MESSAGE */}
-                            {currentStatus && !currentStatus.startsWith('at1') && step !== 'SUCCESS' && (
+                            {currentStatus && !currentStatus.startsWith('at1') && (
                                 <p className="text-error text-center mb-4 text-sm">{currentStatus}</p>
                             )}
 
@@ -135,7 +142,7 @@ const PaymentPage = () => {
                                     onClick={handlePay}
                                     disabled={isProcess}
                                 >
-                                    {isProcess ? 'Processing...' : step === 'CONVERT' ? 'Convert Public to Private' : `Pay ${invoice.amount}`}
+                                    {isProcess ? 'Processing...' : step === 'CONVERT' ? 'Convert Public to Private' : `Pay ${invoice?.amount}`}
                                 </button>
                             )}
                         </div>
