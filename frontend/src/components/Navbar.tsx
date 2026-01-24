@@ -1,54 +1,64 @@
 import { Link, useLocation } from 'react-router-dom';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
+import { motion } from 'framer-motion';
+import { cn } from './ui/GlassCard';
 
 const Navbar = () => {
     const location = useLocation();
     const isActive = (path: string) => location.pathname === path;
 
+    const navItems = [
+        { path: '/', label: 'Explorer' },
+        { path: '/create', label: 'Create Invoice' },
+        { path: '/profile', label: 'Profile' },
+        { label: 'Docs', path: '/docs' },
+    ];
+
     return (
-        <nav className="navbar">
-            <div className="container-custom flex-between" style={{ height: '100%' }}>
+        <motion.nav
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="fixed top-0 left-0 right-0 z-50 h-24 flex items-center justify-center px-6 pointer-events-none"
+        >
+            <div className="w-full max-w-7xl flex items-center justify-between pointer-events-auto">
                 {/* LOGO */}
-                <Link to="/" style={{ textDecoration: 'none' }}>
-                    <div className="flex-center" style={{ gap: '12px' }}>
-                        <div style={{
-                            width: 32,
-                            height: 32,
-                            background: '#fff',
-                            borderRadius: 8,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 0 20px rgba(255,255,255,0.2)'
-                        }}>
-                            <div style={{
-                                width: 12,
-                                height: 12,
-                                border: '2px solid black',
-                                transform: 'rotate(45deg)'
-                            }} />
-                        </div>
-                        <div className="flex-col">
-                            <span style={{ fontSize: 20, fontWeight: '700', color: 'white', letterSpacing: '-0.5px', lineHeight: 1 }}>
-                                AleoZKPay
-                            </span>
-                        </div>
+                <Link to="/" className="group flex items-center gap-3 no-underline">
+                    <div className="relative w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)] group-hover:shadow-[0_0_30px_rgba(0,243,255,0.6)] transition-all duration-300">
+                        <div className="w-4 h-4 border-2 border-black rotate-45 group-hover:rotate-90 transition-transform duration-500" />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-xl font-bold text-white tracking-tight group-hover:text-neon-primary transition-colors duration-300">
+                            AleoZKPay
+                        </span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">Privacy First</span>
                     </div>
                 </Link>
 
-                {/* NAVIGATION */}
-                <div className="nav-links">
-                    <Link to="/" className={`nav-link ${isActive('/') ? 'active' : ''}`}>Explorer</Link>
-                    <Link to="/create" className={`nav-link ${isActive('/create') ? 'active' : ''}`}>Create Invoice</Link>
-                    <Link to="/profile" className={`nav-link ${isActive('/profile') ? 'active' : ''}`}>Profile</Link>
+                {/* NAVIGATION PILL */}
+                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-full p-1 flex items-center gap-1 shadow-2xl">
+                    {navItems.map((item) => (
+                        <Link
+                            key={item.path}
+                            to={item.path}
+                            className={cn(
+                                "px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 relative overflow-hidden",
+                                isActive(item.path)
+                                    ? "text-neon-primary bg-neon-primary/10 border border-neon-primary/20 shadow-[0_0_15px_rgba(0,243,255,0.2)]"
+                                    : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                            )}
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
                 </div>
 
                 {/* CONNECT BUTTON */}
-                <div className="wallet-adapter-button-trigger">
-                    <WalletMultiButton className="btn-connect" />
+                <div className="wallet-adapter-wrapper transform hover:scale-105 transition-transform duration-300">
+                    <WalletMultiButton className="!bg-black/50 !backdrop-blur-lg !border !border-white/10 !rounded-full !py-3 !px-6 !h-auto !font-sans !font-semibold !text-sm !text-white hover:!bg-white/10 hover:!border-white/30 transition-all shadow-[0_0_15px_rgba(0,243,255,0.1)] hover:shadow-[0_0_25px_rgba(0,243,255,0.3)]" />
                 </div>
             </div>
-        </nav>
+        </motion.nav>
     );
 };
 

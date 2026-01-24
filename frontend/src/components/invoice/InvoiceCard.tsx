@@ -1,6 +1,8 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { InvoiceData } from '../../types/invoice';
+import { GlassCard } from '../ui/GlassCard';
+import { Button } from '../ui/Button';
 
 interface InvoiceCardProps {
     invoiceData: InvoiceData;
@@ -28,67 +30,70 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
     };
 
     return (
-        <div className="glass-card text-center fade-in-up" style={{ border: '1px solid rgba(255,255,255,0.2)' }}>
-            <h3 className="mb-4 text-gradient">Invoice Ready!</h3>
+        <GlassCard className="text-center p-8 bg-gradient-to-b from-glass-surface to-black/40">
+            <h3 className="mb-6 text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-neon-primary to-neon-accent animate-pulse-glow">
+                Invoice Ready!
+            </h3>
 
-            <div className="grid grid-cols-2 gap-4 mb-6 text-left bg-black/20 p-4 rounded-xl border border-gray-800">
+            <div className="grid grid-cols-2 gap-4 mb-8 text-left bg-black/30 p-5 rounded-2xl border border-white/5">
                 <div>
-                    <span className="text-label">Amount</span>
-                    <span className="text-white font-bold text-lg">{invoiceData.amount} USDC</span>
+                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Amount</span>
+                    <span className="text-white font-bold text-xl">{invoiceData.amount} USDC</span>
                 </div>
                 <div>
-                    <span className="text-label">Expiry</span>
-                    <span className="text-white">{getExpiryLabel(expiry)}</span>
+                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Expiry</span>
+                    <span className="text-gray-200">{getExpiryLabel(expiry)}</span>
                 </div>
                 {memo && (
-                    <div className="col-span-2">
-                        <span className="text-label">Memo</span>
+                    <div className="col-span-2 pt-2 border-t border-white/5 mt-2">
+                        <span className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Memo</span>
                         <span className="text-gray-300">{memo}</span>
                     </div>
                 )}
             </div>
 
-            <div className="flex-center mb-6 p-4 bg-white rounded-xl shadow-lg shadow-white/5" style={{ display: 'inline-flex' }}>
+            <div className="flex items-center justify-center mb-8 p-6 bg-white rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)] mx-auto w-fit">
                 <QRCodeSVG value={invoiceData.link} size={180} />
             </div>
 
-            <div className="form-group text-left">
-                <label className="text-label">Payment Link</label>
-                <div className="flex-between gap-2">
-                    <span className="input-field" style={{ fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }}>
+            <div className="mb-8">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payment Link</label>
+                <div className="flex gap-2">
+                    <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm text-gray-300 truncate">
                         {invoiceData.link}
-                    </span>
-                    <button
-                        className="btn-secondary"
-                        style={{ padding: '12px 16px' }}
+                    </div>
+                    <Button
+                        variant="secondary"
+                        size="md"
                         onClick={handleCopy}
                     >
                         Copy
-                    </button>
+                    </Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4 text-left">
-                <div className="p-3 rounded-lg border border-gray-700 bg-black/20">
-                    <span className="text-label" style={{ fontSize: '11px' }}>Hash</span>
-                    <span className="font-mono text-blue-400 truncate block text-xs" title={invoiceData.hash}>
+            <div className="grid grid-cols-2 gap-4 mb-8 text-left">
+                <div className="p-4 rounded-xl border border-white/5 bg-black/30 hover:border-neon-primary/30 transition-colors group">
+                    <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Hash</span>
+                    <span className="font-mono text-neon-accent truncate block text-xs group-hover:text-neon-primary transition-colors" title={invoiceData.hash}>
                         {invoiceData.hash.slice(0, 6)}...{invoiceData.hash.slice(-6)}
                     </span>
                 </div>
-                <div className="p-3 rounded-lg border border-gray-700 bg-black/20">
-                    <span className="text-label" style={{ fontSize: '11px' }}>Salt</span>
-                    <span className="font-mono text-purple-400 truncate block text-xs" title={invoiceData.salt}>
+                <div className="p-4 rounded-xl border border-white/5 bg-black/30 hover:border-purple-500/30 transition-colors group">
+                    <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Salt</span>
+                    <span className="font-mono text-purple-400 truncate block text-xs group-hover:text-purple-300 transition-colors" title={invoiceData.salt}>
                         {invoiceData.salt.slice(0, 6)}...
                     </span>
                 </div>
             </div>
 
-            <button
-                className="btn-secondary w-full"
+            <Button
+                variant="outline"
+                className="w-full"
                 onClick={resetInvoice}
             >
                 Create Another Invoice
-            </button>
-        </div>
+            </Button>
+        </GlassCard>
     );
 };

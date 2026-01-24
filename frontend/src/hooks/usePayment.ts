@@ -92,24 +92,7 @@ export const usePayment = () => {
         }
     }, [searchParams, publicKey]);
 
-    const checkPrivateBalance = async () => {
-        if (!publicKey || !requestRecords || !invoice) return false;
 
-        try {
-            setStatus('Checking private records...');
-            const records = await requestRecords('credits.aleo');
-            const recordsAny = records as any[];
-
-            const suitableRecord = recordsAny.find(r => {
-                const isSpendable = !!(r.plaintext || r.nonce || r._nonce || r.data?._nonce || r.ciphertext);
-                return !r.spent && isSpendable && getMicrocredits(r.data) >= invoice.amount;
-            });
-            return !!suitableRecord;
-        } catch (e) {
-            console.warn("Failed to check records, assuming user might verify manually", e);
-            return false;
-        }
-    };
 
     const getMicrocredits = (recordData: any): number => {
         try {
