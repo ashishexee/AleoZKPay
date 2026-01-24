@@ -1,5 +1,9 @@
 {
+<<<<<<< Updated upstream
   "program": "zk_pay_proofs_privacy_v2.aleo",
+=======
+  "program": "zk_pay_proofs_privacy_v4.aleo",
+>>>>>>> Stashed changes
   "version": "0.1.0",
   "description": "",
   "license": "",

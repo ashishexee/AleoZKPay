@@ -1,17 +1,21 @@
+<<<<<<< Updated upstream
 import { BHP256, Address, Field, U64 } from '@provablehq/sdk';
 
 export const generateSalt = (): string => {
     // Generate a random BigInt and convert to field string format
     console.log('generateSalt function called');
 
+=======
+export const generateSalt = (): string => {
+>>>>>>> Stashed changes
     const randomBuffer = new Uint8Array(16);
     crypto.getRandomValues(randomBuffer);
     let randomBigInt = BigInt(0);
     for (const byte of randomBuffer) {
         randomBigInt = (randomBigInt << 8n) + BigInt(byte);
     }
-    console.log('generateSalt function returned');
     return `${randomBigInt}field`;
+<<<<<<< Updated upstream
 
 };
 
@@ -51,3 +55,6 @@ export const createInvoiceHash = async (merchant: string, amount: number, salt: 
         throw error;
     }
 };
+=======
+};  
+>>>>>>> Stashed changes

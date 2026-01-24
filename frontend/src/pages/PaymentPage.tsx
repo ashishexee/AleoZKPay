@@ -1,15 +1,42 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { usePayment, PaymentStep } from '../hooks/usePayment';
+import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
+import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 
 const PaymentPage = () => {
     const [searchParams] = useSearchParams();
     const [step, setStep] = useState(1); // 1: Connect, 2: Review, 3: Processing, 4: Success
 
-    const invoice = {
-        merchant: 'aleo1...9xyz',
-        amount: '100 USDC',
-        memo: 'Logo Design Work',
-        expiry: '23h remaining'
+    const { address } = useWallet();
+    const publicKey = address;
+
+    const renderStepIndicator = () => {
+        const steps: { key: PaymentStep; label: string }[] = [
+            { key: 'CONNECT', label: '1. Connect' },
+            { key: 'VERIFY', label: '2. Verify' },
+            { key: 'PAY', label: '3. Pay' },
+        ];
+
+        // Map hook steps to UI steps
+        // CONVERT is part of PAY flow visually or a sub-step? let's make it distinct if active.
+        return (
+            <div className="flex-between mb-6">
+                {steps.map((s) => {
+                    let isActive = false;
+                    const currentIndex = steps.findIndex(x => x.key === step);
+                    // Special handling: CONVERT is like step 2.5 or 3
+                    if (step === 'CONVERT' && s.key === 'PAY') isActive = true;
+                    if (step === 'SUCCESS' && s.key === 'PAY') isActive = true;
+                    if (steps.findIndex(x => x.key === s.key) <= currentIndex) isActive = true;
+                    // If we are past this step
+
+                    return (
+                        <span key={s.key} className={`text-label ${isActive ? 'text-highlight' : ''}`}>
+                            {s.label}
+                        </span>
+                    );
+                })}
+            </div>
+        );
     };
 
     const handlePay = () => {

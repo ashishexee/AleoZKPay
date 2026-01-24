@@ -1,14 +1,18 @@
-import React, { FC, useMemo } from "react";
-import { WalletProvider } from "@demox-labs/aleo-wallet-adapter-react";
-import { WalletModalProvider } from "@demox-labs/aleo-wallet-adapter-reactui";
-import { LeoWalletAdapter } from "@demox-labs/aleo-wallet-adapter-leo";
+import React, { useMemo } from "react";
+import { AleoWalletProvider as ProvableWalletProvider } from "@provablehq/aleo-wallet-adaptor-react";
+import { WalletModalProvider } from "@provablehq/aleo-wallet-adaptor-react-ui";
+import { LeoWalletAdapter } from "@provablehq/aleo-wallet-adaptor-leo";
+import { PuzzleWalletAdapter } from "@provablehq/aleo-wallet-adaptor-puzzle";
+import { ShieldWalletAdapter } from "@provablehq/aleo-wallet-adaptor-shield";
+import { FoxWalletAdapter } from "@provablehq/aleo-wallet-adaptor-fox";
+import { SoterWalletAdapter } from "@provablehq/aleo-wallet-adaptor-soter";
 import {
     DecryptPermission,
-    WalletAdapterNetwork,
-} from "@demox-labs/aleo-wallet-adapter-base";
+} from "@provablehq/aleo-wallet-adaptor-core";
+import { Network } from "@provablehq/aleo-types";
 
-// Default styles that can be overridden by your app
-import "@demox-labs/aleo-wallet-adapter-reactui/styles.css";
+// Default styles
+import "@provablehq/aleo-wallet-adaptor-react-ui/dist/styles.css";
 
 interface AleoWalletProviderProps {
     children: React.ReactNode;
@@ -18,22 +22,35 @@ export const AleoWalletProvider = ({ children }: AleoWalletProviderProps) => {
     const wallets = useMemo(
         () => [
             new LeoWalletAdapter({
-                appName: 'AleoZKPay',
+                appName: 'AleoZKPay Beta',
+            }),
+            new PuzzleWalletAdapter({
+                appName: 'AleoZKPay Beta',
+            }),
+            new ShieldWalletAdapter({
+                appName: 'AleoZKPay Beta'
+            }),
+            new FoxWalletAdapter({
+                appName: 'AleoZKPay Beta'
+            }),
+            new SoterWalletAdapter({
+                appName: 'AleoZKPay Beta'
             }),
         ],
         []
     );
 
     return (
-        <WalletProvider
+        <ProvableWalletProvider
             wallets={wallets}
-            decryptPermission={DecryptPermission.UponRequest}
-            network={WalletAdapterNetwork.Localnet}
+            decryptPermission={DecryptPermission.AutoDecrypt}
+            network={Network.TESTNET}
             autoConnect
+            programs={['zk_pay_proofs_privacy_v4.aleo']}
         >
             <WalletModalProvider>
                 {children}
             </WalletModalProvider>
-        </WalletProvider>
+        </ProvableWalletProvider>
     );
 };

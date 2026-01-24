@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { WalletMultiButton } from '@demox-labs/aleo-wallet-adapter-reactui';
+import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 
 const Navbar = () => {
     const location = useLocation();
