@@ -1,10 +1,6 @@
 import credits.aleo;
 
-<<<<<<< Updated upstream
-program zk_pay_proofs_privacy_v2.aleo {
-=======
 program zk_pay_proofs_privacy_v4.aleo {
->>>>>>> Stashed changes
 
     @noupgrade
     async constructor() {
@@ -61,15 +57,6 @@ program zk_pay_proofs_privacy_v4.aleo {
     ) -> (credits.aleo/credits, credits.aleo/credits, Future) {
         let (r1, r2): (credits.aleo/credits, credits.aleo/credits) = 
             credits.aleo/transfer_private(pay_record, merchant, amount);
-<<<<<<< Updated upstream
-
-        let hash_merchant: field = BHP256::hash_to_field(merchant);
-        let hash_amount: field = BHP256::hash_to_field(amount);
-        let hash_salt: field = BHP256::hash_to_field(salt);
-
-        let computed_hash: field =
-            hash_merchant + hash_amount + hash_salt;
-=======
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
         
@@ -78,7 +65,6 @@ program zk_pay_proofs_privacy_v4.aleo {
         let salt_hash: field = BHP256::hash_to_field(salt);
         
         let computed_hash: field = merchant_hash + amount_hash + salt_hash;
->>>>>>> Stashed changes
 
         assert_eq(invoice_hash, computed_hash);
 

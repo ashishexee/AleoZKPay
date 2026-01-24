@@ -1,19 +1,9 @@
-<<<<<<< Updated upstream
-=======
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { useState, useEffect } from 'react';
->>>>>>> Stashed changes
 import StatusBadge from '../components/StatusBadge';
 
 const Profile = () => {
-<<<<<<< Updated upstream
-    const merchant = {
-        address: 'aleo1...9xyz',
-        balance: '5,420 USDC',
-        totalSales: '150,000 USDC',
-        invoices: 45
-=======
     const { address } = useWallet();
     const publicKey = address; // Alias for compatibility
     const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -36,7 +26,6 @@ const Profile = () => {
         } finally {
             setLoading(false);
         }
->>>>>>> Stashed changes
     };
 
     const myInvoices = [

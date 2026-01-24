@@ -1,13 +1,28 @@
 import { usePayment, PaymentStep } from '../hooks/usePayment';
+import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 
 const PaymentPage = () => {
     const [searchParams] = useSearchParams();
-    const [step, setStep] = useState(1); // 1: Connect, 2: Review, 3: Processing, 4: Success
-
     const { address } = useWallet();
-    const publicKey = address;
+
+    // Parse invoice details from URL
+    const invoice = {
+        merchant: searchParams.get('merchant') || '',
+        amount: searchParams.get('amount') || '0',
+        memo: searchParams.get('memo') || '',
+        salt: searchParams.get('salt') || '',
+        hash: searchParams.get('hash') || '',
+    };
+
+    const {
+        step,
+        currentStatus,
+        handleConnect,
+        handlePay,
+        isProcess
+    } = usePayment(invoice);
 
     const renderStepIndicator = () => {
         const steps: { key: PaymentStep; label: string }[] = [
@@ -16,18 +31,17 @@ const PaymentPage = () => {
             { key: 'PAY', label: '3. Pay' },
         ];
 
-        // Map hook steps to UI steps
-        // CONVERT is part of PAY flow visually or a sub-step? let's make it distinct if active.
         return (
             <div className="flex-between mb-6">
-                {steps.map((s) => {
+                {steps.map((s, index) => {
                     let isActive = false;
                     const currentIndex = steps.findIndex(x => x.key === step);
-                    // Special handling: CONVERT is like step 2.5 or 3
+
+                    // Logic to highlight completed steps
+                    if (s.key === step) isActive = true;
+                    if (steps.findIndex(x => x.key === s.key) < currentIndex) isActive = true;
                     if (step === 'CONVERT' && s.key === 'PAY') isActive = true;
                     if (step === 'SUCCESS' && s.key === 'PAY') isActive = true;
-                    if (steps.findIndex(x => x.key === s.key) <= currentIndex) isActive = true;
-                    // If we are past this step
 
                     return (
                         <span key={s.key} className={`text-label ${isActive ? 'text-highlight' : ''}`}>
@@ -39,11 +53,6 @@ const PaymentPage = () => {
         );
     };
 
-    const handlePay = () => {
-        setStep(3);
-        setTimeout(() => setStep(4), 3000);
-    };
-
     return (
         <div className="page-container flex-center" style={{ minHeight: '80vh' }}>
             <div style={{ width: '100%', maxWidth: '480px' }}>
@@ -51,7 +60,7 @@ const PaymentPage = () => {
                 {/* STATUS HEADER */}
                 <div className="text-center mb-8">
                     <h1 className="text-gradient" style={{ fontSize: '36px' }}>
-                        {step === 4 ? 'Payment Successful' : 'Pay Invoice'}
+                        {step === 'SUCCESS' ? 'Payment Successful' : 'Pay Invoice'}
                     </h1>
                 </div>
 
@@ -60,39 +69,75 @@ const PaymentPage = () => {
                     <div className="mb-6 pb-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                         <div className="flex-between mb-2">
                             <span className="text-label">Merchant</span>
-                            <span className="text-value" style={{ fontFamily: 'monospace' }}>{invoice.merchant.slice(0, 10)}...</span>
+                            <span className="text-value" style={{ fontFamily: 'monospace' }}>
+                                {invoice.merchant ? `${invoice.merchant.slice(0, 10)}...` : 'Unknown'}
+                            </span>
                         </div>
                         <div className="flex-between mb-2">
                             <span className="text-label">Amount</span>
-                            <span className="text-xl text-highlight">{invoice.amount}</span>
+                            <span className="text-xl text-highlight">{invoice.amount} Microcredits</span>
                         </div>
-                        <div className="flex-between">
-                            <span className="text-label">Memo</span>
-                            <span className="text-value">{invoice.memo}</span>
-                        </div>
+                        {invoice.memo && (
+                            <div className="flex-between">
+                                <span className="text-label">Memo</span>
+                                <span className="text-value">{invoice.memo}</span>
+                            </div>
+                        )}
                     </div>
 
-                    {/* STEPS */}
-                    {step === 4 ? (
+                    {/* STEPS INDICATOR */}
+                    {renderStepIndicator()}
+
+                    {/* ACTION AREA */}
+                    {step === 'SUCCESS' ? (
                         <div className="text-center">
-                            <p className="text-small mb-6">The transaction has been settled on-chain verification.</p>
-                            <button className="btn-primary">View Transaction</button>
+                            <p className="text-small mb-6">The transaction has been settled on-chain.</p>
+                            <a
+                                href={`https://explorer.aleo.org/testnet/transaction/${currentStatus}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn-primary inline-block"
+                                style={{ textDecoration: 'none' }}
+                            >
+                                View Transaction
+                            </a>
                         </div>
                     ) : (
-                        <div>
-                            <div className="flex-between mb-6">
-                                <span className={`text-label ${step >= 1 ? 'text-highlight' : ''}`}>1. Connect</span>
-                                <span className={`text-label ${step >= 2 ? 'text-highlight' : ''}`}>2. Approve</span>
-                                <span className={`text-label ${step >= 3 ? 'text-highlight' : ''}`}>3. Verify</span>
-                            </div>
+                        <div className="mt-6">
+                            {/* ERROR MESSAGE */}
+                            {currentStatus && !currentStatus.startsWith('at1') && step !== 'SUCCESS' && (
+                                <p className="text-error text-center mb-4 text-sm">{currentStatus}</p>
+                            )}
 
-                            <button
-                                className="btn-primary"
-                                onClick={handlePay}
-                                disabled={step === 3}
-                            >
-                                {step === 3 ? 'Processing Proof...' : 'Pay 100 USDC'}
-                            </button>
+                            {step === 'CONNECT' && (
+                                <div className="flex-center">
+                                    <WalletMultiButton className="btn-primary" />
+                                    {address && (
+                                        <button
+                                            className="btn-secondary mt-4 w-full"
+                                            onClick={handleConnect}
+                                        >
+                                            Continue with Connected Wallet
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {step === 'VERIFY' && (
+                                <button className="btn-primary w-full" onClick={handleConnect}>
+                                    Verify Hash & Records
+                                </button>
+                            )}
+
+                            {(step === 'CONVERT' || step === 'PAY') && (
+                                <button
+                                    className="btn-primary w-full"
+                                    onClick={handlePay}
+                                    disabled={isProcess}
+                                >
+                                    {isProcess ? 'Processing...' : step === 'CONVERT' ? 'Convert Public to Private' : `Pay ${invoice.amount}`}
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
