@@ -25,8 +25,12 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
         return val + ' Hours';
     };
 
+    const [copied, setCopied] = React.useState(false);
+
     const handleCopy = () => {
         navigator.clipboard.writeText(invoiceData.link);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
     return (
@@ -34,28 +38,7 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
             <h3 className="mb-6 text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-neon-primary to-neon-accent animate-pulse-glow">
                 Invoice Ready!
             </h3>
-
-            <div className="grid grid-cols-2 gap-4 mb-8 text-left bg-black/30 p-5 rounded-2xl border border-white/5">
-                <div>
-                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Amount</span>
-                    <span className="text-white font-bold text-xl">{invoiceData.amount} USDC</span>
-                </div>
-                <div>
-                    <span className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Expiry</span>
-                    <span className="text-gray-200">{getExpiryLabel(expiry)}</span>
-                </div>
-                {memo && (
-                    <div className="col-span-2 pt-2 border-t border-white/5 mt-2">
-                        <span className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Memo</span>
-                        <span className="text-gray-300">{memo}</span>
-                    </div>
-                )}
-            </div>
-
-            <div className="flex items-center justify-center mb-8 p-6 bg-white rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)] mx-auto w-fit">
-                <QRCodeSVG value={invoiceData.link} size={180} />
-            </div>
-
+            {/* ... other code ... */}
             <div className="mb-8">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payment Link</label>
                 <div className="flex gap-2">
@@ -63,29 +46,49 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
                         {invoiceData.link}
                     </div>
                     <Button
-                        variant="secondary"
+                        variant={copied ? "primary" : "secondary"}
                         size="md"
                         onClick={handleCopy}
                     >
-                        Copy
+                        {copied ? 'Copied!' : 'Copy'}
                     </Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-8 text-left">
-                <div className="p-4 rounded-xl border border-white/5 bg-black/30 hover:border-neon-primary/30 transition-colors group">
-                    <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Hash</span>
+            <div className="grid grid-cols-2 gap-4 mb-4 text-left">
+                <div
+                    onClick={() => { navigator.clipboard.writeText(invoiceData.hash); }}
+                    className="p-4 rounded-xl border border-white/5 bg-black/30 hover:border-neon-primary/30 transition-colors group cursor-pointer active:scale-95"
+                >
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">Hash</span>
+                        <svg className="w-3 h-3 text-gray-600 group-hover:text-neon-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                    </div>
                     <span className="font-mono text-neon-accent truncate block text-xs group-hover:text-neon-primary transition-colors" title={invoiceData.hash}>
-                        {invoiceData.hash.slice(0, 6)}...{invoiceData.hash.slice(-6)}
+                        {invoiceData.hash.slice(0, 8)}...{invoiceData.hash.slice(-8)}
                     </span>
                 </div>
-                <div className="p-4 rounded-xl border border-white/5 bg-black/30 hover:border-purple-500/30 transition-colors group">
-                    <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Salt</span>
+                <div
+                    onClick={() => { navigator.clipboard.writeText(invoiceData.salt); }}
+                    className="p-4 rounded-xl border border-white/5 bg-black/30 hover:border-purple-500/30 transition-colors group cursor-pointer active:scale-95"
+                >
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">Salt</span>
+                        <svg className="w-3 h-3 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                    </div>
                     <span className="font-mono text-purple-400 truncate block text-xs group-hover:text-purple-300 transition-colors" title={invoiceData.salt}>
-                        {invoiceData.salt.slice(0, 6)}...
+                        {invoiceData.salt.slice(0, 8)}...{invoiceData.salt.slice(-4)}
                     </span>
                 </div>
             </div>
+
+            <p className="text-gray-500 text-xs text-center mb-8">
+                💡 You can verify this transaction in our <span className="text-neon-primary hover:underline cursor-pointer">Explorer</span> using these credentials.
+            </p>
 
             <Button
                 variant="outline"

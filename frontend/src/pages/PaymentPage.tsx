@@ -123,7 +123,7 @@ const PaymentPage = () => {
                             </div>
                         )}
 
-                        {status && !status.startsWith('at1') && !error && (
+                        {status && !status.startsWith('at1') && !error && step !== 'ALREADY_PAID' && step !== 'SUCCESS' && (
                             <div className="text-center p-3 bg-neon-primary/10 rounded-xl border border-neon-primary/20">
                                 <p className="text-neon-primary text-sm font-mono animate-pulse">{status}</p>
                             </div>

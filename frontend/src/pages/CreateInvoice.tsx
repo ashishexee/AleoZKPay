@@ -18,51 +18,70 @@ export const CreateInvoice: React.FC = () => {
 
     return (
         <div className="page-container min-h-screen">
-            <div className="w-full max-w-7xl mx-auto pt-12">
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="text-left mb-10"
-                >
-                    <h1 className="text-4xl md:text-5xl font-bold mb-2">
-                        Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Invoice</span>
-                    </h1>
-                    {!invoiceData && (
-                        <p className="text-gray-400 text-lg max-w-xl">
-                            Generate a privacy-preserving invoice for your customers.
-                        </p>
-                    )}
-                </motion.div>
+            <div className="w-full max-w-6xl mx-auto pt-20 px-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
 
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                    className="w-full max-w-2xl"
-                >
-                    {!invoiceData ? (
-                        <InvoiceForm
-                            amount={amount}
-                            setAmount={setAmount}
-                            expiry={expiry}
-                            setExpiry={setExpiry}
-                            memo={memo}
-                            setMemo={setMemo}
-                            handleCreate={handleCreate}
-                            loading={loading}
-                            publicKey={publicKey}
-                            status={status}
-                        />
-                    ) : (
-                        <InvoiceCard
-                            invoiceData={invoiceData}
-                            resetInvoice={resetInvoice}
-                            expiry={expiry}
-                            memo={memo}
-                        />
-                    )}
-                </motion.div>
+                    {/* LEFT SIDE - HEADING & INFO */}
+                    <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="text-left sticky top-24"
+                    >
+                        <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tighter loading-none">
+                            Create <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Invoice</span>
+                        </h1>
+                        <p className="text-gray-400 text-xl leading-relaxed max-w-md mb-8">
+                            Generate a privacy-preserving invoice link to receive payments securely on the Aleo network.
+                        </p>
+
+                        {!invoiceData && (
+                            <div className="hidden lg:block p-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-md">
+                                <h3 className="text-white font-bold mb-2 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-neon-primary animate-pulse" />
+                                    How it works
+                                </h3>
+                                <ul className="text-sm text-gray-400 space-y-3 pl-4 list-disc marker:text-neon-primary">
+                                    <li>Enter the amount you wish to receive.</li>
+                                    <li>Set an expiry time for the invoice.</li>
+                                    <li>Share the generated link with the payer.</li>
+                                    <li>Receive funds privately via ZK proofs.</li>
+                                </ul>
+                            </div>
+                        )}
+                    </motion.div>
+
+                    {/* RIGHT SIDE - FORM OR RESULT */}
+                    <motion.div
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className="w-full"
+                    >
+                        {!invoiceData ? (
+                            <InvoiceForm
+                                amount={amount}
+                                setAmount={setAmount}
+                                expiry={expiry}
+                                setExpiry={setExpiry}
+                                memo={memo}
+                                setMemo={setMemo}
+                                handleCreate={handleCreate}
+                                loading={loading}
+                                publicKey={publicKey}
+                                status={status}
+                            />
+                        ) : (
+                            <InvoiceCard
+                                invoiceData={invoiceData}
+                                resetInvoice={resetInvoice}
+                                expiry={expiry}
+                                memo={memo}
+                            />
+                        )}
+                    </motion.div>
+                </div>
             </div>
         </div>
     );
