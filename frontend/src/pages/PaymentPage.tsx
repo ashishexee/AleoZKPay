@@ -5,7 +5,7 @@ import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { generateSalt, getInvoiceHashFromMapping, getInvoiceStatus, PROGRAM_ID } from '../utils/aleo-utils';
+import {PROGRAM_ID } from '../utils/aleo-utils';
 
 const PaymentPage = () => {
     const {
