@@ -4,6 +4,8 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { generateSalt, getInvoiceHashFromMapping, getInvoiceStatus, PROGRAM_ID } from '../utils/aleo-utils';
 
 const PaymentPage = () => {
     const {
@@ -15,7 +17,11 @@ const PaymentPage = () => {
         txId,
         handleConnect,
         payInvoice,
-        convertPublicToPrivate
+        convertPublicToPrivate,
+        programId,
+        message,
+        setMessage,
+        paymentSecret
     } = usePayment();
 
     const { address } = useWallet();
@@ -34,6 +40,8 @@ const PaymentPage = () => {
         { key: 'VERIFY', label: '2. Verify' },
         { key: 'PAY', label: '3. Pay' },
     ];
+
+    const isFundraising = programId === PROGRAM_ID;
 
     return (
         <div className="page-container flex flex-col items-center justify-center min-h-[85vh]">
@@ -70,7 +78,9 @@ const PaymentPage = () => {
                             <svg className="w-5 h-5 text-neon-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span className="text-sm font-bold text-neon-primary tracking-wide uppercase">Verified Invoice</span>
+                            <span className="text-sm font-bold text-neon-primary tracking-wide uppercase">
+                                {isFundraising ? 'Verified Fundraiser' : 'Verified Invoice'}
+                            </span>
                         </motion.div>
                     )}
                 </div>
@@ -125,6 +135,29 @@ const PaymentPage = () => {
                                 <span className="text-gray-300">{invoice.memo}</span>
                             </div>
                         )}
+
+                        {/* FUNDRAISING EXTRA INPUTS */}
+                        {isFundraising && step !== 'SUCCESS' && step !== 'CONNECT' && (
+                            <div className="pt-4 border-t border-white/5 space-y-4">
+                                <div>
+                                    <span className="text-xs font-bold text-neon-primary uppercase tracking-widest block mb-1">Your Payment Secret</span>
+                                    <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded-lg break-all font-mono text-xs text-neon-primary relative hover:bg-neon-primary/20 transition-colors cursor-copy" onClick={() => paymentSecret && navigator.clipboard.writeText(paymentSecret)}>
+                                        {paymentSecret || 'Generating...'}
+                                        <div className="absolute top-1 right-2 text-[10px] opacity-70">COPY</div>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mt-1">
+                                        Save this secret! You'll need it to prove payment to the merchant.
+                                    </p>
+                                </div>
+                                <Input
+                                    label="Add a Message (Optional)"
+                                    placeholder="Good luck with the project!"
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                />
+                            </div>
+                        )}
+
                     </div>
 
                     {/* ACTION AREA */}
@@ -148,6 +181,13 @@ const PaymentPage = () => {
                                         ? 'This invoice has already been settled on-chain.'
                                         : 'The transaction has been settled on-chain.'}
                                 </p>
+                                {isFundraising && paymentSecret && (
+                                    <div className="bg-black/40 border border-neon-primary/30 p-4 rounded-xl text-left">
+                                        <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Secret</p>
+                                        <p className="font-mono text-white text-sm break-all">{paymentSecret}</p>
+                                        <p className="text-[10px] text-gray-500 mt-1">Share this with the merchant to verify your contribution.</p>
+                                    </div>
+                                )}
                                 {txId && (
                                     <Button
                                         variant="primary"

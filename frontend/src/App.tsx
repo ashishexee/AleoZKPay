@@ -6,6 +6,7 @@ import CreateInvoice from './pages/CreateInvoice';
 import PaymentPage from './pages/PaymentPage';
 import Profile from './pages/Profile';
 import Docs from './pages/Docs';
+import Verification from './pages/Verification'; // Changed from MerchantVerify
 import './index.css';
 
 const AnimatedRoutes = () => {
@@ -19,6 +20,7 @@ const AnimatedRoutes = () => {
                 <Route path="/pay" element={<PaymentPage />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/docs" element={<Docs />} />
+                <Route path="/verify" element={<Verification />} /> {/* Changed from MerchantVerify */}
             </Routes>
         </AnimatePresence>
     );

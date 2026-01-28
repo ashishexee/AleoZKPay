@@ -2,6 +2,7 @@ import React from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { InvoiceType } from '../../hooks/useCreateInvoice'; // Import Type
 
 interface InvoiceFormProps {
     amount: number | '';
@@ -14,6 +15,8 @@ interface InvoiceFormProps {
     loading: boolean;
     publicKey: string | null;
     status: string;
+    invoiceType: InvoiceType;
+    setInvoiceType: (val: InvoiceType) => void;
 }
 
 export const InvoiceForm: React.FC<InvoiceFormProps> = ({
@@ -26,13 +29,43 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     handleCreate,
     loading,
     publicKey,
-    status
+    status,
+    invoiceType,
+    setInvoiceType
 }) => {
     return (
         <GlassCard variant="heavy" className="p-8">
             <h2 className="text-2xl font-bold text-white mb-6">Invoice Details</h2>
 
             <div className="space-y-6">
+
+                {/* INVOICE TYPE TOGGLE */}
+                <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
+                    <button
+                        onClick={() => setInvoiceType('standard')}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
+                                ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            }`}
+                    >
+                        Standard Invoice
+                    </button>
+                    <button
+                        onClick={() => setInvoiceType('fundraising')}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'fundraising'
+                                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            }`}
+                    >
+                        Fundraising (Multi-Pay)
+                    </button>
+                </div>
+                <div className="text-xs text-gray-400 text-center -mt-4 mb-4">
+                    {invoiceType === 'standard'
+                        ? 'Single payment only. Invoice closes after payment.'
+                        : 'Allows multiple payments. Ideal for donations or crowdfunding.'}
+                </div>
+
                 <Input
                     label="Amount (Credits)"
                     type="number"
@@ -78,12 +111,12 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     {loading ? (
                         <span className="flex items-center gap-2">
                             <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Creating Invoice...
+                            Creating {invoiceType === 'standard' ? 'Invoice' : 'Fundraiser'}...
                         </span>
                     ) : !publicKey ? (
                         'Connect Wallet to Continue'
                     ) : (
-                        'Generate Invoice Link'
+                        invoiceType === 'standard' ? 'Generate Invoice Link' : 'Create Fundraiser Link'
                     )}
                 </Button>
 

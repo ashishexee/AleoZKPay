@@ -253,16 +253,16 @@ const Explorer = () => {
                                                     </div>
 
                                                     <div className="w-[120px] flex justify-end">
-                                                        {inv.payment_tx_id && (
+                                                        {(inv.payment_tx_ids?.length || inv.payment_tx_id) && (
                                                             <button
-                                                                onClick={() => openExplorer(inv.payment_tx_id)}
+                                                                onClick={() => openExplorer(inv.payment_tx_ids?.[inv.payment_tx_ids.length - 1] || inv.payment_tx_id)}
                                                                 className="flex items-center gap-1.5 text-xs bg-emerald-900/20 hover:bg-emerald-900/40 px-3 py-1.5 rounded-md border border-emerald-500/20 hover:border-emerald-500/50 transition-all text-emerald-400 font-medium group/btn shadow-[0_0_10px_rgba(16,185,129,0.1)] w-full justify-center"
                                                                 title="View Payment Proof"
                                                             >
                                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                                 </svg>
-                                                                Payment Tx
+                                                                {inv.payment_tx_ids && inv.payment_tx_ids.length > 1 ? `Tx (${inv.payment_tx_ids.length})` : 'Payment Tx'}
                                                             </button>
                                                         )}
                                                     </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { getInvoiceHashFromMapping, getInvoiceStatus } from '../utils/aleo-utils';
+import { getInvoiceHashFromMapping, getInvoiceStatus, PROGRAM_ID, generateSalt } from '../utils/aleo-utils';
 
 export type PaymentStep = 'CONNECT' | 'VERIFY' | 'CONVERT' | 'PAY' | 'SUCCESS' | 'ALREADY_PAID';
 
@@ -25,6 +25,11 @@ export const usePayment = () => {
     const [conversionTxId, setConversionTxId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // New states for V7
+    const [programId, setProgramId] = useState<string | null>(null);
+    const [message, setMessage] = useState<string>('');
+    const [paymentSecret, setPaymentSecret] = useState<string | null>(null);
+
     useEffect(() => {
         const init = async () => {
             const merchant = searchParams.get('merchant');
@@ -41,17 +46,26 @@ export const usePayment = () => {
                 setLoading(true);
                 setStatus('Verifying Invoice on-chain...');
 
-                // Fetch Hash from Chain using Salt
-                const fetchedHash = await getInvoiceHashFromMapping(salt);
+                // V7 Consolidation: We assume all valid invoices are on the V7 contract.
+                setProgramId(PROGRAM_ID);
+
+                // Always generate Payment Secret because V7 requires it (Standard or Fundraising)
+                // For Standard invoices, this secret could still be used for a receipt, though less critical.
+                setPaymentSecret(generateSalt());
+
+                // Fetch Hash from Chain
+                const fetchedHash = await getInvoiceHashFromMapping(salt); // This now uses PROGRAM_ID
 
                 if (!fetchedHash) {
-                    setError('Invoice not found or invalid salt. Ask merchant for correct link.');
+                    setError('Invoice not found or invalid salt.');
                     setLoading(false);
                     return;
                 }
 
                 // Check Status
                 const invoiceStatus = await getInvoiceStatus(fetchedHash);
+
+                // Status 1 means Settled/Paid.
                 if (invoiceStatus === 1) {
                     // Fetch full details from DB (payment_tx_id etc)
                     let dbInvoice = null;
@@ -193,7 +207,7 @@ export const usePayment = () => {
     };
 
     const payInvoice = async () => {
-        if (!invoice || !publicKey || !executeTransaction || !requestRecords) return;
+        if (!invoice || !publicKey || !executeTransaction || !requestRecords || !programId) return;
 
         try {
             setLoading(true);
@@ -301,16 +315,23 @@ export const usePayment = () => {
 
             setStatus('Requesting Payment Signature...');
 
-            const inputs = [
+            let inputs = [
                 recordInput,
                 invoice.merchant,
                 `${amountMicro}u64`,
                 invoice.salt
             ];
+
+            // Always add Secret and Message for V7
+            console.log("Adding V7 secret and message inputs");
+            inputs.push(paymentSecret || '0field');
+            // Message: Use Invoice Hash so we can track payments publicly
+            inputs.push(invoice.hash);
+
             console.log("Transaction Inputs:", inputs);
 
             const transaction: TransactionOptions = {
-                program: 'zk_pay_proofs_privacy_v6.aleo',
+                program: PROGRAM_ID,
                 function: 'pay_invoice',
                 inputs: inputs,
                 fee: 100_000,
@@ -354,13 +375,34 @@ export const usePayment = () => {
 
                             // Update Database
                             try {
-                                const { updateInvoiceStatus } = await import('../services/api');
+                                const { updateInvoiceStatus, fetchInvoiceByHash } = await import('../services/api');
                                 console.log('Final Payment TX ID for DB:', onChainId);
-                                await updateInvoiceStatus(invoice.hash, {
-                                    status: 'SETTLED',
+
+                                // Fetch invoice first to check type (if not already known, but we likely verify it)
+                                // We rely on the initial verification. However, invoice state in hook might NOT have type if it was just loaded from URL params.
+                                // We should probably fetch it during init. But assuming we want to be safe:
+
+                                const updatePayload: any = {
                                     payment_tx_id: onChainId,
                                     payer_address: publicKey || undefined
-                                });
+                                };
+
+                                // ONLY Set 'SETTLED' if it is a Standard Invoice (Type 0)
+                                // If Fundraising (Type 1), we leave it PENDING/OPEN.
+                                // If we don't know the type from state, default to SETTLED (Wave 1 behavior) unless we are sure.
+                                // Ideally, 'invoice' state should have 'type'.
+                                // For now, let's assume if it is NOT fundraising explicit, we settle.
+                                // Note: We need to ensure we know the type.
+
+                                // Let's fetch the invoice type from DB to be sure before updating status
+                                const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
+                                if (currentDbInvoice && currentDbInvoice.invoice_type === 1) {
+                                    console.log("Fundraising Invoice detected. Keeping status as PENDING.");
+                                } else {
+                                    updatePayload.status = 'SETTLED';
+                                }
+
+                                await updateInvoiceStatus(invoice.hash, updatePayload);
                                 console.log("Invoice updated in DB");
                             } catch (dbErr) {
                                 console.error("Failed to update invoice in DB:", dbErr);
@@ -402,6 +444,10 @@ export const usePayment = () => {
         publicKey,
         payInvoice,
         convertPublicToPrivate,
-        handleConnect
+        handleConnect,
+        programId,
+        message,
+        setMessage,
+        paymentSecret
     };
 };

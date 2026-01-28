@@ -1,8 +1,11 @@
+
 import { useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { generateSalt, getInvoiceHashFromMapping } from '../utils/aleo-utils';
+import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../utils/aleo-utils';
 import { InvoiceData } from '../types/invoice';
+
+export type InvoiceType = 'standard' | 'fundraising';
 
 export const useCreateInvoice = () => {
     const { address, executeTransaction, transactionStatus, requestTransactionHistory } = useWallet();
@@ -14,6 +17,7 @@ export const useCreateInvoice = () => {
     const [expiry, setExpiry] = useState<string>('0');
     const [memo, setMemo] = useState<string>('');
     const [status, setStatus] = useState<string>('');
+    const [invoiceType, setInvoiceType] = useState<InvoiceType>('standard');
 
     const handleCreate = async () => {
         if (!publicKey || !executeTransaction || !transactionStatus) {
@@ -30,20 +34,30 @@ export const useCreateInvoice = () => {
 
         try {
             const merchant = publicKey;
-            const salt = generateSalt();
+            let salt = generateSalt(); // Changed to 'let' because currentSalt is used in the instruction
             console.log('this is the salt', salt);
             setStatus('Requesting wallet signature...');
-            const microcredits = Math.round(Number(amount) * 1_000_000);
+
+            const typeInput = invoiceType === 'standard' ? '0u8' : '1u8';
+            const amountMicro = Math.round(Number(amount) * 1_000_000);
+
+            // Ensure salt is ready
+            // Assuming currentSalt in instruction refers to the 'salt' variable declared above
+            if (!salt) {
+                // If by some race condition it's missing, gen one
+                salt = generateSalt();
+            }
 
             const inputs = [
-                merchant,
-                `${microcredits}u64`,
+                publicKey,
+                `${amountMicro}u64`,
                 salt,
-                `${expiry}u32`
+                expiry === '0' ? '0u32' : `${Number(expiry)}u32`,
+                typeInput
             ];
 
             const transaction: TransactionOptions = {
-                program: 'zk_pay_proofs_privacy_v6.aleo',
+                program: PROGRAM_ID,
                 function: 'create_invoice',
                 inputs: inputs,
                 fee: 100_000,
@@ -126,7 +140,7 @@ export const useCreateInvoice = () => {
                                 if (!hash) {
                                     console.log("Hash not found via mapping, attempting history lookup...");
                                     try {
-                                        hash = await getInvoiceHashFromWallet(finalTransactionId);
+                                        hash = await getInvoiceHashFromWallet(finalTransactionId, PROGRAM_ID);
                                     } catch (err: any) {
                                         console.warn("History lookup failed or timed out:", err);
                                     }
@@ -157,7 +171,9 @@ export const useCreateInvoice = () => {
                                         amount: Number(amount),
                                         memo: memo || '',
                                         status: 'PENDING',
-                                        invoice_transaction_id: finalTransactionId
+                                        invoice_transaction_id: finalTransactionId,
+                                        salt: salt,
+                                        invoice_type: invoiceType === 'fundraising' ? 1 : 0
                                     });
                                     console.log("Invoice saved to DB");
                                 } catch (dbErr) {
@@ -172,6 +188,8 @@ export const useCreateInvoice = () => {
                                     salt
                                 });
                                 if (memo) params.append('memo', memo);
+                                if (invoiceType === 'fundraising') params.append('type', 'fundraising');
+
                                 const link = `${window.location.origin}/pay?${params.toString()}`;
 
                                 setInvoiceData({ merchant, amount: Number(amount), salt, hash, link });
@@ -223,7 +241,7 @@ export const useCreateInvoice = () => {
     };
 
     // Helper to get execution safely with retries (Wallet Only)
-    const getInvoiceHashFromWallet = async (finalTxId: string): Promise<string | null> => {
+    const getInvoiceHashFromWallet = async (finalTxId: string, programId: string): Promise<string | null> => {
         const safeTxId = finalTxId.replace(/['"]+/g, '').trim();
         console.log(`Getting execution output for ${safeTxId}...`);
 
@@ -237,7 +255,7 @@ export const useCreateInvoice = () => {
                 if (!historyPermissionDenied) {
                     try {
                         if (requestTransactionHistory) {
-                            const history = await requestTransactionHistory('zk_pay_proofs_privacy_v6.aleo');
+                            const history = await requestTransactionHistory(programId);
                             const foundTx = history.transactions.find((t: any) => t.transactionId === safeTxId || t.id === safeTxId);
 
                             const txAny = foundTx as any;
@@ -276,6 +294,7 @@ export const useCreateInvoice = () => {
         setAmount('');
         setMemo('');
         setStatus('');
+        setInvoiceType('standard');
     };
 
     return {
@@ -290,6 +309,8 @@ export const useCreateInvoice = () => {
         invoiceData,
         handleCreate,
         resetInvoice,
-        publicKey
+        publicKey,
+        invoiceType,
+        setInvoiceType
     };
 };
