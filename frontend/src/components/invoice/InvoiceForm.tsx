@@ -2,7 +2,7 @@ import React from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { InvoiceType } from '../../hooks/useCreateInvoice'; // Import Type
+import { InvoiceType } from '../../hooks/useCreateInvoice';
 
 interface InvoiceFormProps {
     amount: number | '';

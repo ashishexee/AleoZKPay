@@ -13,6 +13,7 @@ const Profile = () => {
     const publicKey = address;
     const { transactions, loading, fetchTransactions } = useTransactions(publicKey || undefined);
     const [settling, setSettling] = useState<string | null>(null); // Hash of invoice being settled
+    const [copiedHash, setCopiedHash] = useState<string | null>(null); // Track which invoice link was copied
 
     // Modal State
     const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[] | null>(null);
@@ -46,12 +47,10 @@ const Profile = () => {
 
             await executeTransaction(tx);
             console.log('Executed on-chain settling');
-
-            // Update Database to SETTLED and Refresh UI
             try {
                 const { updateInvoiceStatus } = await import('../services/api');
                 await updateInvoiceStatus(invoice.invoice_hash, { status: 'SETTLED' });
-                await fetchTransactions(); // Refresh list to remove the button
+                await fetchTransactions();
             } catch (dbErr) {
                 console.error("Failed to update status in DB", dbErr);
             }
@@ -92,13 +91,28 @@ const Profile = () => {
         }
     };
 
+
+
     return (
         <div className="page-container relative min-h-screen">
             {/* BACKGROUND */}
             <div className="fixed inset-0 pointer-events-none z-0 opacity-30">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
                 <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
+                <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] bg-white/5 rounded-full blur-[120px] animate-pulse-slow" />
             </div>
+            <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 w-screen h-[800px] z-0 pointer-events-none flex justify-center overflow-hidden">
+                <img
+                    src="/assets/aleo_globe.png"
+                    alt="Aleo Globe"
+                    className="w-full h-full object-cover opacity-50 mix-blend-screen mask-image-gradient-b"
+                    style={{
+                        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)',
+                        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)'
+                    }}
+                />
+            </div>
+
 
             {/* MODAL */}
             <AnimatePresence>
@@ -144,20 +158,9 @@ const Profile = () => {
             >
                 {/* HEADER */}
                 <motion.div variants={itemVariants} className="flex flex-col items-center justify-center text-center mb-12">
-                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tighter text-white">
+                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tighter text-white" style={{ fontSize: '50px' }}>
                         Merchant <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">Dashboard</span>
                     </h1>
-
-                    {publicKey && (
-                        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-full px-6 py-3 flex items-center gap-4 shadow-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
-                                <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">Wallet Connected</span>
-                            </div>
-                            <div className="h-4 w-[1px] bg-white/10" />
-                            <span className="font-mono text-sm text-white font-medium tracking-wide">{publicKey.slice(0, 10)}...{publicKey.slice(-5)}</span>
-                        </div>
-                    )}
                 </motion.div>
 
                 {/* STATS */}
@@ -178,95 +181,123 @@ const Profile = () => {
 
                 {/* INVOICE HISTORY */}
                 <GlassCard variants={itemVariants} className="p-0 overflow-hidden">
-                    <div className="p-6 border-b border-white/5 flex flex-wrap gap-4 items-center justify-between bg-black/20">
-                        <h3 className="text-xl font-bold text-white">Your Invoices</h3>
+                    <div className="p-6 border-b border-white/5 flex flex-wrap gap-4 items-center justify-between">
+                        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-neon-primary animate-pulse"></span>
+                            Your Invoices
+                        </h2>
                     </div>
 
                     <div className="overflow-x-auto min-h-[300px]">
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-white/5 text-left">
-                                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Details</th>
-                                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Status / Type</th>
-                                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Payment Proofs</th>
-                                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                                    <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Invoice Hash</th>
+                                    <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Amount</th>
+                                    <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Status</th>
+                                    <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {loading ? (
-                                    <tr><td colSpan={5} className="text-center py-10 text-gray-500">Loading your invoices...</td></tr>
+                                    <tr><td colSpan={4} className="text-center py-8 text-gray-500">Loading your invoices...</td></tr>
                                 ) : transactions.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center py-10 text-gray-500">No invoices found. Create one!</td></tr>
+                                    <tr><td colSpan={4} className="text-center py-8 text-gray-500">No invoices found. Create one!</td></tr>
                                 ) : (
                                     transactions.map((inv, i) => {
-                                        const paymentIds = inv.payment_tx_ids || (inv.payment_tx_id ? [inv.payment_tx_id] : []);
-                                        const hasMultiple = paymentIds.length > 1;
+                                        // Generate payment link with correct format matching create invoice hook
+                                        const params = new URLSearchParams({
+                                            merchant: inv.merchant_address,
+                                            amount: inv.amount.toString(),
+                                            salt: inv.salt || ''
+                                        });
+                                        if (inv.memo) params.append('memo', inv.memo);
+                                        if (inv.invoice_type === 1) params.append('type', 'fundraising');
+                                        const paymentLink = `${window.location.origin}/pay?${params.toString()}`;
 
                                         return (
-                                            <tr key={i} className="hover:bg-white/5 transition-colors group">
-                                                <td className="py-4 px-6">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-mono text-neon-accent group-hover:text-neon-primary transition-colors text-sm">{inv.invoice_hash.slice(0, 8)}...</span>
-                                                        {inv.memo && <span className="text-xs text-gray-500 mt-1">{inv.memo}</span>}
+                                            <motion.tr
+                                                key={i}
+                                                variants={itemVariants}
+                                                className="hover:bg-white/5 transition-colors group"
+                                            >
+                                                {/* Invoice Hash with Copy Button */}
+                                                <td className="py-4 px-6 font-mono text-neon-accent group-hover:text-neon-primary transition-colors text-sm">
+                                                    <div className="flex items-center gap-2 group/hash">
+                                                        <span>{inv.invoice_hash.slice(0, 8)}...{inv.invoice_hash.slice(-6)}</span>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                navigator.clipboard.writeText(inv.invoice_hash);
+                                                            }}
+                                                            className="text-gray-600 hover:text-white transition-colors opacity-0 group-hover/hash:opacity-100 p-1"
+                                                            title="Copy Full Hash"
+                                                        >
+                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </button>
                                                     </div>
+                                                    {inv.memo && <div className="text-xs text-gray-500 mt-1">{inv.memo}</div>}
                                                 </td>
-                                                <td className="py-4 px-6 font-bold text-white">{inv.amount}</td>
+
+                                                {/* Amount - Centered */}
+                                                <td className="py-4 px-6 text-center">
+                                                    <span className="font-bold text-white">{inv.amount} ALEO</span>
+                                                </td>
+
+                                                {/* Status - Centered */}
                                                 <td className="py-4 px-6">
-                                                    <div className="flex flex-col gap-1 items-start">
+                                                    <div className="flex justify-center items-center gap-2">
                                                         <StatusBadge status={inv.status as any} />
                                                         {inv.invoice_type === 1 && (
-                                                            <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded border border-purple-500/30 uppercase tracking-wider font-bold">Fundraising</span>
+                                                            <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded border border-purple-500/30 uppercase tracking-wider font-bold">Fund</span>
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="py-4 px-6 text-center">
-                                                    {paymentIds.length > 0 ? (
-                                                        hasMultiple ? (
-                                                            <button
-                                                                onClick={() => setSelectedPaymentIds(paymentIds)}
-                                                                className="text-xs bg-emerald-900/20 hover:bg-emerald-900/40 px-3 py-1.5 rounded-md border border-emerald-500/20 text-emerald-400 font-medium transition-all"
-                                                            >
-                                                                View All ({paymentIds.length})
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => openExplorer(paymentIds[0])}
-                                                                className="text-xs hover:text-emerald-400 transition-colors underline decoration-dotted"
-                                                            >
-                                                                View Tx
-                                                            </button>
-                                                        )
-                                                    ) : (
-                                                        <span className="text-xs text-gray-600">-</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-4 px-6 text-right flex justify-end gap-2">
-                                                    {inv.invoice_transaction_id && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => openExplorer(inv.invoice_transaction_id)}
-                                                            className="text-xs opacity-50 hover:opacity-100"
-                                                            title="Creation Proof"
+
+                                                {/* Actions - Right Aligned */}
+                                                <td className="py-4 px-6 text-right">
+                                                    <div className="flex gap-2 justify-end items-center">
+                                                        {/* Copy Link Button */}
+                                                        <button
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(paymentLink);
+                                                                setCopiedHash(inv.invoice_hash);
+                                                                setTimeout(() => setCopiedHash(null), 2000);
+                                                            }}
+                                                            className="text-xs bg-neon-primary/10 hover:bg-neon-primary/20 text-neon-primary px-3 py-1.5 rounded-md border border-neon-primary/30 font-medium transition-all shadow-[0_0_10px_rgba(0,243,255,0.1)] hover:shadow-[0_0_15px_rgba(0,243,255,0.2)]"
+                                                            title="Copy payment link"
                                                         >
-                                                            Proof
-                                                        </Button>
-                                                    )}
-                                                    {/* SETTLE BUTTON For Fundraising Invoices or Open Invoices */}
-                                                    {(inv.invoice_type === 1 && inv.status !== 'SETTLED' && inv.salt) && (
-                                                        <Button
-                                                            variant="primary"
-                                                            size="sm"
-                                                            onClick={() => handleSettle(inv)}
-                                                            disabled={settling === inv.invoice_hash}
-                                                            className="text-xs bg-red-500 hover:bg-red-600 text-white border-red-500/50 shadow-red-900/20"
-                                                        >
-                                                            {settling === inv.invoice_hash ? 'Settling...' : 'Close & Settle'}
-                                                        </Button>
-                                                    )}
+                                                            {copiedHash === inv.invoice_hash ? 'Copied!' : 'Copy Link'}
+                                                        </button>
+
+                                                        {/* Settle Button for Fundraising */}
+                                                        {(inv.invoice_type === 1 && inv.status !== 'SETTLED' && inv.salt) && (
+                                                            <Button
+                                                                variant="primary"
+                                                                size="sm"
+                                                                onClick={() => handleSettle(inv)}
+                                                                disabled={settling === inv.invoice_hash}
+                                                                className="text-xs bg-red-500 hover:bg-red-600 text-white border-red-500/50 shadow-red-900/20"
+                                                            >
+                                                                {settling === inv.invoice_hash ? 'Settling...' : 'Settle'}
+                                                            </Button>
+                                                        )}
+
+                                                        {/* View Proof Button */}
+                                                        {inv.invoice_transaction_id && (
+                                                            <button
+                                                                onClick={() => openExplorer(inv.invoice_transaction_id)}
+                                                                className="text-xs text-gray-500 hover:text-white transition-colors px-2 py-1.5 rounded"
+                                                                title="View on-chain proof"
+                                                            >
+                                                                Proof
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
-                                            </tr>
+                                            </motion.tr>
                                         )
                                     })
                                 )}

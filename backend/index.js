@@ -8,11 +8,9 @@ const { encrypt, decrypt } = require('./encryption');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
+
 app.use(cors());
 app.use(express.json());
-
-// Supabase Client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
@@ -23,15 +21,11 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// --- Routes ---
 
-// Health Check
 app.get('/', (req, res) => {
     res.send('AleoZKPay Backend is running');
 });
 
-// GET /api/invoices
-// Fetch all invoices (optionally filter by status, merchant)
 app.get('/api/invoices', async (req, res) => {
     const { status, limit = 50, merchant } = req.query;
     let query = supabase.from('invoices').select('*').order('created_at', { ascending: false }).limit(limit);
@@ -47,7 +41,6 @@ app.get('/api/invoices', async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 
-    // Decrypt addresses before returning
     const decryptedData = data.map(inv => ({
         ...inv,
         merchant_address: decrypt(inv.merchant_address),
@@ -63,8 +56,6 @@ app.get('/api/invoices', async (req, res) => {
     res.json(finalData);
 });
 
-// GET /api/invoices/merchant/:address
-// Specific endpoint for merchant profile
 app.get('/api/invoices/merchant/:address', async (req, res) => {
     const { address } = req.params;
 
@@ -161,9 +152,8 @@ app.post('/api/invoices', async (req, res) => {
                 memo,
                 status: status || 'PENDING',
                 invoice_transaction_id,  // Invoice creation TX
-                salt,
-                invoice_type: invoice_type || 0, // Default to 0 (Standard)
-                payment_tx_ids: [], // Initialize empty array
+                salt: salt || null,  // Store salt for payment link generation
+                invoice_type: invoice_type !== undefined ? invoice_type : 0,  // 0 = Standard, 1 = Fundraising
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
@@ -186,7 +176,7 @@ app.post('/api/invoices', async (req, res) => {
 // Update invoice status (e.g. after payment)
 app.patch('/api/invoices/:hash', async (req, res) => {
     const { hash } = req.params;
-    const { status, payment_tx_id, payer_address, block_settled } = req.body;
+    const { status, payment_tx_ids, payer_address, block_settled } = req.body;
 
     try {
         // First, fetch the current invoice to get existing array
@@ -202,10 +192,8 @@ app.patch('/api/invoices/:hash', async (req, res) => {
             updated_at: new Date().toISOString()
         };
 
-        // Handle Status
-        if (status) updates.status = status;
-
-        // Handle Payer Address
+        if (payment_tx_ids) updates.payment_tx_ids = payment_tx_ids;
+        if (block_settled) updates.block_settled = block_settled;
         if (payer_address) {
             updates.payer_address = encrypt(payer_address);
         }

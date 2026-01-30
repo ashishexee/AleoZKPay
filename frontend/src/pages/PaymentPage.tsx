@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { pageVariants } from '../utils/animations';
 import { usePayment, PaymentStep } from '../hooks/usePayment';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
@@ -44,7 +45,13 @@ const PaymentPage = () => {
     const isFundraising = programId === PROGRAM_ID;
 
     return (
-        <div className="page-container flex flex-col items-center justify-center min-h-[85vh]">
+        <motion.div
+            className="page-container flex flex-col items-center justify-center min-h-[85vh]"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
             {/* ALEO GLOBE BACKGROUND */}
             <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 w-screen h-[800px] z-0 pointer-events-none flex justify-center overflow-hidden">
                 <img
@@ -65,7 +72,7 @@ const PaymentPage = () => {
             >
                 {/* STATUS HEADER */}
                 <div className="text-center mb-8">
-                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tighter text-white">
+                    <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter text-white">
                         {step === 'SUCCESS' ? 'Payment' : step === 'ALREADY_PAID' ? 'Invoice' : 'Pay'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Invoice'}</span>
                     </h1>
 
@@ -239,7 +246,7 @@ const PaymentPage = () => {
                     Secured by Aleo Zero-Knowledge Proofs
                 </p>
             </motion.div>
-        </div>
+        </motion.div>
     );
 };
 

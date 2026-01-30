@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../components/ui/GlassCard';
+import { pageVariants, staggerContainer, fadeInUp } from '../utils/animations';
 
 /*
  * ALEO ZKPAY - COMPREHENSIVE TECHNICAL DOCUMENTATION
@@ -22,18 +23,8 @@ import { GlassCard } from '../components/ui/GlassCard';
 const Docs = () => {
     const [activeTab, setActiveTab] = useState('overview');
 
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 }
-        }
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 }
-    };
+    const containerVariants = staggerContainer;
+    const itemVariants = fadeInUp;
 
     const tabs = [
         { id: 'overview', label: 'Overview' },
@@ -56,14 +47,18 @@ const Docs = () => {
     );
 
     return (
-        <div className="page-container relative min-h-screen">
+        <motion.div
+            className="page-container relative min-h-screen"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
             <div className="fixed inset-0 pointer-events-none z-0 opacity-30">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
                 <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
                 <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] bg-white/5 rounded-full blur-[120px] animate-pulse-slow" />
             </div>
-
-            {/* ALEO GLOBE BACKGROUND */}
             <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 w-screen h-[800px] z-0 pointer-events-none flex justify-center overflow-hidden">
                 <img
                     src="/assets/aleo_globe.png"
@@ -77,13 +72,12 @@ const Docs = () => {
             </div>
             <motion.div
                 initial="hidden"
-                animate="visible"
+                animate="show"
                 variants={containerVariants}
                 className="w-full max-w-7xl mx-auto pt-12 pb-20 px-6 relative z-10"
             >
-                {/* HEADER - CENTERED */}
                 <motion.div variants={itemVariants} className="text-center mb-12 border-b border-white/10 pb-10 flex flex-col items-center">
-                    <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tighter text-white">
+                    <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter text-white">
                         Protocol <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">Specification</span>
                     </h1>
                     <p className="text-gray-300 text-lg md:text-xl max-w-3xl leading-relaxed">
@@ -627,7 +621,7 @@ export const getInvoiceStatus = async (hash: string): Promise<number | null> => 
                     )}
                 </div>
             </motion.div>
-        </div>
+        </motion.div>
     );
 };
 

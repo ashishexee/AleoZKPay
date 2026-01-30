@@ -65,8 +65,6 @@ export const useCreateInvoice = () => {
             };
 
             let txId = '';
-
-            // Execute transaction
             const result = await executeTransaction(transaction);
             if (result && result.transactionId) {
                 txId = result.transactionId;

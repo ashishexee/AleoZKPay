@@ -1,5 +1,5 @@
 import React from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+
 import { InvoiceData } from '../../types/invoice';
 import { GlassCard } from '../ui/GlassCard';
 import { Button } from '../ui/Button';
@@ -13,17 +13,9 @@ interface InvoiceCardProps {
 
 export const InvoiceCard: React.FC<InvoiceCardProps> = ({
     invoiceData,
-    resetInvoice,
-    expiry,
-    memo
+    resetInvoice
 }) => {
-    const getExpiryLabel = (val: string) => {
-        if (val === '0') return 'No Expiry';
-        if (val === '1') return '1 Hour';
-        if (val === '24') return '24 Hours';
-        if (val === '168') return '7 Days';
-        return val + ' Hours';
-    };
+
 
     const [copied, setCopied] = React.useState(false);
 

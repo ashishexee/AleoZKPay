@@ -37,20 +37,32 @@ const Navbar = () => {
 
                 {/* NAVIGATION PILL */}
                 <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-full p-1 flex items-center gap-1 shadow-2xl">
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className={cn(
-                                "px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 relative overflow-hidden",
-                                isActive(item.path)
-                                    ? "text-neon-primary bg-neon-primary/10 border border-neon-primary/20 shadow-[0_0_15px_rgba(0,243,255,0.2)]"
-                                    : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
-                            )}
-                        >
-                            {item.label}
-                        </Link>
-                    ))}
+                    {navItems.map((item) => {
+                        const active = isActive(item.path);
+                        return (
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                className={cn(
+                                    "relative px-5 py-2.5 rounded-full text-sm font-medium transition-colors duration-300",
+                                    active ? "text-neon-primary" : "text-gray-400 hover:text-white"
+                                )}
+                            >
+                                {active && (
+                                    <motion.span
+                                        layoutId="navbar-active-indicator"
+                                        className="absolute inset-0 rounded-full bg-neon-primary/10 border border-neon-primary/20 shadow-[0_0_15px_rgba(0,243,255,0.2)]"
+                                        transition={{
+                                            type: "spring",
+                                            bounce: 0.25,
+                                            duration: 0.5
+                                        }}
+                                    />
+                                )}
+                                <span className="relative z-10">{item.label}</span>
+                            </Link>
+                        );
+                    })}
                 </div>
 
                 {/* CONNECT BUTTON */}

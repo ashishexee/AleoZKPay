@@ -78,3 +78,24 @@
         transform: scale(1.05);
     }
 }
+
+@keyframes cycle-text {
+
+    0%,
+    45% {
+        transform: translateY(0);
+    }
+
+    50%,
+    95% {
+        transform: translateY(-100%);
+    }
+
+    100% {
+        transform: translateY(-200%);
+    }
+}
+
+.animate-cycle-text {
+    animation: cycle-text 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

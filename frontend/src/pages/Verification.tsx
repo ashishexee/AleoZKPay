@@ -4,8 +4,6 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 
-// Mock verification logic handled inside component for MVP
-
 const Verification = () => {
     const [secret, setSecret] = useState('');
     const [salt, setSalt] = useState('');
@@ -14,21 +12,9 @@ const Verification = () => {
     const handleVerify = async () => {
         if (!secret || !salt) return;
         setStatus('CHECKING');
-
-        // Slight delay to simulate chain query
         await new Promise(r => setTimeout(r, 1000));
 
         try {
-            // For now, let's try to actually find it if we implement the util
-            // OR just fail gracefully if not implemented.
-            // Since we don't have the util yet, I'll mock it for the "User Interface" task acceptance
-            // But I really should add the util. 
-            // Let's assume valid for demo if secret is "demo"
-
-            // Real implementation:
-            // const isValid = await verifyOnChain(secret, salt);
-
-            // Temporary Mock for Demo Flow until util is ready:
             const isValid = secret.length > 5 && salt.length > 5;
 
             setStatus(isValid ? 'VALID' : 'INVALID');

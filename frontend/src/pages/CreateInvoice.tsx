@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { pageVariants } from '../utils/animations';
 import { useCreateInvoice } from '../hooks/useCreateInvoice';
 import { InvoiceForm } from '../components/invoice/InvoiceForm';
 import { InvoiceCard } from '../components/invoice/InvoiceCard';
@@ -19,7 +20,13 @@ export const CreateInvoice: React.FC = () => {
     } = useCreateInvoice();
 
     return (
-        <div className="page-container relative min-h-screen">
+        <motion.div
+            className="page-container relative min-h-screen"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
             <div className="fixed inset-0 pointer-events-none z-0 opacity-30">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
                 <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
@@ -45,7 +52,7 @@ export const CreateInvoice: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex flex-col items-center justify-center text-center mb-16"
                 >
-                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tighter leading-none text-white">
+                    <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-none text-white">
                         Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">Invoice</span>
                     </h1>
                     <p className="text-gray-300 text-xl leading-relaxed max-w-2xl mb-8">
@@ -86,7 +93,7 @@ export const CreateInvoice: React.FC = () => {
                     </motion.div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 };
 

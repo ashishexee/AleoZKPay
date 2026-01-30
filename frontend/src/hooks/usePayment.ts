@@ -383,7 +383,7 @@ export const usePayment = () => {
                                 // We should probably fetch it during init. But assuming we want to be safe:
 
                                 const updatePayload: any = {
-                                    payment_tx_id: onChainId,
+                                    payment_tx_ids: onChainId,
                                     payer_address: publicKey || undefined
                                 };
 
