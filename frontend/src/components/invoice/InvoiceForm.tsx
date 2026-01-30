@@ -47,13 +47,13 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         Standard Invoice
                     </button>
                     <button
-                        onClick={() => setInvoiceType('fundraising')}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'fundraising'
+                        onClick={() => setInvoiceType('multipay')}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
                             ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
                             : 'text-gray-400 hover:text-white hover:bg-white/5'
                             }`}
                     >
-                        Fundraising (Multi-Pay)
+                        Multi Pay
                     </button>
                 </div>
                 <div className="text-xs text-gray-400 text-center -mt-4 mb-4">
@@ -90,12 +90,12 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     {loading ? (
                         <span className="flex items-center gap-2">
                             <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Creating {invoiceType === 'standard' ? 'Invoice' : 'Fundraiser'}...
+                            Creating {invoiceType === 'standard' ? 'Invoice' : 'Multi Pay'}...
                         </span>
                     ) : !publicKey ? (
                         'Connect Wallet to Continue'
                     ) : (
-                        invoiceType === 'standard' ? 'Generate Invoice Link' : 'Create Fundraiser Link'
+                        invoiceType === 'standard' ? 'Generate Invoice Link' : 'Create Multi Pay Link'
                     )}
                 </Button>
 

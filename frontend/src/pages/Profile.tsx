@@ -69,7 +69,7 @@ const Profile = () => {
             .reduce((acc, curr) => acc + Number(curr.amount || 0), 0)
             .toFixed(2),
         invoices: transactions.length,
-        fundraisingCampaigns: transactions.filter(t => t.invoice_type === 1).length
+        multiPayCampaigns: transactions.filter(t => t.invoice_type === 1).length
     };
 
     const containerVariants = {
@@ -175,7 +175,7 @@ const Profile = () => {
                     </GlassCard>
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Active Campaigns</span>
-                        <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.fundraisingCampaigns}</h2>
+                        <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.multiPayCampaigns}</h2>
                     </GlassCard>
                 </motion.div>
 
@@ -212,7 +212,7 @@ const Profile = () => {
                                             salt: inv.salt || ''
                                         });
                                         if (inv.memo) params.append('memo', inv.memo);
-                                        if (inv.invoice_type === 1) params.append('type', 'fundraising');
+                                        if (inv.invoice_type === 1) params.append('type', 'multipay');
                                         const paymentLink = `${window.location.origin}/pay?${params.toString()}`;
 
                                         return (
@@ -272,7 +272,7 @@ const Profile = () => {
                                                             {copiedHash === inv.invoice_hash ? 'Copied!' : 'Copy Link'}
                                                         </button>
 
-                                                        {/* Settle Button for Fundraising */}
+                                                        {/* Settle Button for Multi Pay */}
                                                         {(inv.invoice_type === 1 && inv.status !== 'SETTLED' && inv.salt) && (
                                                             <Button
                                                                 variant="primary"

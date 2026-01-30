@@ -10,7 +10,7 @@ program zk_pay_proofs_privacy_v7.aleo {
     struct InvoiceData {
         expiry_height: u32,
         status: u8, // 0 = Open, 1 = Settled/Paid
-        invoice_type: u8 // 0 = Standard, 1 = Fundraising
+        invoice_type: u8 // 0 = Standard, 1 = Multi Pay
     }
 
     // Invoice Storage
@@ -123,7 +123,7 @@ let receipt_key: field = BHP256::commit_to_field(payment_secret, salt_scalar);
             invoices.set(stored_hash, updated_data);
         }
 
-        // Fundraising Invoice (Type 1): Allow multiple payments
+        // Multi Pay Invoice (Type 1): Allow multiple payments
         // We do NOT update the invoice 'status' to 1, so it stays open.
         // We store the receipt.
         
@@ -166,7 +166,7 @@ let receipt_key: field = BHP256::commit_to_field(payment_secret, salt_scalar);
         let invoice_data: InvoiceData = invoices.get(stored_hash);
         
         // 4. Update Status to 1 (Settled)
-        // This prevents future payments even if it's a fundraising invoice
+        // This prevents future payments even if it's a multi-pay invoice
         let updated_data: InvoiceData = InvoiceData {
             expiry_height: invoice_data.expiry_height,
             status: 1u8,

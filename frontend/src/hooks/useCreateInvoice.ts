@@ -5,7 +5,7 @@ import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../utils/aleo-utils';
 import { InvoiceData } from '../types/invoice';
 
-export type InvoiceType = 'standard' | 'fundraising';
+export type InvoiceType = 'standard' | 'multipay';
 
 export const useCreateInvoice = () => {
     const { address, executeTransaction, transactionStatus, requestTransactionHistory } = useWallet();
@@ -170,7 +170,7 @@ export const useCreateInvoice = () => {
                                         status: 'PENDING',
                                         invoice_transaction_id: finalTransactionId,
                                         salt: salt,
-                                        invoice_type: invoiceType === 'fundraising' ? 1 : 0
+                                        invoice_type: invoiceType === 'multipay' ? 1 : 0
                                     });
                                     console.log("Invoice saved to DB");
                                 } catch (dbErr) {
@@ -185,7 +185,7 @@ export const useCreateInvoice = () => {
                                     salt
                                 });
                                 if (memo) params.append('memo', memo);
-                                if (invoiceType === 'fundraising') params.append('type', 'fundraising');
+                                if (invoiceType === 'multipay') params.append('type', 'multipay');
 
                                 const link = `${window.location.origin}/pay?${params.toString()}`;
 

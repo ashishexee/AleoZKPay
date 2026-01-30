@@ -15,7 +15,7 @@ export interface Invoice {
     created_at?: string;
     updated_at?: string;
     salt?: string;
-    invoice_type?: number; // 0 = Standard, 1 = Fundraising
+    invoice_type?: number; // 0 = Standard, 1 = Multi Pay
 }
 
 export const fetchInvoices = async (status?: string): Promise<Invoice[]> => {

@@ -6,7 +6,7 @@ import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import {PROGRAM_ID } from '../utils/aleo-utils';
+import { PROGRAM_ID } from '../utils/aleo-utils';
 
 const PaymentPage = () => {
     const {
@@ -42,7 +42,7 @@ const PaymentPage = () => {
         { key: 'PAY', label: '3. Pay' },
     ];
 
-    const isFundraising = programId === PROGRAM_ID;
+    const isMultiPay = programId === PROGRAM_ID;
 
     return (
         <motion.div
@@ -86,7 +86,7 @@ const PaymentPage = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <span className="text-sm font-bold text-neon-primary tracking-wide uppercase">
-                                {isFundraising ? 'Verified Fundraiser' : 'Verified Invoice'}
+                                {isMultiPay ? 'Verified Multi Pay' : 'Verified Invoice'}
                             </span>
                         </motion.div>
                     )}
@@ -143,8 +143,8 @@ const PaymentPage = () => {
                             </div>
                         )}
 
-                        {/* FUNDRAISING EXTRA INPUTS */}
-                        {isFundraising && step !== 'SUCCESS' && step !== 'CONNECT' && (
+                        {/* MULTI PAY EXTRA INPUTS */}
+                        {isMultiPay && step !== 'SUCCESS' && step !== 'CONNECT' && (
                             <div className="pt-4 border-t border-white/5 space-y-4">
                                 <div>
                                     <span className="text-xs font-bold text-neon-primary uppercase tracking-widest block mb-1">Your Payment Secret</span>
@@ -188,7 +188,7 @@ const PaymentPage = () => {
                                         ? 'This invoice has already been settled on-chain.'
                                         : 'The transaction has been settled on-chain.'}
                                 </p>
-                                {isFundraising && paymentSecret && (
+                                {isMultiPay && paymentSecret && (
                                     <div className="bg-black/40 border border-neon-primary/30 p-4 rounded-xl text-left">
                                         <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Secret</p>
                                         <p className="font-mono text-white text-sm break-all">{paymentSecret}</p>

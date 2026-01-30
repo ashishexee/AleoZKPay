@@ -116,9 +116,9 @@ const Docs = () => {
                                         </p>
                                     </div>
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
-                                        <h4 className="text-white font-bold mb-2">Standard + Fundraising</h4>
+                                        <h4 className="text-white font-bold mb-2">Standard + Multi Pay</h4>
                                         <p className="text-sm text-gray-400">
-                                            Support for single-payment invoices and multi-contributor fundraising campaigns.
+                                            Support for single-payment invoices and multi-contributor campaigns.
                                         </p>
                                     </div>
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
@@ -137,7 +137,7 @@ const Docs = () => {
                                         <div className="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-neon-primary border-4 border-black" />
                                         <h3 className="text-xl font-bold text-white mb-2">1. Invoice Creation (Merchant)</h3>
                                         <ol className="list-decimal pl-5 text-sm text-gray-400 space-y-2">
-                                            <li>Merchant enters <strong>Amount</strong> and <strong>Invoice Type</strong> (Standard or Fundraising).</li>
+                                            <li>Merchant enters <strong>Amount</strong> and <strong>Invoice Type</strong> (Standard or Multi Pay).</li>
                                             <li>Client generates random <code>Salt</code> (128-bit).</li>
                                             <li>Client computes <code>Hash = BHP256(Merchant) + BHP256(Amount) + BHP256(Salt)</code>.</li>
                                             <li>Transaction <code>create_invoice(merchant, amount, salt, 0u32, type)</code> is sent to chain.</li>
@@ -156,15 +156,15 @@ const Docs = () => {
                                             <li>Transaction <code>pay_invoice(record, merchant, amount, salt, payment_secret, message)</code> is executed.</li>
                                             <li>Payment is completed via <code>transfer_private</code>, keeping payer anonymous.</li>
                                             <li><strong>Standard Invoice:</strong> Invoice is marked as settled (status = 1) and closed.</li>
-                                            <li><strong>Fundraising Invoice:</strong> Payment receipt is stored in <code>payment_receipts</code> mapping. Invoice remains open for more payments.</li>
+                                            <li><strong>Multi Pay Invoice:</strong> Payment receipt is stored in <code>payment_receipts</code> mapping. Invoice remains open for more payments.</li>
                                         </ol>
                                     </div>
 
                                     <div className="relative pl-8 border-l-2 border-neon-primary/30">
                                         <div className="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-neon-primary border-4 border-black" />
-                                        <h3 className="text-xl font-bold text-white mb-2">3. Settlement (Merchant - Fundraising Only)</h3>
+                                        <h3 className="text-xl font-bold text-white mb-2">3. Settlement (Merchant - Multi Pay Only)</h3>
                                         <ol className="list-decimal pl-5 text-sm text-gray-400 space-y-2">
-                                            <li>Merchant calls <code>settle_invoice(salt, amount)</code> to close a fundraising campaign.</li>
+                                            <li>Merchant calls <code>settle_invoice(salt, amount)</code> to close a multi-pay campaign.</li>
                                             <li>Contract verifies merchant identity by recomputing hash with <code>self.caller</code>.</li>
                                             <li>Invoice status is updated to settled (status = 1), preventing future payments.</li>
                                         </ol>
@@ -185,7 +185,7 @@ const Docs = () => {
                                 <h2 className="text-2xl font-bold text-white mb-4">Smart Contract Specification</h2>
                                 <p className="text-gray-400 mb-6">
                                     The contract is deployed as <strong className="text-neon-primary">zk_pay_proofs_privacy_v7.aleo</strong>.
-                                    It supports both Standard (single-payment) and Fundraising (multi-payment) invoices.
+                                    It supports both Standard (single-payment) and Multi Pay (multi-payment) invoices.
                                 </p>
                                 <div className="mb-6 p-4 bg-black/40 rounded-xl border border-neon-primary/20">
                                     <p className="text-sm text-gray-400 mb-2">View on Aleo Testnet Explorer:</p>
@@ -206,14 +206,14 @@ const Docs = () => {
                                     code={`struct InvoiceData {
     expiry_height: u32,
     status: u8,        // 0 = Open, 1 = Settled/Paid
-    invoice_type: u8   // 0 = Standard, 1 = Fundraising
+    invoice_type: u8   // 0 = Standard, 1 = Multi Pay
 }
 
 // Invoice Storage
 mapping invoices: field => InvoiceData;
 mapping salt_to_invoice: field => field;
 
-// Payment Receipts for Fundraising Verification
+// Payment Receipts for Multi Pay Verification
 // Key: Hash(payment_secret, invoice_salt)
 // Value: amount_paid
 mapping payment_receipts: field => u64;`}
@@ -223,7 +223,7 @@ mapping payment_receipts: field => u64;`}
 
                                 <h4 className="text-lg font-semibold text-neon-accent mb-2">1. create_invoice</h4>
                                 <p className="text-sm text-gray-400 mb-4">
-                                    Creates a new invoice (Standard or Fundraising). The merchant address and amount are hashed to preserve privacy.
+                                    Creates a new invoice (Standard or Multi Pay). The merchant address and amount are hashed to preserve privacy.
                                 </p>
                                 <CodeBlock
                                     title="create_invoice"
@@ -233,7 +233,7 @@ mapping payment_receipts: field => u64;`}
     private amount: u64,
     private salt: field,
     public expiry_hours: u32,
-    public invoice_type: u8  // 0 = Standard, 1 = Fundraising
+    public invoice_type: u8  // 0 = Standard, 1 = Multi Pay
 ) -> (public field, Future) {
     let merchant_field: field = merchant as field;
     let amount_field: field = amount as field;
@@ -260,7 +260,7 @@ async function finalize_create_invoice(
     let invoice_data: InvoiceData = InvoiceData {
         expiry_height: expiry_height,
         status: 0u8,              // Open
-        invoice_type: invoice_type // Standard or Fundraising
+        invoice_type: invoice_type // Standard or Multi Pay
     };
 
     invoices.set(invoice_hash, invoice_data);
@@ -270,7 +270,7 @@ async function finalize_create_invoice(
 
                                 <h4 className="text-lg font-semibold text-neon-accent mb-2 mt-8">2. pay_invoice</h4>
                                 <p className="text-sm text-gray-400 mb-4">
-                                    Pays an invoice. For Standard invoices, this closes the invoice. For Fundraising, the invoice remains open for additional payments.
+                                    Pays an invoice. For Standard invoices, this closes the invoice. For Multi Pay, the invoice remains open for additional payments.
                                     Uses a <code className="text-neon-primary">payment_secret</code> to create unique payment receipts.
                                 </p>
                                 <CodeBlock
@@ -334,7 +334,7 @@ async function finalize_pay_invoice(
         invoices.set(stored_hash, updated_data);
     }
 
-    // Fundraising Invoice (Type 1): Stay open, store receipt
+    // Multi Pay Invoice (Type 1): Stay open, store receipt
     // Prevent duplicate payments with same secret
     let exists: bool = payment_receipts.contains(receipt_key);
     assert(!exists);
@@ -345,7 +345,7 @@ async function finalize_pay_invoice(
 
                                 <h4 className="text-lg font-semibold text-neon-accent mb-2 mt-8">3. settle_invoice</h4>
                                 <p className="text-sm text-gray-400 mb-4">
-                                    Allows the merchant to manually close a fundraising campaign. Only the merchant (verified via hash reconstruction) can call this.
+                                    Allows the merchant to manually close a multi-pay campaign. Only the merchant (verified via hash reconstruction) can call this.
                                 </p>
                                 <CodeBlock
                                     title="settle_invoice"

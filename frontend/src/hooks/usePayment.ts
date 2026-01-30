@@ -49,7 +49,7 @@ export const usePayment = () => {
                 // V7 Consolidation: We assume all valid invoices are on the V7 contract.
                 setProgramId(PROGRAM_ID);
 
-                // Always generate Payment Secret because V7 requires it (Standard or Fundraising)
+                // Always generate Payment Secret because V7 requires it (Standard or Multi Pay)
                 // For Standard invoices, this secret could still be used for a receipt, though less critical.
                 setPaymentSecret(generateSalt());
 
@@ -388,16 +388,15 @@ export const usePayment = () => {
                                 };
 
                                 // ONLY Set 'SETTLED' if it is a Standard Invoice (Type 0)
-                                // If Fundraising (Type 1), we leave it PENDING/OPEN.
-                                // If we don't know the type from state, default to SETTLED (Wave 1 behavior) unless we are sure.
-                                // Ideally, 'invoice' state should have 'type'.
-                                // For now, let's assume if it is NOT fundraising explicit, we settle.
+                                // If Multi Pay (Type 1), we leave it PENDING/OPEN.
+                                // If Standard, we mark as SETTLED.
+                                // For now, let's assume if it is NOT multi-pay explicit, we settle.
                                 // Note: We need to ensure we know the type.
 
                                 // Let's fetch the invoice type from DB to be sure before updating status
                                 const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
                                 if (currentDbInvoice && currentDbInvoice.invoice_type === 1) {
-                                    console.log("Fundraising Invoice detected. Keeping status as PENDING.");
+                                    console.log("Multi Pay Invoice detected. Keeping status as PENDING.");
                                 } else {
                                     updatePayload.status = 'SETTLED';
                                 }
