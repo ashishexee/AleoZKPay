@@ -13,17 +13,8 @@ interface InvoiceCardProps {
 
 export const InvoiceCard: React.FC<InvoiceCardProps> = ({
     invoiceData,
-    resetInvoice,
-    expiry,
-    memo
+    resetInvoice
 }) => {
-    const getExpiryLabel = (val: string) => {
-        if (val === '0') return 'No Expiry';
-        if (val === '1') return '1 Hour';
-        if (val === '24') return '24 Hours';
-        if (val === '168') return '7 Days';
-        return val + ' Hours';
-    };
 
     const [copied, setCopied] = React.useState(false);
 
@@ -38,6 +29,17 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
             <h3 className="mb-6 text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-neon-primary to-neon-accent animate-pulse-glow">
                 Invoice Ready!
             </h3>
+
+            <div className="flex justify-center mb-8">
+                <div className="p-4 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                    <QRCodeSVG
+                        value={invoiceData.link}
+                        size={180}
+                        level="H"
+                        includeMargin={false}
+                    />
+                </div>
+            </div>
             {/* ... other code ... */}
             <div className="mb-8">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payment Link</label>
