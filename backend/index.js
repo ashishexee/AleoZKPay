@@ -83,8 +83,6 @@ app.get('/api/invoices/merchant/:address', async (req, res) => {
     res.json(merchantInvoices);
 });
 
-// GET /api/invoices/recent
-// Public explorer data
 app.get('/api/invoices/recent', async (req, res) => {
     const { limit = 10 } = req.query;
 
@@ -107,9 +105,6 @@ app.get('/api/invoices/recent', async (req, res) => {
     res.json(decryptedData);
 });
 
-
-// GET /api/invoice/:hash
-// Fetch a single invoice by hash
 app.get('/api/invoice/:hash', async (req, res) => {
     const { hash } = req.params;
 
@@ -161,8 +156,6 @@ app.post('/api/invoices', async (req, res) => {
             .single();
 
         if (error) throw error;
-
-        // Return decrypted
         data.merchant_address = merchant_address;
         res.json(data);
 
@@ -172,14 +165,11 @@ app.post('/api/invoices', async (req, res) => {
     }
 });
 
-// PATCH /api/invoices/:hash
-// Update invoice status (e.g. after payment)
 app.patch('/api/invoices/:hash', async (req, res) => {
     const { hash } = req.params;
     const { status, payment_tx_ids, payer_address, block_settled } = req.body;
 
     try {
-        // First, fetch the current invoice to get existing array
         const { data: current, error: fetchError } = await supabase
             .from('invoices')
             .select('payment_tx_ids, invoice_type, status')
@@ -198,17 +188,15 @@ app.patch('/api/invoices/:hash', async (req, res) => {
             updates.payer_address = encrypt(payer_address);
         }
 
-        // Handle Block Settled
         if (block_settled) updates.block_settled = block_settled;
-
-        // Handle Payment TX ID (Append to array)
         if (payment_tx_ids) {
             const currentIds = current.payment_tx_ids || [];
-            // Avoid duplicates
             if (!currentIds.includes(payment_tx_ids)) {
                 updates.payment_tx_ids = [...currentIds, payment_tx_ids];
             }
         }
+
+        if (status) updates.status = status;
 
         const { data, error } = await supabase
             .from('invoices')
