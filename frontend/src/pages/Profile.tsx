@@ -154,13 +154,16 @@ const Profile = () => {
                 initial="hidden"
                 animate="visible"
                 variants={containerVariants}
-                className="w-full max-w-7xl mx-auto pt-12 relative z-10 pb-20"
+                className="w-full max-w-7xl mx-auto pt-0 relative z-10 pb-20"
             >
                 {/* HEADER */}
                 <motion.div variants={itemVariants} className="flex flex-col items-center justify-center text-center mb-12">
-                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tighter text-white" style={{ fontSize: '50px' }}>
-                        Merchant <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">Dashboard</span>
+                    <h1 className="text-3xl md:text-5xl font-bold mb-4 tracking-tighter leading-none text-white">
+                        Merchant <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Dashboard</span>
                     </h1>
+                    <p className="text-gray-400 text-sm leading-relaxed max-w-xs mb-2">
+                        Manage your invoices and settlements.
+                    </p>
                 </motion.div>
 
                 {/* STATS */}
