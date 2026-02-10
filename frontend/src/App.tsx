@@ -1,49 +1,38 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
-import Navbar from './components/Navbar';
-import Explorer from './pages/Explorer';
-import CreateInvoice from './pages/CreateInvoice';
-import PaymentPage from './pages/PaymentPage';
-import Profile from './pages/Profile';
-import Docs from './pages/Docs';
-import Privacy from './pages/Privacy';
-import Verification from './pages/Verification'; // Changed from MerchantVerify
+import { Suspense, lazy, useState, useEffect } from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
 import './index.css';
 
-const AnimatedRoutes = () => {
-    const location = useLocation();
+// Lazy Load Components with named export handling for MobileApp
+const MobileApp = lazy(() => import('./mobile/MobileApp').then(module => ({ default: module.MobileApp })));
+const DesktopApp = lazy(() => import('./desktop/DesktopApp'));
 
-    return (
-        <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
-                <Route path="/" element={<Explorer />} />
-                <Route path="/create" element={<CreateInvoice />} />
-                <Route path="/pay" element={<PaymentPage />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/docs" element={<Docs />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/verify" element={<Verification />} /> {/* Changed from MerchantVerify */}
-            </Routes>
-        </AnimatePresence>
-    );
+// Hook to detect mobile view
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    return isMobile;
 };
 
 function App() {
+    const isMobile = useIsMobile();
     return (
         <Router>
-            <div className="min-h-screen bg-background relative overflow-hidden">
-                <div className="fixed inset-0 pointer-events-none z-0">
-                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
-                    <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
-                    <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] bg-white/5 rounded-full blur-[120px] animate-pulse-slow" />
+            <Suspense fallback={
+                <div className="min-h-screen bg-black flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 </div>
-
-                <Navbar />
-
-                <main className="relative z-10 pt-24 px-4 pb-12 container-custom">
-                    <AnimatedRoutes />
-                </main>
-            </div>
+            }>
+                {isMobile ? <MobileApp /> : <DesktopApp />}
+            </Suspense>
         </Router>
     );
 }

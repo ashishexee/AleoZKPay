@@ -27,7 +27,7 @@ export const usePayment = () => {
 
     // New states for V7
     const [programId, setProgramId] = useState<string | null>(null);
-    const [message, setMessage] = useState<string>('');
+
     const [paymentSecret, setPaymentSecret] = useState<string | null>(null);
 
     useEffect(() => {
@@ -41,6 +41,7 @@ export const usePayment = () => {
                 setError('Invalid Invoice Link: Missing parameters');
                 return;
             }
+            setError(null);
 
             try {
                 setLoading(true);
@@ -113,9 +114,7 @@ export const usePayment = () => {
             }
         };
 
-        if (!invoice) {
-            init();
-        }
+        init();
     }, [searchParams, publicKey]);
 
 
@@ -445,8 +444,7 @@ export const usePayment = () => {
         convertPublicToPrivate,
         handleConnect,
         programId,
-        message,
-        setMessage,
+
         paymentSecret
     };
 };
