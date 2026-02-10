@@ -10,7 +10,6 @@ import { Input } from '../../components/ui/Input';
 import { PROGRAM_ID } from '../../utils/aleo-utils';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-
 const MobilePaymentPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -86,7 +85,6 @@ const MobilePaymentPage = () => {
 
     const isMultiPay = programId === PROGRAM_ID;
 
-    // RENDER SCANNER IF NO PARAMS
     if (!hasParams) {
         return (
             <div className="page-container flex flex-col items-center justify-center min-h-[0vh] pt-2">

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import StatusBadge from '../components/StatusBadge';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
+import { Shimmer } from '../components/ui/Shimmer';
 import { useTransactions } from '../hooks/useTransactions';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { PROGRAM_ID } from '../utils/aleo-utils';
@@ -170,15 +171,27 @@ const Profile = () => {
                 <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Total Settled Volume</span>
-                        <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.totalSales} <span className="text-sm font-normal text-gray-500">Credits</span></h2>
+                        {loading ? (
+                            <Shimmer className="h-10 w-32 bg-white/5 rounded-md" />
+                        ) : (
+                            <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.totalSales} <span className="text-sm font-normal text-gray-500">Credits</span></h2>
+                        )}
                     </GlassCard>
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Total Invoices</span>
-                        <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.invoices}</h2>
+                        {loading ? (
+                            <Shimmer className="h-10 w-16 bg-white/5 rounded-md" />
+                        ) : (
+                            <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.invoices}</h2>
+                        )}
                     </GlassCard>
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Active Campaigns</span>
-                        <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.multiPayCampaigns}</h2>
+                        {loading ? (
+                            <Shimmer className="h-10 w-16 bg-white/5 rounded-md" />
+                        ) : (
+                            <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.multiPayCampaigns}</h2>
+                        )}
                     </GlassCard>
                 </motion.div>
 
@@ -203,7 +216,30 @@ const Profile = () => {
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {loading ? (
-                                    <tr><td colSpan={4} className="text-center py-8 text-gray-500">Loading your invoices...</td></tr>
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            <td className="py-4 px-6">
+                                                <Shimmer className="h-5 w-32 bg-white/5 rounded" />
+                                                <Shimmer className="h-3 w-20 bg-white/5 rounded mt-2" />
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex justify-center">
+                                                    <Shimmer className="h-5 w-16 bg-white/5 rounded" />
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex justify-center">
+                                                    <Shimmer className="h-6 w-20 bg-white/5 rounded-full" />
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex justify-end gap-2">
+                                                    <Shimmer className="h-8 w-20 bg-white/5 rounded-md" />
+                                                    <Shimmer className="h-8 w-16 bg-white/5 rounded-md" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
                                 ) : transactions.length === 0 ? (
                                     <tr><td colSpan={4} className="text-center py-8 text-gray-500">No invoices found. Create one!</td></tr>
                                 ) : (

@@ -4,6 +4,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}
+
 @layer base {
     body {
         @apply bg-background text-foreground font-sans antialiased overflow-x-hidden min-h-screen;

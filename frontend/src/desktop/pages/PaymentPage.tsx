@@ -5,6 +5,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
+import { Shimmer } from '../../components/ui/Shimmer';
 
 import { PROGRAM_ID } from '../../utils/aleo-utils';
 
@@ -127,18 +128,30 @@ const PaymentPage = () => {
                     <div className="bg-black/30 rounded-2xl p-6 border border-white/5 mb-8 space-y-4">
                         <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">Merchant</span>
-                            <span className="font-mono text-white text-sm bg-white/5 px-2 py-1 rounded">
-                                {invoice?.merchant ? `${invoice.merchant.slice(0, 10)}...${invoice.merchant.slice(-5)}` : 'Loading...'}
-                            </span>
+                            {loading && !invoice ? (
+                                <Shimmer className="h-6 w-32 bg-white/5 rounded" />
+                            ) : (
+                                <span className="font-mono text-white text-sm bg-white/5 px-2 py-1 rounded">
+                                    {invoice?.merchant ? `${invoice.merchant.slice(0, 10)}...${invoice.merchant.slice(-5)}` : 'Unknown'}
+                                </span>
+                            )}
                         </div>
                         <div className="flex justify-between items-center pt-4 border-t border-white/5">
                             <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">Amount</span>
-                            <span className="text-2xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-sm text-gray-500 font-normal">Credits</span></span>
+                            {loading && !invoice ? (
+                                <Shimmer className="h-8 w-24 bg-white/5 rounded" />
+                            ) : (
+                                <span className="text-2xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-sm text-gray-500 font-normal">Credits</span></span>
+                            )}
                         </div>
                         {invoice?.memo && (
                             <div className="flex justify-between items-center pt-4 border-t border-white/5">
                                 <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">Memo</span>
-                                <span className="text-gray-300">{invoice.memo}</span>
+                                {loading && !invoice ? (
+                                    <Shimmer className="h-5 w-48 bg-white/5 rounded" />
+                                ) : (
+                                    <span className="text-gray-300">{invoice?.memo || '-'}</span>
+                                )}
                             </div>
                         )}
 

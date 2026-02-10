@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import StatusBadge from '../../components/StatusBadge';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
+import { Shimmer } from '../../components/ui/Shimmer';
 import { useTransactions } from '../../hooks/useTransactions';
 import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../utils/animations';
 import { getInvoiceHashFromMapping, getInvoiceStatus } from '../../utils/aleo-utils';
@@ -388,7 +389,11 @@ const Explorer = () => {
                             className={`p-8 flex flex-col items-start justify-center group relative overflow-hidden hover:border-white/20 ${i === 4 ? 'col-span-1 md:col-span-2' : 'col-span-1'}`}
                         >
                             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block group-hover:text-white transition-colors">{stat.label}</span>
-                            <h2 className="text-5xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-left tracking-tighter">{stat.value}</h2>
+                            {loading ? (
+                                <Shimmer className="h-10 w-24 bg-white/5 rounded-md" />
+                            ) : (
+                                <h2 className="text-5xl font-bold text-white group-hover:scale-105 transition-transform duration-300 origin-left tracking-tighter">{stat.value}</h2>
+                            )}
                         </GlassCard>
                     ))}
                 </motion.div>
@@ -428,9 +433,25 @@ const Explorer = () => {
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan={3} className="text-center py-8 text-gray-500">Loading transactions...</td>
-                                    </tr>
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <tr key={i} className="animate-pulse">
+                                            <td className="py-4 px-6">
+                                                <Shimmer className="h-5 w-48 bg-white/5 rounded" />
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex justify-center">
+                                                    <Shimmer className="h-6 w-24 bg-white/5 rounded-full" />
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex justify-end gap-2">
+                                                    <Shimmer className="h-8 w-24 bg-white/5 rounded-md" />
+                                                    <Shimmer className="h-8 w-24 bg-white/5 rounded-md" />
+                                                    <Shimmer className="h-8 w-32 bg-white/5 rounded-md" />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
                                 ) : filteredTransactions.length === 0 ? (
                                     <tr>
                                         <td colSpan={3} className="text-center py-8 text-gray-500">No Null-Invoices found</td>
