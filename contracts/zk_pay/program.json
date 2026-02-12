@@ -1,12 +1,18 @@
 {
-  "program": "zk_pay_proofs_privacy_v7.aleo",
+  "program": "zk_pay_proofs_privacy_v8.aleo",
   "version": "0.1.0",
-  "description": "AleoZKPay - Privacy-preserving invoice and payment system using zero-knowledge proofs",
+  "description": "NullPay",
   "license": "MIT",
   "leo": "3.4.0",
   "dependencies": [
     {
       "name": "credits.aleo",
+      "location": "network",
+      "path": null,
+      "edition": null
+    },
+    {
+      "name": "test_usdcx_stablecoin.aleo",
       "location": "network",
       "path": null,
       "edition": null

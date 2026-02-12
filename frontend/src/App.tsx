@@ -2,11 +2,9 @@ import { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import './index.css';
 
-// Lazy Load Components with named export handling for MobileApp
 const MobileApp = lazy(() => import('./mobile/MobileApp').then(module => ({ default: module.MobileApp })));
 const DesktopApp = lazy(() => import('./desktop/DesktopApp'));
 
-// Hook to detect mobile view
 const useIsMobile = () => {
     const [isMobile, setIsMobile] = useState(false);
 
