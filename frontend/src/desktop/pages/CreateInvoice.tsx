@@ -15,7 +15,9 @@ export const CreateInvoice: React.FC = () => {
         resetInvoice,
         publicKey,
         invoiceType,
-        setInvoiceType
+        setInvoiceType,
+        tokenType,
+        setTokenType
     } = useCreateInvoice();
 
     return (
@@ -77,6 +79,8 @@ export const CreateInvoice: React.FC = () => {
                                 status={status}
                                 invoiceType={invoiceType}
                                 setInvoiceType={setInvoiceType}
+                                tokenType={tokenType}
+                                setTokenType={setTokenType}
                             />
                         ) : (
                             <InvoiceCard

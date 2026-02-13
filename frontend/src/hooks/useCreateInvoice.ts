@@ -17,6 +17,7 @@ export const useCreateInvoice = () => {
     const [memo, setMemo] = useState<string>('');
     const [status, setStatus] = useState<string>('');
     const [invoiceType, setInvoiceType] = useState<InvoiceType>('standard');
+    const [tokenType, setTokenType] = useState<number>(0); // 0 = Credits, 1 = USDCx
 
     const handleCreate = async () => {
         if (!publicKey || !executeTransaction || !transactionStatus) {
@@ -33,31 +34,32 @@ export const useCreateInvoice = () => {
 
         try {
             const merchant = publicKey;
-            let salt = generateSalt(); // Changed to 'let' because currentSalt is used in the instruction
+            let salt = generateSalt();
             console.log('this is the salt', salt);
             setStatus('Requesting wallet signature...');
 
             const typeInput = invoiceType === 'standard' ? '0u8' : '1u8';
             const amountMicro = Math.round(Number(amount) * 1_000_000);
 
+            const functionName = tokenType === 0 ? 'create_invoice' : 'create_invoice_usdcx';
+            const amountInput = tokenType === 0 ? `${amountMicro}u64` : `${amountMicro}u128`;
+
             // Ensure salt is ready
-            // Assuming currentSalt in instruction refers to the 'salt' variable declared above
             if (!salt) {
-                // If by some race condition it's missing, gen one
                 salt = generateSalt();
             }
 
             const inputs = [
                 publicKey,
-                `${amountMicro}u64`,
+                amountInput,
                 salt,
-                '0u32', // expiry hardcoded to 0 (no expiry) as feature is disabled from frontend
+                '0u32', // expiry hardcoded to 0
                 typeInput
             ];
 
             const transaction: TransactionOptions = {
                 program: PROGRAM_ID,
-                function: 'create_invoice',
+                function: functionName,
                 inputs: inputs,
                 fee: 100_000,
                 privateFee: false
@@ -86,42 +88,34 @@ export const useCreateInvoice = () => {
                     try {
                         const statusResponse = await transactionStatus(txId);
 
-                        // Robust Type Safety for status property
                         const currentStatus = typeof statusResponse === 'string'
                             ? (statusResponse as string).toLowerCase()
                             : (statusResponse as any)?.status?.toLowerCase();
 
                         console.log('🔍 [Polling] Status:', currentStatus);
 
-                        // Capture the final on-chain ID if provided in object response
                         if (typeof statusResponse === 'object' && (statusResponse as any).transactionId) {
                             finalTransactionId = (statusResponse as any).transactionId;
                             console.log("Final Transaction ID:", finalTransactionId);
-
                         }
 
-                        // Try to extract hash from execution outputs if available (Optimization)
                         const responseAny = statusResponse as any;
                         if (responseAny?.execution?.transitions?.[0]?.outputs?.[0]?.value) {
                             hashFromStatus = responseAny.execution.transitions[0].outputs[0].value;
                         }
 
                         if (currentStatus !== 'pending' && currentStatus !== 'processing' && currentStatus !== 'submitted') {
-                            isPending = false; // Stop polling
+                            isPending = false;
 
                             if (currentStatus === 'completed' || currentStatus === 'finalized' || currentStatus === 'accepted') {
                                 console.log('Transaction accepted!');
                                 setStatus('Transaction on-chain! Fetching execution data...');
 
-                                // Strategy 1: Use hash grabbed from status polling (Best for No-Permission/No-Password)
                                 let hash = hashFromStatus;
 
-                                // Strategy 2: If not found, try On-Chain Mapping (Robust, Canonical)
                                 if (!hash) {
                                     console.log("Hash not found in status, attempting on-chain mapping lookup...");
                                     try {
-                                        // Poll mapping since it might take a moment after status='accepted'
-                                        // for the node to index the mapping change
                                         let attempts = 0;
                                         while (!hash && attempts < 5) {
                                             hash = await getInvoiceHashFromMapping(salt);
@@ -133,7 +127,6 @@ export const useCreateInvoice = () => {
                                     }
                                 }
 
-                                // Strategy 3: History API (Requires Permission)
                                 if (!hash) {
                                     console.log("Hash not found via mapping, attempting history lookup...");
                                     try {
@@ -143,11 +136,9 @@ export const useCreateInvoice = () => {
                                     }
                                 }
 
-                                // Strategy 4: Public Chain API (Fallback)
                                 if (!hash) {
                                     console.log("Hash not found via wallet, attempting public chain fetch...");
                                     try {
-                                        // Add a small delay to ensure propagation
                                         await new Promise(r => setTimeout(r, 2000));
                                         hash = await getInvoiceHashFromChain(finalTransactionId);
                                     } catch (err: any) {
@@ -170,12 +161,12 @@ export const useCreateInvoice = () => {
                                         status: 'PENDING',
                                         invoice_transaction_id: finalTransactionId,
                                         salt: salt,
-                                        invoice_type: invoiceType === 'multipay' ? 1 : 0
+                                        invoice_type: invoiceType === 'multipay' ? 1 : 0,
+                                        token_type: tokenType
                                     });
                                     console.log("Invoice saved to DB");
                                 } catch (dbErr) {
                                     console.error("Failed to save invoice to DB:", dbErr);
-                                    // Don't block UI flow if DB save fails, but log it
                                 }
 
                                 // Success Flow
@@ -186,19 +177,19 @@ export const useCreateInvoice = () => {
                                 });
                                 if (memo) params.append('memo', memo);
                                 if (invoiceType === 'multipay') params.append('type', 'multipay');
+                                if (tokenType === 1) params.append('token', 'usdcx');
 
                                 const link = `${window.location.origin}/pay?${params.toString()}`;
 
                                 setInvoiceData({ merchant, amount: Number(amount), salt, hash, link });
                                 setStatus(`Invoice Created Successfully!`);
-                                return; // Done
+                                return;
                             } else {
                                 throw new Error(`Transaction failed with status: ${currentStatus}`);
                             }
                         }
                     } catch (e: any) {
                         console.warn('Error polling status:', e);
-                        // Continue polling on transient errors
                     }
                 }
 
@@ -212,9 +203,6 @@ export const useCreateInvoice = () => {
             setLoading(false);
         }
     };
-
-    // Helper to fetch from On-Chain Mapping (Robust, no permissions needed)
-
 
     // Helper to fetch from Public API (Fall back for No-Auth/No-PW)
     const getInvoiceHashFromChain = async (finalTxId: string): Promise<string | null> => {
@@ -292,6 +280,7 @@ export const useCreateInvoice = () => {
         setMemo('');
         setStatus('');
         setInvoiceType('standard');
+        setTokenType(0);
     };
 
     return {
@@ -306,6 +295,8 @@ export const useCreateInvoice = () => {
         resetInvoice,
         publicKey,
         invoiceType,
-        setInvoiceType
+        setInvoiceType,
+        tokenType,
+        setTokenType
     };
 };

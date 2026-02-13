@@ -184,18 +184,18 @@ const Docs = () => {
                             <GlassCard className="p-8">
                                 <h2 className="text-2xl font-bold text-white mb-4">Smart Contract Specification</h2>
                                 <p className="text-gray-400 mb-6">
-                                    The contract is deployed as <strong className="text-neon-primary">zk_pay_proofs_privacy_v7.aleo</strong>.
+                                    The contract is deployed as <strong className="text-neon-primary">zk_pay_proofs_privacy_v8.aleo</strong>.
                                     It supports both Standard (single-payment) and Multi Pay (multi-payment) invoices.
                                 </p>
                                 <div className="mb-6 p-4 bg-black/40 rounded-xl border border-neon-primary/20">
                                     <p className="text-sm text-gray-400 mb-2">View on Aleo Testnet Explorer:</p>
                                     <a
-                                        href="https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v7.aleo"
+                                        href="https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v8.aleo"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-neon-primary hover:text-white transition-colors font-mono text-sm underline"
                                     >
-                                        https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v7.aleo
+                                        https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v8.aleo
                                     </a>
                                 </div>
 
@@ -421,7 +421,7 @@ async function finalize_settle_invoice(
     ];
 
     const transaction: TransactionOptions = {
-        program: PROGRAM_ID,  // zk_pay_proofs_privacy_v7.aleo
+        program: PROGRAM_ID,  // zk_pay_proofs_privacy_v8.aleo
         function: 'create_invoice',
         inputs: inputs,
         fee: 100_000,

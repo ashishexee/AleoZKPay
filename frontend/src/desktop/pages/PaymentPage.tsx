@@ -6,7 +6,6 @@ import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Shimmer } from '../../components/ui/Shimmer';
-
 import { PROGRAM_ID } from '../../utils/aleo-utils';
 
 const PaymentPage = () => {
@@ -22,7 +21,8 @@ const PaymentPage = () => {
         convertPublicToPrivate,
         programId,
 
-        paymentSecret
+        paymentSecret,
+        receiptHash
     } = usePayment();
 
     const { address } = useWallet();
@@ -43,6 +43,7 @@ const PaymentPage = () => {
     ];
 
     const isMultiPay = programId === PROGRAM_ID;
+    const currencyLabel = invoice?.tokenType === 1 ? 'USDCx' : 'Credits';
 
     return (
         <motion.div
@@ -141,7 +142,7 @@ const PaymentPage = () => {
                             {loading && !invoice ? (
                                 <Shimmer className="h-8 w-24 bg-white/5 rounded" />
                             ) : (
-                                <span className="text-2xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-sm text-gray-500 font-normal">Credits</span></span>
+                                <span className="text-2xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-sm text-gray-500 font-normal">{currencyLabel}</span></span>
                             )}
                         </div>
                         {invoice?.memo && (
@@ -195,11 +196,21 @@ const PaymentPage = () => {
                                         ? 'This invoice has already been settled on-chain.'
                                         : 'The transaction has been settled on-chain.'}
                                 </p>
-                                {isMultiPay && paymentSecret && (
-                                    <div className="bg-black/40 border border-neon-primary/30 p-4 rounded-xl text-left">
-                                        <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Secret</p>
-                                        <p className="font-mono text-white text-sm break-all">{paymentSecret}</p>
-                                        <p className="text-[10px] text-gray-500 mt-1">Share this with the merchant to verify your contribution.</p>
+                                {isMultiPay && (
+                                    <div className="bg-black/40 border border-neon-primary/30 p-4 rounded-xl text-left space-y-3">
+                                        <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Hash</p>
+                                        <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-neon-primary/20 transition-colors" onClick={() => receiptHash && navigator.clipboard.writeText(receiptHash)}>
+                                            {receiptHash || 'Generating Proof...'}
+                                            <div className="absolute top-1 right-2 text-[10px] opacity-70">COPY</div>
+                                        </div>
+                                        <p className="text-[10px] text-gray-500 mt-1">Provide this Hash to the merchant for verification.</p>
+
+                                        {paymentSecret && (
+                                            <div className="opacity-50 hover:opacity-100 transition-opacity">
+                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Payment Secret (Ref)</p>
+                                                <p className="font-mono text-gray-500 text-[10px] break-all">{paymentSecret}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                                 {txId && (
@@ -242,7 +253,7 @@ const PaymentPage = () => {
                                 ) : step === 'CONVERT' ? (
                                     'Convert Public to Private'
                                 ) : (
-                                    `Pay ${invoice?.amount} Credits`
+                                    `Pay ${invoice?.amount} ${currencyLabel}`
                                 )}
                             </Button>
                         )}

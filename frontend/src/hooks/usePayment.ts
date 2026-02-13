@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { getInvoiceHashFromMapping, getInvoiceStatus, PROGRAM_ID, generateSalt } from '../utils/aleo-utils';
+import { getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, generateSalt } from '../utils/aleo-utils';
 
 export type PaymentStep = 'CONNECT' | 'VERIFY' | 'CONVERT' | 'PAY' | 'SUCCESS' | 'ALREADY_PAID';
 
@@ -16,6 +16,7 @@ export const usePayment = () => {
         salt: string;
         hash: string;
         memo: string;
+        tokenType: number;
     } | null>(null);
 
     const [status, setStatus] = useState<string>('Initializing...');
@@ -29,6 +30,7 @@ export const usePayment = () => {
     const [programId, setProgramId] = useState<string | null>(null);
 
     const [paymentSecret, setPaymentSecret] = useState<string | null>(null);
+    const [receiptHash, setReceiptHash] = useState<string | null>(null);
 
     useEffect(() => {
         const init = async () => {
@@ -36,6 +38,8 @@ export const usePayment = () => {
             const amount = searchParams.get('amount');
             const salt = searchParams.get('salt');
             const memo = searchParams.get('memo') || '';
+            const tokenParam = searchParams.get('token');
+            const tokenType = tokenParam === 'usdcx' ? 1 : 0;
 
             if (!merchant || !amount || !salt) {
                 setError('Invalid Invoice Link: Missing parameters');
@@ -47,15 +51,10 @@ export const usePayment = () => {
                 setLoading(true);
                 setStatus('Verifying Invoice on-chain...');
 
-                // V7 Consolidation: We assume all valid invoices are on the V7 contract.
                 setProgramId(PROGRAM_ID);
-
-                // Always generate Payment Secret because V7 requires it (Standard or Multi Pay)
-                // For Standard invoices, this secret could still be used for a receipt, though less critical.
                 setPaymentSecret(generateSalt());
 
-                // Fetch Hash from Chain
-                const fetchedHash = await getInvoiceHashFromMapping(salt); // This now uses PROGRAM_ID
+                const fetchedHash = await getInvoiceHashFromMapping(salt);
 
                 if (!fetchedHash) {
                     setError('Invoice not found or invalid salt.');
@@ -63,17 +62,19 @@ export const usePayment = () => {
                     return;
                 }
 
-                // Check Status
-                const invoiceStatus = await getInvoiceStatus(fetchedHash);
+                const invoiceData = await getInvoiceData(fetchedHash);
 
-                // Status 1 means Settled/Paid.
-                if (invoiceStatus === 1) {
-                    // Fetch full details from DB (payment_tx_id etc)
+                // Default to 0 if data missing (shouldn't happen for valid invoices)
+                const statusOnChain = invoiceData ? invoiceData.status : 0;
+                const tokenTypeOnChain = invoiceData ? invoiceData.tokenType : (tokenType || 0);
+
+                console.log(`🔗 On-Chain Invoice Data | Status: ${statusOnChain}, Token Type: ${tokenTypeOnChain}`);
+
+                if (statusOnChain === 1) {
                     let dbInvoice = null;
                     try {
                         const { fetchInvoiceByHash } = await import('../services/api');
                         dbInvoice = await fetchInvoiceByHash(fetchedHash);
-                        // If we have a payment_tx_id, set it so "View Transaction" works
                         if (dbInvoice && dbInvoice.payment_tx_id) {
                             setTxId(dbInvoice.payment_tx_id);
                         }
@@ -84,7 +85,8 @@ export const usePayment = () => {
                         amount: Number(amount),
                         salt,
                         hash: fetchedHash,
-                        memo
+                        memo,
+                        tokenType: tokenTypeOnChain
                     });
                     setStep('ALREADY_PAID');
                     setLoading(false);
@@ -96,7 +98,8 @@ export const usePayment = () => {
                     amount: Number(amount),
                     salt,
                     hash: fetchedHash,
-                    memo
+                    memo,
+                    tokenType: tokenTypeOnChain
                 });
 
                 setStatus(''); // Clear status after verification
@@ -149,7 +152,8 @@ export const usePayment = () => {
                 program: 'credits.aleo',
                 function: 'transfer_public_to_private',
                 inputs: [publicKey, `${amountMicro}u64`],
-                fee: 100_000
+                fee: 100_000,
+                privateFee: false
             };
 
             const result = await executeTransaction(transaction);
@@ -205,7 +209,274 @@ export const usePayment = () => {
         }
     };
 
-    const payInvoice = async () => {
+    const pollTransaction = async (initialTxId: string) => {
+        if (!wallet || !wallet.adapter) return;
+
+        let isPending = true;
+        let attempts = 0;
+        let onChainId = initialTxId;
+
+        while (isPending && attempts < 120) {
+            attempts++;
+            await new Promise(r => setTimeout(r, 1000));
+            try {
+                const statusRes = await wallet.adapter.transactionStatus(initialTxId);
+                const statusStr = typeof statusRes === 'string'
+                    ? (statusRes as string).toLowerCase()
+                    : (statusRes as any)?.status?.toLowerCase();
+
+                if ((statusRes as any)?.transactionId) {
+                    onChainId = (statusRes as any).transactionId;
+                    console.log("Payment On-Chain ID found:", onChainId);
+                    setTxId(onChainId);
+                }
+
+                if (statusStr === 'completed' || statusStr === 'finalized' || statusStr === 'accepted') {
+                    setStep('SUCCESS');
+                    setStatus('Payment Successful!');
+
+                    try {
+                        const { updateInvoiceStatus, fetchInvoiceByHash } = await import('../services/api');
+
+                        const updatePayload: any = {
+                            payment_tx_ids: onChainId,
+                            payer_address: publicKey || undefined
+                        };
+
+                        // Check if multi-pay before setting SETTLED
+                        // Note: invoice is closed over from the hook scope, might be null if called async, but we check !invoice before calling payInvoice.
+                        // However pollTransaction is called inside payInvoice which closes over 'invoice'.
+                        if (invoice?.hash) {
+                            const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
+                            if (currentDbInvoice && currentDbInvoice.invoice_type === 1) {
+                                console.log("Multi Pay Invoice detected. Keeping status as PENDING.");
+                            } else {
+                                updatePayload.status = 'SETTLED';
+                            }
+                            await updateInvoiceStatus(invoice.hash, updatePayload);
+                        }
+
+                        // Fetch Receipt Hash
+                        // Fetch Receipt Hash from Record
+                        if (programId && requestRecords && invoice?.hash) {
+                            setStatus('Syncing Receipt Record...');
+                            let found = false;
+                            let retries = 0;
+
+                            try {
+                                const { parsePayerReceipt } = await import('../utils/aleo-utils');
+
+                                while (!found && retries < 15) { // Try for ~45 seconds
+                                    await new Promise(r => setTimeout(r, 3000));
+                                    try {
+                                        const records = await requestRecords(programId, false);
+                                        const recordsAny = records as any[];
+                                        for (const r of recordsAny) {
+                                            const receipt = parsePayerReceipt(r);
+                                            // Canonicalize hashes for comparison
+                                            if (receipt &&
+                                                (receipt.invoiceHash === invoice.hash ||
+                                                    receipt.invoiceHash === invoice.hash.replace('field', '') ||
+                                                    receipt.invoiceHash.replace('field', '') === invoice.hash.replace('field', ''))) {
+
+                                                setReceiptHash(receipt.receiptHash);
+                                                console.log("Receipt Record Found:", receipt);
+                                                found = true;
+                                                break;
+                                            }
+                                        }
+                                    } catch (e) { console.warn("Error syncing records during receipt fetch:", e); }
+                                    retries++;
+                                }
+
+                                if (!found) {
+                                    console.warn("Receipt not found after retries. User can check profile.");
+                                }
+                            } catch (e) { console.error("Error importing utils:", e); }
+                        }
+
+                    } catch (dbErr) { console.error(dbErr); }
+
+                    isPending = false;
+                } else if (statusStr === 'failed' || statusStr === 'rejected') {
+                    throw new Error('Transaction rejected on-chain.');
+                }
+            } catch (err) {
+                console.warn("Polling error:", err);
+            }
+        }
+    };
+
+    const payInvoiceUSDCx = async () => {
+        if (!invoice || !publicKey || !executeTransaction || !requestRecords || !programId) return;
+
+        try {
+            setLoading(true);
+            setStatus('Syncing USDCx Records...');
+
+            const usdcxProgramId = 'test_usdcx_stablecoin.aleo';
+
+            // Define helper to process/decrypt single record
+            const processUSDCxRecord = async (r: any): Promise<bigint> => {
+                try {
+                    // 1. Try plaintext amount
+                    if (r.data && r.data.amount) return BigInt(r.data.amount.replace('u128', ''));
+                    if (r.plaintext) {
+                        const match = r.plaintext.match(/amount:\s*([\d_]+)u128/);
+                        if (match && match[1]) return BigInt(match[1].replace(/_/g, ''));
+                    }
+
+                    // 2. Try decrypting if needed
+                    if (r.recordCiphertext && !r.plaintext && decrypt) {
+                        try {
+                            const decrypted = await decrypt(r.recordCiphertext);
+                            if (decrypted) {
+                                console.log("Decrypted USDCx Record:", decrypted);
+                                r.plaintext = decrypted;
+                                const match = decrypted.match(/amount:\s*([\d_]+)u128/);
+                                if (match && match[1]) return BigInt(match[1].replace(/_/g, ''));
+                            }
+                        } catch (e) { console.warn("USDCx Decrypt failed", e); }
+                    }
+                    return BigInt(0);
+                } catch { return BigInt(0); }
+            };
+
+            // First Attempt
+            let records = await requestRecords(usdcxProgramId, false);
+            console.log("USDCx Records (Initial):", records);
+
+            const amountMicro = BigInt(Math.round(invoice.amount * 1_000_000));
+            let recordsAny = records as any[];
+            let payRecord = null;
+
+            // Search Initial
+            for (const r of recordsAny) {
+                if (r.spent) continue;
+                const val = await processUSDCxRecord(r);
+                if (val >= amountMicro) {
+                    payRecord = r;
+                    break;
+                }
+            }
+
+            // Retry Strategy (if not found initially)
+            if (!payRecord) {
+                setStatus('Syncing latest USDCx records...');
+                await new Promise(r => setTimeout(r, 2000));
+                records = await requestRecords(usdcxProgramId, false);
+                console.log("USDCx Records (Retry):", records);
+                recordsAny = records as any[];
+
+                // Calculate total while searching
+                let totalAvailable = BigInt(0);
+
+                for (const r of recordsAny) {
+                    if (r.spent) continue;
+                    const val = await processUSDCxRecord(r);
+                    totalAvailable += val;
+
+                    if (!payRecord && val >= amountMicro) {
+                        payRecord = r;
+                    }
+                }
+
+                if (!payRecord) {
+                    if (totalAvailable >= amountMicro) {
+                        setError(`Insufficient single record. Total: ${Number(totalAvailable) / 1_000_000} USDCx. Please merge records.`);
+                    } else {
+                        setError(`Insufficient private balance. Total: ${Number(totalAvailable) / 1_000_000} USDCx. Needed: ${invoice.amount}`);
+                    }
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // Proceed with found record
+            setStatus('Fetching Freeze List State...');
+
+            // Dynamic Proof Generation Logic
+            // Import helper functions dynamically to avoid circular dependencies if any, 
+            // or just use what we imported. We need them from ../utils/aleo-utils
+            const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex } = await import('../utils/aleo-utils');
+
+            const root = await getFreezeListRoot();
+            const count = await getFreezeListCount();
+            const firstIndex = await getFreezeListIndex(0);
+            console.log(`Freeze List State -> Root: ${root}, Count: ${count}, Index[0]: ${firstIndex}`);
+            const { generateFreezeListProof } = await import('../utils/aleo-utils');
+            const { Address } = await import('@provablehq/wasm');
+
+            let index0FieldStr = undefined;
+            if (firstIndex) {
+                // Convert Address to Field (X Coordinate)
+                try {
+                    const addr = Address.from_string(firstIndex);
+                    // Standard way to get field from address in recent SDKs:
+                    const grp = addr.toGroup();
+                    const x = grp.toXCoordinate();
+                    index0FieldStr = x.toString();
+                } catch (e) { console.warn("Failed to convert address to field", e); }
+            } else {
+                console.warn("firstIndex was null or undefined, proceeding with undef for occupied value");
+            }
+            // Generate proof for Index 1, with neighbor Index 0 potentially occupied
+            const proof = await generateFreezeListProof(1, index0FieldStr);
+
+            console.log("Generated Merkle Proof (Right Edge / Index 1):", proof);
+            const proofsInput = `[${proof}, ${proof}]`;
+
+            let recordInput = payRecord.plaintext;
+            if (!recordInput) {
+                if (payRecord.ciphertext) {
+                    recordInput = payRecord.ciphertext;
+                } else {
+                    setError("Could not read record plaintext.");
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            setStatus('Requesting USDCx Payment Signature...');
+
+            let inputs = [
+                recordInput,
+                invoice.merchant,
+                `${amountMicro}u128`,
+                invoice.salt,
+                paymentSecret || '0field',
+                invoice.hash,
+                proofsInput
+            ];
+
+            console.log("Transaction Inputs:", JSON.stringify(inputs, null, 2));
+
+            const transaction: TransactionOptions = {
+                program: PROGRAM_ID,
+                function: 'pay_invoice_usdcx',
+                inputs: inputs,
+                fee: 100_000,
+                privateFee: false
+            };
+
+            const result = await executeTransaction(transaction);
+
+            if (result && result.transactionId) {
+                setTxId(result.transactionId);
+                setStatus(`USDCx Payment Broadcasted: ${result.transactionId}. Polling...`);
+                await pollTransaction(result.transactionId);
+            } else {
+                throw new Error("Transaction failed.");
+            }
+
+        } catch (e: any) {
+            console.error("USDCx Payment Error:", e);
+            setError(e.message || 'USDCx Payment Failed');
+            setLoading(false);
+        }
+    };
+
+    const payInvoiceCredits = async () => {
         if (!invoice || !publicKey || !executeTransaction || !requestRecords || !programId) return;
 
         try {
@@ -218,7 +489,6 @@ export const usePayment = () => {
             const recordsAny = records as any[];
             let payRecord = null;
 
-            // Helper to get value, decrypting if needed
             const processRecord = async (r: any) => {
                 let val = getMicrocredits(r);
                 if (val === 0 && r.recordCiphertext && !r.plaintext && decrypt) {
@@ -236,10 +506,7 @@ export const usePayment = () => {
             for (const r of recordsAny) {
                 if (r.spent) continue;
                 const val = await processRecord(r);
-
-                // Check spendability again after potential decryption
                 const isSpendable = !!(r.plaintext || r.nonce || r._nonce || r.data?._nonce || r.ciphertext);
-
                 if (isSpendable && val > amountMicro) {
                     payRecord = r;
                     break;
@@ -268,23 +535,14 @@ export const usePayment = () => {
                     setStatus('Records synced! Proceeding with payment...');
                 } else {
                     setStep('CONVERT');
-
-                    // Calculate total balance - need to decrypt all unspent
                     let totalBalance = 0;
-                    let maxRecord = 0;
-
                     for (const r of latestRecordsAny) {
-                        if (!r.spent) {
-                            const val = await processRecord(r);
-                            totalBalance += val;
-                            if (val > maxRecord) maxRecord = val;
-                        }
+                        if (!r.spent) totalBalance += await processRecord(r);
                     }
-
                     if (totalBalance >= amountMicro) {
-                        setStatus(`Privacy Protocol requires a single record > ${invoice.amount}. Your largest is ${maxRecord / 1000000}. Converting ${invoice.amount} more will create a unified record.`);
+                        setStatus(`Privacy Protocol requires a single record > ${invoice.amount}. Converting...`);
                     } else {
-                        setStatus(`Insufficient private balance. Converting ${invoice.amount + 0.01} to private...`);
+                        setStatus(`Insufficient private balance. Converting...`);
                     }
                     setLoading(false);
                     return;
@@ -295,19 +553,15 @@ export const usePayment = () => {
             let recordInput = finalRecord.plaintext;
 
             if (!recordInput) {
-                console.warn("Record missing plaintext. Attempting to reconstruct...");
+                console.warn("Record missing plaintext.");
                 const nonce = finalRecord.nonce || finalRecord._nonce || finalRecord.data?._nonce;
-
                 if (nonce) {
                     const microcredits = getMicrocredits(finalRecord.data);
                     const owner = finalRecord.owner;
                     recordInput = `{ owner: ${owner}.private, microcredits: ${microcredits}u64.private, _nonce: ${nonce}.public }`;
-                    console.log("Reconstructed Plaintext:", recordInput);
                 } else if (finalRecord.ciphertext) {
-                    console.log("Found Ciphertext. Using it as input.");
                     recordInput = finalRecord.ciphertext;
                 } else {
-                    console.warn("Could not find keys. Attempting to pass raw record object to adapter...");
                     recordInput = finalRecord;
                 }
             }
@@ -318,16 +572,12 @@ export const usePayment = () => {
                 recordInput,
                 invoice.merchant,
                 `${amountMicro}u64`,
-                invoice.salt
+                invoice.salt,
+                paymentSecret || '0field',
+                invoice.hash
             ];
 
-            // Always add Secret and Message for V7
-            console.log("Adding V7 secret and message inputs");
-            inputs.push(paymentSecret || '0field');
-            // Message: Use Invoice Hash so we can track payments publicly
-            inputs.push(invoice.hash);
-
-            console.log("Transaction Inputs:", inputs);
+            // inputs.push(invoice.hash); // REMOVED: Duplicate argument push 
 
             const transaction: TransactionOptions = {
                 program: PROGRAM_ID,
@@ -341,79 +591,7 @@ export const usePayment = () => {
             if (result && result.transactionId) {
                 setTxId(result.transactionId);
                 setStatus(`Transaction Broadcasted: ${result.transactionId}. Polling confirmation...`);
-
-
-                if (!wallet || !wallet.adapter) {
-                    await new Promise(r => setTimeout(r, 2000));
-                    setStep('SUCCESS');
-                    return;
-                }
-                let isPending = true;
-                let attempts = 0;
-                let onChainId = result.transactionId; // Start with broadcast ID
-
-                while (isPending && attempts < 120) {
-                    attempts++;
-                    await new Promise(r => setTimeout(r, 1000));
-                    try {
-                        const statusRes = await wallet.adapter.transactionStatus(result.transactionId);
-                        const statusStr = typeof statusRes === 'string'
-                            ? (statusRes as string).toLowerCase()
-                            : (statusRes as any)?.status?.toLowerCase();
-
-                        // Check for final on-chain ID
-                        if ((statusRes as any)?.transactionId) {
-                            onChainId = (statusRes as any).transactionId;
-                            console.log("Payment On-Chain ID found:", onChainId);
-                            setTxId(onChainId);
-                        }
-
-                        if (statusStr === 'completed' || statusStr === 'finalized' || statusStr === 'accepted') {
-                            setStep('SUCCESS');
-                            setStatus('Payment Successful!');
-
-                            // Update Database
-                            try {
-                                const { updateInvoiceStatus, fetchInvoiceByHash } = await import('../services/api');
-                                console.log('Final Payment TX ID for DB:', onChainId);
-
-                                // Fetch invoice first to check type (if not already known, but we likely verify it)
-                                // We rely on the initial verification. However, invoice state in hook might NOT have type if it was just loaded from URL params.
-                                // We should probably fetch it during init. But assuming we want to be safe:
-
-                                const updatePayload: any = {
-                                    payment_tx_ids: onChainId,
-                                    payer_address: publicKey || undefined
-                                };
-
-                                // ONLY Set 'SETTLED' if it is a Standard Invoice (Type 0)
-                                // If Multi Pay (Type 1), we leave it PENDING/OPEN.
-                                // If Standard, we mark as SETTLED.
-                                // For now, let's assume if it is NOT multi-pay explicit, we settle.
-                                // Note: We need to ensure we know the type.
-
-                                // Let's fetch the invoice type from DB to be sure before updating status
-                                const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
-                                if (currentDbInvoice && currentDbInvoice.invoice_type === 1) {
-                                    console.log("Multi Pay Invoice detected. Keeping status as PENDING.");
-                                } else {
-                                    updatePayload.status = 'SETTLED';
-                                }
-
-                                await updateInvoiceStatus(invoice.hash, updatePayload);
-                                console.log("Invoice updated in DB");
-                            } catch (dbErr) {
-                                console.error("Failed to update invoice in DB:", dbErr);
-                            }
-
-                            isPending = false;
-                        } else if (statusStr === 'failed' || statusStr === 'rejected') {
-                            throw new Error('Transaction rejected on-chain.');
-                        }
-                    } catch (err) {
-                        console.warn("Polling error or pending:", err);
-                    }
-                }
+                await pollTransaction(result.transactionId);
             } else {
                 throw new Error("Transaction failed.");
             }
@@ -421,8 +599,16 @@ export const usePayment = () => {
         } catch (e: any) {
             console.error(e);
             setError(e.message || 'Payment Failed');
-        } finally {
             setLoading(false);
+        }
+    };
+
+    const payInvoice = async () => {
+        if (!invoice) return;
+        if (invoice.tokenType === 1) {
+            await payInvoiceUSDCx();
+        } else {
+            await payInvoiceCredits();
         }
     };
 
@@ -444,7 +630,7 @@ export const usePayment = () => {
         convertPublicToPrivate,
         handleConnect,
         programId,
-
-        paymentSecret
+        paymentSecret,
+        receiptHash
     };
 };
