@@ -4,6 +4,7 @@ import { pageVariants } from '../../utils/animations';
 import { useCreateInvoice } from '../../hooks/useCreateInvoice';
 import { InvoiceForm } from '../../components/invoice/InvoiceForm';
 import { InvoiceCard } from '../../components/invoice/InvoiceCard';
+import { USDCxInfo } from '../components/USDCxInfo';
 
 export const CreateInvoice: React.FC = () => {
     const {
@@ -92,6 +93,8 @@ export const CreateInvoice: React.FC = () => {
                     </motion.div>
                 </div>
             </div>
+
+            <USDCxInfo />
         </motion.div>
     );
 };

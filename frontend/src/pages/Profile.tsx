@@ -91,6 +91,8 @@ const Profile: React.FC = () => {
     const [loadingReceipts, setLoadingReceipts] = useState(false);
     const [loadingCreated, setLoadingCreated] = useState(false);
     const [loadingPayerReceipts, setLoadingPayerReceipts] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const fetchPayerReceiptsRef = useRef(0);
 
     useEffect(() => {
@@ -731,7 +733,7 @@ const Profile: React.FC = () => {
                                     ) : combinedInvoices.filter(inv => !invoiceSearch || inv.invoiceHash?.toLowerCase().includes(invoiceSearch.toLowerCase())).length === 0 ? (
                                         <tr><td colSpan={6} className="text-center py-12 text-gray-500 italic">{invoiceSearch ? 'No invoices match your search.' : 'No created invoices found.'}</td></tr>
                                     ) : (
-                                        combinedInvoices.filter(inv => !invoiceSearch || inv.invoiceHash?.toLowerCase().includes(invoiceSearch.toLowerCase())).map((inv, i) => {
+                                        combinedInvoices.filter(inv => !invoiceSearch || inv.invoiceHash?.toLowerCase().includes(invoiceSearch.toLowerCase())).slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((inv, i) => {
                                             const params = new URLSearchParams({
                                                 merchant: inv.owner || '',
                                                 amount: inv.amount.toString(),
@@ -828,6 +830,49 @@ const Profile: React.FC = () => {
                                     )}
                                 </tbody>
                             </table>
+
+                            {/* PAGINATION CONTROLS */}
+                            {Math.ceil(combinedInvoices.filter(inv => !invoiceSearch || inv.invoiceHash?.toLowerCase().includes(invoiceSearch.toLowerCase())).length / itemsPerPage) > 1 && (
+                                <div className="flex justify-center items-center gap-2 mt-6 pb-4">
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={currentPage === 1}
+                                        className="bg-white/5 hover:bg-white/10 p-2 rounded-lg text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <div className="flex gap-2">
+                                        {Array.from({ length: Math.ceil(combinedInvoices.filter(inv => !invoiceSearch || inv.invoiceHash?.toLowerCase().includes(invoiceSearch.toLowerCase())).length / itemsPerPage) }).map((_, idx) => {
+                                            const pageNum = idx + 1;
+                                            return (
+                                                <button
+                                                    key={pageNum}
+                                                    onClick={() => setCurrentPage(pageNum)}
+                                                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition-all ${currentPage === pageNum
+                                                        ? 'bg-neon-primary text-black font-bold shadow-lg shadow-neon-primary/20'
+                                                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                                                        }`}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <button
+                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(combinedInvoices.filter(inv => !invoiceSearch || inv.invoiceHash?.toLowerCase().includes(invoiceSearch.toLowerCase())).length / itemsPerPage)))}
+                                        disabled={currentPage === Math.ceil(combinedInvoices.filter(inv => !invoiceSearch || inv.invoiceHash?.toLowerCase().includes(invoiceSearch.toLowerCase())).length / itemsPerPage)}
+                                        className="bg-white/5 hover:bg-white/10 p-2 rounded-lg text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* PAID TAB */}
@@ -925,7 +970,7 @@ const Profile: React.FC = () => {
                     </div>
                 </GlassCard>
             </motion.div>
-        </div>
+        </div >
     );
 };
 
