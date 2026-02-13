@@ -21,9 +21,9 @@ const PaymentPage = () => {
         payInvoice,
         convertPublicToPrivate,
         programId,
-
         paymentSecret,
-        receiptHash
+        receiptHash,
+        receiptSearchFailed
     } = usePayment();
 
     const [copiedHash, setCopiedHash] = useState(false); // Added copiedHash state
@@ -159,7 +159,7 @@ const PaymentPage = () => {
                         )}
 
                         {/* MULTI PAY EXTRA INPUTS */}
-                        {isMultiPay && step !== 'SUCCESS' && step !== 'CONNECT' && (
+                        {isMultiPay && step !== 'SUCCESS' && step !== 'CONNECT' && step !== 'ALREADY_PAID' && (
                             <div className="pt-4 border-t border-white/5 space-y-4">
                                 <div>
                                     <span className="text-xs font-bold text-neon-primary uppercase tracking-widest block mb-1">Your Payment Secret</span>
@@ -198,25 +198,42 @@ const PaymentPage = () => {
                                         ? 'This invoice has already been settled on-chain.'
                                         : 'The transaction has been settled on-chain.'}
                                 </p>
-                                {isMultiPay && (
+                                {isMultiPay && step !== 'ALREADY_PAID' && (
                                     <div className="bg-black/40 border border-neon-primary/30 p-4 rounded-xl text-left space-y-3">
                                         <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Hash</p>
-                                        <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-neon-primary/20 transition-colors" onClick={() => {
-                                            if (receiptHash) {
+
+                                        {receiptHash ? (
+                                            <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-neon-primary/20 transition-colors" onClick={() => {
                                                 navigator.clipboard.writeText(receiptHash);
                                                 setCopiedHash(true);
                                                 setTimeout(() => setCopiedHash(false), 2000);
-                                            }
-                                        }}>
-                                            {receiptHash || 'Generating Proof...'}
-                                            <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-neon-primary' : 'opacity-70 text-gray-400'}`}>
-                                                {copiedHash ? 'COPIED!' : 'COPY'}
+                                            }}>
+                                                {receiptHash}
+                                                <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-neon-primary' : 'opacity-70 text-gray-400'}`}>
+                                                    {copiedHash ? 'COPIED!' : 'COPY'}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <p className="text-[10px] text-gray-500 mt-1">Provide this Hash to the merchant for verification.</p>
+                                        ) : (
+                                            <div className="bg-white/5 border border-white/10 p-3 rounded-lg text-center">
+                                                {receiptSearchFailed ? (
+                                                    <p className="text-xs text-gray-400 italic">
+                                                        You can get your payment receipt from the profiles page in paid invoices section.
+                                                    </p>
+                                                ) : (
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <div className="w-3 h-3 border-2 border-neon-primary border-t-transparent rounded-full animate-spin"></div>
+                                                        <span className="text-xs text-gray-400">Syncing Receipt...</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {receiptHash && (
+                                            <p className="text-[10px] text-gray-500 mt-1">Provide this Hash to the merchant for verification.</p>
+                                        )}
 
                                         {paymentSecret && (
-                                            <div className="opacity-50 hover:opacity-100 transition-opacity">
+                                            <div className="opacity-50 hover:opacity-100 transition-opacity mt-3">
                                                 <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Payment Secret (Ref)</p>
                                                 <p className="font-mono text-gray-500 text-[10px] break-all">{paymentSecret}</p>
                                             </div>

@@ -25,12 +25,11 @@ export const usePayment = () => {
     const [txId, setTxId] = useState<string | null>(null);
     const [conversionTxId, setConversionTxId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    // New states for V7
     const [programId, setProgramId] = useState<string | null>(null);
 
     const [paymentSecret, setPaymentSecret] = useState<string | null>(null);
-    const [receiptHash, setReceiptHash] = useState<string | null>(null);
+    const [receiptHash] = useState<string | null>(null);
+    const [receiptSearchFailed, setReceiptSearchFailed] = useState(false);
 
     useEffect(() => {
         const init = async () => {
@@ -256,43 +255,11 @@ export const usePayment = () => {
                             await updateInvoiceStatus(invoice.hash, updatePayload);
                         }
 
-                        // Fetch Receipt Hash
-                        // Fetch Receipt Hash from Record
-                        if (programId && requestRecords && invoice?.hash) {
+                        // Show "Syncing Receipt..." for 1 second, then direct user to Profile page
+                        if (programId && invoice?.hash) {
                             setStatus('Syncing Receipt Record...');
-                            let found = false;
-                            let retries = 0;
-
-                            try {
-                                const { parsePayerReceipt } = await import('../utils/aleo-utils');
-
-                                while (!found && retries < 15) { // Try for ~45 seconds
-                                    await new Promise(r => setTimeout(r, 3000));
-                                    try {
-                                        const records = await requestRecords(programId, false);
-                                        const recordsAny = records as any[];
-                                        for (const r of recordsAny) {
-                                            const receipt = parsePayerReceipt(r);
-                                            // Canonicalize hashes for comparison
-                                            if (receipt &&
-                                                (receipt.invoiceHash === invoice.hash ||
-                                                    receipt.invoiceHash === invoice.hash.replace('field', '') ||
-                                                    receipt.invoiceHash.replace('field', '') === invoice.hash.replace('field', ''))) {
-
-                                                setReceiptHash(receipt.receiptHash);
-                                                console.log("Receipt Record Found:", receipt);
-                                                found = true;
-                                                break;
-                                            }
-                                        }
-                                    } catch (e) { console.warn("Error syncing records during receipt fetch:", e); }
-                                    retries++;
-                                }
-
-                                if (!found) {
-                                    console.warn("Receipt not found after retries. User can check profile.");
-                                }
-                            } catch (e) { console.error("Error importing utils:", e); }
+                            await new Promise(r => setTimeout(r, 1000));
+                            setReceiptSearchFailed(true);
                         }
 
                     } catch (dbErr) { console.error(dbErr); }
@@ -359,8 +326,6 @@ export const usePayment = () => {
                     break;
                 }
             }
-
-            // Retry Strategy (if not found initially)
             if (!payRecord) {
                 setStatus('Syncing latest USDCx records...');
                 await new Promise(r => setTimeout(r, 2000));
@@ -631,6 +596,7 @@ export const usePayment = () => {
         handleConnect,
         programId,
         paymentSecret,
-        receiptHash
+        receiptHash,
+        receiptSearchFailed
     };
 };
