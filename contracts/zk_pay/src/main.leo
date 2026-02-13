@@ -1,7 +1,7 @@
 import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v9.aleo {
+program zk_pay_proofs_privacy_v10.aleo {
     
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     async constructor() {
@@ -33,6 +33,15 @@ program zk_pay_proofs_privacy_v9.aleo {
         token_type: u8,       // 0 = Credits, 1 = USDCx
     }
 
+    record Invoice {
+        owner: address,       // Merchant
+        invoice_hash: field,
+        amount: u64,          // Amount
+        token_type: u8,       // 0 = Credits, 1 = USDCx
+        invoice_type: u8,     // 0 = Standard, 1 = Multi Pay
+        salt: field,          // For checking against hash
+    }
+
     mapping invoices: field => InvoiceData;
     mapping salt_to_invoice: field => field;
 
@@ -42,7 +51,7 @@ program zk_pay_proofs_privacy_v9.aleo {
         private salt: field,
         public expiry_hours: u32,
         public invoice_type: u8
-    ) -> (public field, Future) {
+    ) -> (Invoice, public field, Future) {
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
 
@@ -52,8 +61,17 @@ program zk_pay_proofs_privacy_v9.aleo {
 
         let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
 
+        let invoice_record: Invoice = Invoice {
+            owner: merchant,
+            invoice_hash: invoice_hash,
+            amount: amount,
+            token_type: 0u8,
+            invoice_type: invoice_type,
+            salt: salt
+        };
+
         // Default token_type 0 for Credits
-        return (invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 0u8));
+        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 0u8));
     }
 
     async transition create_invoice_usdcx(
@@ -62,7 +80,7 @@ program zk_pay_proofs_privacy_v9.aleo {
         private salt: field,
         public expiry_hours: u32,
         public invoice_type: u8
-    ) -> (public field, Future) {
+    ) -> (Invoice, public field, Future) {
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
 
@@ -72,8 +90,26 @@ program zk_pay_proofs_privacy_v9.aleo {
 
         let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
 
+        // Note: Casting amount to u64 for the record for consistency, 
+        // assuming standard UX amounts won't overflow u64 easily even for USDCx (which has 6 decimals usually).
+        // If high precision is needed, we might need to adjust record or keep u128. 
+        // However, standard `PayerReceipt` uses u64. Let's stick to u64 for uniformity in display if possible,
+        // or we need to change Invoice record to u128.
+        // Given USDC has 6 decimals, u64 max is ~18 trillion units, which is 18 million USDC. 
+        // Wait, u64 max is 1.8e19. USDC with 6 decimals: 1.8e13 USDC. usage is fine.
+        let amount_u64: u64 = amount as u64; 
+
+        let invoice_record: Invoice = Invoice {
+            owner: merchant,
+            invoice_hash: invoice_hash,
+            amount: amount_u64,
+            token_type: 1u8,
+            invoice_type: invoice_type,
+            salt: salt
+        };
+
         // token_type 1 for USDCx
-        return (invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 1u8));
+        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 1u8));
     }
 
     async function finalize_create_invoice(

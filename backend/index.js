@@ -131,7 +131,7 @@ app.get('/api/invoice/:hash', async (req, res) => {
 app.post('/api/invoices', async (req, res) => {
     const { invoice_hash, merchant_address, amount, memo, status, invoice_transaction_id, salt, invoice_type } = req.body;
 
-    if (!invoice_hash || !merchant_address || !amount) {
+    if (!invoice_hash || !merchant_address) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
