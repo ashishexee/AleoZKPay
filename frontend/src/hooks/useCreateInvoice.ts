@@ -149,8 +149,6 @@ export const useCreateInvoice = () => {
                                 if (!hash) throw new Error("Could not retrieve Invoice Hash from wallet execution.");
 
                                 setStatus('Hash retrieved successfully! Saving to database...');
-
-                                // Save to Database
                                 try {
                                     const { createInvoice } = await import('../services/api');
                                     await createInvoice({
@@ -169,7 +167,6 @@ export const useCreateInvoice = () => {
                                     console.error("Failed to save invoice to DB:", dbErr);
                                 }
 
-                                // Success Flow
                                 const params = new URLSearchParams({
                                     merchant,
                                     amount: amount.toString(),

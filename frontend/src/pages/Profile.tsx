@@ -1,12 +1,12 @@
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import StatusBadge from '../components/StatusBadge';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Shimmer } from '../components/ui/Shimmer';
 import { useTransactions } from '../hooks/useTransactions';
-import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt } from '../utils/aleo-utils';
+import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord } from '../utils/aleo-utils';
 
 const CopyButton = ({ text, title, className = "" }: { text: string, title?: string, className?: string }) => {
     const [copied, setCopied] = React.useState(false);
@@ -124,7 +124,62 @@ const Profile: React.FC = () => {
         }
     };
 
+    // MERGE LOGIC: Combine DB Transactions + On-Chain Records
+    const combinedInvoices = useMemo(() => {
+        const merged = new Map<string, any>();
 
+        // 1. Add all DB transactions first (Source of Truth for Pending/Metadata)
+        transactions.forEach(tx => {
+            if (!tx.invoice_hash) return;
+            merged.set(tx.invoice_hash, {
+                invoiceHash: tx.invoice_hash,
+                amount: tx.amount, // Major Units from DB
+                tokenType: tx.token_type || 0,
+                status: tx.status,
+                invoiceType: tx.invoice_type || 0,
+                creationTx: tx.invoice_transaction_id,
+                paymentTx: tx.payment_tx_ids?.[0] || tx.payment_tx_id,
+                isPending: tx.status === 'PENDING',
+                source: 'db',
+                owner: tx.merchant_address,
+                salt: tx.salt // Now available from DB!
+            });
+        });
+
+        // 2. Merge On-Chain Records (Source of Truth for Confirmation)
+        createdInvoices.forEach(record => {
+            const existing = merged.get(record.invoiceHash);
+            if (existing) {
+                // Update existing with on-chain confirmation
+                merged.set(record.invoiceHash, {
+                    ...existing,
+                    amount: record.amount / 1_000_000, // Convert Micro to Major
+                    tokenType: record.tokenType,
+                    isValidOnChain: true,
+                    status: existing.status === 'SETTLED' ? 'SETTLED' : 'PENDING', // If DB says Settled, keep it. Else Pending.
+                    isPending: false,
+                    salt: record.salt // Prefer on-chain salt if available
+                });
+            } else {
+                // Add Orphan On-Chain Record (not in DB)
+                merged.set(record.invoiceHash, {
+                    invoiceHash: record.invoiceHash,
+                    amount: record.amount / 1_000_000,
+                    tokenType: record.tokenType,
+                    status: 'PENDING',
+                    invoiceType: record.invoiceType,
+                    creationTx: null,
+                    paymentTx: null,
+                    isPending: false,
+                    source: 'chain',
+                    owner: record.owner,
+                    salt: record.salt
+                });
+            }
+        });
+
+        return Array.from(merged.values()); // Show newest first (roughly)
+    }, [transactions, createdInvoices]);
 
     const handleVerifyReceipt = async () => {
         if (!verifyInput || !requestRecords || !decrypt) return;
@@ -212,8 +267,8 @@ const Profile: React.FC = () => {
         totalSales: merchantReceipts
             .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0)
             .toFixed(2),
-        invoices: createdInvoices.length,
-        multiPayCampaigns: createdInvoices.filter(inv => inv.invoiceType === 1).length
+        invoices: combinedInvoices.length,
+        multiPayCampaigns: combinedInvoices.filter(inv => inv.invoiceType === 1).length
     };
 
     const containerVariants = {
@@ -479,12 +534,12 @@ const Profile: React.FC = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
-                                            {loadingCreated ? (
+                                            {((loadingCreated || loadingTransactions) && combinedInvoices.length === 0) ? (
                                                 <tr><td colSpan={5} className="text-center py-12"><div className="inline-block w-8 h-8 border-2 border-neon-primary border-t-transparent rounded-full animate-spin"></div></td></tr>
-                                            ) : createdInvoices.length === 0 ? (
+                                            ) : combinedInvoices.length === 0 ? (
                                                 <tr><td colSpan={5} className="text-center py-12 text-gray-500 italic">No created invoices found.</td></tr>
                                             ) : (
-                                                createdInvoices.map((inv, i) => {
+                                                combinedInvoices.map((inv, i) => {
                                                     const params = new URLSearchParams({
                                                         merchant: inv.owner || '',
                                                         amount: inv.amount.toString(),
@@ -496,9 +551,6 @@ const Profile: React.FC = () => {
 
                                                     const paymentLink = `${window.location.origin}/pay?${params.toString()}`;
 
-                                                    // Find matching DB transaction for Status and Tx IDs
-                                                    const dbTx = transactions.find(t => t.invoice_hash === inv.invoiceHash);
-
                                                     return (
                                                         <motion.tr
                                                             key={i}
@@ -507,9 +559,9 @@ const Profile: React.FC = () => {
                                                         >
                                                             <td className="py-4 px-6 font-mono text-neon-accent group-hover:text-neon-primary transition-colors text-sm">
                                                                 <div className="flex items-center gap-2 group/hash">
-                                                                    <span>{inv.invoiceHash.slice(0, 8)}...{inv.invoiceHash.slice(-6)}</span>
+                                                                    <span>{inv.invoiceHash?.slice(0, 8)}...{inv.invoiceHash?.slice(-6)}</span>
                                                                     <CopyButton
-                                                                        text={inv.invoiceHash}
+                                                                        text={inv.invoiceHash || ''}
                                                                         title="Copy Full Hash"
                                                                         className="text-gray-600 hover:text-white opacity-0 group-hover/hash:opacity-100"
                                                                     />
@@ -517,26 +569,26 @@ const Profile: React.FC = () => {
                                                             </td>
                                                             <td className="py-4 px-6 text-center">
                                                                 <span className="font-bold text-white text-lg">
-                                                                    {Number(inv.amount) / 1_000_000} <span className="text-xs text-gray-400 font-normal uppercase">{inv.tokenType === 1 ? 'USDCx' : 'Credits'}</span>
+                                                                    {inv.amount} <span className="text-xs text-gray-400 font-normal uppercase">{inv.tokenType === 1 ? 'USDCx' : 'Credits'}</span>
                                                                 </span>
                                                             </td>
                                                             <td className="py-4 px-6 text-center">
-                                                                <StatusBadge status={dbTx?.status as any || 'UNKNOWN'} />
+                                                                <StatusBadge status={inv.status} />
                                                             </td>
                                                             <td className="py-4 px-6 text-center">
                                                                 <div className="flex flex-col gap-1 items-center">
-                                                                    {dbTx?.invoice_transaction_id && (
+                                                                    {inv.creationTx && (
                                                                         <button
-                                                                            onClick={() => openExplorer(dbTx.invoice_transaction_id)}
+                                                                            onClick={() => openExplorer(inv.creationTx)}
                                                                             className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded text-gray-400 hover:text-white border border-white/5 transition-colors"
                                                                         >
                                                                             Creation Tx
                                                                         </button>
                                                                     )}
                                                                     {/* Show Payment Tx if exists (single or list) */}
-                                                                    {(dbTx?.payment_tx_id || (dbTx?.payment_tx_ids && dbTx.payment_tx_ids.length > 0)) && (
+                                                                    {inv.paymentTx && (
                                                                         <button
-                                                                            onClick={() => openExplorer(dbTx.payment_tx_ids?.[0] || dbTx.payment_tx_id)}
+                                                                            onClick={() => openExplorer(inv.paymentTx)}
                                                                             className="text-[10px] bg-neon-primary/10 hover:bg-neon-primary/20 px-2 py-0.5 rounded text-neon-primary border border-neon-primary/20 transition-colors"
                                                                         >
                                                                             Payment Tx
