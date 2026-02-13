@@ -241,10 +241,6 @@ export const usePayment = () => {
                             payment_tx_ids: onChainId,
                             payer_address: publicKey || undefined
                         };
-
-                        // Check if multi-pay before setting SETTLED
-                        // Note: invoice is closed over from the hook scope, might be null if called async, but we check !invoice before calling payInvoice.
-                        // However pollTransaction is called inside payInvoice which closes over 'invoice'.
                         if (invoice?.hash) {
                             const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
                             if (currentDbInvoice && currentDbInvoice.invoice_type === 1) {
@@ -254,8 +250,6 @@ export const usePayment = () => {
                             }
                             await updateInvoiceStatus(invoice.hash, updatePayload);
                         }
-
-                        // Show "Syncing Receipt..." for 1 second, then direct user to Profile page
                         if (programId && invoice?.hash) {
                             setStatus('Syncing Receipt Record...');
                             await new Promise(r => setTimeout(r, 1000));
@@ -316,8 +310,6 @@ export const usePayment = () => {
             const amountMicro = BigInt(Math.round(invoice.amount * 1_000_000));
             let recordsAny = records as any[];
             let payRecord = null;
-
-            // Search Initial
             for (const r of recordsAny) {
                 if (r.spent) continue;
                 const val = await processUSDCxRecord(r);
@@ -332,8 +324,6 @@ export const usePayment = () => {
                 records = await requestRecords(usdcxProgramId, false);
                 console.log("USDCx Records (Retry):", records);
                 recordsAny = records as any[];
-
-                // Calculate total while searching
                 let totalAvailable = BigInt(0);
 
                 for (const r of recordsAny) {

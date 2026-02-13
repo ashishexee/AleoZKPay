@@ -82,6 +82,8 @@ const Profile: React.FC = () => {
     const [verifiedRecord, setVerifiedRecord] = useState<any>(null);
     const [verifyingInvoice, setVerifyingInvoice] = useState<any>(null);
     const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[] | null>(null);
+    const [selectedReceiptHashes, setSelectedReceiptHashes] = useState<string[] | null>(null);
+    const [invoiceSearch, setInvoiceSearch] = useState('');
     const [activeTab, setActiveTab] = useState<'created' | 'paid'>('created');
     const [merchantReceipts, setMerchantReceipts] = useState<MerchantReceipt[]>([]);
     const [createdInvoices, setCreatedInvoices] = useState<InvoiceRecord[]>([]);
@@ -216,7 +218,6 @@ const Profile: React.FC = () => {
     const combinedInvoices = useMemo(() => {
         const merged = new Map<string, any>();
 
-        // 1. Add all DB transactions first (Source of Truth for Pending/Metadata)
         transactions.forEach(tx => {
             if (!tx.invoice_hash) return;
             merged.set(tx.invoice_hash, {
@@ -226,7 +227,7 @@ const Profile: React.FC = () => {
                 status: tx.status,
                 invoiceType: tx.invoice_type || 0,
                 creationTx: tx.invoice_transaction_id,
-                paymentTx: tx.payment_tx_ids?.[0] || tx.payment_tx_id,
+                paymentTxIds: tx.payment_tx_ids || (tx.payment_tx_id ? [tx.payment_tx_id] : []),
                 isPending: tx.status === 'PENDING',
                 source: 'db',
                 owner: tx.merchant_address,
@@ -234,11 +235,9 @@ const Profile: React.FC = () => {
             });
         });
 
-        // 2. Merge On-Chain Records (Source of Truth for Confirmation)
         createdInvoices.forEach(record => {
             const existing = merged.get(record.invoiceHash);
             if (existing) {
-                // Update existing with on-chain confirmation
                 merged.set(record.invoiceHash, {
                     ...existing,
                     amount: record.amount / 1_000_000, // Convert Micro to Major
@@ -352,7 +351,12 @@ const Profile: React.FC = () => {
 
     const merchantStats = {
         balance: 'Loading...',
-        totalSales: merchantReceipts
+        creditsSales: merchantReceipts
+            .filter(r => r.tokenType !== 1)
+            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0)
+            .toFixed(2),
+        usdcxSales: merchantReceipts
+            .filter(r => r.tokenType === 1)
             .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0)
             .toFixed(2),
         invoices: combinedInvoices.length,
@@ -570,6 +574,40 @@ const Profile: React.FC = () => {
                 )}
             </AnimatePresence>
 
+            {/* RECEIPT HASHES MODAL */}
+            <AnimatePresence>
+                {selectedReceiptHashes && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                        onClick={() => setSelectedReceiptHashes(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-zinc-900 border border-white/10 rounded-xl p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold text-white">Receipt Hashes</h3>
+                                <button onClick={() => setSelectedReceiptHashes(null)} className="text-gray-400 hover:text-white">✕</button>
+                            </div>
+                            <div className="space-y-3">
+                                {selectedReceiptHashes.map((hash, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/5 hover:border-white/10">
+                                        <span className="font-mono text-sm text-gray-300">{hash.slice(0, 10)}...{hash.slice(-8)}</span>
+                                        <CopyButton text={hash} title="Copy Receipt Hash" className="flex items-center gap-1.5 text-xs bg-neon-accent/10 hover:bg-neon-accent/20 text-neon-accent px-3 py-1.5 rounded border border-neon-accent/30 transition-all" />
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <motion.div
                 initial="hidden"
                 animate="visible"
@@ -595,7 +633,16 @@ const Profile: React.FC = () => {
                         {loadingReceipts ? (
                             <Shimmer className="h-10 w-32 bg-white/5 rounded-md" />
                         ) : (
-                            <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.totalSales} <span className="text-sm font-normal text-gray-500">Credits</span></h2>
+                            <div className="space-y-1">
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-bold text-white tracking-tighter">{merchantStats.creditsSales}</span>
+                                    <span className="text-xs font-normal text-gray-500 uppercase">Credits</span>
+                                </div>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-bold text-white tracking-tighter">{merchantStats.usdcxSales}</span>
+                                    <span className="text-xs font-normal text-purple-400 uppercase">USDCx</span>
+                                </div>
+                            </div>
                         )}
                     </GlassCard>
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
@@ -640,6 +687,30 @@ const Profile: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* SEARCH */}
+                    <div className="px-6 pb-4">
+                        <div className="relative max-w-md mx-auto">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input
+                                type="text"
+                                placeholder="Search by invoice hash..."
+                                value={invoiceSearch}
+                                onChange={(e) => setInvoiceSearch(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-10 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-primary/50 focus:ring-1 focus:ring-neon-primary/30 transition-colors"
+                            />
+                            {invoiceSearch && (
+                                <button
+                                    onClick={() => setInvoiceSearch('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
                     <div className="overflow-x-auto min-h-[300px]">
                         {/* CREATED TAB */}
                         <div style={{ display: activeTab === 'created' ? 'block' : 'none' }}>
@@ -657,10 +728,10 @@ const Profile: React.FC = () => {
                                 <tbody className="divide-y divide-white/5">
                                     {((loadingCreated || loadingTransactions) && combinedInvoices.length === 0) ? (
                                         <tr><td colSpan={6} className="text-center py-12"><div className="inline-block w-8 h-8 border-2 border-neon-primary border-t-transparent rounded-full animate-spin"></div></td></tr>
-                                    ) : combinedInvoices.length === 0 ? (
-                                        <tr><td colSpan={6} className="text-center py-12 text-gray-500 italic">No created invoices found.</td></tr>
+                                    ) : combinedInvoices.filter(inv => !invoiceSearch || inv.invoiceHash?.toLowerCase().includes(invoiceSearch.toLowerCase())).length === 0 ? (
+                                        <tr><td colSpan={6} className="text-center py-12 text-gray-500 italic">{invoiceSearch ? 'No invoices match your search.' : 'No created invoices found.'}</td></tr>
                                     ) : (
-                                        combinedInvoices.map((inv, i) => {
+                                        combinedInvoices.filter(inv => !invoiceSearch || inv.invoiceHash?.toLowerCase().includes(invoiceSearch.toLowerCase())).map((inv, i) => {
                                             const params = new URLSearchParams({
                                                 merchant: inv.owner || '',
                                                 amount: inv.amount.toString(),
@@ -694,8 +765,8 @@ const Profile: React.FC = () => {
                                                     </td>
                                                     <td className="py-4 px-6 text-center">
                                                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${inv.invoiceType === 1
-                                                                ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-                                                                : 'bg-white/5 text-gray-400 border-white/10'
+                                                            ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                                                            : 'bg-white/5 text-gray-400 border-white/10'
                                                             }`}>
                                                             {inv.invoiceType === 1 ? 'Multi Pay' : 'Standard'}
                                                         </span>
@@ -713,13 +784,22 @@ const Profile: React.FC = () => {
                                                                     Creation Tx
                                                                 </button>
                                                             )}
-                                                            {inv.paymentTx && (
-                                                                <button
-                                                                    onClick={() => openExplorer(inv.paymentTx)}
-                                                                    className="text-[10px] bg-neon-primary/10 hover:bg-neon-primary/20 px-2 py-0.5 rounded text-neon-primary border border-neon-primary/20 transition-colors"
-                                                                >
-                                                                    Payment Tx
-                                                                </button>
+                                                            {inv.paymentTxIds && inv.paymentTxIds.length > 0 && (
+                                                                inv.paymentTxIds.length === 1 ? (
+                                                                    <button
+                                                                        onClick={() => openExplorer(inv.paymentTxIds[0])}
+                                                                        className="text-[10px] bg-neon-primary/10 hover:bg-neon-primary/20 px-2 py-0.5 rounded text-neon-primary border border-neon-primary/20 transition-colors"
+                                                                    >
+                                                                        Payment Tx
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => setSelectedPaymentIds(inv.paymentTxIds)}
+                                                                        className="text-[10px] bg-purple-500/10 hover:bg-purple-500/20 px-2 py-0.5 rounded text-purple-400 border border-purple-500/20 transition-colors"
+                                                                    >
+                                                                        Payment Txns ({inv.paymentTxIds.length})
+                                                                    </button>
+                                                                )
                                                             )}
                                                         </div>
                                                     </td>
@@ -769,31 +849,72 @@ const Profile: React.FC = () => {
                                                 <td className="py-5 px-6 text-right"><Shimmer className="h-6 w-48 bg-white/5 rounded ml-auto" /></td>
                                             </tr>
                                         ))
-                                    ) : payerReceipts.length === 0 ? (
-                                        <tr><td colSpan={3} className="text-center py-12 text-gray-500 italic">No paid invoices found.</td></tr>
-                                    ) : (
-                                        payerReceipts.map((receipt, i) => (
-                                            <tr key={i} className="hover:bg-white/5 transition-colors group">
-                                                <td className="py-5 px-6 font-mono text-white text-sm">
-                                                    <div className="flex items-center gap-3 group/ih pb-1">
-                                                        <span className="text-gray-300 group-hover:text-neon-primary transition-colors">{receipt.invoiceHash.slice(0, 8)}...{receipt.invoiceHash.slice(-6)}</span>
-                                                        <CopyButton text={receipt.invoiceHash} title="Copy Invoice Hash" className="text-gray-600 hover:text-white opacity-0 group-hover/ih:opacity-100 p-1.5 rounded-md hover:bg-white/10" />
-                                                    </div>
-                                                </td>
-                                                <td className="py-5 px-6 text-center">
-                                                    <span className="font-bold text-white text-lg">
-                                                        {receipt.amount / 1_000_000} <span className="text-xs text-gray-400 font-normal uppercase">{receipt.tokenType === 1 ? 'USDCx' : 'Credits'}</span>
-                                                    </span>
-                                                </td>
-                                                <td className="py-5 px-6 text-right font-mono text-neon-accent text-sm">
-                                                    <div className="flex justify-end items-center gap-3 group/rh">
-                                                        <span className="text-gray-400 group-hover:text-white transition-colors">{receipt.receiptHash.slice(0, 8)}...{receipt.receiptHash.slice(-6)}</span>
-                                                        <CopyButton text={receipt.receiptHash} title="Copy Receipt Hash" className="flex items-center gap-1.5 text-xs bg-neon-accent/10 hover:bg-neon-accent/20 text-neon-accent px-3 py-1.5 rounded border border-neon-accent/30 transition-all hover:shadow-[0_0_10px_rgba(34,197,94,0.2)]" />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
+                                    ) : (() => {
+                                        // Deduplicate by receiptHash, then group by invoiceHash
+                                        const seenReceipts = new Set<string>();
+                                        const deduped = payerReceipts.filter(r => {
+                                            if (seenReceipts.has(r.receiptHash)) return false;
+                                            seenReceipts.add(r.receiptHash);
+                                            return true;
+                                        });
+
+                                        const grouped = new Map<string, typeof deduped>();
+                                        deduped.forEach(r => {
+                                            const key = r.invoiceHash;
+                                            if (!grouped.has(key)) grouped.set(key, []);
+                                            grouped.get(key)!.push(r);
+                                        });
+
+                                        const entries = Array.from(grouped.entries())
+                                            .filter(([hash]) => !invoiceSearch || hash.toLowerCase().includes(invoiceSearch.toLowerCase()));
+
+                                        if (entries.length === 0) {
+                                            return (
+                                                <tr><td colSpan={3} className="text-center py-12 text-gray-500 italic">{invoiceSearch ? 'No invoices match your search.' : 'No paid invoices found.'}</td></tr>
+                                            );
+                                        }
+
+                                        return entries.map(([invoiceHash, receipts], i) => {
+                                            const totalAmount = receipts.reduce((sum, r) => sum + r.amount, 0);
+                                            const tokenType = receipts[0].tokenType;
+
+                                            return (
+                                                <tr key={i} className="hover:bg-white/5 transition-colors group">
+                                                    <td className="py-5 px-6 font-mono text-white text-sm">
+                                                        <div className="flex items-center gap-3 group/ih pb-1">
+                                                            <span className="text-gray-300 group-hover:text-neon-primary transition-colors">{invoiceHash.slice(0, 8)}...{invoiceHash.slice(-6)}</span>
+                                                            <CopyButton text={invoiceHash} title="Copy Invoice Hash" className="text-gray-600 hover:text-white opacity-0 group-hover/ih:opacity-100 p-1.5 rounded-md hover:bg-white/10" />
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-5 px-6 text-center">
+                                                        <span className="font-bold text-white text-lg">
+                                                            {totalAmount / 1_000_000} <span className="text-xs text-gray-400 font-normal uppercase">{tokenType === 1 ? 'USDCx' : 'Credits'}</span>
+                                                        </span>
+                                                        {receipts.length > 1 && (
+                                                            <span className="block text-[10px] text-gray-500 mt-0.5">{receipts.length} payments</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-5 px-6 text-right font-mono text-neon-accent text-sm">
+                                                        {receipts.length === 1 ? (
+                                                            <div className="flex justify-end items-center gap-3 group/rh">
+                                                                <span className="text-gray-400 group-hover:text-white transition-colors">{receipts[0].receiptHash.slice(0, 8)}...{receipts[0].receiptHash.slice(-6)}</span>
+                                                                <CopyButton text={receipts[0].receiptHash} title="Copy Receipt Hash" className="flex items-center gap-1.5 text-xs bg-neon-accent/10 hover:bg-neon-accent/20 text-neon-accent px-3 py-1.5 rounded border border-neon-accent/30 transition-all hover:shadow-[0_0_10px_rgba(34,197,94,0.2)]" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex justify-end">
+                                                                <button
+                                                                    onClick={() => setSelectedReceiptHashes(receipts.map(r => r.receiptHash))}
+                                                                    className="text-xs bg-purple-500/10 hover:bg-purple-500/20 px-3 py-1.5 rounded text-purple-400 border border-purple-500/20 transition-colors font-bold"
+                                                                >
+                                                                    Receipts ({receipts.length})
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        });
+                                    })()}
                                 </tbody>
                             </table>
                         </div>
