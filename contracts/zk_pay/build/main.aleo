@@ -252,4 +252,4 @@ finalize get_invoice_status:
     get invoices[r0] into r1;
 
 constructor:
-    assert.eq edition 0u16;
+    assert.eq program_owner aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0;

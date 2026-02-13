@@ -10,12 +10,13 @@ export interface Invoice {
     block_height?: number;
     block_settled?: number;
     invoice_transaction_id?: string;
-    payment_tx_ids?: string[]; // Array of payment IDs
-    payment_tx_id?: string; // Legacy / Write-only for appending
+    payment_tx_ids?: string[];
+    payment_tx_id?: string;
     created_at?: string;
     updated_at?: string;
     salt?: string;
-    invoice_type?: number; // 0 = Standard, 1 = Multi Pay
+    invoice_type?: number;
+    token_type?: number;
 }
 
 export const fetchInvoices = async (status?: string): Promise<Invoice[]> => {

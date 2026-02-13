@@ -212,7 +212,7 @@ const MobilePaymentPage = () => {
                         </div>
                         <div className="flex justify-between items-center pt-4 border-t border-white/5">
                             <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Amount</span>
-                            <span className="text-xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-xs text-gray-500 font-normal">Credits</span></span>
+                            <span className="text-xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-xs text-gray-500 font-normal">{invoice?.tokenType === 1 ? 'USDCx' : 'Credits'}</span></span>
                         </div>
                         {invoice?.memo && (
                             <div className="flex justify-between items-center pt-4 border-t border-white/5">
@@ -308,7 +308,7 @@ const MobilePaymentPage = () => {
                                 ) : step === 'CONVERT' ? (
                                     'Convert Public to Private'
                                 ) : (
-                                    `Pay ${invoice?.amount} Credits`
+                                    `Pay ${invoice?.amount} ${invoice?.tokenType === 1 ? 'USDCx' : 'Credits'}`
                                 )}
                             </Button>
                         )}

@@ -2,8 +2,8 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 
 program zk_pay_proofs_privacy_v9.aleo {
-
-    @noupgrade
+    
+    @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     async constructor() {
         // The Leo compiler automatically generates the constructor logic.
     }
@@ -35,8 +35,6 @@ program zk_pay_proofs_privacy_v9.aleo {
 
     mapping invoices: field => InvoiceData;
     mapping salt_to_invoice: field => field;
-    mapping receipt_map: field => field;
-
 
     async transition create_invoice(
         private merchant: address,
@@ -142,7 +140,7 @@ program zk_pay_proofs_privacy_v9.aleo {
         };
 
         // Pass 0u8 as expected_token_type for Credits
-        let f0: Future = finalize_pay_invoice(invoice_hash, salt, amount as u128, 0u8, payment_secret, receipt_hash);
+        let f0: Future = finalize_pay_invoice(invoice_hash, salt, amount as u128, 0u8);
         return (r1, r2, payer_receipt, merchant_receipt, f0);
     }
 
@@ -170,21 +168,13 @@ program zk_pay_proofs_privacy_v9.aleo {
         
         let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
         let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
-
-        // Note: USDCx amount is u128, but our receipt uses u64 based on standard. 
-        // We will cast to u64 for receipt if it fits, or we should update receipt to u128.
-        // Given USDCx is 6 decimals, u64 fits vast amounts. 
-        // Actually, updating Record to u128 used in implementation plan? No, plan said u64. 
-        // Wait, USDCx is u128. I better use u128 in the record to be safe and consistent.
-        // Re-reading plan... "amount: u64". 
-        // I will change it to u128 to match USDCx scaling properly.
         
         let payer_receipt: PayerReceipt = PayerReceipt {
             owner: self.caller,
             merchant: merchant,
             receipt_hash: receipt_hash,
             invoice_hash: invoice_hash,
-            amount: amount as u64, // Casting to u64 as per plan. If > u64::MAX, this is an issue. But 18 quintillion microUSDC is huge.
+            amount: amount as u64,
             token_type: 1u8,
             timestamp: 0u64
         };
@@ -198,24 +188,22 @@ program zk_pay_proofs_privacy_v9.aleo {
         };
 
         // Pass 1u8 as expected_token_type for USDCx
-        let f0: Future = finalize_pay_invoice_usdcx(invoice_hash, salt, amount, 1u8, transfer_future, payment_secret, receipt_hash);
+        let f0: Future = finalize_pay_invoice_usdcx(invoice_hash, salt, amount, 1u8, transfer_future);
         
         return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
     }
 
-    async function finalize_pay_invoice(
-        computed_hash: field, 
-        salt: field,
-    async function finalize_pay_invoice(
-        computed_hash: field, 
+
+    async function finalize_pay_invoice_usdcx(
+        invoice_hash: field,
         salt: field,
         amount: u128,
         expected_token_type: u8,
-        payment_secret: field,
-        receipt_hash: field
+        f0: Future
     ) {
+        f0.await();
         let stored_hash: field = salt_to_invoice.get(salt);
-        assert_eq(computed_hash, stored_hash);
+        assert_eq(invoice_hash, stored_hash);
 
         let invoice_data: InvoiceData = invoices.get(stored_hash);
         assert_eq(invoice_data.token_type, expected_token_type);
@@ -236,23 +224,17 @@ program zk_pay_proofs_privacy_v9.aleo {
             invoices.set(stored_hash, updated_data);
         }
     }
-    
-    async function finalize_pay_invoice_usdcx(
-        computed_hash: field, 
-        salt: field,
-    async function finalize_pay_invoice_usdcx(
-        computed_hash: field, 
+
+    async function finalize_pay_invoice(
+        invoice_hash: field,
         salt: field,
         amount: u128,
-        expected_token_type: u8,
-        f: Future,
-        payment_secret: field,
-        receipt_hash: field
+        expected_token_type: u8
     ) {
-        f.await(); // Critical: Ensure USDCx transfer succeeds
+
         
         let stored_hash: field = salt_to_invoice.get(salt);
-        assert_eq(computed_hash, stored_hash);
+        assert_eq(invoice_hash, stored_hash);
 
         let invoice_data: InvoiceData = invoices.get(stored_hash);
         assert_eq(invoice_data.token_type, expected_token_type);
