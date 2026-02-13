@@ -1,5 +1,5 @@
 import { AleoNetworkClient } from '@provablehq/sdk';
-export const PROGRAM_ID = "zk_pay_proofs_privacy_v9.aleo";
+export const PROGRAM_ID = "zk_pay_proofs_privacy_v10.aleo";
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
 
 export const generateSalt = (): string => {
@@ -148,7 +148,6 @@ export const generateFreezeListProof = async (targetIndex: number = 1, occupiedL
             currentEmpty = nextHashField.toString();
         }
 
-        // 2. Build the Proof Path
         let currentHash = '0field';
         let currentIndex = targetIndex;
         const proofSiblings: string[] = [];
@@ -157,9 +156,7 @@ export const generateFreezeListProof = async (targetIndex: number = 1, occupiedL
             const isLeft = currentIndex % 2 === 0;
             const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
 
-            let siblingHash = emptyHashes[i]; // Default to empty
-
-            // Special Case: Level 0, Sibling Index 0
+            let siblingHash = emptyHashes[i]
             if (i === 0 && siblingIndex === 0 && occupiedLeafValue) {
                 siblingHash = occupiedLeafValue;
             }
@@ -186,7 +183,53 @@ export const generateFreezeListProof = async (targetIndex: number = 1, occupiedL
     }
 };
 
-// --- PayerReceipt Helper ---
+export interface InvoiceRecord {
+    owner: string;
+    invoiceHash: string;
+    amount: number;
+    tokenType: number;
+    invoiceType: number;
+    salt: string;
+}
+
+export const parseInvoice = (record: any): InvoiceRecord | null => {
+    try {
+        const data = record.plaintext || '';
+        const getVal = (key: string) => {
+            const regex = new RegExp(`${key}:\\s*([\\w\\d\\.]+)`);
+            const match = data.match(regex);
+            if (match && match[1]) {
+                return match[1].replace('.private', '').replace('.public', '');
+            }
+            return null;
+        };
+
+        const invoiceHash = getVal('invoice_hash');
+        const owner = getVal('owner');
+        const salt = getVal('salt');
+
+        if (invoiceHash && owner) {
+            const amountVal = getVal('amount');
+            const amount = amountVal ? parseInt(amountVal.replace('u64', '')) : 0;
+
+            const tokenTypeVal = getVal('token_type');
+            const tokenType = tokenTypeVal ? parseInt(tokenTypeVal.replace('u8', '')) : 0;
+
+            const invoiceTypeVal = getVal('invoice_type');
+            const invoiceType = invoiceTypeVal ? parseInt(invoiceTypeVal.replace('u8', '')) : 0;
+
+            return {
+                owner: owner,
+                invoiceHash: invoiceHash,
+                amount: amount,
+                tokenType: tokenType,
+                invoiceType: invoiceType,
+                salt: salt || ''
+            };
+        }
+    } catch (e) { console.error("Error parsing Invoice record:", e); }
+    return null;
+};
 
 export interface PayerReceipt {
     owner: string;
@@ -201,7 +244,6 @@ export interface PayerReceipt {
 export const parsePayerReceipt = (record: any): PayerReceipt | null => {
     try {
         const data = record.plaintext || '';
-        console.log("Parsing Record Plaintext:", data);
 
         const getVal = (key: string) => {
             const regex = new RegExp(`${key}:\\s*([\\w\\d\\.]+)`);
@@ -229,5 +271,47 @@ export const parsePayerReceipt = (record: any): PayerReceipt | null => {
             };
         }
     } catch (e) { console.error("Error parsing PayerReceipt:", e); }
+    return null;
+};
+
+export interface MerchantReceipt {
+    owner: string;
+    receiptHash: string;
+    invoiceHash: string;
+    amount: number;
+    tokenType: number;
+}
+
+export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
+    try {
+        const data = record.plaintext || '';
+        const getVal = (key: string) => {
+            const regex = new RegExp(`${key}:\\s*([\\w\\d\\.]+)`);
+            const match = data.match(regex);
+            if (match && match[1]) {
+                return match[1].replace('.private', '').replace('.public', '');
+            }
+            return null;
+        };
+
+        const invoiceHash = getVal('invoice_hash');
+        const receiptHash = getVal('receipt_hash');
+        const owner = getVal('owner');
+
+        if (invoiceHash && receiptHash && owner) {
+            const amountVal = getVal('amount');
+            const amount = amountVal ? parseInt(amountVal.replace('u64', '')) : 0;
+            const tokenTypeVal = getVal('token_type');
+            const tokenType = tokenTypeVal ? parseInt(tokenTypeVal.replace('u8', '')) : 0;
+
+            return {
+                owner: owner,
+                receiptHash: receiptHash,
+                invoiceHash: invoiceHash,
+                amount: amount,
+                tokenType: tokenType
+            };
+        }
+    } catch (e) { console.error("Error parsing MerchantReceipt record:", e); }
     return null;
 };

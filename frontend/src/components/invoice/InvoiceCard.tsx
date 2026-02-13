@@ -17,6 +17,8 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
 }) => {
 
     const [copied, setCopied] = React.useState(false);
+    const [copiedHash, setCopiedHash] = React.useState(false);
+    const [copiedSalt, setCopiedSalt] = React.useState(false);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(invoiceData.link);
@@ -59,28 +61,44 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
 
             <div className="grid grid-cols-2 gap-4 mb-4 text-left">
                 <div
-                    onClick={() => { navigator.clipboard.writeText(invoiceData.hash); }}
+                    onClick={() => {
+                        navigator.clipboard.writeText(invoiceData.hash);
+                        setCopiedHash(true);
+                        setTimeout(() => setCopiedHash(false), 2000);
+                    }}
                     className="p-4 rounded-xl border border-white/5 bg-black/30 hover:border-neon-primary/30 transition-colors group cursor-pointer active:scale-95"
                 >
                     <div className="flex justify-between items-center mb-1">
                         <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">Hash</span>
-                        <svg className="w-3 h-3 text-gray-600 group-hover:text-neon-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
+                        {copiedHash ? (
+                            <span className="text-[10px] text-neon-primary font-bold">Copied!</span>
+                        ) : (
+                            <svg className="w-3 h-3 text-gray-600 group-hover:text-neon-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        )}
                     </div>
                     <span className="font-mono text-neon-accent truncate block text-xs group-hover:text-neon-primary transition-colors" title={invoiceData.hash}>
                         {invoiceData.hash.slice(0, 8)}...{invoiceData.hash.slice(-8)}
                     </span>
                 </div>
                 <div
-                    onClick={() => { navigator.clipboard.writeText(invoiceData.salt); }}
+                    onClick={() => {
+                        navigator.clipboard.writeText(invoiceData.salt);
+                        setCopiedSalt(true);
+                        setTimeout(() => setCopiedSalt(false), 2000);
+                    }}
                     className="p-4 rounded-xl border border-white/5 bg-black/30 hover:border-purple-500/30 transition-colors group cursor-pointer active:scale-95"
                 >
                     <div className="flex justify-between items-center mb-1">
                         <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest">Salt</span>
-                        <svg className="w-3 h-3 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
+                        {copiedSalt ? (
+                            <span className="text-[10px] text-purple-400 font-bold">Copied!</span>
+                        ) : (
+                            <svg className="w-3 h-3 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        )}
                     </div>
                     <span className="font-mono text-purple-400 truncate block text-xs group-hover:text-purple-300 transition-colors" title={invoiceData.salt}>
                         {invoiceData.salt.slice(0, 8)}...{invoiceData.salt.slice(-4)}

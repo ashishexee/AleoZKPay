@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { pageVariants } from '../../utils/animations';
 import { usePayment, PaymentStep } from '../../hooks/usePayment';
@@ -25,6 +26,7 @@ const PaymentPage = () => {
         receiptHash
     } = usePayment();
 
+    const [copiedHash, setCopiedHash] = useState(false); // Added copiedHash state
     const { address } = useWallet();
     const isProcess = loading;
 
@@ -74,7 +76,7 @@ const PaymentPage = () => {
                 {/* STATUS HEADER */}
                 <div className="text-center mb-8">
                     <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter text-white">
-                        {step === 'SUCCESS' ? 'Null-Payment' : step === 'ALREADY_PAID' ? 'Null-Invoice' : 'Make'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Null-Payment'}</span>
+                        {step === 'SUCCESS' ? 'Null Payment' : step === 'ALREADY_PAID' ? 'Null Invoice' : 'Make'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Null Payment'}</span>
                     </h1>
 
                     {invoice && !error && (
@@ -199,9 +201,17 @@ const PaymentPage = () => {
                                 {isMultiPay && (
                                     <div className="bg-black/40 border border-neon-primary/30 p-4 rounded-xl text-left space-y-3">
                                         <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Hash</p>
-                                        <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-neon-primary/20 transition-colors" onClick={() => receiptHash && navigator.clipboard.writeText(receiptHash)}>
+                                        <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-neon-primary/20 transition-colors" onClick={() => {
+                                            if (receiptHash) {
+                                                navigator.clipboard.writeText(receiptHash);
+                                                setCopiedHash(true);
+                                                setTimeout(() => setCopiedHash(false), 2000);
+                                            }
+                                        }}>
                                             {receiptHash || 'Generating Proof...'}
-                                            <div className="absolute top-1 right-2 text-[10px] opacity-70">COPY</div>
+                                            <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-neon-primary' : 'opacity-70 text-gray-400'}`}>
+                                                {copiedHash ? 'COPIED!' : 'COPY'}
+                                            </div>
                                         </div>
                                         <p className="text-[10px] text-gray-500 mt-1">Provide this Hash to the merchant for verification.</p>
 

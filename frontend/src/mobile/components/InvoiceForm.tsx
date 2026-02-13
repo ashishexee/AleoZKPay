@@ -95,10 +95,10 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
                             {loading ? (
                                 <span className="flex items-center gap-2">
                                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Creating {invoiceType === 'standard' ? 'Null-Invoice' : 'Multi Pay'}...
+                                    Creating {invoiceType === 'standard' ? 'Null Invoice' : 'Multi Pay'}...
                                 </span>
                             ) : (
-                                invoiceType === 'standard' ? 'Generate Null-Invoice Link' : 'Create Null-Payment Link'
+                                invoiceType === 'standard' ? 'Generate Null Invoice Link' : 'Create Null Payment Link'
                             )}
                         </Button>
                     )}

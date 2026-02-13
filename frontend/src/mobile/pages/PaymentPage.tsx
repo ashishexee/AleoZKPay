@@ -10,12 +10,14 @@ import { Input } from '../../components/ui/Input';
 import { PROGRAM_ID } from '../../utils/aleo-utils';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+
+
 const MobilePaymentPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const hasParams = searchParams.get('merchant') && searchParams.get('amount') && searchParams.get('salt');
     const [manualLink, setManualLink] = useState('');
-
+    const [copiedSecret, setCopiedSecret] = useState(false);
     const {
         step,
         status,
@@ -95,7 +97,7 @@ const MobilePaymentPage = () => {
                 >
                     <div className="text-center mb-6">
                         <h1 className="text-3xl font-bold mb-2 tracking-tighter text-white">
-                            Scan <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Null-Invoice</span>
+                            Scan <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Null Invoice</span>
                         </h1>
                         <p className="text-sm text-gray-400">Point your camera at a NullPay QR Code</p>
                     </div>
@@ -160,7 +162,7 @@ const MobilePaymentPage = () => {
                 {/* STATUS HEADER */}
                 <div className="text-center mb-6">
                     <h1 className="text-3xl font-bold mb-4 tracking-tighter text-white">
-                        {step === 'SUCCESS' ? 'Null-Payment' : step === 'ALREADY_PAID' ? 'Null-Invoice' : 'Make'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Null-Payment'}</span>
+                        {step === 'SUCCESS' ? 'Null Payment' : step === 'ALREADY_PAID' ? 'Null Invoice' : 'Make'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Null Payment'}</span>
                     </h1>
 
                     {invoice && !error && (
@@ -226,9 +228,17 @@ const MobilePaymentPage = () => {
                             <div className="pt-4 border-t border-white/5 space-y-4">
                                 <div>
                                     <span className="text-xs font-bold text-neon-primary uppercase tracking-widest block mb-1">Your Payment Secret</span>
-                                    <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded-lg break-all font-mono text-xs text-neon-primary relative hover:bg-neon-primary/20 transition-colors cursor-copy" onClick={() => paymentSecret && navigator.clipboard.writeText(paymentSecret)}>
+                                    <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded-lg break-all font-mono text-xs text-neon-primary relative hover:bg-neon-primary/20 transition-colors cursor-copy" onClick={() => {
+                                        if (paymentSecret) {
+                                            navigator.clipboard.writeText(paymentSecret);
+                                            setCopiedSecret(true);
+                                            setTimeout(() => setCopiedSecret(false), 2000);
+                                        }
+                                    }}>
                                         {paymentSecret || 'Generating...'}
-                                        <div className="absolute top-1 right-2 text-[10px] opacity-70">COPY</div>
+                                        <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedSecret ? 'text-neon-primary' : 'opacity-70 text-gray-400'}`}>
+                                            {copiedSecret ? 'COPIED!' : 'COPY'}
+                                        </div>
                                     </div>
                                     <p className="text-[10px] text-gray-400 mt-1">
                                         Save this secret! You'll need it to prove payment to the merchant.
@@ -262,8 +272,16 @@ const MobilePaymentPage = () => {
                                         : 'The transaction has been settled on-chain.'}
                                 </p>
                                 {isMultiPay && paymentSecret && (
-                                    <div className="bg-black/40 border border-neon-primary/30 p-4 rounded-xl text-left">
-                                        <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Secret</p>
+                                    <div
+                                        onClick={() => {
+                                            if (paymentSecret) {
+                                                navigator.clipboard.writeText(paymentSecret);
+                                                setCopiedSecret(true);
+                                                setTimeout(() => setCopiedSecret(false), 2000);
+                                            }
+                                        }}
+                                        className="bg-black/40 border border-white/10 rounded-lg p-3 font-mono text-xs break-all text-neon-primary relative cursor-pointer hover:bg-white/5 transition-colors active:scale-[0.98]"
+                                    >    <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Secret</p>
                                         <p className="font-mono text-white text-xs break-all">{paymentSecret}</p>
                                         <p className="text-[10px] text-gray-500 mt-1">Share with merchant to verify contribution.</p>
                                     </div>

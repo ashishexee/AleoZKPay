@@ -26,7 +26,7 @@ const MobileCreateInvoice: React.FC = () => {
                     className="flex flex-col items-center justify-center text-center mb-8"
                 >
                     <h1 className="text-3xl font-bold mb-4 tracking-tighter leading-none text-white">
-                        Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Null-Invoice</span>
+                        Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Null Invoice</span>
                     </h1>
                     <p className="text-gray-400 text-sm leading-relaxed max-w-xs mb-2">
                         Generate a privacy-preserving invoice link.

@@ -1,20 +1,44 @@
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import StatusBadge from '../components/StatusBadge';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { Shimmer } from '../components/ui/Shimmer';
 import { useTransactions } from '../hooks/useTransactions';
-import { TransactionOptions } from '@provablehq/aleo-types';
-import { PROGRAM_ID, parsePayerReceipt, PayerReceipt } from '../utils/aleo-utils';
+import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt } from '../utils/aleo-utils';
 
-const Profile = () => {
-    const { address, executeTransaction, requestRecords, decrypt } = useWallet();
+const CopyButton = ({ text, title, className = "" }: { text: string, title?: string, className?: string }) => {
+    const [copied, setCopied] = React.useState(false);
+
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <button
+            onClick={handleCopy}
+            className={`transition-colors p-1 ${className}`}
+            title={title}
+        >
+            {copied ? (
+                <span className="text-[10px] text-neon-primary font-bold">Copied!</span>
+            ) : (
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 01-2-2v-8a2 2 0 01-2-2h-8a2 2 0 01-2 2v8a2 2 0 012 2z" />
+                </svg>
+            )}
+        </button>
+    );
+};
+
+const Profile: React.FC = () => {
+    const { address, requestRecords, decrypt } = useWallet();
     const publicKey = address;
-    const { transactions, loading, fetchTransactions } = useTransactions(publicKey || undefined);
-    const [settling, setSettling] = useState<string | null>(null);
-    const [copiedHash, setCopiedHash] = useState<string | null>(null);
+    const { transactions, loading: loadingTransactions, fetchTransactions } = useTransactions(publicKey || undefined);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [verifyInput, setVerifyInput] = useState('');
     const [verifyStatus, setVerifyStatus] = useState<'IDLE' | 'CHECKING' | 'FOUND' | 'NOT_FOUND' | 'ERROR' | 'MISMATCH'>('IDLE');
@@ -22,61 +46,85 @@ const Profile = () => {
     const [verifyingInvoice, setVerifyingInvoice] = useState<any>(null);
     const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[] | null>(null);
     const [activeTab, setActiveTab] = useState<'created' | 'paid'>('created');
-    const [paidInvoices, setPaidInvoices] = useState<PayerReceipt[]>([]);
-    const [loadingPaid, setLoadingPaid] = useState(false);
+    const [merchantReceipts, setMerchantReceipts] = useState<MerchantReceipt[]>([]);
+    const [createdInvoices, setCreatedInvoices] = useState<InvoiceRecord[]>([]);
+    const [loadingReceipts, setLoadingReceipts] = useState(false);
+    const [loadingCreated, setLoadingCreated] = useState(false);
 
     useEffect(() => {
         if (publicKey) {
             fetchTransactions();
-            fetchPaidInvoices();
+            fetchCreatedInvoices();
+            fetchMerchantReceipts();
         }
-    }, [publicKey, fetchTransactions]);
+    }, [publicKey]);
 
-    const fetchPaidInvoices = async () => {
+    const fetchCreatedInvoices = async () => {
         if (!requestRecords || !publicKey) return;
-        setLoadingPaid(true);
+        setLoadingCreated(true);
         try {
             const records = await requestRecords(PROGRAM_ID);
-            const validReceipts: PayerReceipt[] = [];
+            const validInvoices: InvoiceRecord[] = [];
+
+            if (records) {
+                console.log("Fetching created invoices from records...");
+                for (const r of (records as any[])) {
+                    let plaintext = r.plaintext;
+                    const cipher = r.recordCiphertext || r.ciphertext;
+                    if (!plaintext && cipher && decrypt) {
+                        try {
+                            plaintext = await decrypt(cipher);
+                        } catch (e) { console.warn("Decrypt error for created invoice:", e); }
+                    }
+
+                    const invoice = parseInvoice({ ...r, plaintext });
+                    if (invoice) {
+                        validInvoices.push(invoice);
+                    }
+                }
+            }
+            setCreatedInvoices(validInvoices.reverse());
+        } catch (e) {
+            console.error("Error fetching created invoices:", e);
+        } finally {
+            setLoadingCreated(false);
+        }
+    };
+
+    const fetchMerchantReceipts = async () => {
+        if (!requestRecords || !publicKey) return;
+        setLoadingReceipts(true);
+        try {
+            const records = await requestRecords(PROGRAM_ID);
+            const validReceipts: MerchantReceipt[] = [];
 
             if (records) {
                 for (const r of (records as any[])) {
-                    // Check if record is spent
-                    if (r.spent) {
-                        console.log("Skipping spent record");
-                        continue;
-                    }
+                    if (r.spent) continue;
 
                     let plaintext = r.plaintext;
-                    const cipher = r.recordCiphertext || r.ciphertext; // handle both keys if SDK varies
+                    const cipher = r.recordCiphertext || r.ciphertext;
                     if (!plaintext && cipher && decrypt) {
                         try {
-                            console.log("Attempting to decrypt record...");
                             plaintext = await decrypt(cipher);
-                            console.log("Decrypted plaintext:", plaintext);
-                        } catch (e) { console.warn("Decrypt error for paid invoice:", e); }
+                        } catch (e) { console.warn("Decrypt error for merchant receipt:", e); }
                     }
-                    const receipt = parsePayerReceipt({ ...r, plaintext });
+                    // Try parsing as MerchantReceipt
+                    const receipt = parseMerchantReceipt({ ...r, plaintext });
                     if (receipt) {
                         validReceipts.push(receipt);
                     }
                 }
             }
-            setPaidInvoices(validReceipts.reverse());
+            setMerchantReceipts(validReceipts.reverse());
         } catch (e) {
-            console.error("Error fetching paid invoices:", e);
+            console.error("Error fetching merchant receipts:", e);
         } finally {
-            setLoadingPaid(false);
+            setLoadingReceipts(false);
         }
     };
 
-    const openVerifyModal = (invoice: any) => {
-        setVerifyingInvoice(invoice);
-        setVerifyInput('');
-        setVerifyStatus('IDLE');
-        setVerifiedRecord(null);
-        setShowVerifyModal(true);
-    };
+
 
     const handleVerifyReceipt = async () => {
         if (!verifyInput || !requestRecords || !decrypt) return;
@@ -157,52 +205,15 @@ const Profile = () => {
         }
     };
 
-    const handleSettle = async (invoice: any) => {
-        if (!invoice.salt || !executeTransaction) return;
-        setSettling(invoice.invoice_hash);
 
-        try {
-            console.log(`Settling Invoice ${invoice.invoice_hash}...`);
-            const amountMicro = Math.round(Number(invoice.amount) * 1_000_000);
-
-            const inputs = [
-                invoice.salt,
-                `${amountMicro}u64`
-            ];
-
-            const tx: TransactionOptions = {
-                program: PROGRAM_ID,
-                function: 'settle_invoice',
-                inputs: inputs,
-                fee: 100_000,
-                privateFee: false
-            };
-
-            await executeTransaction(tx);
-            console.log('Executed on-chain settling');
-            try {
-                const { updateInvoiceStatus } = await import('../services/api');
-                await updateInvoiceStatus(invoice.invoice_hash, { status: 'SETTLED' });
-                await fetchTransactions();
-            } catch (dbErr) {
-                console.error("Failed to update status in DB", dbErr);
-            }
-
-        } catch (e) {
-            console.error("Settlement failed", e);
-        } finally {
-            setSettling(null);
-        }
-    };
 
     const merchantStats = {
         balance: 'Loading...',
-        totalSales: transactions
-            .filter(t => t.status === 'SETTLED')
-            .reduce((acc, curr) => acc + Number(curr.amount || 0), 0)
+        totalSales: merchantReceipts
+            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0)
             .toFixed(2),
-        invoices: transactions.length,
-        multiPayCampaigns: transactions.filter(t => t.invoice_type === 1).length
+        invoices: createdInvoices.length,
+        multiPayCampaigns: createdInvoices.filter(inv => inv.invoiceType === 1).length
     };
 
     const containerVariants = {
@@ -399,7 +410,7 @@ const Profile = () => {
                 <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Total Settled Volume</span>
-                        {loading ? (
+                        {loadingReceipts ? (
                             <Shimmer className="h-10 w-32 bg-white/5 rounded-md" />
                         ) : (
                             <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.totalSales} <span className="text-sm font-normal text-gray-500">Credits</span></h2>
@@ -407,7 +418,7 @@ const Profile = () => {
                     </GlassCard>
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Total Invoices</span>
-                        {loading ? (
+                        {loadingCreated ? (
                             <Shimmer className="h-10 w-16 bg-white/5 rounded-md" />
                         ) : (
                             <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.invoices}</h2>
@@ -415,7 +426,7 @@ const Profile = () => {
                     </GlassCard>
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Active Campaigns</span>
-                        {loading ? (
+                        {loadingCreated ? (
                             <Shimmer className="h-10 w-16 bg-white/5 rounded-md" />
                         ) : (
                             <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.multiPayCampaigns}</h2>
@@ -425,261 +436,207 @@ const Profile = () => {
 
                 {/* INVOICE HISTORY */}
                 <GlassCard variants={itemVariants} className="p-0 overflow-hidden">
-                    <div className="p-6 border-b border-white/5 flex flex-wrap gap-4 items-center justify-between">
-                        <div className="flex gap-4">
-                            <button
-                                onClick={() => setActiveTab('created')}
-                                className={`text-lg font-semibold transition-colors flex items-center gap-2 ${activeTab === 'created' ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}
-                            >
-                                {activeTab === 'created' && <span className="w-2 h-2 rounded-full bg-neon-primary animate-pulse"></span>}
-                                My Invoices
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('paid')}
-                                className={`text-lg font-semibold transition-colors flex items-center gap-2 ${activeTab === 'paid' ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}
-                            >
-                                {activeTab === 'paid' && <span className="w-2 h-2 rounded-full bg-neon-accent animate-pulse"></span>}
-                                Paid Invoices
-                            </button>
+                    <div className="p-6 border-b border-white/5 flex flex-col items-center justify-center gap-4">
+                        <div className="flex p-1 bg-black/40 backdrop-blur-xl rounded-full border border-white/10 relative">
+                            {['created', 'paid'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab as any)}
+                                    className={`relative z-10 px-6 py-2 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === tab ? 'text-black' : 'text-gray-400 hover:text-white'
+                                        }`}
+                                >
+                                    {activeTab === tab && (
+                                        <motion.div
+                                            layoutId="activeTab"
+                                            className="absolute inset-0 bg-white rounded-full -z-10"
+                                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                        />
+                                    )}
+                                    {tab === 'created' ? 'My Invoices' : 'Paid Invoices'}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
                     <div className="overflow-x-auto min-h-[300px]">
-                        {activeTab === 'created' ? (
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="bg-white/5 text-left">
-                                        <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Invoice Hash</th>
-                                        <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Amount</th>
-                                        <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Status</th>
-                                        <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {loading ? (
-                                        Array.from({ length: 5 }).map((_, i) => (
-                                            <tr key={i} className="animate-pulse">
-                                                <td className="py-4 px-6">
-                                                    <Shimmer className="h-5 w-32 bg-white/5 rounded" />
-                                                    <Shimmer className="h-3 w-20 bg-white/5 rounded mt-2" />
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <div className="flex justify-center">
-                                                        <Shimmer className="h-5 w-16 bg-white/5 rounded" />
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <div className="flex justify-center">
-                                                        <Shimmer className="h-6 w-20 bg-white/5 rounded-full" />
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Shimmer className="h-8 w-20 bg-white/5 rounded-md" />
-                                                        <Shimmer className="h-8 w-16 bg-white/5 rounded-md" />
-                                                    </div>
-                                                </td>
+                        <AnimatePresence mode="wait">
+                            {activeTab === 'created' ? (
+                                <motion.div
+                                    key="created"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="border-b border-white/10 text-left">
+                                                <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest w-1/4">Invoice Hash</th>
+                                                <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center w-1/6">Amount</th>
+                                                <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center w-1/6">Status</th>
+                                                <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center w-1/6">Tx IDs</th>
+                                                <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-right w-1/4">Actions</th>
                                             </tr>
-                                        ))
-                                    ) : transactions.length === 0 ? (
-                                        <tr><td colSpan={4} className="text-center py-8 text-gray-500">No invoices found. Create one!</td></tr>
-                                    ) : (
-                                        transactions.map((inv, i) => {
-                                            // Generate payment link with correct format matching create invoice hook
-                                            const params = new URLSearchParams({
-                                                merchant: inv.merchant_address,
-                                                amount: inv.amount.toString(),
-                                                salt: inv.salt || ''
-                                            });
-                                            if (inv.memo) params.append('memo', inv.memo);
-                                            if (inv.invoice_type === 1) params.append('type', 'multipay');
-                                            // Include token type in link if not credits
-                                            if (inv.token_type === 1) params.append('token', 'usdcx');
+                                        </thead>
+                                        <tbody className="divide-y divide-white/5">
+                                            {loadingCreated ? (
+                                                <tr><td colSpan={5} className="text-center py-12"><div className="inline-block w-8 h-8 border-2 border-neon-primary border-t-transparent rounded-full animate-spin"></div></td></tr>
+                                            ) : createdInvoices.length === 0 ? (
+                                                <tr><td colSpan={5} className="text-center py-12 text-gray-500 italic">No created invoices found.</td></tr>
+                                            ) : (
+                                                createdInvoices.map((inv, i) => {
+                                                    const params = new URLSearchParams({
+                                                        merchant: inv.owner || '',
+                                                        amount: inv.amount.toString(),
+                                                        salt: inv.salt || ''
+                                                    });
 
-                                            const paymentLink = `${window.location.origin}/pay?${params.toString()}`;
+                                                    if (inv.tokenType === 1) params.append('token', 'usdcx');
+                                                    if (inv.invoiceType === 1) params.append('type', 'multipay');
 
-                                            return (
-                                                <motion.tr
-                                                    key={i}
-                                                    variants={itemVariants}
-                                                    className="hover:bg-white/5 transition-colors group"
-                                                >
-                                                    {/* Invoice Hash with Copy Button */}
-                                                    <td className="py-4 px-6 font-mono text-neon-accent group-hover:text-neon-primary transition-colors text-sm">
-                                                        <div className="flex items-center gap-2 group/hash">
-                                                            <span>{inv.invoice_hash.slice(0, 8)}...{inv.invoice_hash.slice(-6)}</span>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    navigator.clipboard.writeText(inv.invoice_hash);
-                                                                }}
-                                                                className="text-gray-600 hover:text-white transition-colors opacity-0 group-hover/hash:opacity-100 p-1"
-                                                                title="Copy Full Hash"
-                                                            >
-                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                        {inv.memo && <div className="text-xs text-gray-500 mt-1">{inv.memo}</div>}
-                                                    </td>
+                                                    const paymentLink = `${window.location.origin}/pay?${params.toString()}`;
 
-                                                    {/* Amount - Centered */}
-                                                    <td className="py-4 px-6 text-center">
-                                                        <span className="font-bold text-white">
-                                                            {inv.amount} <span className="text-xs text-gray-400 font-normal">{inv.token_type === 1 ? 'USDCx' : 'Credits'}</span>
-                                                        </span>
-                                                    </td>
+                                                    // Find matching DB transaction for Status and Tx IDs
+                                                    const dbTx = transactions.find(t => t.invoice_hash === inv.invoiceHash);
 
-                                                    {/* Status - Centered */}
-                                                    <td className="py-4 px-6">
-                                                        <div className="flex justify-center items-center gap-2">
-                                                            <StatusBadge status={inv.status as any} />
-                                                            {inv.invoice_type === 1 && (
-                                                                <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded border border-purple-500/30 uppercase tracking-wider font-bold">Fund</span>
-                                                            )}
-                                                        </div>
-                                                    </td>
+                                                    return (
+                                                        <motion.tr
+                                                            key={i}
+                                                            variants={itemVariants}
+                                                            className="hover:bg-white/5 transition-colors group"
+                                                        >
+                                                            <td className="py-4 px-6 font-mono text-neon-accent group-hover:text-neon-primary transition-colors text-sm">
+                                                                <div className="flex items-center gap-2 group/hash">
+                                                                    <span>{inv.invoiceHash.slice(0, 8)}...{inv.invoiceHash.slice(-6)}</span>
+                                                                    <CopyButton
+                                                                        text={inv.invoiceHash}
+                                                                        title="Copy Full Hash"
+                                                                        className="text-gray-600 hover:text-white opacity-0 group-hover/hash:opacity-100"
+                                                                    />
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-4 px-6 text-center">
+                                                                <span className="font-bold text-white text-lg">
+                                                                    {Number(inv.amount) / 1_000_000} <span className="text-xs text-gray-400 font-normal uppercase">{inv.tokenType === 1 ? 'USDCx' : 'Credits'}</span>
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-4 px-6 text-center">
+                                                                <StatusBadge status={dbTx?.status as any || 'UNKNOWN'} />
+                                                            </td>
+                                                            <td className="py-4 px-6 text-center">
+                                                                <div className="flex flex-col gap-1 items-center">
+                                                                    {dbTx?.invoice_transaction_id && (
+                                                                        <button
+                                                                            onClick={() => openExplorer(dbTx.invoice_transaction_id)}
+                                                                            className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded text-gray-400 hover:text-white border border-white/5 transition-colors"
+                                                                        >
+                                                                            Creation Tx
+                                                                        </button>
+                                                                    )}
+                                                                    {/* Show Payment Tx if exists (single or list) */}
+                                                                    {(dbTx?.payment_tx_id || (dbTx?.payment_tx_ids && dbTx.payment_tx_ids.length > 0)) && (
+                                                                        <button
+                                                                            onClick={() => openExplorer(dbTx.payment_tx_ids?.[0] || dbTx.payment_tx_id)}
+                                                                            className="text-[10px] bg-neon-primary/10 hover:bg-neon-primary/20 px-2 py-0.5 rounded text-neon-primary border border-neon-primary/20 transition-colors"
+                                                                        >
+                                                                            Payment Tx
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-4 px-6 text-right">
+                                                                <div className="flex gap-2 justify-end w-full">
+                                                                    <button
+                                                                        onClick={() => navigator.clipboard.writeText(paymentLink)}
+                                                                        className="flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-md border border-white/10 transition-colors text-white font-medium group/btn"
+                                                                    >
+                                                                        <svg className="w-3.5 h-3.5 text-gray-400 group-hover/btn:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                                        </svg>
+                                                                        Link
+                                                                    </button>
 
-                                                    {/* Actions - Right Aligned */}
-                                                    <td className="py-4 px-6 text-right">
-                                                        <div className="flex gap-2 justify-end items-center">
-                                                            {/* Verify Button */}
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                onClick={() => openVerifyModal(inv)}
-                                                                className="text-xs bg-zinc-800 hover:bg-zinc-700 border-zinc-700 h-8"
-                                                            >
-                                                                Verify
-                                                            </Button>
-
-                                                            {/* Copy Link Button */}
-                                                            <button
-                                                                onClick={() => {
-                                                                    navigator.clipboard.writeText(paymentLink);
-                                                                    setCopiedHash(inv.invoice_hash);
-                                                                    setTimeout(() => setCopiedHash(null), 2000);
-                                                                }}
-                                                                className="text-xs bg-neon-primary/10 hover:bg-neon-primary/20 text-neon-primary px-3 py-1.5 rounded-md border border-neon-primary/30 font-medium transition-all shadow-[0_0_10px_rgba(0,243,255,0.1)] hover:shadow-[0_0_15px_rgba(0,243,255,0.2)]"
-                                                                title="Copy payment link"
-                                                            >
-                                                                {copiedHash === inv.invoice_hash ? 'Copied!' : 'Copy Link'}
-                                                            </button>
-
-                                                            {/* Settle Button for Multi Pay */}
-                                                            {(inv.invoice_type === 1 && inv.status !== 'SETTLED' && inv.salt) && (
-                                                                <Button
-                                                                    variant="primary"
-                                                                    size="sm"
-                                                                    onClick={() => handleSettle(inv)}
-                                                                    disabled={settling === inv.invoice_hash}
-                                                                    className="text-xs bg-red-500 hover:bg-red-600 text-white border-red-500/50 shadow-red-900/20"
-                                                                >
-                                                                    {settling === inv.invoice_hash ? 'Settling...' : 'Settle'}
-                                                                </Button>
-                                                            )}
-
-                                                            {/* View Proof Button */}
-                                                            {inv.invoice_transaction_id && (
-                                                                <button
-                                                                    onClick={() => openExplorer(inv.invoice_transaction_id)}
-                                                                    className="text-xs text-gray-500 hover:text-white transition-colors px-2 py-1.5 rounded"
-                                                                    title="View on-chain proof"
-                                                                >
-                                                                    Proof
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </motion.tr>
-                                            )
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        ) : (
-                            // PAID INVOICES TABLE
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="bg-black/40 border-b border-white/5 text-left">
-                                        <th className="py-5 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Invoice Hash</th>
-                                        <th className="py-5 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider text-center">Amount Paid</th>
-                                        <th className="py-5 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider text-right">Receipt Hash</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {loadingPaid ? (
-                                        Array.from({ length: 3 }).map((_, i) => (
-                                            <tr key={i} className="animate-pulse">
-                                                <td className="py-5 px-6">
-                                                    <Shimmer className="h-6 w-48 bg-white/5 rounded" />
-                                                </td>
-                                                <td className="py-5 px-6 text-center">
-                                                    <Shimmer className="h-6 w-24 bg-white/5 rounded mx-auto" />
-                                                </td>
-                                                <td className="py-5 px-6 text-right">
-                                                    <Shimmer className="h-6 w-48 bg-white/5 rounded ml-auto" />
-                                                </td>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setVerifyingInvoice(inv);
+                                                                            setVerifyInput(inv.invoiceHash);
+                                                                            setShowVerifyModal(true);
+                                                                        }}
+                                                                        className="flex items-center gap-1.5 text-xs bg-neon-primary/10 hover:bg-neon-primary/20 px-3 py-1.5 rounded-md border border-neon-primary/20 hover:border-neon-primary/50 transition-all text-neon-primary font-medium group/btn"
+                                                                    >
+                                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                        </svg>
+                                                                        Verify
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </motion.tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </motion.div>
+                            ) : (
+                                <motion.div
+                                    key="paid"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="bg-black/40 border-b border-white/5 text-left">
+                                                <th className="py-5 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider">Invoice Hash</th>
+                                                <th className="py-5 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider text-center">Amount Paid</th>
+                                                <th className="py-5 px-6 text-xs font-bold text-gray-300 uppercase tracking-wider text-right">Receipt Hash</th>
                                             </tr>
-                                        ))
-                                    ) : paidInvoices.length === 0 ? (
-                                        <tr><td colSpan={3} className="text-center py-12 text-gray-500 italic">No paid invoices found.</td></tr>
-                                    ) : (
-                                        paidInvoices.map((receipt, i) => (
-                                            <motion.tr
-                                                key={i}
-                                                variants={itemVariants}
-                                                className="hover:bg-white/5 transition-colors group"
-                                            >
-                                                <td className="py-5 px-6 font-mono text-white text-sm">
-                                                    <div className="flex items-center gap-3 group/ih pb-1">
-                                                        <span className="text-gray-300 group-hover:text-neon-primary transition-colors">{receipt.invoiceHash.slice(0, 14)}...</span>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                navigator.clipboard.writeText(receipt.invoiceHash);
-                                                            }}
-                                                            className="text-gray-600 hover:text-white transition-colors opacity-0 group-hover/ih:opacity-100 p-1.5 rounded-md hover:bg-white/10"
-                                                            title="Copy Invoice Hash"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                <td className="py-5 px-6 text-center">
-                                                    <span className="font-bold text-white text-lg">
-                                                        {receipt.amount / 1_000_000} <span className="text-xs text-gray-400 font-normal uppercase">{receipt.tokenType === 1 ? 'USDCx' : 'Credits'}</span>
-                                                    </span>
-                                                </td>
-                                                <td className="py-5 px-6 text-right font-mono text-neon-accent text-sm">
-                                                    <div className="flex justify-end items-center gap-3 group/rh">
-                                                        <span className="text-gray-400 group-hover:text-white transition-colors">{receipt.receiptHash.slice(0, 10)}...</span>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                navigator.clipboard.writeText(receipt.receiptHash);
-                                                            }}
-                                                            className="flex items-center gap-1.5 text-xs bg-neon-accent/10 hover:bg-neon-accent/20 text-neon-accent px-3 py-1.5 rounded border border-neon-accent/30 transition-all hover:shadow-[0_0_10px_rgba(34,197,94,0.2)]"
-                                                            title="Copy Receipt Hash"
-                                                        >
-                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                                            Copy
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </motion.tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        )}
+                                        </thead>
+                                        <tbody className="divide-y divide-white/5">
+                                            {loadingReceipts ? (
+                                                Array.from({ length: 3 }).map((_, i) => (
+                                                    <tr key={i} className="animate-pulse">
+                                                        <td className="py-5 px-6"><Shimmer className="h-6 w-48 bg-white/5 rounded" /></td>
+                                                        <td className="py-5 px-6 text-center"><Shimmer className="h-6 w-24 bg-white/5 rounded mx-auto" /></td>
+                                                        <td className="py-5 px-6 text-right"><Shimmer className="h-6 w-48 bg-white/5 rounded ml-auto" /></td>
+                                                    </tr>
+                                                ))
+                                            ) : merchantReceipts.length === 0 ? (
+                                                <tr><td colSpan={3} className="text-center py-12 text-gray-500 italic">No paid invoices found.</td></tr>
+                                            ) : (
+                                                merchantReceipts.map((receipt, i) => (
+                                                    <motion.tr key={i} variants={itemVariants} className="hover:bg-white/5 transition-colors group">
+                                                        <td className="py-5 px-6 font-mono text-white text-sm">
+                                                            <div className="flex items-center gap-3 group/ih pb-1">
+                                                                <span className="text-gray-300 group-hover:text-neon-primary transition-colors">{receipt.invoiceHash.slice(0, 8)}...{receipt.invoiceHash.slice(-6)}</span>
+                                                                <CopyButton text={receipt.invoiceHash} title="Copy Invoice Hash" className="text-gray-600 hover:text-white opacity-0 group-hover/ih:opacity-100 p-1.5 rounded-md hover:bg-white/10" />
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-5 px-6 text-center">
+                                                            <span className="font-bold text-white text-lg">
+                                                                {receipt.amount / 1_000_000} <span className="text-xs text-gray-400 font-normal uppercase">{receipt.tokenType === 1 ? 'USDCx' : 'Credits'}</span>
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-5 px-6 text-right font-mono text-neon-accent text-sm">
+                                                            <div className="flex justify-end items-center gap-3 group/rh">
+                                                                <span className="text-gray-400 group-hover:text-white transition-colors">{receipt.receiptHash.slice(0, 8)}...{receipt.receiptHash.slice(-6)}</span>
+                                                                <CopyButton text={receipt.receiptHash} title="Copy Receipt Hash" className="flex items-center gap-1.5 text-xs bg-neon-accent/10 hover:bg-neon-accent/20 text-neon-accent px-3 py-1.5 rounded border border-neon-accent/30 transition-all hover:shadow-[0_0_10px_rgba(34,197,94,0.2)]" />
+                                                            </div>
+                                                        </td>
+                                                    </motion.tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
                     {/* PRIVACY FOOTER */}
                     <div className="p-4 bg-white/5 border-t border-white/5 text-center text-xs text-gray-500 italic">
-                        {activeTab === 'paid' && "All this information is fetched from your account record these are fully private"}
+                        All this information is fetched from your private account records.
                     </div>
                 </GlassCard>
             </motion.div>

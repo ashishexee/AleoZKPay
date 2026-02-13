@@ -53,10 +53,10 @@ export const CreateInvoice: React.FC = () => {
                     className="flex flex-col items-center justify-center text-center mb-8"
                 >
                     <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-none text-white">
-                        Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">Null-Invoice</span>
+                        Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">Null Invoice</span>
                     </h1>
                     <p className="text-gray-300 text-xl leading-relaxed max-w-2xl mb-2">
-                        Generate a privacy-preserving Null-Invoice link to receive payments securely on the Aleo network.
+                        Generate a privacy-preserving Null Invoice link to receive payments securely on the Aleo network.
                     </p>
                 </motion.div>
 

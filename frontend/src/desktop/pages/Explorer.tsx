@@ -8,8 +8,37 @@ import { useTransactions } from '../../hooks/useTransactions';
 import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../utils/animations';
 import { getInvoiceHashFromMapping, getInvoiceStatus } from '../../utils/aleo-utils';
 import { fetchInvoiceByHash, Invoice } from '../../services/api';
+import React from 'react';
 
-const Explorer = () => {
+// Internal Copy Button Component for Explorer Rows
+const CopyButton = ({ text, title }: { text: string, title?: string }) => {
+    const [copied, setCopied] = React.useState(false);
+
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <button
+            onClick={handleCopy}
+            className="group-hover/hash:opacity-100 opacity-0 transition-opacity p-1"
+            title={title}
+        >
+            {copied ? (
+                <span className="text-[10px] text-neon-primary font-bold">Copied!</span>
+            ) : (
+                <svg className="w-3.5 h-3.5 text-gray-600 hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 01-2-2v-8a2 2 0 01-2-2h-8a2 2 0 01-2 2v8a2 2 0 012 2z" />
+                </svg>
+            )}
+        </button>
+    );
+};
+
+const Explorer: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('all');
     const { transactions, loading, fetchTransactions } = useTransactions();
@@ -95,7 +124,7 @@ const Explorer = () => {
     const uniqueMerchants = new Set(transactions.map(t => t.merchant_address)).size;
 
     const stats = [
-        { label: 'Total Null-Invoices', value: transactions.length.toString(), trend: '' },
+        { label: 'Total Null Invoices', value: transactions.length.toString(), trend: '' },
         { label: 'Pending', value: pendingCount.toString(), trend: '' },
         { label: 'Settled', value: settledCount.toString(), trend: '' },
         { label: 'Active Merchants', value: uniqueMerchants.toString(), trend: '' },
@@ -218,7 +247,7 @@ const Explorer = () => {
                                     <div className="animate-cycle-text relative h-full">
                                         <span className="block h-full flex items-center text-gray-400 font-normal font-mono tracking-widest text-lg">INVOICE HASH</span>
                                         <span className="block h-full flex items-center text-gray-400 font-normal font-mono tracking-widest text-lg absolute top-full">SALT</span>
-                                        <span className="block h-full flex items-center text-gray-400 font-normal font-mono tracking-widest text-lg absolute top-[200%]">NULL-INVOICE HASH</span>
+                                        <span className="block h-full flex items-center text-gray-400 font-normal font-mono tracking-widest text-lg absolute top-[200%]">INVOICE HASH</span>
                                     </div>
                                 </div>
                             </div>
@@ -353,7 +382,7 @@ const Explorer = () => {
                                 <div className="p-2 rounded-lg bg-neon-primary/10 border border-neon-primary/20">
                                     <svg className="w-5 h-5 text-neon-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-white tracking-tight">Null-Invoice Created</h3>
+                                <h3 className="text-xl font-bold text-white tracking-tight">Null Invoice Created</h3>
                             </div>
                             <p className="text-gray-500 text-[10px] font-mono tracking-widest uppercase mb-6 pl-1 opacity-70">LAST 10 DAYS</p>
                         </div>
@@ -426,7 +455,7 @@ const Explorer = () => {
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-white/5 text-left">
-                                    <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Null-Invoice Hash</th>
+                                    <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider">Null Invoice Hash</th>
                                     <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Status</th>
                                     <th className="py-4 px-6 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">On-Chain Actions</th>
                                 </tr>
@@ -454,7 +483,7 @@ const Explorer = () => {
                                     ))
                                 ) : filteredTransactions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={3} className="text-center py-8 text-gray-500">No Null-Invoices found</td>
+                                        <td colSpan={3} className="text-center py-8 text-gray-500">No Null Invoices found</td>
                                     </tr>
                                 ) : (
                                     filteredTransactions.map((inv, i) => (
@@ -466,18 +495,7 @@ const Explorer = () => {
                                             <td className="py-4 px-6 font-mono text-neon-accent group-hover:text-neon-primary transition-colors text-sm">
                                                 <div className="flex items-center gap-2 group/hash">
                                                     <span>{inv.invoice_hash.slice(0, 8)}...{inv.invoice_hash.slice(-6)}</span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            navigator.clipboard.writeText(inv.invoice_hash);
-                                                        }}
-                                                        className="text-gray-600 hover:text-white transition-colors opacity-0 group-hover/hash:opacity-100 p-1"
-                                                        title="Copy Full Hash"
-                                                    >
-                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 012-2v-8a2 2 0 01-2-2h-8a2 2 0 01-2 2v8a2 2 0 012 2z" />
-                                                        </svg>
-                                                    </button>
+                                                    <CopyButton text={inv.invoice_hash} title="Copy Full Hash" />
                                                 </div>
                                             </td>
                                             <td className="py-4 px-6">
