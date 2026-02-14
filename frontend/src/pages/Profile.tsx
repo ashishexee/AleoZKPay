@@ -109,7 +109,7 @@ const Profile: React.FC = () => {
         if (!requestRecords || !publicKey) return;
         setLoadingCreated(true);
         try {
-            const records = await requestRecords(PROGRAM_ID);
+            const records = await requestRecords(PROGRAM_ID, true);
             const validInvoices: InvoiceRecord[] = [];
 
             if (records) {
@@ -142,7 +142,7 @@ const Profile: React.FC = () => {
         setLoadingReceipts(true);
         console.log("Fetching Merchant Receipts...");
         try {
-            const records = await requestRecords(PROGRAM_ID);
+            const records = await requestRecords(PROGRAM_ID, true);
             const validReceipts: MerchantReceipt[] = [];
 
             if (records) {
@@ -178,7 +178,7 @@ const Profile: React.FC = () => {
         setLoadingPayerReceipts(true);
         console.log(`[fetchPayerReceipts #${fetchId}] Starting...`);
         try {
-            const records = await requestRecords(PROGRAM_ID);
+            const records = await requestRecords(PROGRAM_ID, true);
             // If a newer fetch started, discard this one's results
             if (fetchId !== fetchPayerReceiptsRef.current) {
                 console.log(`[fetchPayerReceipts #${fetchId}] Stale fetch, discarding.`);
@@ -276,7 +276,7 @@ const Profile: React.FC = () => {
         try {
             setVerifyStatus('CHECKING');
             setVerifiedRecord(null);
-            const records = await requestRecords(PROGRAM_ID);
+            const records = await requestRecords(PROGRAM_ID, true);
             console.log("Checking records for receipt:", verifyInput);
             console.log("Records found:", records?.length);
 

@@ -196,7 +196,8 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
     try {
         const data = record.plaintext || '';
         const getVal = (key: string) => {
-            const regex = new RegExp(`${key}:\\s*([\\w\\d\\.]+)`);
+            // Handle standard (key: value) and quoted ("key": value)
+            const regex = new RegExp(`(?:${key}|"${key}"):\\s*([\\w\\d\\.]+)`);
             const match = data.match(regex);
             if (match && match[1]) {
                 return match[1].replace('.private', '').replace('.public', '');
@@ -204,7 +205,7 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
             return null;
         };
 
-        const invoiceHash = getVal('invoice_hash');
+        const invoiceHash = getVal('invoice_hash') || getVal('invoiceHash');
         const owner = getVal('owner');
         const salt = getVal('salt');
 
@@ -212,10 +213,10 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
             const amountVal = getVal('amount');
             const amount = amountVal ? parseInt(amountVal.replace('u64', '')) : 0;
 
-            const tokenTypeVal = getVal('token_type');
+            const tokenTypeVal = getVal('token_type') || getVal('tokenType');
             const tokenType = tokenTypeVal ? parseInt(tokenTypeVal.replace('u8', '')) : 0;
 
-            const invoiceTypeVal = getVal('invoice_type');
+            const invoiceTypeVal = getVal('invoice_type') || getVal('invoiceType');
             const invoiceType = invoiceTypeVal ? parseInt(invoiceTypeVal.replace('u8', '')) : 0;
 
             return {
@@ -246,7 +247,7 @@ export const parsePayerReceipt = (record: any): PayerReceipt | null => {
         const data = record.plaintext || '';
 
         const getVal = (key: string) => {
-            const regex = new RegExp(`${key}:\\s*([\\w\\d\\.]+)`);
+            const regex = new RegExp(`(?:${key}|"${key}"):\\s*([\\w\\d\\.]+)`);
             const match = data.match(regex);
             if (match && match[1]) {
                 return match[1].replace('.private', '').replace('.public', '');
@@ -254,8 +255,8 @@ export const parsePayerReceipt = (record: any): PayerReceipt | null => {
             return null;
         };
 
-        const receiptHash = getVal('receipt_hash');
-        const invoiceHash = getVal('invoice_hash');
+        const receiptHash = getVal('receipt_hash') || getVal('receiptHash');
+        const invoiceHash = getVal('invoice_hash') || getVal('invoiceHash');
         const owner = getVal('owner');
         const merchant = getVal('merchant');
 
@@ -266,7 +267,7 @@ export const parsePayerReceipt = (record: any): PayerReceipt | null => {
                 receiptHash: receiptHash,
                 invoiceHash: invoiceHash,
                 amount: parseInt((getVal('amount') || '0').replace('u64', '')),
-                tokenType: parseInt((getVal('token_type') || '0').replace('u8', '')),
+                tokenType: parseInt((getVal('token_type') || getVal('tokenType') || '0').replace('u8', '')),
                 timestamp: 0 // Placeholder
             };
         }
@@ -286,7 +287,7 @@ export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
     try {
         const data = record.plaintext || '';
         const getVal = (key: string) => {
-            const regex = new RegExp(`${key}:\\s*([\\w\\d\\.]+)`);
+            const regex = new RegExp(`(?:${key}|"${key}"):\\s*([\\w\\d\\.]+)`);
             const match = data.match(regex);
             if (match && match[1]) {
                 return match[1].replace('.private', '').replace('.public', '');
@@ -294,14 +295,14 @@ export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
             return null;
         };
 
-        const invoiceHash = getVal('invoice_hash');
-        const receiptHash = getVal('receipt_hash');
+        const invoiceHash = getVal('invoice_hash') || getVal('invoiceHash');
+        const receiptHash = getVal('receipt_hash') || getVal('receiptHash');
         const owner = getVal('owner');
 
         if (invoiceHash && receiptHash && owner) {
             const amountVal = getVal('amount');
             const amount = amountVal ? parseInt(amountVal.replace('u64', '')) : 0;
-            const tokenTypeVal = getVal('token_type');
+            const tokenTypeVal = getVal('token_type') || getVal('tokenType');
             const tokenType = tokenTypeVal ? parseInt(tokenTypeVal.replace('u8', '')) : 0;
 
             return {

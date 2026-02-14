@@ -17,7 +17,7 @@ export const useCreateInvoice = () => {
     const [memo, setMemo] = useState<string>('');
     const [status, setStatus] = useState<string>('');
     const [invoiceType, setInvoiceType] = useState<InvoiceType>('standard');
-    const [tokenType, setTokenType] = useState<number>(0); // 0 = Credits, 1 = USDCx
+    const [tokenType, setTokenType] = useState<number>(0);
 
     const handleCreate = async () => {
         if (!publicKey || !executeTransaction || !transactionStatus) {
