@@ -11,6 +11,7 @@ const Navbar = () => {
         { path: '/', label: 'Explorer' },
         { path: '/create', label: 'Create Invoice' },
         { path: '/profile', label: 'Profile' },
+        { path: '/vision', label: 'Vision' },
         { label: 'Privacy', path: '/privacy' },
         { label: 'Docs', path: '/docs' },
     ];
