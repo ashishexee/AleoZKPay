@@ -7,6 +7,7 @@ import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Shimmer } from '../../components/ui/Shimmer';
+import { Input } from '../../components/ui/Input';
 import { PROGRAM_ID } from '../../utils/aleo-utils';
 
 const PaymentPage = () => {
@@ -23,7 +24,9 @@ const PaymentPage = () => {
         programId,
         paymentSecret,
         receiptHash,
-        receiptSearchFailed
+        receiptSearchFailed,
+        donationAmount,
+        setDonationAmount
     } = usePayment();
 
     const [copiedHash, setCopiedHash] = useState(false); // Added copiedHash state
@@ -144,7 +147,19 @@ const PaymentPage = () => {
                             {loading && !invoice ? (
                                 <Shimmer className="h-8 w-24 bg-white/5 rounded" />
                             ) : (
-                                <span className="text-2xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-sm text-gray-500 font-normal">{currencyLabel}</span></span>
+                                invoice?.amount === 0 ? (
+                                    <div className="w-1/2">
+                                        <Input
+                                            label=""
+                                            type="number"
+                                            placeholder="Enter donation"
+                                            value={donationAmount}
+                                            onChange={(e) => setDonationAmount(Number(e.target.value))}
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="text-2xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-sm text-gray-500 font-normal">{currencyLabel}</span></span>
+                                )
                             )}
                         </div>
                         {invoice?.memo && (
@@ -280,7 +295,7 @@ const PaymentPage = () => {
                                 ) : step === 'CONVERT' ? (
                                     'Convert Public to Private'
                                 ) : (
-                                    `Pay ${invoice?.amount} ${currencyLabel}`
+                                    `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : donationAmount} ${currencyLabel}`
                                 )}
                             </Button>
                         )}

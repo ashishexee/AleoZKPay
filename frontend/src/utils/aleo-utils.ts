@@ -1,5 +1,5 @@
 import { AleoNetworkClient } from '@provablehq/sdk';
-export const PROGRAM_ID = "zk_pay_proofs_privacy_v10.aleo";
+export const PROGRAM_ID = "zk_pay_proofs_privacy_v11.aleo";
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
 
 export const generateSalt = (): string => {

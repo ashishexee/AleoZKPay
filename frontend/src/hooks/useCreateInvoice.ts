@@ -5,7 +5,7 @@ import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../utils/aleo-utils';
 import { InvoiceData } from '../types/invoice';
 
-export type InvoiceType = 'standard' | 'multipay';
+export type InvoiceType = 'standard' | 'multipay' | 'donation';
 
 export const useCreateInvoice = () => {
     const { address, executeTransaction, transactionStatus, requestTransactionHistory } = useWallet();
@@ -24,7 +24,9 @@ export const useCreateInvoice = () => {
             setStatus('Wallet not fully supported or connected. Please update wallet.');
             return;
         }
-        if (!amount || amount <= 0) {
+
+        // For donation, amount is 0, so we skip this check
+        if (invoiceType !== 'donation' && (!amount || amount <= 0)) {
             setStatus('Please enter a valid amount.');
             return;
         }
@@ -38,8 +40,14 @@ export const useCreateInvoice = () => {
             console.log('this is the salt', salt);
             setStatus('Requesting wallet signature...');
 
-            const typeInput = invoiceType === 'standard' ? '0u8' : '1u8';
-            const amountMicro = Math.round(Number(amount) * 1_000_000);
+            let typeInput = '0u8';
+            if (invoiceType === 'multipay') typeInput = '1u8';
+            else if (invoiceType === 'donation') typeInput = '2u8';
+
+            // For donation, the internal record amount is 0. 
+            // In the DB we might still want to track it as 0.
+            const isDonation = invoiceType === 'donation';
+            const amountMicro = isDonation ? 0 : Math.round(Number(amount) * 1_000_000);
 
             const functionName = tokenType === 0 ? 'create_invoice' : 'create_invoice_usdcx';
             const amountInput = tokenType === 0 ? `${amountMicro}u64` : `${amountMicro}u128`;
@@ -151,15 +159,19 @@ export const useCreateInvoice = () => {
                                 setStatus('Hash retrieved successfully! Saving to database...');
                                 try {
                                     const { createInvoice } = await import('../services/api');
+                                    let dbInvoiceType = 0;
+                                    if (invoiceType === 'multipay') dbInvoiceType = 1;
+                                    if (invoiceType === 'donation') dbInvoiceType = 2;
+
                                     await createInvoice({
                                         invoice_hash: hash,
                                         merchant_address: merchant,
-                                        amount: Number(amount),
+                                        amount: Number(amount), // This is 0 for donation
                                         memo: memo || '',
                                         status: 'PENDING',
                                         invoice_transaction_id: finalTransactionId,
                                         salt: salt,
-                                        invoice_type: invoiceType === 'multipay' ? 1 : 0,
+                                        invoice_type: dbInvoiceType,
                                         token_type: tokenType
                                     });
                                     console.log("Invoice saved to DB");
@@ -174,6 +186,7 @@ export const useCreateInvoice = () => {
                                 });
                                 if (memo) params.append('memo', memo);
                                 if (invoiceType === 'multipay') params.append('type', 'multipay');
+                                if (invoiceType === 'donation') params.append('type', 'donation');
                                 if (tokenType === 1) params.append('token', 'usdcx');
 
                                 const link = `${window.location.origin}/pay?${params.toString()}`;

@@ -64,52 +64,67 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                             </button>
                         </div>
                     </div>
-                    <div className="w-1/2">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
-                        {/* INVOICE TYPE TOGGLE */}
-                        <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
-                            <button
-                                onClick={() => setInvoiceType('standard')}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
-                                    ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                    }`}
-                            >
-                                Standard
-                            </button>
-                            <button
-                                onClick={() => setInvoiceType('multipay')}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
-                                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                    }`}
-                            >
-                                Multi
-                            </button>
-                        </div>
+                </div>
+
+                {/* INVOICE TYPE TOGGLE */}
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Invoice Type</label>
+                    <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
+                        <button
+                            onClick={() => setInvoiceType('standard')}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
+                                ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Standard
+                        </button>
+                        <button
+                            onClick={() => setInvoiceType('multipay')}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
+                                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Multi Pay
+                        </button>
+                        <button
+                            onClick={() => setInvoiceType('donation')}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'donation'
+                                ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Donation
+                        </button>
                     </div>
                 </div>
 
-                <div className="text-xs text-gray-400 text-center -mt-2 mb-4">
-                    {invoiceType === 'standard'
-                        ? 'Single payment only. Invoice closes after payment.'
-                        : 'Allows multiple payments. Ideal for donations or crowdfunding.'}
+                <div className="text-xs text-gray-400 text-center -mt-2 mb-4 bg-white/5 p-3 rounded-lg border border-white/5">
+                    {invoiceType === 'standard' && 'Single payment only. Invoice closes after payment.'}
+                    {invoiceType === 'multipay' && 'Allows multiple payments. Ideal for campaigns.'}
+                    {invoiceType === 'donation' && (
+                        <span>
+                            <strong className="text-pink-400 block mb-1">Donation Mode</strong>
+                            Used by NGOs, fundraising platforms, developers, and for crowd funding where the info of payer and receiver shall be kept private using records in Aleo.
+                        </span>
+                    )}
                 </div>
 
-                <Input
-                    label={`Amount (${tokenType === 0 ? 'Credits' : 'USDCx'})`}
-                    type="number"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                />
-
-
+                {invoiceType !== 'donation' && (
+                    <Input
+                        label={`Amount (${tokenType === 0 ? 'Credits' : 'USDCx'})`}
+                        type="number"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                )}
 
                 <Input
                     label="Memo (Optional)"
                     type="text"
-                    placeholder="e.g., Dinner Bill"
+                    placeholder={invoiceType === 'donation' ? "e.g., Save the Whales Campaign" : "e.g., Dinner Bill"}
                     value={memo}
                     onChange={(e) => setMemo(e.target.value)}
                 />
@@ -124,12 +139,14 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     {loading ? (
                         <span className="flex items-center gap-2">
                             <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Creating {invoiceType === 'standard' ? 'Invoice' : 'Multi Pay'}...
+                            Creating...
                         </span>
                     ) : !publicKey ? (
                         'Connect Wallet to Continue'
                     ) : (
-                        invoiceType === 'standard' ? 'Generate Invoice Link' : 'Create Multi Pay Link'
+                        invoiceType === 'standard' ? 'Generate Invoice Link' :
+                            invoiceType === 'multipay' ? 'Create Multi Pay Link' :
+                                'Create Donation Link'
                     )}
                 </Button>
 

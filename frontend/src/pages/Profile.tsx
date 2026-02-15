@@ -266,8 +266,28 @@ const Profile: React.FC = () => {
             }
         });
 
-        return Array.from(merged.values()); // Show newest first (roughly)
-    }, [transactions, createdInvoices]);
+        return Array.from(merged.values()).map(inv => {
+            // For Donation Invoices, calculate total received from merchant receipts
+            if (inv.invoiceType === 2) {
+                // Deduplicate receipts based on receiptHash to avoid double counting
+                const uniqueReceipts = new Map();
+                merchantReceipts.forEach(r => {
+                    if (r.invoiceHash === inv.invoiceHash) {
+                        uniqueReceipts.set(r.receiptHash, r);
+                    }
+                });
+
+                const totalDonated = Array.from(uniqueReceipts.values())
+                    .reduce((acc: number, curr: any) => acc + (Number(curr.amount) / 1_000_000 || 0), 0);
+
+                // If we have receipts, show that total. Otherwise 0.
+                if (totalDonated > 0) {
+                    return { ...inv, amount: totalDonated };
+                }
+            }
+            return inv;
+        }); // Show newest first (roughly)
+    }, [transactions, createdInvoices, merchantReceipts]);
 
     const handleVerifyReceipt = async () => {
         if (!verifyInput || !requestRecords || !decrypt) return;
@@ -741,6 +761,7 @@ const Profile: React.FC = () => {
 
                                             if (inv.tokenType === 1) params.append('token', 'usdcx');
                                             if (inv.invoiceType === 1) params.append('type', 'multipay');
+                                            if (inv.invoiceType === 2) params.append('type', 'donation');
 
                                             const paymentLink = `${window.location.origin}/pay?${params.toString()}`;
 
@@ -767,9 +788,11 @@ const Profile: React.FC = () => {
                                                     <td className="py-4 px-6 text-center">
                                                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${inv.invoiceType === 1
                                                             ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-                                                            : 'bg-white/5 text-gray-400 border-white/10'
+                                                            : inv.invoiceType === 2
+                                                                ? 'bg-pink-500/10 text-pink-400 border-pink-500/30'
+                                                                : 'bg-white/5 text-gray-400 border-white/10'
                                                             }`}>
-                                                            {inv.invoiceType === 1 ? 'Multi Pay' : 'Standard'}
+                                                            {inv.invoiceType === 1 ? 'Multi Pay' : inv.invoiceType === 2 ? 'Donation' : 'Standard'}
                                                         </span>
                                                     </td>
                                                     <td className="py-4 px-6 text-center">
