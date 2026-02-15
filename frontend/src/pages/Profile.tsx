@@ -179,7 +179,6 @@ const Profile: React.FC = () => {
         console.log(`[fetchPayerReceipts #${fetchId}] Starting...`);
         try {
             const records = await requestRecords(PROGRAM_ID, true);
-            // If a newer fetch started, discard this one's results
             if (fetchId !== fetchPayerReceiptsRef.current) {
                 console.log(`[fetchPayerReceipts #${fetchId}] Stale fetch, discarding.`);
                 return;

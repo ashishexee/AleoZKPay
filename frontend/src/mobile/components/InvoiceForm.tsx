@@ -16,6 +16,8 @@ interface InvoiceFormProps {
     status: string;
     invoiceType: InvoiceType;
     setInvoiceType: (val: InvoiceType) => void;
+    tokenType: number;
+    setTokenType: (val: number) => void;
 }
 
 export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
@@ -28,7 +30,9 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
     publicKey,
     status,
     invoiceType,
-    setInvoiceType
+    setInvoiceType,
+    tokenType,
+    setTokenType
 }) => {
     return (
         <GlassCard variant="heavy" className="p-5">
@@ -36,27 +40,56 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
 
             <div className="space-y-6">
 
-                {/* INVOICE TYPE TOGGLE */}
-                <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
-                    <button
-                        onClick={() => setInvoiceType('standard')}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
-                            ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
-                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        Standard Invoice
-                    </button>
-                    <button
-                        onClick={() => setInvoiceType('multipay')}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
-                            ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
-                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        Multi Pay
-                    </button>
+                {/* CURRENCY TOGGLE */}
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Currency</label>
+                    <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5 mb-4">
+                        <button
+                            onClick={() => setTokenType(0)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 0
+                                ? 'bg-white text-black shadow-lg'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Credits
+                        </button>
+                        <button
+                            onClick={() => setTokenType(1)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 1
+                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            USDCx
+                        </button>
+                    </div>
                 </div>
+
+                {/* INVOICE TYPE TOGGLE */}
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Type</label>
+                    <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
+                        <button
+                            onClick={() => setInvoiceType('standard')}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
+                                ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Standard Invoice
+                        </button>
+                        <button
+                            onClick={() => setInvoiceType('multipay')}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
+                                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Multi Pay
+                        </button>
+                    </div>
+                </div>
+
                 <div className="text-xs text-gray-400 text-center -mt-4 mb-4">
                     {invoiceType === 'standard'
                         ? 'Single payment only. Invoice closes after payment.'
@@ -64,7 +97,7 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
                 </div>
 
                 <Input
-                    label="Amount (Credits)"
+                    label={`Amount (${tokenType === 0 ? 'Credits' : 'USDCx'})`}
                     type="number"
                     placeholder="0.00"
                     value={amount}

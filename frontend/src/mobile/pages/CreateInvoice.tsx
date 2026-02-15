@@ -14,7 +14,9 @@ const MobileCreateInvoice: React.FC = () => {
         resetInvoice,
         publicKey,
         invoiceType,
-        setInvoiceType
+        setInvoiceType,
+        tokenType,
+        setTokenType
     } = useCreateInvoice();
 
     return (
@@ -52,6 +54,8 @@ const MobileCreateInvoice: React.FC = () => {
                                 status={status}
                                 invoiceType={invoiceType}
                                 setInvoiceType={setInvoiceType}
+                                tokenType={tokenType}
+                                setTokenType={setTokenType}
                             />
                         ) : (
                             <InvoiceCard
