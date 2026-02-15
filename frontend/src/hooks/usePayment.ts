@@ -17,7 +17,10 @@ export const usePayment = () => {
         hash: string;
         memo: string;
         tokenType: number;
+        invoiceType: number;
     } | null>(null);
+
+    const [donationAmount, setDonationAmount] = useState<number>(0);
 
     const [status, setStatus] = useState<string>('Initializing...');
     const [step, setStep] = useState<PaymentStep>('CONNECT');
@@ -39,11 +42,21 @@ export const usePayment = () => {
             const memo = searchParams.get('memo') || '';
             const tokenParam = searchParams.get('token');
             const tokenType = tokenParam === 'usdcx' ? 1 : 0;
+            const typeParam = searchParams.get('type');
 
-            if (!merchant || !amount || !salt) {
+            // We can infer type from param or fetch it. Defaulting to 0.
+            // But we will overwrite with on-chain data.
+            let initialType = typeParam === 'donation' ? 2 : (typeParam === 'multipay' ? 1 : 0);
+
+            if (!merchant || !salt) {
                 setError('Invalid Invoice Link: Missing parameters');
                 return;
             }
+            if (!amount && initialType !== 2) {
+                setError('Invalid Invoice Link: Missing amount');
+                return;
+            }
+
             setError(null);
 
             try {
@@ -66,8 +79,9 @@ export const usePayment = () => {
                 // Default to 0 if data missing (shouldn't happen for valid invoices)
                 const statusOnChain = invoiceData ? invoiceData.status : 0;
                 const tokenTypeOnChain = invoiceData ? invoiceData.tokenType : (tokenType || 0);
+                const invoiceTypeOnChain = invoiceData ? invoiceData.invoiceType : initialType;
 
-                console.log(`🔗 On-Chain Invoice Data | Status: ${statusOnChain}, Token Type: ${tokenTypeOnChain}`);
+                console.log(`🔗 On-Chain Invoice Data | Status: ${statusOnChain}, Token Type: ${tokenTypeOnChain}, Type: ${invoiceTypeOnChain}`);
 
                 if (statusOnChain === 1) {
                     let dbInvoice = null;
@@ -81,11 +95,12 @@ export const usePayment = () => {
 
                     setInvoice({
                         merchant,
-                        amount: Number(amount),
+                        amount: Number(amount) || 0,
                         salt,
                         hash: fetchedHash,
                         memo,
-                        tokenType: tokenTypeOnChain
+                        tokenType: tokenTypeOnChain,
+                        invoiceType: invoiceTypeOnChain
                     });
                     setStep('ALREADY_PAID');
                     setLoading(false);
@@ -94,11 +109,12 @@ export const usePayment = () => {
 
                 setInvoice({
                     merchant,
-                    amount: Number(amount),
+                    amount: Number(amount) || 0,
                     salt,
                     hash: fetchedHash,
                     memo,
-                    tokenType: tokenTypeOnChain
+                    tokenType: tokenTypeOnChain,
+                    invoiceType: invoiceTypeOnChain
                 });
 
                 setStatus(''); // Clear status after verification
@@ -144,7 +160,8 @@ export const usePayment = () => {
         try {
             setLoading(true);
             setStatus('Converting Public Credits to Private...');
-            const bufferAmount = invoice.amount + 0.01;
+            const finalAmount = (invoice.amount === 0 && donationAmount > 0) ? donationAmount : invoice.amount;
+            const bufferAmount = finalAmount + 0.01;
             const amountMicro = Math.round(bufferAmount * 1_000_000);
 
             const transaction: TransactionOptions = {
@@ -307,7 +324,10 @@ export const usePayment = () => {
             let records = await requestRecords(usdcxProgramId, false);
             console.log("USDCx Records (Initial):", records);
 
-            const amountMicro = BigInt(Math.round(invoice.amount * 1_000_000));
+            const isDonation = invoice.invoiceType === 2;
+            const finalAmount = (isDonation && donationAmount > 0) ? donationAmount : invoice.amount;
+            const amountMicro = BigInt(Math.round(finalAmount * 1_000_000));
+
             let recordsAny = records as any[];
             let payRecord = null;
             for (const r of recordsAny) {
@@ -340,7 +360,7 @@ export const usePayment = () => {
                     if (totalAvailable >= amountMicro) {
                         setError(`Insufficient single record. Total: ${Number(totalAvailable) / 1_000_000} USDCx. Please merge records.`);
                     } else {
-                        setError(`Insufficient private balance. Total: ${Number(totalAvailable) / 1_000_000} USDCx. Needed: ${invoice.amount}`);
+                        setError(`Insufficient private balance. Total: ${Number(totalAvailable) / 1_000_000} USDCx. Needed: ${finalAmount}`);
                     }
                     setLoading(false);
                     return;
@@ -404,11 +424,14 @@ export const usePayment = () => {
                 proofsInput
             ];
 
+            // Should call pay_donation_usdcx if donation
+            const funcName = isDonation ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+
             console.log("Transaction Inputs:", JSON.stringify(inputs, null, 2));
 
             const transaction: TransactionOptions = {
                 program: PROGRAM_ID,
-                function: 'pay_invoice_usdcx',
+                function: funcName,
                 inputs: inputs,
                 fee: 100_000,
                 privateFee: false
@@ -439,7 +462,9 @@ export const usePayment = () => {
             setStatus('Searching for suitable private record...');
             const records = await requestRecords('credits.aleo', false);
             console.log("Wallet Records (Initial):", records);
-            const amountMicro = Math.round(invoice.amount * 1_000_000);
+            const isDonation = invoice.invoiceType === 2;
+            const finalAmount = (isDonation && donationAmount > 0) ? donationAmount : invoice.amount;
+            const amountMicro = Math.round(finalAmount * 1_000_000);
 
             const recordsAny = records as any[];
             let payRecord = null;
@@ -495,7 +520,7 @@ export const usePayment = () => {
                         if (!r.spent) totalBalance += await processRecord(r);
                     }
                     if (totalBalance >= amountMicro) {
-                        setStatus(`Privacy Protocol requires a single record > ${invoice.amount}. Converting...`);
+                        setStatus(`Privacy Protocol requires a single record > ${finalAmount}. Converting...`);
                     } else {
                         setStatus(`Insufficient private balance. Converting...`);
                     }
@@ -523,20 +548,24 @@ export const usePayment = () => {
 
             setStatus('Requesting Payment Signature...');
 
+            // Choose function based on donation status.
+            // If donation, we call pay_donation which takes amount_to_donate and calculates hash with 0.
+            const funcName = isDonation ? 'pay_donation' : 'pay_invoice';
+
             let inputs = [
                 recordInput,
                 invoice.merchant,
                 `${amountMicro}u64`,
                 invoice.salt,
                 paymentSecret || '0field',
-                invoice.hash
+                invoice.hash // message/extra field
             ];
 
             // inputs.push(invoice.hash); // REMOVED: Duplicate argument push 
 
             const transaction: TransactionOptions = {
                 program: PROGRAM_ID,
-                function: 'pay_invoice',
+                function: funcName,
                 inputs: inputs,
                 fee: 100_000,
                 privateFee: false
@@ -587,6 +616,8 @@ export const usePayment = () => {
         programId,
         paymentSecret,
         receiptHash,
-        receiptSearchFailed
+        receiptSearchFailed,
+        donationAmount,
+        setDonationAmount
     };
 };
