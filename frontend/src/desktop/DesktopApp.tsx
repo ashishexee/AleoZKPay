@@ -8,6 +8,7 @@ import Profile from '../pages/Profile';
 import Docs from './pages/Docs';
 import Privacy from './pages/Privacy';
 import Verification from './pages/Verification';
+import Vision from './pages/Vision';
 
 const DesktopAnimatedRoutes = () => {
     const location = useLocation();
@@ -19,6 +20,7 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/create" element={<CreateInvoice />} />
                 <Route path="/pay" element={<PaymentPage />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/vision" element={<Vision />} />
                 <Route path="/docs" element={<Docs />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/verify" element={<Verification />} />
