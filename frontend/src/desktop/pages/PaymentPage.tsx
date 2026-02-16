@@ -154,7 +154,7 @@ const PaymentPage = () => {
                                             type="number"
                                             placeholder="Enter donation"
                                             value={donationAmount}
-                                            onChange={(e) => setDonationAmount(Number(e.target.value))}
+                                            onChange={(e) => setDonationAmount(e.target.value)}
                                         />
                                     </div>
                                 ) : (
@@ -295,7 +295,7 @@ const PaymentPage = () => {
                                 ) : step === 'CONVERT' ? (
                                     'Convert Public to Private'
                                 ) : (
-                                    `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : donationAmount} ${currencyLabel}`
+                                    `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`
                                 )}
                             </Button>
                         )}

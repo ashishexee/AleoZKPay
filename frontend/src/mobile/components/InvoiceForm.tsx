@@ -76,7 +76,7 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
                                 : 'text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                         >
-                            Standard Invoice
+                            Standard
                         </button>
                         <button
                             onClick={() => setInvoiceType('multipay')}
@@ -87,27 +87,43 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
                         >
                             Multi Pay
                         </button>
+                        <button
+                            onClick={() => setInvoiceType('donation')}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'donation'
+                                ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Donation
+                        </button>
                     </div>
                 </div>
 
                 <div className="text-xs text-gray-400 text-center -mt-4 mb-4">
-                    {invoiceType === 'standard'
-                        ? 'Single payment only. Invoice closes after payment.'
-                        : 'Allows multiple payments. Ideal for donations or crowdfunding.'}
+                    {invoiceType === 'standard' && 'Single payment only. Invoice closes after payment.'}
+                    {invoiceType === 'multipay' && 'Allows multiple payments. Ideal for campaigns.'}
+                    {invoiceType === 'donation' && (
+                        <span>
+                            <strong className="text-pink-400 block mb-1">Donation Mode</strong>
+                            Open-ended payments. Payer decides the amount.
+                        </span>
+                    )}
                 </div>
 
-                <Input
-                    label={`Amount (${tokenType === 0 ? 'Credits' : 'USDCx'})`}
-                    type="number"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                />
+                {invoiceType !== 'donation' && (
+                    <Input
+                        label={`Amount (${tokenType === 0 ? 'Credits' : 'USDCx'})`}
+                        type="number"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                )}
 
                 <Input
                     label="Memo (Optional)"
                     type="text"
-                    placeholder="e.g., Dinner Bill"
+                    placeholder={invoiceType === 'donation' ? "e.g., Save the Whales Campaign" : "e.g., Dinner Bill"}
                     value={memo}
                     onChange={(e) => setMemo(e.target.value)}
                 />
@@ -128,10 +144,12 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
                             {loading ? (
                                 <span className="flex items-center gap-2">
                                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Creating {invoiceType === 'standard' ? 'Null Invoice' : 'Multi Pay'}...
+                                    Creating...
                                 </span>
                             ) : (
-                                invoiceType === 'standard' ? 'Generate Null Invoice Link' : 'Create Null Payment Link'
+                                invoiceType === 'standard' ? 'Generate Null Invoice Link' :
+                                    invoiceType === 'multipay' ? 'Create Multi Pay Link' :
+                                        'Create Donation Link'
                             )}
                         </Button>
                     )}
