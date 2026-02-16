@@ -15,6 +15,16 @@ const Vision = () => {
             gradient: "from-blue-500/20 to-cyan-500/20"
         },
         {
+            title: "Mobile Experience",
+            icon: (
+                <svg className="w-8 h-8 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+            ),
+            description: "NullPay offers a full mobile experience via the Shield Wallet app on the Play Store. Access our site through the wallet browser to create invoices, scan QR codes for payments, and manage your profile—just like on desktop.",
+            gradient: "from-cyan-500/20 to-blue-500/20"
+        },
+        {
             title: "E-Commerce & Enterprise",
             icon: (
                 <svg className="w-8 h-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -74,11 +84,11 @@ const Vision = () => {
                 variants={staggerContainer}
                 initial="hidden"
                 animate="show"
-                className="w-full max-w-7xl mx-auto pt-12 pb-20 relative z-10"
+                className="w-full max-w-7xl mx-auto pt-12 pb-20 relative z-10 px-6"
             >
                 {/* HERO SECTION */}
                 <motion.div variants={fadeInUp} className="text-center mb-20">
-                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tighter text-white leading-tight">
+                    <h1 className="text-4xl md:text-6xl font-bold mb-6 tracking-tighter text-white leading-none">
                         The Future of <br className="hidden md:block" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary via-white to-purple-400">Private Payments</span>
                     </h1>
@@ -88,7 +98,7 @@ const Vision = () => {
                 </motion.div>
 
                 {/* VISION CARDS */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {sections.map((section, index) => (
                         <GlassCard
                             key={index}
@@ -97,6 +107,17 @@ const Vision = () => {
                         >
                             {/* HOVER GRADIENT */}
                             <div className={`absolute inset-0 bg-gradient-to-br ${section.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+
+                            {/* MOBILE MOCKUP BACKGROUND - Only for Mobile Experience Card */}
+                            {section.title === "Mobile Experience" && (
+                                <div className="absolute right-0 bottom-0 h-full w-auto opacity-40 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none grayscale group-hover:grayscale-0 flex items-end justify-end">
+                                    <img
+                                        src="/assets/nullpay_mobile01-left.png"
+                                        alt="Mobile Mockup"
+                                        className="h-full w-auto object-contain drop-shadow-xl"
+                                    />
+                                </div>
+                            )}
 
                             <div className="relative z-10 flex flex-col h-full">
                                 <div className="mb-6 p-3 bg-white/5 rounded-2xl w-fit group-hover:scale-110 transition-transform duration-300 border border-white/5">
