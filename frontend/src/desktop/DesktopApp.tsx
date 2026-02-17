@@ -9,6 +9,7 @@ import Docs from './pages/Docs';
 import Privacy from './pages/Privacy';
 import Verification from './pages/Verification';
 import Vision from './pages/Vision';
+import { ChangelogOverlay } from './components/ChangelogOverlay';
 
 const DesktopAnimatedRoutes = () => {
     const location = useLocation();
@@ -39,6 +40,8 @@ const DesktopApp = () => {
             </div>
 
             <Navbar />
+
+            <ChangelogOverlay />
 
             <main className="relative z-10 pt-24 px-4 pb-12 container-custom">
                 <DesktopAnimatedRoutes />

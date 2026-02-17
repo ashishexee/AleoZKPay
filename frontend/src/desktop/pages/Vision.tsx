@@ -41,7 +41,12 @@ const Vision = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             ),
-            description: "Enhanced privacy through an intermediary Treasury. Acting as a secure broker between payer and receiver, the Treasury handles funds to obscure the direct link, making the merchant's address private and adding an extra layer of security to the ecosystem.",
+            description: (
+                <span>
+                    <strong className="text-amber-400 block mb-2 text-xs uppercase tracking-widest border border-amber-400/30 bg-amber-400/10 px-2 py-1 rounded w-fit">Experimental Concept</strong>
+                    An experimental concept we are exploring. This would involve an intermediary Treasury acting as a secure broker to further obscure the link between payer and receiver, adding an extra layer of privacy. While not yet in development, it represents the direction of our future privacy research.
+                </span>
+            ),
             gradient: "from-amber-500/20 to-orange-500/20"
         },
         {
@@ -61,7 +66,7 @@ const Vision = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
             ),
-            description: "Empowering NGOs and crowdfunders. Create open-amount donation invoices that allow supporters to contribute privately. Perfect for sensitive causes where donor privacy is paramount, verified by zero-knowledge proofs.",
+            description: "Empowering NGOs, creators, and charitable causes. Use open-ended invoices for donations, fundraising, or as a private alternative to 'Buy Me a Coffee'. Perfect for content creators, streamers, and open-source developers seeking privacy-preserving support.",
             gradient: "from-pink-500/20 to-rose-500/20"
         }
     ];
@@ -74,10 +79,21 @@ const Vision = () => {
             animate="animate"
             exit="exit"
         >
-            {/* BACKGROUND ANIMATION */}
             <div className="fixed inset-0 pointer-events-none z-0 opacity-30">
                 <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-neon-primary/10 rounded-full blur-[120px] animate-float" />
                 <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-500/10 rounded-full blur-[120px] animate-pulse-slow" />
+            </div>
+
+            <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 w-screen h-[800px] z-0 pointer-events-none flex justify-center overflow-hidden">
+                <img
+                    src="/assets/aleo_globe.png"
+                    alt="Aleo Globe"
+                    className="w-full h-full object-cover opacity-50 mix-blend-screen mask-image-gradient-b"
+                    style={{
+                        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)',
+                        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)'
+                    }}
+                />
             </div>
 
             <motion.div
@@ -88,7 +104,7 @@ const Vision = () => {
             >
                 {/* HERO SECTION */}
                 <motion.div variants={fadeInUp} className="text-center mb-20">
-                    <h1 className="text-4xl md:text-6xl font-bold mb-6 tracking-tighter text-white leading-none">
+                    <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter text-white leading-tight">
                         The Future of <br className="hidden md:block" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary via-white to-purple-400">Private Payments</span>
                     </h1>

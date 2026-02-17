@@ -381,7 +381,8 @@ const Profile: React.FC = () => {
             .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0)
             .toFixed(2),
         invoices: combinedInvoices.length,
-        multiPayCampaigns: combinedInvoices.filter(inv => inv.invoiceType === 1).length
+        settled: combinedInvoices.filter(inv => inv.status === 'SETTLED' || inv.status === 1).length,
+        pending: combinedInvoices.filter(inv => inv.status === 'PENDING' || inv.status === 0).length
     };
 
     const containerVariants = {
@@ -633,11 +634,11 @@ const Profile: React.FC = () => {
                 initial="hidden"
                 animate="visible"
                 variants={containerVariants}
-                className="w-full max-w-7xl mx-auto pt-0 relative z-10 pb-20"
+                className="w-full max-w-7xl mx-auto pt-10 relative z-10 pb-20"
             >
                 {/* HEADER */}
                 <motion.div variants={itemVariants} className="flex flex-col items-center justify-center text-center mb-12">
-                    <h1 className="text-3xl md:text-5xl font-bold mb-4 tracking-tighter leading-none text-white">
+                    <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-tight text-white">
                         Merchant <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Dashboard</span>
                     </h1>
                     <p className="text-gray-400 text-sm leading-relaxed max-w-xs mb-6">
@@ -648,7 +649,7 @@ const Profile: React.FC = () => {
                 </motion.div>
 
                 {/* STATS */}
-                <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
                         <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Total Settled Volume</span>
                         {loadingReceipts ? (
@@ -675,11 +676,19 @@ const Profile: React.FC = () => {
                         )}
                     </GlassCard>
                     <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Active Campaigns</span>
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Settled Invoices</span>
                         {loadingCreated ? (
                             <Shimmer className="h-10 w-16 bg-white/5 rounded-md" />
                         ) : (
-                            <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.multiPayCampaigns}</h2>
+                            <h2 className="text-4xl font-bold text-neon-primary tracking-tighter">{merchantStats.settled}</h2>
+                        )}
+                    </GlassCard>
+                    <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Pending Invoices</span>
+                        {loadingCreated ? (
+                            <Shimmer className="h-10 w-16 bg-white/5 rounded-md" />
+                        ) : (
+                            <h2 className="text-4xl font-bold text-gray-300 tracking-tighter">{merchantStats.pending}</h2>
                         )}
                     </GlassCard>
                 </motion.div>
