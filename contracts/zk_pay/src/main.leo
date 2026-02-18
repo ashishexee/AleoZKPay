@@ -1,7 +1,7 @@
 import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v11.aleo {
+program zk_pay_proofs_privacy_v13.aleo {
     
     @admin(address="aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge")
     async constructor() {
@@ -40,6 +40,7 @@ program zk_pay_proofs_privacy_v11.aleo {
         token_type: u8,       // 0 = Credits, 1 = USDCx
         invoice_type: u8,     // 0 = Standard, 1 = Multi Pay
         salt: field,          // For checking against hash
+        memo: field,          // Encoded Memo (max ~31 chars)
     }
 
     mapping invoices: field => InvoiceData;
@@ -49,6 +50,7 @@ program zk_pay_proofs_privacy_v11.aleo {
         private merchant: address,
         private amount: u64,
         private salt: field,
+        private memo: field,
         public expiry_hours: u32,
         public invoice_type: u8
     ) -> (Invoice, public field, Future) {
@@ -67,7 +69,8 @@ program zk_pay_proofs_privacy_v11.aleo {
             amount: amount,
             token_type: 0u8,
             invoice_type: invoice_type,
-            salt: salt
+            salt: salt,
+            memo: memo
         };
 
         // Default token_type 0 for Credits
@@ -78,6 +81,7 @@ program zk_pay_proofs_privacy_v11.aleo {
         private merchant: address,
         private amount: u128,
         private salt: field,
+        private memo: field,
         public expiry_hours: u32,
         public invoice_type: u8
     ) -> (Invoice, public field, Future) {
@@ -105,7 +109,8 @@ program zk_pay_proofs_privacy_v11.aleo {
             amount: amount_u64,
             token_type: 1u8,
             invoice_type: invoice_type,
-            salt: salt
+            salt: salt,
+            memo: memo
         };
 
         // token_type 1 for USDCx
@@ -195,6 +200,9 @@ program zk_pay_proofs_privacy_v11.aleo {
         
         // Ensure it is a Donation Invoice (Type 2)
         assert_eq(invoice_data.invoice_type, 2u8);
+
+        // Enforce Status is Open (0)
+        assert_eq(invoice_data.status, 0u8);
 
         if invoice_data.expiry_height != 0u32 {
             assert(block.height <= invoice_data.expiry_height);
@@ -365,6 +373,9 @@ program zk_pay_proofs_privacy_v11.aleo {
         // Ensure it is a Donation Invoice (Type 2)
         assert_eq(invoice_data.invoice_type, 2u8);
 
+        // Enforce Status is Open (0)
+        assert_eq(invoice_data.status, 0u8);
+
         if invoice_data.expiry_height != 0u32 {
             assert(block.height <= invoice_data.expiry_height);
         }
@@ -389,8 +400,12 @@ program zk_pay_proofs_privacy_v11.aleo {
             assert(block.height <= invoice_data.expiry_height);
         }
 
+        // Enforce Status is Open (0) for ALL types
+        assert_eq(invoice_data.status, 0u8);
+
         if (invoice_data.invoice_type == 0u8) {
-             assert_eq(invoice_data.status, 0u8);
+             // For Standard Invoices (0), we auto-settle (set to 1)
+             // No need to check status here again as we checked above
              
              let updated_data: InvoiceData = InvoiceData {
                 expiry_height: invoice_data.expiry_height,
@@ -420,8 +435,11 @@ program zk_pay_proofs_privacy_v11.aleo {
             assert(block.height <= invoice_data.expiry_height);
         }
 
+        // Enforce Status is Open (0) for ALL types - including Multipay
+        assert_eq(invoice_data.status, 0u8);
+
         if (invoice_data.invoice_type == 0u8) {
-             assert_eq(invoice_data.status, 0u8);
+             // For Standard Invoices (0), we auto-settle (set to 1)
              
              let updated_data: InvoiceData = InvoiceData {
                 expiry_height: invoice_data.expiry_height,

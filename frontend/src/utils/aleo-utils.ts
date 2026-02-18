@@ -1,6 +1,30 @@
 import { AleoNetworkClient } from '@provablehq/sdk';
-export const PROGRAM_ID = "zk_pay_proofs_privacy_v11.aleo";
+export const PROGRAM_ID = "zk_pay_proofs_privacy_v13.aleo";
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
+
+export const stringToField = (str: string): string => {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(str);
+    let hex = '0x';
+    for (const byte of bytes) {
+        hex += byte.toString(16).padStart(2, '0');
+    }
+    return `${BigInt(hex).toString()}field`;
+};
+
+export const fieldToString = (fieldVal: string): string => {
+    try {
+        const val = BigInt(fieldVal.replace('field', ''));
+        let hex = val.toString(16);
+        if (hex.length % 2 !== 0) hex = '0' + hex;
+        const bytes = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < bytes.length; i++) {
+            bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+        }
+        const decoder = new TextDecoder();
+        return decoder.decode(bytes).replace(/\0/g, '');
+    } catch (e) { return ''; }
+};
 
 export const generateSalt = (): string => {
     const randomBuffer = new Uint8Array(16);
@@ -190,6 +214,7 @@ export interface InvoiceRecord {
     tokenType: number;
     invoiceType: number;
     salt: string;
+    memo: string;
 }
 
 export const parseInvoice = (record: any): InvoiceRecord | null => {
@@ -208,6 +233,7 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
         const invoiceHash = getVal('invoice_hash') || getVal('invoiceHash');
         const owner = getVal('owner');
         const salt = getVal('salt');
+        const memoField = getVal('memo');
 
         if (invoiceHash && owner) {
             const amountVal = getVal('amount');
@@ -225,7 +251,8 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
                 amount: amount,
                 tokenType: tokenType,
                 invoiceType: invoiceType,
-                salt: salt || ''
+                salt: salt || '',
+                memo: memoField ? fieldToString(memoField) : ''
             };
         }
     } catch (e) { console.error("Error parsing Invoice record:", e); }

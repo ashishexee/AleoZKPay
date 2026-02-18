@@ -6,6 +6,8 @@ import { Input } from '../../components/ui/Input';
 import { Shimmer } from '../../components/ui/Shimmer';
 import { useTransactions } from '../../hooks/useTransactions';
 import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../utils/animations';
+import { PaymentHistoryModal } from '../../components/profile/modals/PaymentHistoryModal';
+import { getInvoiceStatus } from '../../utils/aleo-utils';
 import React from 'react';
 
 const CopyButton = ({ text, title }: { text: string, title?: string }) => {
@@ -51,15 +53,25 @@ const Explorer: React.FC = () => {
     }, [activeFilter, searchQuery]);
 
     const [verificationStatus, setVerificationStatus] = useState<Record<string, 'idle' | 'verifying' | 'verified' | 'not-verified'>>({});
+    const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[] | null>(null);
 
     const handleVerifyOnChain = async (invoiceHash: string) => {
-        // Keeping verification logic if used by buttons in the table
         setVerificationStatus(prev => ({ ...prev, [invoiceHash]: 'verifying' }));
-        // Mocking verification for now as API imports were removed or unused in original refactor attempt
-        // If real verification is needed, restore getInvoiceStatus import
-        setTimeout(() => {
+
+        try {
+            // Fetch actual status from chain
+            // Status: 0 = Open (Not Paid/Pending), 1 = Settled (Paid)
+            const status = await getInvoiceStatus(invoiceHash);
+
+            if (status === 1) {
+                setVerificationStatus(prev => ({ ...prev, [invoiceHash]: 'verified' }));
+            } else {
+                setVerificationStatus(prev => ({ ...prev, [invoiceHash]: 'not-verified' }));
+            }
+        } catch (error) {
+            console.error("Verification failed:", error);
             setVerificationStatus(prev => ({ ...prev, [invoiceHash]: 'not-verified' }));
-        }, 1000);
+        }
     };
 
     const handleKeyDown = () => {
@@ -483,7 +495,14 @@ const Explorer: React.FC = () => {
                                                     <div className="w-[120px] flex justify-end">
                                                         {(inv.payment_tx_ids?.length || inv.payment_tx_id) && (
                                                             <button
-                                                                onClick={() => openExplorer(inv.payment_tx_ids?.[inv.payment_tx_ids.length - 1] || inv.payment_tx_id)}
+                                                                onClick={() => {
+                                                                    const ids = inv.payment_tx_ids?.length ? inv.payment_tx_ids : [inv.payment_tx_id!];
+                                                                    if (ids.length > 1) {
+                                                                        setSelectedPaymentIds(ids);
+                                                                    } else {
+                                                                        openExplorer(ids[0]);
+                                                                    }
+                                                                }}
                                                                 className="flex items-center gap-1.5 text-xs bg-emerald-900/20 hover:bg-emerald-900/40 px-3 py-1.5 rounded-md border border-emerald-500/20 hover:border-emerald-500/50 transition-all text-emerald-400 font-medium group/btn shadow-[0_0_10px_rgba(16,185,129,0.1)] w-full justify-center"
                                                                 title="View Payment Proof"
                                                             >
@@ -600,6 +619,12 @@ const Explorer: React.FC = () => {
                     )}
                 </GlassCard>
             </motion.div>
+
+            <PaymentHistoryModal
+                paymentIds={selectedPaymentIds}
+                onClose={() => setSelectedPaymentIds(null)}
+                onViewTx={openExplorer}
+            />
         </motion.div>
 
     );
