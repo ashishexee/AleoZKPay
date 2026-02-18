@@ -4,9 +4,10 @@ import { usePayment } from '../../hooks/usePayment';
 import type { PaymentStep } from '../../hooks/usePayment';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
-import GlassCard from '../../components/GlassCard';
+import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Shimmer } from '../../components/ui/Shimmer';
 import { PROGRAM_ID } from '../../utils/aleo-utils';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -15,9 +16,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 const MobilePaymentPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const hasParams = searchParams.get('merchant') && searchParams.get('amount') && searchParams.get('salt');
+    const hasParams = searchParams.get('merchant') && searchParams.get('salt');
     const [manualLink, setManualLink] = useState('');
     const [copiedSecret, setCopiedSecret] = useState(false);
+    const [copiedHash, setCopiedHash] = useState(false);
+
     const {
         step,
         status,
@@ -29,8 +32,11 @@ const MobilePaymentPage = () => {
         payInvoice,
         convertPublicToPrivate,
         programId,
-
-        paymentSecret
+        paymentSecret,
+        receiptHash,
+        receiptSearchFailed,
+        donationAmount,
+        setDonationAmount
     } = usePayment();
 
     const { address } = useWallet();
@@ -57,8 +63,7 @@ const MobilePaymentPage = () => {
                 }
                 urlObj = new URL(rawValue, window.location.origin);
             }
-
-            if (urlObj.searchParams.get('merchant') && urlObj.searchParams.get('amount') && urlObj.searchParams.get('salt')) {
+            if (urlObj.searchParams.get('merchant') && urlObj.searchParams.get('salt')) {
                 navigate(`/pay${urlObj.search}`);
             } else {
                 console.warn("Invalid NullPay Link");
@@ -86,6 +91,7 @@ const MobilePaymentPage = () => {
     ];
 
     const isMultiPay = programId === PROGRAM_ID;
+    const currencyLabel = invoice?.tokenType === 1 ? 'USDCx' : 'Credits';
 
     if (!hasParams) {
         return (
@@ -174,7 +180,7 @@ const MobilePaymentPage = () => {
                     )}
                 </div>
 
-                <GlassCard variant="heavy" className="p-6 relative overflow-hidden">
+                <GlassCard variant="heavy" className="p-8 relative overflow-hidden">
                     {/* Progress Bar */}
                     <div className="flex justify-between mb-8 relative">
                         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-white/10 -z-0" />
@@ -208,23 +214,48 @@ const MobilePaymentPage = () => {
                     <div className="bg-black/30 rounded-2xl p-4 border border-white/5 mb-6 space-y-4">
                         <div className="flex justify-between items-center">
                             <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Merchant</span>
-                            <span className="font-mono text-white text-xs bg-white/5 px-2 py-1 rounded">
-                                {invoice?.merchant ? `${invoice.merchant.slice(0, 10)}...${invoice.merchant.slice(-5)}` : 'Loading...'}
-                            </span>
+                            {loading && !invoice ? (
+                                <Shimmer className="h-6 w-32 bg-white/5 rounded" />
+                            ) : (
+                                <span className="font-mono text-white text-xs bg-white/5 px-2 py-1 rounded">
+                                    {invoice?.merchant ? `${invoice.merchant.slice(0, 10)}...${invoice.merchant.slice(-5)}` : 'Loading...'}
+                                </span>
+                            )}
                         </div>
                         <div className="flex justify-between items-center pt-4 border-t border-white/5">
                             <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Amount</span>
-                            <span className="text-xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-xs text-gray-500 font-normal">{invoice?.tokenType === 1 ? 'USDCx' : 'Credits'}</span></span>
+                            {loading && !invoice ? (
+                                <Shimmer className="h-8 w-24 bg-white/5 rounded" />
+                            ) : (
+                                invoice?.amount === 0 ? (
+                                    <div className="w-1/2">
+                                        <Input
+                                            label=""
+                                            type="number"
+                                            placeholder="Enter amount"
+                                            value={donationAmount}
+                                            onChange={(e) => setDonationAmount(e.target.value)}
+                                            className="text-right"
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="text-xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-xs text-gray-500 font-normal">{currencyLabel}</span></span>
+                                )
+                            )}
                         </div>
                         {invoice?.memo && (
                             <div className="flex justify-between items-center pt-4 border-t border-white/5">
                                 <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Memo</span>
-                                <span className="text-gray-300 text-sm">{invoice.memo}</span>
+                                {loading && !invoice ? (
+                                    <Shimmer className="h-5 w-48 bg-white/5 rounded" />
+                                ) : (
+                                    <span className="text-gray-300 text-sm">{invoice.memo}</span>
+                                )}
                             </div>
                         )}
 
                         {/* MULTI PAY EXTRA INPUTS */}
-                        {isMultiPay && step !== 'SUCCESS' && step !== 'CONNECT' && (
+                        {isMultiPay && step !== 'SUCCESS' && step !== 'CONNECT' && step !== 'ALREADY_PAID' && (
                             <div className="pt-4 border-t border-white/5 space-y-4">
                                 <div>
                                     <span className="text-xs font-bold text-neon-primary uppercase tracking-widest block mb-1">Your Payment Secret</span>
@@ -271,19 +302,46 @@ const MobilePaymentPage = () => {
                                         ? 'This invoice has already been settled on-chain.'
                                         : 'The transaction has been settled on-chain.'}
                                 </p>
-                                {isMultiPay && paymentSecret && (
-                                    <div
-                                        onClick={() => {
-                                            if (paymentSecret) {
-                                                navigator.clipboard.writeText(paymentSecret);
-                                                setCopiedSecret(true);
-                                                setTimeout(() => setCopiedSecret(false), 2000);
-                                            }
-                                        }}
-                                        className="bg-black/40 border border-white/10 rounded-lg p-3 font-mono text-xs break-all text-neon-primary relative cursor-pointer hover:bg-white/5 transition-colors active:scale-[0.98]"
-                                    >    <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Secret</p>
-                                        <p className="font-mono text-white text-xs break-all">{paymentSecret}</p>
-                                        <p className="text-[10px] text-gray-500 mt-1">Share with merchant to verify contribution.</p>
+                                {isMultiPay && step !== 'ALREADY_PAID' && (
+                                    <div className="bg-black/40 border border-neon-primary/30 p-4 rounded-xl text-left space-y-3">
+                                        <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Hash</p>
+
+                                        {receiptHash ? (
+                                            <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-neon-primary/20 transition-colors" onClick={() => {
+                                                navigator.clipboard.writeText(receiptHash);
+                                                setCopiedHash(true);
+                                                setTimeout(() => setCopiedHash(false), 2000);
+                                            }}>
+                                                {receiptHash}
+                                                <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-neon-primary' : 'opacity-70 text-gray-400'}`}>
+                                                    {copiedHash ? 'COPIED!' : 'COPY'}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-white/5 border border-white/10 p-3 rounded-lg text-center">
+                                                {receiptSearchFailed ? (
+                                                    <p className="text-xs text-gray-400 italic">
+                                                        You can get your payment receipt from the profiles page in paid invoices section.
+                                                    </p>
+                                                ) : (
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <div className="w-3 h-3 border-2 border-neon-primary border-t-transparent rounded-full animate-spin"></div>
+                                                        <span className="text-xs text-gray-400">Syncing Receipt...</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {receiptHash && (
+                                            <p className="text-[10px] text-gray-500 mt-1">Provide this Hash to the merchant for verification.</p>
+                                        )}
+
+                                        {paymentSecret && (
+                                            <div className="opacity-50 hover:opacity-100 transition-opacity mt-3">
+                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Payment Secret (Ref)</p>
+                                                <p className="font-mono text-gray-500 text-[10px] break-all">{paymentSecret}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                                 {txId && (
@@ -326,15 +384,19 @@ const MobilePaymentPage = () => {
                                 ) : step === 'CONVERT' ? (
                                     'Convert Public to Private'
                                 ) : (
-                                    `Pay ${invoice?.amount} ${invoice?.tokenType === 1 ? 'USDCx' : 'Credits'}`
+                                    `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`
                                 )}
                             </Button>
                         )}
                     </div>
                 </GlassCard>
+                <p className="text-center mt-8 text-xs font-medium text-gray-500 uppercase tracking-widest">
+                    Secured by Aleo Zero-Knowledge Proofs
+                </p>
             </motion.div>
         </div>
     );
 };
 
 export default MobilePaymentPage;
+

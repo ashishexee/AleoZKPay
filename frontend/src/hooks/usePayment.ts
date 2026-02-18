@@ -20,7 +20,7 @@ export const usePayment = () => {
         invoiceType: number;
     } | null>(null);
 
-    const [donationAmount, setDonationAmount] = useState<number>(0);
+    const [donationAmount, setDonationAmount] = useState<string>('');
 
     const [status, setStatus] = useState<string>('Initializing...');
     const [step, setStep] = useState<PaymentStep>('CONNECT');
@@ -43,9 +43,6 @@ export const usePayment = () => {
             const tokenParam = searchParams.get('token');
             const tokenType = tokenParam === 'usdcx' ? 1 : 0;
             const typeParam = searchParams.get('type');
-
-            // We can infer type from param or fetch it. Defaulting to 0.
-            // But we will overwrite with on-chain data.
             let initialType = typeParam === 'donation' ? 2 : (typeParam === 'multipay' ? 1 : 0);
 
             if (!merchant || !salt) {
@@ -75,7 +72,6 @@ export const usePayment = () => {
                 }
 
                 const invoiceData = await getInvoiceData(fetchedHash);
-
                 const statusOnChain = invoiceData ? invoiceData.status : 0;
                 const tokenTypeOnChain = invoiceData ? invoiceData.tokenType : (tokenType || 0);
                 const invoiceTypeOnChain = invoiceData ? invoiceData.invoiceType : initialType;
@@ -162,7 +158,8 @@ export const usePayment = () => {
         try {
             setLoading(true);
             setStatus('Converting Public Credits to Private...');
-            const finalAmount = (invoice.amount === 0 && donationAmount > 0) ? donationAmount : invoice.amount;
+            const parsedDonation = Number(donationAmount);
+            const finalAmount = (invoice.amount === 0 && parsedDonation > 0) ? parsedDonation : invoice.amount;
             const bufferAmount = finalAmount + 0.01;
             const amountMicro = Math.round(bufferAmount * 1_000_000);
 
@@ -327,7 +324,8 @@ export const usePayment = () => {
             console.log("USDCx Records (Initial):", records);
 
             const isDonation = invoice.invoiceType === 2;
-            const finalAmount = (isDonation && donationAmount > 0) ? donationAmount : invoice.amount;
+            const parsedDonation = Number(donationAmount);
+            const finalAmount = (isDonation && parsedDonation > 0) ? parsedDonation : invoice.amount;
             const amountMicro = BigInt(Math.round(finalAmount * 1_000_000));
 
             let recordsAny = records as any[];
@@ -465,7 +463,8 @@ export const usePayment = () => {
             const records = await requestRecords('credits.aleo', false);
             console.log("Wallet Records (Initial):", records);
             const isDonation = invoice.invoiceType === 2;
-            const finalAmount = (isDonation && donationAmount > 0) ? donationAmount : invoice.amount;
+            const parsedDonation = Number(donationAmount);
+            const finalAmount = (isDonation && parsedDonation > 0) ? parsedDonation : invoice.amount;
             const amountMicro = Math.round(finalAmount * 1_000_000);
 
             const recordsAny = records as any[];
