@@ -8,7 +8,8 @@ interface StatsCardsProps {
         creditsSales: number | string;
         usdcxSales: number | string;
         invoices: number;
-        multiPayCampaigns: number;
+        settled: number;
+        pending: number;
     };
     loadingReceipts: boolean;
     loadingCreated: boolean;
@@ -17,7 +18,7 @@ interface StatsCardsProps {
 
 export const StatsCards: React.FC<StatsCardsProps> = ({ merchantStats, loadingReceipts, loadingCreated, itemVariants }) => {
     return (
-        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
             <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Total Settled Volume</span>
                 {loadingReceipts ? (
@@ -44,11 +45,19 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ merchantStats, loadingRe
                 )}
             </GlassCard>
             <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Active Campaigns</span>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Pending</span>
                 {loadingCreated ? (
                     <Shimmer className="h-10 w-16 bg-white/5 rounded-md" />
                 ) : (
-                    <h2 className="text-4xl font-bold text-white tracking-tighter">{merchantStats.multiPayCampaigns}</h2>
+                    <h2 className="text-4xl font-bold text-yellow-400 tracking-tighter">{merchantStats.pending}</h2>
+                )}
+            </GlassCard>
+            <GlassCard className="p-8 flex flex-col justify-center group hover:border-white/20">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 block">Settled</span>
+                {loadingCreated ? (
+                    <Shimmer className="h-10 w-16 bg-white/5 rounded-md" />
+                ) : (
+                    <h2 className="text-4xl font-bold text-green-400 tracking-tighter">{merchantStats.settled}</h2>
                 )}
             </GlassCard>
         </motion.div>
