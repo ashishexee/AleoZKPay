@@ -3,7 +3,7 @@ import merkle_tree.aleo;
 import test_usdcx_multisig_core.aleo;
 import test_usdcx_freezelist.aleo;
 import test_usdcx_stablecoin.aleo;
-program zk_pay_proofs_privacy_v11.aleo;
+program zk_pay_proofs_privacy_v13.aleo;
 
 record PayerReceipt:
     owner as address.private;
@@ -28,6 +28,7 @@ record Invoice:
     token_type as u8.private;
     invoice_type as u8.private;
     salt as field.private;
+    memo as field.private;
 
 struct InvoiceData:
     expiry_height as u32;
@@ -61,20 +62,21 @@ function create_invoice:
     input r0 as address.private;
     input r1 as u64.private;
     input r2 as field.private;
-    input r3 as u32.public;
-    input r4 as u8.public;
-    cast r0 into r5 as field;
-    cast r1 into r6 as field;
-    hash.bhp256 r5 into r7 as field;
+    input r3 as field.private;
+    input r4 as u32.public;
+    input r5 as u8.public;
+    cast r0 into r6 as field;
+    cast r1 into r7 as field;
     hash.bhp256 r6 into r8 as field;
-    hash.bhp256 r2 into r9 as field;
-    add r7 r8 into r10;
-    add r10 r9 into r11;
-    cast r0 r11 r1 0u8 r4 r2 into r12 as Invoice.record;
-    async create_invoice r11 r3 r2 r4 0u8 into r13;
-    output r12 as Invoice.record;
-    output r11 as field.public;
-    output r13 as zk_pay_proofs_privacy_v11.aleo/create_invoice.future;
+    hash.bhp256 r7 into r9 as field;
+    hash.bhp256 r2 into r10 as field;
+    add r8 r9 into r11;
+    add r11 r10 into r12;
+    cast r0 r12 r1 0u8 r5 r2 r3 into r13 as Invoice.record;
+    async create_invoice r12 r4 r2 r5 0u8 into r14;
+    output r13 as Invoice.record;
+    output r12 as field.public;
+    output r14 as zk_pay_proofs_privacy_v13.aleo/create_invoice.future;
 
 finalize create_invoice:
     input r0 as field.public;
@@ -94,21 +96,22 @@ function create_invoice_usdcx:
     input r0 as address.private;
     input r1 as u128.private;
     input r2 as field.private;
-    input r3 as u32.public;
-    input r4 as u8.public;
-    cast r0 into r5 as field;
-    cast r1 into r6 as field;
-    hash.bhp256 r5 into r7 as field;
+    input r3 as field.private;
+    input r4 as u32.public;
+    input r5 as u8.public;
+    cast r0 into r6 as field;
+    cast r1 into r7 as field;
     hash.bhp256 r6 into r8 as field;
-    hash.bhp256 r2 into r9 as field;
-    add r7 r8 into r10;
-    add r10 r9 into r11;
-    cast r1 into r12 as u64;
-    cast r0 r11 r12 1u8 r4 r2 into r13 as Invoice.record;
-    async create_invoice_usdcx r11 r3 r2 r4 1u8 into r14;
-    output r13 as Invoice.record;
-    output r11 as field.public;
-    output r14 as zk_pay_proofs_privacy_v11.aleo/create_invoice_usdcx.future;
+    hash.bhp256 r7 into r9 as field;
+    hash.bhp256 r2 into r10 as field;
+    add r8 r9 into r11;
+    add r11 r10 into r12;
+    cast r1 into r13 as u64;
+    cast r0 r12 r13 1u8 r5 r2 r3 into r14 as Invoice.record;
+    async create_invoice_usdcx r12 r4 r2 r5 1u8 into r15;
+    output r14 as Invoice.record;
+    output r12 as field.public;
+    output r15 as zk_pay_proofs_privacy_v13.aleo/create_invoice_usdcx.future;
 
 finalize create_invoice_usdcx:
     input r0 as field.public;
@@ -147,7 +150,7 @@ function pay_donation:
     output r7 as credits.aleo/credits.record;
     output r16 as PayerReceipt.record;
     output r17 as MerchantReceipt.record;
-    output r18 as zk_pay_proofs_privacy_v11.aleo/pay_donation.future;
+    output r18 as zk_pay_proofs_privacy_v13.aleo/pay_donation.future;
 
 finalize pay_donation:
     input r0 as field.public;
@@ -158,6 +161,7 @@ finalize pay_donation:
     get invoices[r3] into r4;
     assert.eq r4.token_type r2;
     assert.eq r4.invoice_type 2u8;
+    assert.eq r4.status 0u8;
     is.neq r4.expiry_height 0u32 into r5;
     branch.eq r5 false to end_then_0_0;
     lte block.height r4.expiry_height into r6;
@@ -191,7 +195,7 @@ function pay_invoice:
     output r7 as credits.aleo/credits.record;
     output r17 as PayerReceipt.record;
     output r18 as MerchantReceipt.record;
-    output r20 as zk_pay_proofs_privacy_v11.aleo/pay_invoice.future;
+    output r20 as zk_pay_proofs_privacy_v13.aleo/pay_invoice.future;
 
 finalize pay_invoice:
     input r0 as field.public;
@@ -209,9 +213,9 @@ finalize pay_invoice:
     branch.eq true true to end_otherwise_0_3;
     position end_then_0_2;
     position end_otherwise_0_3;
+    assert.eq r5.status 0u8;
     is.eq r5.invoice_type 0u8 into r8;
     branch.eq r8 false to end_then_0_4;
-    assert.eq r5.status 0u8;
     cast r5.expiry_height 1u8 r5.invoice_type r5.token_type into r9 as InvoiceData;
     set r9 into invoices[r4];
     branch.eq true true to end_otherwise_0_5;
@@ -246,7 +250,7 @@ function pay_invoice_usdcx:
     output r7 as test_usdcx_stablecoin.aleo/ComplianceRecord.record;
     output r21 as PayerReceipt.record;
     output r23 as MerchantReceipt.record;
-    output r24 as zk_pay_proofs_privacy_v11.aleo/pay_invoice_usdcx.future;
+    output r24 as zk_pay_proofs_privacy_v13.aleo/pay_invoice_usdcx.future;
 
 finalize pay_invoice_usdcx:
     input r0 as field.public;
@@ -266,9 +270,9 @@ finalize pay_invoice_usdcx:
     branch.eq true true to end_otherwise_0_7;
     position end_then_0_6;
     position end_otherwise_0_7;
+    assert.eq r6.status 0u8;
     is.eq r6.invoice_type 0u8 into r9;
     branch.eq r9 false to end_then_0_8;
-    assert.eq r6.status 0u8;
     cast r6.expiry_height 1u8 r6.invoice_type r6.token_type into r10 as InvoiceData;
     set r10 into invoices[r5];
     branch.eq true true to end_otherwise_0_9;
@@ -302,7 +306,7 @@ function pay_donation_usdcx:
     output r7 as test_usdcx_stablecoin.aleo/ComplianceRecord.record;
     output r20 as PayerReceipt.record;
     output r22 as MerchantReceipt.record;
-    output r23 as zk_pay_proofs_privacy_v11.aleo/pay_donation_usdcx.future;
+    output r23 as zk_pay_proofs_privacy_v13.aleo/pay_donation_usdcx.future;
 
 finalize pay_donation_usdcx:
     input r0 as field.public;
@@ -315,6 +319,7 @@ finalize pay_donation_usdcx:
     get invoices[r4] into r5;
     assert.eq r5.token_type r2;
     assert.eq r5.invoice_type 2u8;
+    assert.eq r5.status 0u8;
     is.neq r5.expiry_height 0u32 into r6;
     branch.eq r6 false to end_then_0_10;
     lte block.height r5.expiry_height into r7;
@@ -334,7 +339,7 @@ function settle_invoice:
     add r4 r5 into r7;
     add r7 r6 into r8;
     async settle_invoice r8 r0 into r9;
-    output r9 as zk_pay_proofs_privacy_v11.aleo/settle_invoice.future;
+    output r9 as zk_pay_proofs_privacy_v13.aleo/settle_invoice.future;
 
 finalize settle_invoice:
     input r0 as field.public;
@@ -348,7 +353,7 @@ finalize settle_invoice:
 function get_invoice_status:
     input r0 as field.public;
     async get_invoice_status r0 into r1;
-    output r1 as zk_pay_proofs_privacy_v11.aleo/get_invoice_status.future;
+    output r1 as zk_pay_proofs_privacy_v13.aleo/get_invoice_status.future;
 
 finalize get_invoice_status:
     input r0 as field.public;

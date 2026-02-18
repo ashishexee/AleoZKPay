@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../utils/aleo-utils';
+import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from '../utils/aleo-utils';
 import { InvoiceData } from '../types/invoice';
 
 export type InvoiceType = 'standard' | 'multipay' | 'donation';
@@ -57,10 +57,14 @@ export const useCreateInvoice = () => {
                 salt = generateSalt();
             }
 
+            // Encode Memo
+            const memoField = memo ? stringToField(memo) : '0field';
+
             const inputs = [
                 publicKey,
                 amountInput,
                 salt,
+                memoField,
                 '0u32', // expiry hardcoded to 0
                 typeInput
             ];
@@ -166,8 +170,8 @@ export const useCreateInvoice = () => {
                                     await createInvoice({
                                         invoice_hash: hash,
                                         merchant_address: merchant,
-                                        amount: Number(amount), // This is 0 for donation
-                                        memo: memo || '',
+                                        // amount removed
+                                        // memo removed
                                         status: 'PENDING',
                                         invoice_transaction_id: finalTransactionId,
                                         salt: salt,

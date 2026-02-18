@@ -76,22 +76,24 @@ export const usePayment = () => {
 
                 const invoiceData = await getInvoiceData(fetchedHash);
 
-                // Default to 0 if data missing (shouldn't happen for valid invoices)
                 const statusOnChain = invoiceData ? invoiceData.status : 0;
                 const tokenTypeOnChain = invoiceData ? invoiceData.tokenType : (tokenType || 0);
                 const invoiceTypeOnChain = invoiceData ? invoiceData.invoiceType : initialType;
 
                 console.log(`🔗 On-Chain Invoice Data | Status: ${statusOnChain}, Token Type: ${tokenTypeOnChain}, Type: ${invoiceTypeOnChain}`);
 
-                if (statusOnChain === 1) {
-                    let dbInvoice = null;
-                    try {
-                        const { fetchInvoiceByHash } = await import('../services/api');
-                        dbInvoice = await fetchInvoiceByHash(fetchedHash);
-                        if (dbInvoice && dbInvoice.payment_tx_id) {
-                            setTxId(dbInvoice.payment_tx_id);
-                        }
-                    } catch (e) { console.warn("Could not fetch DB details", e); }
+                // Fetch DB details to check for manual settlement or off-chain status
+                let dbInvoice = null;
+                try {
+                    const { fetchInvoiceByHash } = await import('../services/api');
+                    dbInvoice = await fetchInvoiceByHash(fetchedHash);
+                } catch (e) { console.warn("Could not fetch DB details", e); }
+
+                // Check if Settled on-chain OR manually settled in DB
+                if (statusOnChain === 1 || (dbInvoice && dbInvoice.status === 'SETTLED')) {
+                    if (dbInvoice && dbInvoice.payment_tx_id) {
+                        setTxId(dbInvoice.payment_tx_id);
+                    }
 
                     setInvoice({
                         merchant,
@@ -255,13 +257,13 @@ export const usePayment = () => {
                         const { updateInvoiceStatus, fetchInvoiceByHash } = await import('../services/api');
 
                         const updatePayload: any = {
-                            payment_tx_ids: onChainId,
-                            payer_address: publicKey || undefined
+                            payment_tx_ids: onChainId
+                            // payer_address removed for privacy
                         };
                         if (invoice?.hash) {
                             const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
-                            if (currentDbInvoice && currentDbInvoice.invoice_type === 1) {
-                                console.log("Multi Pay Invoice detected. Keeping status as PENDING.");
+                            if (currentDbInvoice && (currentDbInvoice.invoice_type === 1 || currentDbInvoice.invoice_type === 2)) {
+                                console.log("Multi Pay / Donation Invoice detected. Keeping status as PENDING.");
                             } else {
                                 updatePayload.status = 'SETTLED';
                             }
@@ -520,9 +522,9 @@ export const usePayment = () => {
                         if (!r.spent) totalBalance += await processRecord(r);
                     }
                     if (totalBalance >= amountMicro) {
-                        setStatus(`Privacy Protocol requires a single record > ${finalAmount}. Converting...`);
+                        setStatus(`Privacy Protocol requires a single record. Please convert to merge records.`);
                     } else {
-                        setStatus(`Insufficient private balance. Converting...`);
+                        setStatus(`Insufficient private balance. Please convert public credits.`);
                     }
                     setLoading(false);
                     return;

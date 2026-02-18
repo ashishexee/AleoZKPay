@@ -43,8 +43,8 @@ app.get('/api/invoices', async (req, res) => {
 
     const decryptedData = data.map(inv => ({
         ...inv,
-        merchant_address: decrypt(inv.merchant_address),
-        payer_address: decrypt(inv.payer_address)
+        merchant_address: decrypt(inv.merchant_address)
+        // payer_address removed
     }));
 
     // Apply merchant filter in memory if requested (since encryption is randomized)
@@ -75,8 +75,8 @@ app.get('/api/invoices/merchant/:address', async (req, res) => {
     const merchantInvoices = data
         .map(inv => ({
             ...inv,
-            merchant_address: decrypt(inv.merchant_address),
-            payer_address: decrypt(inv.payer_address)
+            merchant_address: decrypt(inv.merchant_address)
+            // payer_address removed
         }))
         .filter(inv => inv.merchant_address === address);
 
@@ -98,8 +98,8 @@ app.get('/api/invoices/recent', async (req, res) => {
 
     const decryptedData = data.map(inv => ({
         ...inv,
-        merchant_address: decrypt(inv.merchant_address),
-        payer_address: decrypt(inv.payer_address)
+        merchant_address: decrypt(inv.merchant_address)
+        // payer_address removed
     }));
 
     res.json(decryptedData);
@@ -120,8 +120,9 @@ app.get('/api/invoice/:hash', async (req, res) => {
     }
 
     // Decrypt
+    // Decrypt
     data.merchant_address = decrypt(data.merchant_address);
-    data.payer_address = decrypt(data.payer_address);
+    // payer_address removed
 
     res.json(data);
 });
@@ -143,8 +144,8 @@ app.post('/api/invoices', async (req, res) => {
             .upsert({
                 invoice_hash,
                 merchant_address: encryptedMerchant,
-                amount,
-                memo,
+                // amount removed as column is deleted
+                // memo removed as column is deleted
                 status: status || 'PENDING',
                 invoice_transaction_id,  // Invoice creation TX
                 salt: salt || null,  // Store salt for payment link generation
@@ -184,11 +185,8 @@ app.patch('/api/invoices/:hash', async (req, res) => {
 
         if (payment_tx_ids) updates.payment_tx_ids = payment_tx_ids;
         if (block_settled) updates.block_settled = block_settled;
-        if (payer_address) {
-            updates.payer_address = encrypt(payer_address);
-        }
+        // payer_address handling removed
 
-        if (block_settled) updates.block_settled = block_settled;
         if (payment_tx_ids) {
             const currentIds = current.payment_tx_ids || [];
             if (!currentIds.includes(payment_tx_ids)) {
@@ -210,7 +208,7 @@ app.patch('/api/invoices/:hash', async (req, res) => {
         // Decrypt for response
         if (data) {
             data.merchant_address = decrypt(data.merchant_address);
-            data.payer_address = decrypt(data.payer_address);
+            // payer_address removed
         }
 
         res.json(data);
