@@ -6,8 +6,8 @@ NullPay is a decentralized invoice and payment system that leverages Aleo's zero
 
 **Live Application:** [https://null-pay.vercel.app/](https://null-pay.vercel.app/)  
 **Smart Contract:** [`zk_pay_proofs_privacy_v11.aleo`](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v11.aleo)  
-**NullPay Wave2 Demo:** [Link Placeholder]  
-**Mobile Version Demo:** [Link Placeholder]  
+**NullPay Wave2 Demo:** [Watch Demo](https://youtu.be/d7tztJnto80)  
+**Mobile Version Demo:** [Watch Demo](https://youtu.be/M_-JVcLAo2U?si=IJTNvCYxCm0zr8j6)  
 **Vision:** [https://null-pay.vercel.app/vision](https://null-pay.vercel.app/vision)  
 **Documentation:** [https://null-pay.vercel.app/docs](https://null-pay.vercel.app/docs)  
 
@@ -18,7 +18,6 @@ NullPay is a decentralized invoice and payment system that leverages Aleo's zero
 Access NullPay on the go directly through the **Shield Wallet** browser (available on the Play Store). While we are actively refining the design and performance for V2, the current V1 release is fully functional for all core payments.
 
 ### ⚠️ Current Limitations (Shield Wallet)
-- **QR Scanning**: Camera access is restricted — users must paste payment links manually.  
 - **Auto-Decryption**: Limited support — users may need to manually decrypt records (one-click).
 
 
