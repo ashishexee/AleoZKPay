@@ -5,23 +5,33 @@ import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../utils/a
 const Vision = () => {
     const sections = [
         {
-            title: "Private Retail Payments",
+            title: "Universal Token Integration",
             icon: (
-                <svg className="w-8 h-8 text-neon-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v1m6 11h2m-6 0h-2v4h-4v-4H6v-4h6v4m0-10V4m0 4v2m0-6h6m-6 0H6m6 4v6m6 0h-6" />
+                <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             ),
-            description: "A seamless scan-and-pay experience for physical stores. Whether selling clothes, electronics, or groceries, merchants can generate simple QR codes. Users scan to pay, keeping every bit of their information private while ensuring organized, verifiable payments on the NullPay platform.",
-            gradient: "from-blue-500/20 to-cyan-500/20"
+            description: "Integrating USAD alongside USDCx and Aleo Credits. For standard and multi-pay invoices, merchants can specify a single asset (Credits, USDCx, or USAD) or allow stablecoin payments (USDCx/USAD). For donations, merchants can enable full flexibility, allowing supporters to contribute using any of the three assets.",
+            gradient: "from-indigo-500/20 to-blue-500/20"
         },
         {
-            title: "Mobile Experience",
+            title: "Instant Retail Invoices",
+            icon: (
+                <svg className="w-8 h-8 text-neon-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            ),
+            description: "A dedicated 'Instant Invoice' page designed specifically for physical stores, cafes, and pop-up shops. Merchants can generate a quick invoice, and upon user payment, receive immediate 'Payment Successful' feedback. This real-time confirmation makes in-person crypto payments seamlessly practical.",
+            gradient: "from-green-500/20 to-emerald-500/20"
+        },
+        {
+            title: "Mobile Experience (Beta)",
             icon: (
                 <svg className="w-8 h-8 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
             ),
-            description: "NullPay offers a full mobile experience via the Shield Wallet app on the Play Store. Access our site through the wallet browser to create invoices, scan QR codes for payments, and manage your profile—just like on desktop.",
+            description: "NullPay V1 Mobile is live via Shield Wallet (Beta). We are actively refining performance and design. Due to current wallet limitations, QR scanning and auto-decryption are temporarily unavailable (pending Shield updates). However, the platform remains fully functional—users can manually paste payment links and decrypt records to transact securely on the go.",
             gradient: "from-cyan-500/20 to-blue-500/20"
         },
         {
@@ -66,7 +76,7 @@ const Vision = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
             ),
-            description: "Empowering NGOs, creators, and charitable causes. Use open-ended invoices for donations, fundraising, or as a private alternative to 'Buy Me a Coffee'. Perfect for content creators, streamers, and open-source developers seeking privacy-preserving support.",
+            description: "Empowering NGOs, creators, and charitable causes. Use open-ended invoices for donations, giving flexibility to supporters to pay using Aleo Credits, USDCx, or the upcoming USAD token. Perfect for creators and open-source developers seeking privacy-preserving support.",
             gradient: "from-pink-500/20 to-rose-500/20"
         }
     ];
@@ -125,7 +135,7 @@ const Vision = () => {
                             <div className={`absolute inset-0 bg-gradient-to-br ${section.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
 
                             {/* MOBILE MOCKUP BACKGROUND - Only for Mobile Experience Card */}
-                            {section.title === "Mobile Experience" && (
+                            {section.title === "Mobile Experience (Beta)" && (
                                 <div className="absolute right-0 bottom-0 h-full w-auto opacity-40 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none grayscale group-hover:grayscale-0 flex items-end justify-end">
                                     <img
                                         src="/assets/nullpay_mobile01-left.png"

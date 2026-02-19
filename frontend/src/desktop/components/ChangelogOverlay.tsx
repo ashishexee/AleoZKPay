@@ -185,6 +185,7 @@ export const ChangelogOverlay: React.FC = () => {
                                         <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-400 font-bold uppercase tracking-wide hover:bg-white/10 transition-colors cursor-default">Buy Me a Coffee</span>
                                         <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-400 font-bold uppercase tracking-wide hover:bg-white/10 transition-colors cursor-default">Fundraising</span>
                                         <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-400 font-bold uppercase tracking-wide hover:bg-white/10 transition-colors cursor-default">Tips</span>
+                                        <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-gray-400 font-bold uppercase tracking-wide hover:bg-white/10 transition-colors cursor-default">Donations</span>
                                     </div>
                                 </div>
                             </motion.div>

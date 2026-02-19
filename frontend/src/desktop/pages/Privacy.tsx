@@ -327,7 +327,7 @@ const Privacy: React.FC = () => {
                         </div>
                     </GlassCard>
 
-                    {/* CARD 5: TAMPER-PROOF INTEGRITY */}
+                    {/* CARD 6: TAMPER-PROOF INTEGRITY */}
                     <GlassCard className="p-10 min-h-[400px] flex flex-col justify-between relative overflow-hidden group hover:bg-white/5 transition-all duration-500 border border-white/5 hover:border-white/10">
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <span className="text-8xl font-bold font-mono">06</span>
