@@ -31,7 +31,7 @@ const Vision = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
             ),
-            description: "NullPay V1 Mobile is live via Shield Wallet (Beta). We are actively refining performance and design. Due to current wallet limitations, QR scanning and auto-decryption are temporarily unavailable (pending Shield updates). However, the platform remains fully functional—users can manually paste payment links and decrypt records to transact securely on the go.",
+            description: "NullPay V1 Mobile is live via Shield Wallet (Beta). We are actively refining performance and design. Native QR scanning is now fully supported! Due to current wallet limitations, auto-decryption is still temporarily unavailable (pending Shield updates). However, the platform remains fully functional—users can manually decrypt records to transact securely on the go.",
             gradient: "from-cyan-500/20 to-blue-500/20"
         },
         {

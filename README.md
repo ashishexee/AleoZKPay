@@ -8,8 +8,8 @@ NullPay is a decentralized invoice and payment system that leverages Aleo's zero
 **Smart Contract:** [`zk_pay_proofs_privacy_v11.aleo`](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v11.aleo)  
 **NullPay Wave2 Demo:** [Watch Demo](https://youtu.be/d7tztJnto80)  
 **Mobile Version Demo:** [Watch Demo](https://youtu.be/M_-JVcLAo2U?si=IJTNvCYxCm0zr8j6)  
-**Vision:** [https://null-pay.vercel.app/vision](https://null-pay.vercel.app/vision)  
-**Documentation:** [https://null-pay.vercel.app/docs](https://null-pay.vercel.app/docs)  
+**Vision:** [https://null-pay.vercel.app/vision](https://null-pay.vercel.app/vision)
+**Documentation:** [https://null-pay.vercel.app/docs](https://null-pay.vercel.app/docs)
 
 ---
 
