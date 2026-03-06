@@ -7,7 +7,6 @@ import {
 } from "@provablehq/aleo-wallet-adaptor-core";
 import { Network } from "@provablehq/aleo-types";
 import "@provablehq/aleo-wallet-adaptor-react-ui/dist/styles.css";
-import { LeoWalletAdapter } from "@provablehq/aleo-wallet-adaptor-leo";
 interface AleoWalletProviderProps {
     children: React.ReactNode;
 }
@@ -18,9 +17,6 @@ export const AleoWalletProvider = ({ children }: AleoWalletProviderProps) => {
             new ShieldWalletAdapter({
                 appName: 'NullPay'
             }),
-            new LeoWalletAdapter({
-                appName: 'NullPay'
-            })
         ],
         []
     );
