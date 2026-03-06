@@ -4,13 +4,31 @@ const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { encrypt, decrypt } = require('./encryption');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
 const port = process.env.PORT || 3000;
-
 
 app.use(cors());
 app.use(express.json());
+
+// Initialize Socket.IO
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Allow all origins for now, restrict in production
+        methods: ["GET", "POST", "PATCH"]
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+    });
+});
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
@@ -173,7 +191,7 @@ app.patch('/api/invoices/:hash', async (req, res) => {
     try {
         const { data: current, error: fetchError } = await supabase
             .from('invoices')
-            .select('payment_tx_ids, invoice_type, status')
+            .select('payment_tx_ids, invoice_type, status, merchant_address') // Select merchant_address for decryption
             .eq('invoice_hash', hash)
             .single();
 
@@ -210,6 +228,21 @@ app.patch('/api/invoices/:hash', async (req, res) => {
             data.merchant_address = decrypt(data.merchant_address);
             // payer_address removed
         }
+        
+        const hasNewPayment = payment_tx_ids && (!current.payment_tx_ids || !current.payment_tx_ids.includes(payment_tx_ids));
+        console.log(`   - Has New Payment?`, hasNewPayment);
+
+        // LOGIC FIX: If there is a payment ID in the request, it IS a new payment event.
+        if (status === 'SETTLED' || payment_tx_ids) {
+            console.log(`📢 Emitting payment_received for hash: ${hash}, Status: ${status}, Merchant: ${data.merchant_address}`);
+            io.emit('payment_received', {
+                invoiceHash: hash,
+                status: data.status,
+                merchantAddress: data.merchant_address,
+                amount: data.amount, // Note: amount might be needed but was removed from DB? Assuming it's fetched or available elsewhere if needed.
+                invoiceType: data.invoice_type
+            });
+        }
 
         res.json(data);
 
@@ -219,6 +252,6 @@ app.patch('/api/invoices/:hash', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
+server.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
