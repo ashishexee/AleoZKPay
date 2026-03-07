@@ -3,17 +3,19 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../components/ui/GlassCard';
 import { useTransactions } from '../hooks/useTransactions';
-import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt } from '../utils/aleo-utils';
-
+import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt, fetchBurnerRecordsFromTx } from '../utils/aleo-utils';
+import { useBurnerWallet } from '../hooks/BurnerWalletProvider';
 import { StatsCards } from '../components/profile/StatsCards';
 import { InvoiceTable } from '../components/profile/InvoiceTable';
 import { PaidInvoicesTable } from '../components/profile/PaidInvoicesTable';
 import { VerifyModal } from '../components/profile/modals/VerifyModal';
 import { PaymentHistoryModal } from '../components/profile/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from '../components/profile/modals/ReceiptHashesModal';
+import { BurnerWalletSettings } from '../components/profile/BurnerWalletSettings';
 
 const Profile: React.FC = () => {
     const { address, requestRecords, decrypt, executeTransaction } = useWallet();
+    const { decryptedBurnerKey } = useBurnerWallet();
     const publicKey = address;
     const { transactions, loading: loadingTransactions, fetchTransactions } = useTransactions(publicKey || undefined);
     const [settling, setSettling] = useState<string | null>(null);
@@ -29,8 +31,11 @@ const Profile: React.FC = () => {
     const [merchantReceipts, setMerchantReceipts] = useState<MerchantReceipt[]>([]);
     const [createdInvoices, setCreatedInvoices] = useState<InvoiceRecord[]>([]);
     const [payerReceipts, setPayerReceipts] = useState<PayerReceipt[]>([]);
+    const [burnerCreatedInvoices, setBurnerCreatedInvoices] = useState<InvoiceRecord[]>([]);
+    const [burnerMerchantReceipts, setBurnerMerchantReceipts] = useState<MerchantReceipt[]>([]);
     const [loadingReceipts, setLoadingReceipts] = useState(false);
     const [loadingCreated, setLoadingCreated] = useState(false);
+    const [loadingBurner, setLoadingBurner] = useState(true);
     const [loadingPayerReceipts, setLoadingPayerReceipts] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
@@ -45,6 +50,58 @@ const Profile: React.FC = () => {
             fetchPayerReceipts();
         }
     }, [publicKey]);
+
+    useEffect(() => {
+        const fetchBurnerData = async () => {
+            console.log("🔥 [fetchBurnerData] Effect fired. decryptedBurnerKey:", !!decryptedBurnerKey, "transactions.length:", transactions.length);
+            if (!decryptedBurnerKey || transactions.length === 0) {
+                console.log("🔥 [fetchBurnerData] ABORTED - missing key or empty transactions");
+                // Only stop loading if we KNOW there won't be burner data (no key).
+                // If transactions.length === 0, the DB fetch hasn't finished yet — keep shimmer.
+                if (!decryptedBurnerKey) {
+                    setLoadingBurner(false);
+                }
+                return;
+            }
+            setLoadingBurner(true);
+            
+            const burnerTxIds = new Set<string>();
+            console.log("🔥 Burner Transactions from DB:", transactions.filter(t => t.is_burner).length);
+            transactions.forEach(tx => {
+                if (tx.is_burner) {
+                    if (tx.invoice_transaction_id) burnerTxIds.add(tx.invoice_transaction_id);
+                    if (tx.payment_tx_ids && Array.isArray(tx.payment_tx_ids)) {
+                        tx.payment_tx_ids.forEach((id: string) => burnerTxIds.add(id));
+                    }
+                }
+            });
+
+            if (burnerTxIds.size === 0) {
+                setLoadingBurner(false);
+                return;
+            }
+
+            console.log("Fetching Burner records for TXs:", Array.from(burnerTxIds));
+            const newCreated: InvoiceRecord[] = [];
+            const newReceipts: MerchantReceipt[] = [];
+
+            for (const txId of Array.from(burnerTxIds)) {
+                const records = await fetchBurnerRecordsFromTx(txId, decryptedBurnerKey);
+                for (const r of records) {
+                    const invoice = parseInvoice(r);
+                    if (invoice) newCreated.push(invoice);
+                    const receipt = parseMerchantReceipt(r);
+                    if (receipt) newReceipts.push(receipt);
+                }
+            }
+            console.log("🔥 Final Parsed Burner Invoices:", newCreated.length, newCreated);
+            console.log("🔥 Final Parsed Burner Receipts:", newReceipts.length, newReceipts);
+            setBurnerCreatedInvoices(newCreated);
+            setBurnerMerchantReceipts(newReceipts);
+            setLoadingBurner(false);
+        };
+        fetchBurnerData();
+    }, [transactions, decryptedBurnerKey]);
 
     const fetchCreatedInvoices = async () => {
         if (!requestRecords || !publicKey) return;
@@ -160,6 +217,7 @@ const Profile: React.FC = () => {
     // MERGE LOGIC: Combine DB Transactions + On-Chain Records
     const combinedInvoices = useMemo(() => {
         const merged = new Map<string, any>();
+        console.log("🔄 Merging Invoices! Created:", createdInvoices.length, "Burner Created:", burnerCreatedInvoices.length);
 
         // 1. Index DB transactions for quick lookup (Metadata only)
         const dbMap = new Map<string, any>();
@@ -167,36 +225,62 @@ const Profile: React.FC = () => {
             if (tx.invoice_hash) dbMap.set(tx.invoice_hash, tx);
         });
 
-        // 2. Build list PRIMARILY from On-Chain Records
+        // 2. Layer on On-Chain Records (Authoritative Data)
+        // MAIN WALLET INVOICES
         createdInvoices.forEach(record => {
             const dbTx = dbMap.get(record.invoiceHash);
 
             merged.set(record.invoiceHash, {
                 invoiceHash: record.invoiceHash,
-                amount: record.amount / 1_000_000, // On-Chain Amount is Authoritative
+                amount: record.amount / 1_000_000,
                 tokenType: record.tokenType,
                 invoiceType: record.invoiceType,
+                walletType: 0, // Enforce Main Wallet
                 owner: record.owner,
                 salt: record.salt,
 
                 // Merge DB Metadata if available
-                status: dbTx?.status === 'SETTLED' ? 'SETTLED' : 'PENDING', // Trust DB settled status
+                status: dbTx?.status === 'SETTLED' ? 'SETTLED' : 'PENDING',
                 creationTx: dbTx?.invoice_transaction_id || null,
                 paymentTxIds: dbTx?.payment_tx_ids || (dbTx?.payment_tx_id ? [dbTx.payment_tx_id] : []),
                 memo: record.memo || dbTx?.memo || '',
-                isPending: false, // It's in the wallet, so it's confirmed
+                isPending: false,
+                source: 'chain',
+                isValidOnChain: true
+            });
+        });
+
+        // BURNER WALLET INVOICES
+        burnerCreatedInvoices.forEach(record => {
+            const dbTx = dbMap.get(record.invoiceHash);
+
+            merged.set(record.invoiceHash, {
+                invoiceHash: record.invoiceHash,
+                amount: record.amount / 1_000_000,
+                tokenType: record.tokenType,
+                invoiceType: record.invoiceType,
+                walletType: 1, // Enforce Burner Wallet
+                owner: record.owner,
+                salt: record.salt,
+
+                // Merge DB Metadata if available
+                status: dbTx?.status === 'SETTLED' ? 'SETTLED' : 'PENDING',
+                creationTx: dbTx?.invoice_transaction_id || null,
+                paymentTxIds: dbTx?.payment_tx_ids || (dbTx?.payment_tx_id ? [dbTx.payment_tx_id] : []),
+                memo: record.memo || dbTx?.memo || '',
+                isPending: false,
                 source: 'chain',
                 isValidOnChain: true
             });
         });
         // Note: DB-only invoices (waiting for sync) are now hidden as they have no confirmed amount.
 
-        return Array.from(merged.values()).map(inv => {
+        const finalArr = Array.from(merged.values()).map(inv => {
             // For Donation Invoices, calculate total received from merchant receipts
             if (inv.invoiceType === 2) {
                 // Deduplicate receipts based on receiptHash to avoid double counting
                 const uniqueReceipts = new Map();
-                merchantReceipts.forEach(r => {
+                [...merchantReceipts, ...burnerMerchantReceipts].forEach(r => {
                     if (r.invoiceHash === inv.invoiceHash) {
                         uniqueReceipts.set(r.receiptHash, r);
                     }
@@ -212,7 +296,9 @@ const Profile: React.FC = () => {
             }
             return inv;
         }); // Show newest first (roughly)
-    }, [transactions, createdInvoices, merchantReceipts]);
+        console.log("🔄 Final Combined Invoices Array:", finalArr.length, finalArr);
+        return finalArr;
+    }, [transactions, createdInvoices, merchantReceipts, burnerCreatedInvoices, burnerMerchantReceipts]);
 
     const handleVerifyReceipt = async () => {
         if (!verifyInput || !requestRecords || !decrypt) return;
@@ -296,14 +382,21 @@ const Profile: React.FC = () => {
 
 
     const merchantStats = {
-        balance: 'Loading...',
-        creditsSales: (merchantReceipts
+        mainCredits: (merchantReceipts
             .filter(r => r.tokenType !== 1)
-            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0) / 2)
+            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
-        usdcxSales: (merchantReceipts
+        mainUSDCx: (merchantReceipts
             .filter(r => r.tokenType === 1)
-            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0) / 2)
+            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+            .toFixed(2),
+        burnerCredits: (burnerMerchantReceipts
+            .filter(r => r.tokenType !== 1)
+            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+            .toFixed(2),
+        burnerUSDCx: (burnerMerchantReceipts
+            .filter(r => r.tokenType === 1)
+            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
         invoices: combinedInvoices.length,
         settled: combinedInvoices.filter(inv => inv.status === 'SETTLED' || inv.status === 1).length,
@@ -405,7 +498,7 @@ const Profile: React.FC = () => {
                 setVerifyInput={setVerifyInput}
                 verifyStatus={verifyStatus}
                 verifiedRecord={verifiedRecord}
-                merchantReceipts={merchantReceipts}
+                merchantReceipts={[...merchantReceipts, ...burnerMerchantReceipts]}
                 onVerify={handleVerifyReceipt}
             />
 
@@ -445,8 +538,12 @@ const Profile: React.FC = () => {
                     merchantStats={merchantStats}
                     loadingReceipts={loadingReceipts}
                     loadingCreated={loadingCreated}
+                    loadingBurner={loadingBurner}
                     itemVariants={itemVariants}
                 />
+
+                {/* BURNER WALLET SETTINGS */}
+                <BurnerWalletSettings itemVariants={itemVariants} transactions={transactions} />
 
                 {/* INVOICE HISTORY */}
                 <GlassCard variants={itemVariants} className="p-0 overflow-hidden">
@@ -500,8 +597,8 @@ const Profile: React.FC = () => {
                         {/* CREATED TAB */}
                         <div style={{ display: activeTab === 'created' ? 'block' : 'none' }}>
                             <InvoiceTable
-                                invoices={combinedInvoices}
-                                loading={loadingCreated || loadingTransactions}
+                                invoices={loadingBurner ? [] : combinedInvoices}
+                                loading={loadingCreated || loadingTransactions || loadingBurner}
                                 search={invoiceSearch}
                                 currentPage={currentPage}
                                 itemsPerPage={itemsPerPage}
@@ -509,6 +606,8 @@ const Profile: React.FC = () => {
                                 onVerify={(inv) => {
                                     setVerifyingInvoice(inv);
                                     setVerifyInput('');
+                                    setVerifyStatus('IDLE');
+                                    setVerifiedRecord(null);
                                     setShowVerifyModal(true);
                                 }}
                                 onSettle={handleSettle}

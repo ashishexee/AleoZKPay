@@ -17,6 +17,9 @@ interface InvoiceFormProps {
     setInvoiceType: (val: InvoiceType) => void;
     tokenType: number;
     setTokenType: (val: number) => void;
+    walletType: number;
+    setWalletType: (val: number) => void;
+    hasBurnerWallet: boolean;
 }
 
 export const InvoiceForm: React.FC<InvoiceFormProps> = ({
@@ -31,7 +34,10 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     invoiceType,
     setInvoiceType,
     tokenType,
-    setTokenType
+    setTokenType,
+    walletType,
+    setWalletType,
+    hasBurnerWallet
 }) => {
     return (
         <GlassCard variant="heavy" className="p-8">
@@ -64,6 +70,44 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                             </button>
                         </div>
                     </div>
+                </div>
+
+                {/* WALLET TYPE TOGGLE */}
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Receiving Wallet</label>
+                    <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
+                        <button
+                            onClick={() => setWalletType(0)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${walletType === 0
+                                ? 'bg-white text-black shadow-lg'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Main Wallet
+                        </button>
+                        <button
+                            onClick={() => hasBurnerWallet ? setWalletType(1) : null}
+                            disabled={!hasBurnerWallet}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${walletType === 1
+                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                : !hasBurnerWallet
+                                    ? 'text-gray-600 cursor-not-allowed'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            🔒 Burner Wallet
+                        </button>
+                    </div>
+                    {walletType === 1 && (
+                        <div className="mt-2 text-xs text-emerald-400/80 bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2 text-center">
+                            🛡️ Enhanced Privacy — Payer will not see your real address.
+                        </div>
+                    )}
+                    {!hasBurnerWallet && walletType === 0 && (
+                        <div className="mt-2 text-xs text-gray-500 text-center">
+                            No Burner Wallet found. Create one from your <span className="text-neon-primary">Dashboard</span>.
+                        </div>
+                    )}
                 </div>
 
                 {/* INVOICE TYPE TOGGLE */}

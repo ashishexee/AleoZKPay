@@ -1,20 +1,31 @@
 import { Link, useLocation } from 'react-router-dom';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { motion } from 'framer-motion';
+import { ArrowRight } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 const Navbar = () => {
     const location = useLocation();
     const isActive = (path: string) => location.pathname === path;
 
-    const navItems = [
-        { path: '/', label: 'Explorer' },
+    const isLanding = location.pathname === '/' || location.pathname === '/vision' || location.pathname === '/privacy';
+
+    const landingNavItems = [
+        { path: '/', label: 'Home' },
+        { path: '/vision', label: 'Vision' },
+        { label: 'Privacy', path: '/privacy' },
+    ];
+
+    const appNavItems = [
+        { path: '/explorer', label: 'Explorer' },
         { path: '/create', label: 'Create Invoice' },
         { path: '/profile', label: 'Profile' },
         { path: '/vision', label: 'Vision' },
         { label: 'Privacy', path: '/privacy' },
         { label: 'Docs', path: '/docs' },
     ];
+
+    const navItems = isLanding ? landingNavItems : appNavItems;
 
     return (
         <motion.nav
@@ -37,8 +48,8 @@ const Navbar = () => {
                     </div>
                 </Link>
 
-                {/* NAVIGATION PILL */}
-                <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-full p-1 flex items-center gap-1 shadow-2xl">
+                {/* NAVIGATION PILL (CENTERED ABSOLUTELY) */}
+                <div className="absolute left-1/2 -translate-x-1/2 flex bg-black/40 backdrop-blur-xl border border-white/10 rounded-full p-1 items-center gap-1 shadow-2xl">
                     {navItems.map((item) => {
                         const active = isActive(item.path);
                         return (
@@ -67,9 +78,17 @@ const Navbar = () => {
                     })}
                 </div>
 
-                {/* CONNECT BUTTON */}
-                <div className="wallet-adapter-wrapper transform hover:scale-105 transition-transform duration-300">
-                    <WalletMultiButton className="!bg-black/50 !backdrop-blur-lg !border !border-white/10 !rounded-full !py-3 !px-6 !h-auto !font-sans !font-semibold !text-sm !text-white hover:!bg-white/10 hover:!border-white/30 transition-all shadow-[0_0_15px_rgba(0,243,255,0.1)] hover:shadow-[0_0_25px_rgba(0,243,255,0.3)]" />
+                {/* ACTIONS */}
+                <div className="flex items-center gap-4">
+                    {isLanding && (
+                        <Link to="/explorer" className="hidden md:flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-6 py-2.5 rounded-full backdrop-blur-md transition-all duration-300 text-sm font-semibold text-white group">
+                            Get Started
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                    )}
+                    <div className="wallet-adapter-wrapper transform hover:scale-105 transition-transform duration-300">
+                        <WalletMultiButton className="!bg-black/50 !backdrop-blur-lg !border !border-white/10 !rounded-full !py-3 !px-6 !h-auto !font-sans !font-semibold !text-sm !text-white hover:!bg-white/10 hover:!border-white/30 transition-all shadow-[0_0_15px_rgba(0,243,255,0.1)] hover:shadow-[0_0_25px_rgba(0,243,255,0.3)]" />
+                    </div>
                 </div>
             </div>
         </motion.nav>

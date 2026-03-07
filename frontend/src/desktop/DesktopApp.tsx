@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
+import Home from '../pages/Home';
 import Explorer from './pages/Explorer';
 import CreateInvoice from './pages/CreateInvoice';
 import PaymentPage from './pages/PaymentPage';
@@ -17,7 +18,7 @@ const DesktopAnimatedRoutes = () => {
     return (
         <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
-                <Route path="/" element={<Explorer />} />
+                <Route path="/explorer" element={<Explorer />} />
                 <Route path="/create" element={<CreateInvoice />} />
                 <Route path="/pay" element={<PaymentPage />} />
                 <Route path="/profile" element={<Profile />} />
@@ -30,6 +31,7 @@ const DesktopAnimatedRoutes = () => {
     );
 };
 
+// Add Home page explicitly in root layout to bypass the `container-custom` wrapper
 const DesktopApp = () => {
     return (
         <div className="min-h-screen bg-background relative overflow-hidden">
@@ -40,12 +42,16 @@ const DesktopApp = () => {
             </div>
 
             <Navbar />
-
             <ChangelogOverlay />
 
-            <main className="relative z-10 pt-24 px-4 pb-12 container-custom">
-                <DesktopAnimatedRoutes />
-            </main>
+            <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="*" element={
+                    <main className="relative z-10 pt-24 px-4 pb-12 container-custom">
+                        <DesktopAnimatedRoutes />
+                    </main>
+                } />
+            </Routes>
         </div>
     );
 };

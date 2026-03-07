@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useCreateInvoice } from '../../hooks/useCreateInvoice';
 import { MobileInvoiceForm } from '../components/InvoiceForm';
 import { InvoiceCard } from '../../components/invoice/InvoiceCard';
+import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
 
 const MobileCreateInvoice: React.FC = () => {
     const {
@@ -16,8 +17,13 @@ const MobileCreateInvoice: React.FC = () => {
         invoiceType,
         setInvoiceType,
         tokenType,
-        setTokenType
+        setTokenType,
+        walletType,
+        setWalletType
     } = useCreateInvoice();
+
+    const { burnerAddress } = useBurnerWallet();
+    const hasBurnerWallet = !!burnerAddress;
 
     return (
         <div className="page-container relative min-h-screen pt-0 px-4">
@@ -56,6 +62,9 @@ const MobileCreateInvoice: React.FC = () => {
                                 setInvoiceType={setInvoiceType}
                                 tokenType={tokenType}
                                 setTokenType={setTokenType}
+                                walletType={walletType}
+                                setWalletType={setWalletType}
+                                hasBurnerWallet={hasBurnerWallet}
                             />
                         ) : (
                             <InvoiceCard

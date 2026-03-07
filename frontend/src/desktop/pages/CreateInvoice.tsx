@@ -5,6 +5,7 @@ import { useCreateInvoice } from '../../hooks/useCreateInvoice';
 import { InvoiceForm } from '../../components/invoice/InvoiceForm';
 import { InvoiceCard } from '../../components/invoice/InvoiceCard';
 import { USDCxInfo } from '../components/USDCxInfo';
+import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
 
 export const CreateInvoice: React.FC = () => {
     const {
@@ -18,8 +19,13 @@ export const CreateInvoice: React.FC = () => {
         invoiceType,
         setInvoiceType,
         tokenType,
-        setTokenType
+        setTokenType,
+        walletType,
+        setWalletType
     } = useCreateInvoice();
+
+    const { burnerAddress } = useBurnerWallet();
+    const hasBurnerWallet = !!burnerAddress;
 
     return (
         <motion.div
@@ -82,6 +88,9 @@ export const CreateInvoice: React.FC = () => {
                                 setInvoiceType={setInvoiceType}
                                 tokenType={tokenType}
                                 setTokenType={setTokenType}
+                                walletType={walletType}
+                                setWalletType={setWalletType}
+                                hasBurnerWallet={hasBurnerWallet}
                             />
                         ) : (
                             <InvoiceCard
