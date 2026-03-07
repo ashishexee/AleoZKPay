@@ -1,0 +1,3 @@
+"The website is clean, well-organized, and packed with useful information about the architecture, privacy model, and more. The multiple payment options cover a wide range of use cases, and the dashboard is especially practical and well designed. 
+
+It’s great to see privacy enabled by default for all payments, though it may be beneficial to notify users and allow them to convert without leaving the flow during a transfer. One question: is off-chain data encrypted under a single project-controlled key?"
