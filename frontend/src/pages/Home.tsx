@@ -32,7 +32,7 @@ const Home = () => {
                     </div>
 
                     {/* Text content — positioned on top */}
-                    <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 py-28 lg:py-36">
+                    <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-20">
                         <motion.div
                             variants={staggerContainer}
                             initial="hidden"

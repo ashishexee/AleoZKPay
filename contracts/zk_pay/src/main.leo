@@ -1,7 +1,7 @@
 import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v16.aleo {
+program zk_pay_proofs_privacy_v17.aleo {
     
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     async constructor() {
@@ -45,8 +45,56 @@ program zk_pay_proofs_privacy_v16.aleo {
         wallet_type: u8,      // 0 = Main Wallet, 1 = Burner Wallet
     }
 
+    record BurnerWalletRecord {
+        owner: address,
+        burner_address: address,
+        password_part: field,
+        pk_part_1: field,
+        pk_part_2: field,
+        pk_part_3: field,
+        pk_part_4: field,
+        pk_part_5: field,
+        pk_part_6: field,
+        pk_part_7: field,
+        pk_part_8: field,
+        pk_part_9: field,
+        pk_part_10: field
+    }
+
     mapping invoices: field => InvoiceData;
     mapping salt_to_invoice: field => field;
+
+    // Transition to permanently backup encrypted Burner Wallet credentials on-chain
+    transition backup_burner_wallet(
+        private burner_address: address,
+        private password_part: field,
+        private pk_part_1: field,
+        private pk_part_2: field,
+        private pk_part_3: field,
+        private pk_part_4: field,
+        private pk_part_5: field,
+        private pk_part_6: field,
+        private pk_part_7: field,
+        private pk_part_8: field,
+        private pk_part_9: field,
+        private pk_part_10: field
+    ) -> BurnerWalletRecord {
+        return BurnerWalletRecord {
+            owner: self.caller,
+            burner_address: burner_address,
+            password_part: password_part,
+            pk_part_1: pk_part_1,
+            pk_part_2: pk_part_2,
+            pk_part_3: pk_part_3,
+            pk_part_4: pk_part_4,
+            pk_part_5: pk_part_5,
+            pk_part_6: pk_part_6,
+            pk_part_7: pk_part_7,
+            pk_part_8: pk_part_8,
+            pk_part_9: pk_part_9,
+            pk_part_10: pk_part_10
+        };
+    }
 
     async transition create_invoice(
         private merchant: address,

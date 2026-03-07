@@ -135,8 +135,7 @@ app.get('/api/invoice/:hash', async (req, res) => {
     res.json(data);
 });
 
-// POST /api/invoices
-// Create new invoice
+
 app.post('/api/invoices', async (req, res) => {
     const { invoice_hash, merchant_address, designated_address, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type } = req.body;
 
@@ -229,12 +228,7 @@ app.patch('/api/invoices/:hash', async (req, res) => {
     }
 });
 
-// ------------------
-// USER PROFILE ROUTES
-// ------------------
 
-// POST /api/users/profile
-// Create or update a merchant's profile (specifically for Burner Wallet)
 app.post('/api/users/profile', async (req, res) => {
     const { main_address, burner_address, encrypted_burner_key } = req.body;
 
@@ -272,18 +266,10 @@ app.post('/api/users/profile', async (req, res) => {
     }
 });
 
-// GET /api/users/profile/:address
-// Fetch a merchant's profile
 app.get('/api/users/profile/:address', async (req, res) => {
     const { address } = req.params;
 
     try {
-        // Because main addresses are deterministically encrypted (or randomized depending on implementation),
-        // filtering requires fetching and decrypting if it's randomized. 
-        // Assuming your `encrypt(main_address)` produces a constant value for the same input (deterministic IV or hashing based), we can match.
-        // If not deterministic, we must fetch all and filter in memory like the invoices route.
-        // Let's use the memory filter approach to be safe and consistent with your invoices logic.
-
         const { data, error } = await supabase
             .from('users')
             .select('*');

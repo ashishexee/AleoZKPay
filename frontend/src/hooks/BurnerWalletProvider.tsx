@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { getUserProfile } from '../services/api';
+import { PROGRAM_ID, parseBurnerBackupRecord } from '../utils/aleo-utils';
+import { fieldChunksToString, decryptWithPassword } from '../utils/crypto';
 
 interface BurnerWalletContextType {
     burnerAddress: string | null;
@@ -8,21 +10,28 @@ interface BurnerWalletContextType {
     setDecryptedBurnerKey: (key: string | null) => void;
     encryptedBurnerKey: string | null;
     refreshProfile: () => Promise<void>;
+    fetchedFromChain: boolean;
+    hasOnChainRecord: boolean;
+    setHasOnChainRecord: (v: boolean) => void;
 }
 
 const BurnerWalletContext = createContext<BurnerWalletContextType | undefined>(undefined);
 
 export const BurnerWalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { address } = useWallet();
+    const { address, requestRecords, decrypt } = useWallet();
     const [burnerAddress, setBurnerAddress] = useState<string | null>(null);
     const [encryptedBurnerKey, setEncryptedBurnerKey] = useState<string | null>(null);
     const [decryptedBurnerKey, setDecryptedBurnerKey] = useState<string | null>(null);
+    const [fetchedFromChain, setFetchedFromChain] = useState<boolean>(false);
+    const [hasOnChainRecord, setHasOnChainRecord] = useState<boolean>(false);
 
     const refreshProfile = async () => {
         if (!address) {
             setBurnerAddress(null);
             setEncryptedBurnerKey(null);
             setDecryptedBurnerKey(null);
+            setFetchedFromChain(false);
+            setHasOnChainRecord(false);
             return;
         }
         
@@ -41,28 +50,55 @@ export const BurnerWalletProvider: React.FC<{ children: React.ReactNode }> = ({ 
         refreshProfile();
     }, [address]);
 
-    // Auto-unlock: When the encrypted key is available, automatically decode and set it
+    // Silent background check and auto-unlock to see if a record already exists
     useEffect(() => {
-        if (encryptedBurnerKey && !decryptedBurnerKey) {
-            try {
-                const decoded = atob(encryptedBurnerKey);
-                // Dynamically import to avoid top-level WASM issues
-                import('@provablehq/sdk').then(({ PrivateKey }) => {
-                    try {
-                        PrivateKey.from_string(decoded); // Validate
-                        setDecryptedBurnerKey(decoded);
-                        console.log("🔓 Burner Wallet auto-unlocked successfully");
-                    } catch (e) {
-                        console.warn("🔒 Auto-unlock: stored key is invalid, manual unlock required");
-                    }
-                }).catch(e => {
-                    console.warn("🔒 Auto-unlock: SDK import failed", e);
-                });
-            } catch (e) {
-                console.warn("🔒 Auto-unlock: base64 decode failed", e);
-            }
+        const fetchAndUnlockFromChain = async () => {
+             // Only run if we don't have it decrypted yet
+             if (decryptedBurnerKey || !address || !requestRecords || !burnerAddress) return;
+             
+             try {
+                 const records = await requestRecords(PROGRAM_ID, true);
+                 if (!records) return;
+                 
+                 for (const r of (records as any[])) {
+                     let plaintext = r.plaintext;
+                     const cipher = r.recordCiphertext || r.ciphertext;
+                     if (!plaintext && cipher && decrypt) {
+                         try {
+                              plaintext = await decrypt(cipher);
+                         } catch (e) { continue; }
+                     }
+                     
+                     const burnerRecord = parseBurnerBackupRecord({ ...r, plaintext });
+                     if (burnerRecord && burnerRecord.burnerAddress === burnerAddress && burnerRecord.passwordPart) {
+                          setHasOnChainRecord(true);
+                          
+                          const passwordStr = fieldChunksToString([burnerRecord.passwordPart]);
+                          const encryptedPayload = fieldChunksToString(burnerRecord.pkParts);
+                          
+                          try {
+                               const decryptedKey = await decryptWithPassword(encryptedPayload, passwordStr);
+                               import('@provablehq/sdk').then(({ PrivateKey }) => {
+                                    PrivateKey.from_string(decryptedKey);
+                                    setDecryptedBurnerKey(decryptedKey);
+                                    setFetchedFromChain(true); 
+                                    setBurnerAddress(burnerRecord.burnerAddress);
+                                    setEncryptedBurnerKey(encryptedPayload);
+                               });
+                               console.log("🔓 Automatically unlocked Burner Wallet using on-chain record!");
+                               return; 
+                          } catch (e) { console.warn("Found record but decryption failed", e); }
+                     }
+                 }
+             } catch (e) {
+                 console.error("Auto-unlock from chain failed", e);
+             }
+        };
+
+        if (burnerAddress && !hasOnChainRecord) {
+            fetchAndUnlockFromChain();
         }
-    }, [encryptedBurnerKey, decryptedBurnerKey]);
+    }, [address, burnerAddress, decryptedBurnerKey, requestRecords, decrypt, hasOnChainRecord]);
 
     return (
         <BurnerWalletContext.Provider value={{
@@ -70,7 +106,10 @@ export const BurnerWalletProvider: React.FC<{ children: React.ReactNode }> = ({ 
             decryptedBurnerKey,
             setDecryptedBurnerKey,
             encryptedBurnerKey,
-            refreshProfile
+            refreshProfile,
+            fetchedFromChain,
+            hasOnChainRecord,
+            setHasOnChainRecord
         }}>
             {children}
         </BurnerWalletContext.Provider>

@@ -1,5 +1,5 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
-export const PROGRAM_ID = "zk_pay_proofs_privacy_v16.aleo";
+export const PROGRAM_ID = "zk_pay_proofs_privacy_v17.aleo";
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
 
 
@@ -16,7 +16,7 @@ export const fetchBurnerRecordsFromTx = async (txId: string, privateKeyStr: stri
             console.log(`🔍 [fetchBurnerRecords] Fetching: ${url} (retries left: ${retries})`);
             const response = await fetch(url);
             console.log(`🔍 [fetchBurnerRecords] Response status: ${response.status}`);
-            
+
             if (response.ok) {
                 const tx = await response.json();
                 console.log(`🔍 [fetchBurnerRecords] TX data keys:`, Object.keys(tx));
@@ -429,5 +429,49 @@ export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
             };
         }
     } catch (e) { console.error("Error parsing MerchantReceipt record:", e); }
+    return null;
+};
+
+export interface BurnerWalletRecord {
+    owner: string;
+    burnerAddress: string;
+    passwordPart: string;
+    pkParts: string[];
+}
+
+export const parseBurnerBackupRecord = (record: any): BurnerWalletRecord | null => {
+    try {
+        const data = record.plaintext || '';
+
+        const getVal = (key: string) => {
+            const regex = new RegExp(`(?:${key}|"${key}"):\\s*([\\w\\d\\.]+)`);
+            const match = data.match(regex);
+            if (match && match[1]) {
+                return match[1].replace('.private', '').replace('.public', '');
+            }
+            return null;
+        };
+
+        const burnerAddress = getVal('burner_address');
+        const owner = getVal('owner');
+        const passwordPart = getVal('password_part');
+
+        if (!burnerAddress || !passwordPart) return null;
+
+        const pkParts = [];
+        for (let i = 1; i <= 10; i++) {
+            const part = getVal(`pk_part_${i}`);
+            if (part && part !== '0field' && part !== '0') {
+                pkParts.push(part);
+            }
+        }
+
+        return {
+            owner: owner || '',
+            burnerAddress: burnerAddress,
+            passwordPart: passwordPart,
+            pkParts: pkParts
+        };
+    } catch (e) { console.error("Error parsing BurnerWalletRecord:", e); }
     return null;
 };
