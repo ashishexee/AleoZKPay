@@ -1,7 +1,6 @@
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
-import Home from '../pages/Home';
 import CreateInvoice from './pages/CreateInvoice';
 import PaymentPage from './pages/PaymentPage';
 import Profile from '../pages/Profile';
@@ -12,11 +11,11 @@ const MobileAnimatedRoutes = () => {
     return (
         <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
-                <Route path="/" element={<Home />} />
+                <Route path="/" element={<Navigate to="/create" replace />} />
                 <Route path="/create" element={<CreateInvoice />} />
                 <Route path="/pay" element={<PaymentPage />} />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="*" element={<Home />} />
+                <Route path="*" element={<Navigate to="/create" replace />} />
             </Routes>
         </AnimatePresence>
     );
