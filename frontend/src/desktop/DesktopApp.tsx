@@ -1,11 +1,11 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
-import Home from '../pages/Home';
+import Home from './pages/Home';
 import Explorer from './pages/Explorer';
 import CreateInvoice from './pages/CreateInvoice';
-import PaymentPage from './pages/PaymentPage';
-import Profile from '../pages/Profile';
+import PaymentPage from './pages/Payment';
+import Profile from '../shared/pages/Profile';
 import Docs from './pages/Docs';
 import Privacy from './pages/Privacy';
 import Verification from './pages/Verification';
@@ -31,7 +31,6 @@ const DesktopAnimatedRoutes = () => {
     );
 };
 
-// Add Home page explicitly in root layout to bypass the `container-custom` wrapper
 const DesktopApp = () => {
     return (
         <div className="min-h-screen bg-background relative overflow-hidden">

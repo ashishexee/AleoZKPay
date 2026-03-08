@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { cn } from '../../utils/cn';
+import { cn } from '../../shared/utils/cn';
 
 const Navbar = () => {
     const location = useLocation();

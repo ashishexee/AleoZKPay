@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import StatusBadge from '../StatusBadge';
-import { LinkButton } from '../ui/LinkButton';
-import { CopyButton } from '../ui/CopyButton';
+import StatusBadge from '../../../components/StatusBadge';
+import { LinkButton } from '../../../components/ui/LinkButton';
+import { CopyButton } from '../../../components/ui/CopyButton';
 
 interface InvoiceTableProps {
     invoices: any[];

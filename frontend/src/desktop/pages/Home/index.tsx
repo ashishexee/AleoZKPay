@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Zap, Lock, Globe, Server, Eye, EyeOff, FileText, Layers, Coins, KeyRound } from 'lucide-react';
-import DottedGlobe from '../components/home/DottedGlobe';
+import DottedGlobe from './components/DottedGlobe';
+import { RedditMarquee } from './components/RedditMarquee';
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 40 },
@@ -110,80 +111,7 @@ const Home = () => {
                             <p className="text-gray-400 text-lg mt-4 max-w-2xl mx-auto">Every transaction on a public blockchain reveals your wallet balance, transaction history, and financial habits to anyone you interact with.</p>
                         </div>
 
-                        {/* Scrolling Reddit Cards Marquee */}
-                        <div className="relative flex overflow-hidden group w-[100vw] left-1/2 -translate-x-1/2" style={{ maskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)" }}>
-                            <div className="flex animate-[scroll_40s_linear_infinite] group-hover:[animation-play-state:paused] w-max gap-6 px-3">
-                                {[...Array(2)].map((_, arrayIndex) => (
-                                    <div key={arrayIndex} className="flex gap-6">
-                                        {[
-                                            {
-                                                sub: "r/ethereum",
-                                                user: "u/Mundane_Apple_7825",
-                                                title: "Someone I paid just asked me why I have so much USDC sitting around",
-                                                content: "Paid someone for freelance work in USDC and they looked up my address. Now they're asking questions about my wallet balance. Anyone you pay can see literally everything."
-                                            },
-                                            {
-                                                sub: "r/CryptoCurrency",
-                                                user: "u/Privacy_Seeker99",
-                                                title: "Is there actually any way to send stablecoins without exposing your history?",
-                                                content: "Every time I pay a contractor, I have to use a fresh wallet to hide my total balance, but they can just trace where that wallet was funded from."
-                                            },
-                                            {
-                                                sub: "r/digitalnomad",
-                                                user: "u/NomadTrader",
-                                                title: "The reality of getting paid in crypto: zero financial privacy",
-                                                content: "Clients paying me in crypto can see every other client I've ever billed and exactly how much I make. It makes negotiating rates impossible."
-                                            },
-                                            {
-                                                sub: "r/BitcoinBeginners",
-                                                user: "u/SatoshiFan",
-                                                title: "Can a recipient see my wallet balance?",
-                                                content: "I want to send money to a vendor, but I don't want them to see I have a large amount. Can they see my total balance once I send them a transaction?"
-                                            },
-                                            {
-                                                sub: "r/AskAGerman",
-                                                user: "u/FreelanceHans",
-                                                title: "Invoicing clients as a freelancer in crypto",
-                                                content: "I want to accept crypto for my design work, but my transactions are public and anyone can figure out who my other clients are and my revenue. Any solutions?"
-                                            }
-                                        ].map((post, i) => (
-                                            <div
-                                                key={`post-${arrayIndex}-${i}`}
-                                                className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 text-left w-[400px] shrink-0 relative overflow-hidden"
-                                            >
-                                                <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-white/40 to-white/5" />
-                                                <div className="flex items-start gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
-                                                        <span className="text-white font-bold text-xs">r/</span>
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2 mb-0.5">
-                                                            <span className="font-bold text-white text-sm">{post.sub}</span>
-                                                        </div>
-                                                        <span className="text-gray-500 text-xs">{post.user}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-4 space-y-2">
-                                                    <h3 className="font-bold text-lg leading-snug text-white">{post.title}</h3>
-                                                    <p className="text-sm leading-relaxed text-gray-400 font-light line-clamp-4">
-                                                        {post.content}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Add required custom keyframes to index.css if not present, but using style tag here for self-containment */}
-                        <style>{`
-                            @keyframes scroll {
-                                0% { transform: translateX(0); }
-                                100% { transform: translateX(-50%); }
-                            }
-                        `}</style>
+                        <RedditMarquee />
                     </motion.div>
                 </section>
 

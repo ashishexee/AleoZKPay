@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { pageVariants } from '../../utils/animations';
-import { useCreateInvoice } from '../../hooks/useCreateInvoice';
-import { InvoiceForm } from '../../components/invoice/InvoiceForm';
-import { InvoiceCard } from '../../components/invoice/InvoiceCard';
-import { USDCxInfo } from '../components/USDCxInfo';
-import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
+import { pageVariants } from '../../../shared/utils/animations';
+import { useCreateInvoice } from '../../../shared/hooks/useCreateInvoice';
+import { InvoiceForm } from '../../../shared/components/invoice/InvoiceForm';
+import { InvoiceCard } from '../../../shared/components/invoice/InvoiceCard';
+import { USDCxInfo } from '../../components/USDCxInfo';
+import { useBurnerWallet } from '../../../shared/hooks/BurnerWalletProvider';
 
 export const CreateInvoice: React.FC = () => {
     const {

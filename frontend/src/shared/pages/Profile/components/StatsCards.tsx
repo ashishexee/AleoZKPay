@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { GlassCard } from '../ui/GlassCard';
-import { Shimmer } from '../ui/Shimmer';
+import { GlassCard } from '../../../components/ui/GlassCard';
+import { Shimmer } from '../../../components/ui/Shimmer';
 
 interface StatsCardsProps {
     merchantStats: {
