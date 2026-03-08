@@ -252,6 +252,7 @@ export const usePayment = () => {
 
                     try {
                         const { updateInvoiceStatus, fetchInvoiceByHash } = await import('../services/api');
+                        console.log("📝 [usePayment] Updating Invoice in DB...", { onChainId, invoiceHash: invoice?.hash });
 
                         const updatePayload: any = {
                             payment_tx_ids: onChainId
@@ -260,11 +261,13 @@ export const usePayment = () => {
                         if (invoice?.hash) {
                             const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
                             if (currentDbInvoice && (currentDbInvoice.invoice_type === 1 || currentDbInvoice.invoice_type === 2)) {
-                                console.log("Multi Pay / Donation Invoice detected. Keeping status as PENDING.");
+                                console.log("ℹ️ Multi Pay / Donation Invoice detected. Keeping status as PENDING.");
                             } else {
                                 updatePayload.status = 'SETTLED';
                             }
+                            console.log("📤 Sending Update Payload:", updatePayload);
                             await updateInvoiceStatus(invoice.hash, updatePayload);
+                            console.log("✅ DB Update Successful!");
                         }
                         if (programId && invoice?.hash) {
                             setStatus('Syncing Receipt Record...');
@@ -272,7 +275,7 @@ export const usePayment = () => {
                             setReceiptSearchFailed(true);
                         }
 
-                    } catch (dbErr) { console.error(dbErr); }
+                    } catch (dbErr) { console.error("❌ DB Update Error:", dbErr); }
 
                     isPending = false;
                 } else if (statusStr === 'failed' || statusStr === 'rejected') {
