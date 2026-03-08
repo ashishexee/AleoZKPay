@@ -89,10 +89,7 @@ const Vision = () => {
             animate="animate"
             exit="exit"
         >
-            <div className="fixed inset-0 pointer-events-none z-0 opacity-30">
-                <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-neon-primary/10 rounded-full blur-[120px] animate-float" />
-                <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-500/10 rounded-full blur-[120px] animate-pulse-slow" />
-            </div>
+
 
             <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 w-screen h-[800px] z-0 pointer-events-none flex justify-center overflow-hidden">
                 <img
@@ -110,7 +107,7 @@ const Vision = () => {
                 variants={staggerContainer}
                 initial="hidden"
                 animate="show"
-                className="w-full max-w-7xl mx-auto pt-12 pb-20 relative z-10 px-6"
+                className="w-full pt-8 pb-20 relative z-10"
             >
                 {/* HERO SECTION */}
                 <motion.div variants={fadeInUp} className="text-center mb-20">

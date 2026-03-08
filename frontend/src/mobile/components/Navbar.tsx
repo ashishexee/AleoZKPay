@@ -6,9 +6,8 @@ import { cn } from '../../utils/cn';
 const MobileNavbar = () => {
     const location = useLocation();
     const isActive = (path: string) => location.pathname === path;
-
     const navItems = [
-        { path: '/', label: 'Create' },
+        { path: '/create', label: 'Create' },
         { path: '/pay', label: 'Pay' },
         { path: '/profile', label: 'Profile' },
     ];

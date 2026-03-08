@@ -1,9 +1,9 @@
 import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v13.aleo {
+program zk_pay_proofs_privacy_v17.aleo {
     
-    @admin(address="aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge")
+    @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     async constructor() {
         // The Leo compiler automatically generates the constructor logic.
     }
@@ -12,7 +12,8 @@ program zk_pay_proofs_privacy_v13.aleo {
         expiry_height: u32,
         status: u8, // 0 = Open, 1 = Settled/Paid
         invoice_type: u8, // 0 = Standard, 1 = Multi Pay, 2 = Donation
-        token_type: u8 // 0 = Credits, 1 = USDCx
+        token_type: u8, // 0 = Credits, 1 = USDCx
+        wallet_type: u8 // 0 = Main Wallet, 1 = Burner Wallet
     }
 
     record PayerReceipt {
@@ -41,10 +42,59 @@ program zk_pay_proofs_privacy_v13.aleo {
         invoice_type: u8,     // 0 = Standard, 1 = Multi Pay
         salt: field,          // For checking against hash
         memo: field,          // Encoded Memo (max ~31 chars)
+        wallet_type: u8,      // 0 = Main Wallet, 1 = Burner Wallet
+    }
+
+    record BurnerWalletRecord {
+        owner: address,
+        burner_address: address,
+        password_part: field,
+        pk_part_1: field,
+        pk_part_2: field,
+        pk_part_3: field,
+        pk_part_4: field,
+        pk_part_5: field,
+        pk_part_6: field,
+        pk_part_7: field,
+        pk_part_8: field,
+        pk_part_9: field,
+        pk_part_10: field
     }
 
     mapping invoices: field => InvoiceData;
     mapping salt_to_invoice: field => field;
+
+    // Transition to permanently backup encrypted Burner Wallet credentials on-chain
+    transition backup_burner_wallet(
+        private burner_address: address,
+        private password_part: field,
+        private pk_part_1: field,
+        private pk_part_2: field,
+        private pk_part_3: field,
+        private pk_part_4: field,
+        private pk_part_5: field,
+        private pk_part_6: field,
+        private pk_part_7: field,
+        private pk_part_8: field,
+        private pk_part_9: field,
+        private pk_part_10: field
+    ) -> BurnerWalletRecord {
+        return BurnerWalletRecord {
+            owner: self.caller,
+            burner_address: burner_address,
+            password_part: password_part,
+            pk_part_1: pk_part_1,
+            pk_part_2: pk_part_2,
+            pk_part_3: pk_part_3,
+            pk_part_4: pk_part_4,
+            pk_part_5: pk_part_5,
+            pk_part_6: pk_part_6,
+            pk_part_7: pk_part_7,
+            pk_part_8: pk_part_8,
+            pk_part_9: pk_part_9,
+            pk_part_10: pk_part_10
+        };
+    }
 
     async transition create_invoice(
         private merchant: address,
@@ -52,7 +102,8 @@ program zk_pay_proofs_privacy_v13.aleo {
         private salt: field,
         private memo: field,
         public expiry_hours: u32,
-        public invoice_type: u8
+        public invoice_type: u8,
+        public wallet_type: u8
     ) -> (Invoice, public field, Future) {
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
@@ -70,11 +121,12 @@ program zk_pay_proofs_privacy_v13.aleo {
             token_type: 0u8,
             invoice_type: invoice_type,
             salt: salt,
-            memo: memo
+            memo: memo,
+            wallet_type: wallet_type
         };
 
         // Default token_type 0 for Credits
-        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 0u8));
+        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 0u8, wallet_type));
     }
 
     async transition create_invoice_usdcx(
@@ -83,7 +135,8 @@ program zk_pay_proofs_privacy_v13.aleo {
         private salt: field,
         private memo: field,
         public expiry_hours: u32,
-        public invoice_type: u8
+        public invoice_type: u8,
+        public wallet_type: u8
     ) -> (Invoice, public field, Future) {
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
@@ -110,11 +163,12 @@ program zk_pay_proofs_privacy_v13.aleo {
             token_type: 1u8,
             invoice_type: invoice_type,
             salt: salt,
-            memo: memo
+            memo: memo,
+            wallet_type: wallet_type
         };
 
         // token_type 1 for USDCx
-        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 1u8));
+        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 1u8, wallet_type));
     }
 
     async function finalize_create_invoice(
@@ -122,7 +176,8 @@ program zk_pay_proofs_privacy_v13.aleo {
         expiry_hours: u32,
         salt: field,
         invoice_type: u8,
-        token_type: u8
+        token_type: u8,
+        wallet_type: u8
     ) {
         let blocks_to_add: u32 = expiry_hours * 360u32;
         let expiry_height: u32 =
@@ -132,7 +187,8 @@ program zk_pay_proofs_privacy_v13.aleo {
             expiry_height: expiry_height,
             status: 0u8,
             invoice_type: invoice_type,
-            token_type: token_type
+            token_type: token_type,
+            wallet_type: wallet_type
         };
 
         invoices.set(invoice_hash, invoice_data);
@@ -411,7 +467,8 @@ program zk_pay_proofs_privacy_v13.aleo {
                 expiry_height: invoice_data.expiry_height,
                 status: 1u8,
                 invoice_type: invoice_data.invoice_type,
-                token_type: invoice_data.token_type
+                token_type: invoice_data.token_type,
+                wallet_type: invoice_data.wallet_type
             };
             invoices.set(stored_hash, updated_data);
         }
@@ -445,7 +502,8 @@ program zk_pay_proofs_privacy_v13.aleo {
                 expiry_height: invoice_data.expiry_height,
                 status: 1u8,
                 invoice_type: invoice_data.invoice_type,
-                token_type: invoice_data.token_type
+                token_type: invoice_data.token_type,
+                wallet_type: invoice_data.wallet_type
             };
             invoices.set(stored_hash, updated_data);
         }
@@ -480,7 +538,8 @@ program zk_pay_proofs_privacy_v13.aleo {
             expiry_height: invoice_data.expiry_height,
             status: 1u8,
             invoice_type: invoice_data.invoice_type,
-            token_type: invoice_data.token_type
+            token_type: invoice_data.token_type,
+            wallet_type: invoice_data.wallet_type
         };
         
         invoices.set(stored_hash, updated_data);

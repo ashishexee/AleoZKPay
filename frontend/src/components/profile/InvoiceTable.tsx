@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import StatusBadge from '../StatusBadge';
 import { LinkButton } from '../ui/LinkButton';
 import { CopyButton } from '../ui/CopyButton';
@@ -16,6 +16,19 @@ interface InvoiceTableProps {
     onViewPayments: (paymentIds: string[]) => void;
 }
 
+const ShimmerRow: React.FC = () => (
+    <tr className="animate-pulse">
+        <td className="py-4 px-6"><div className="h-4 w-28 bg-white/10 rounded" /></td>
+        <td className="py-4 px-6 text-center"><div className="h-4 w-12 bg-white/10 rounded mx-auto" /></td>
+        <td className="py-4 px-6 text-center"><div className="h-5 w-16 bg-white/10 rounded mx-auto" /></td>
+        <td className="py-4 px-6 text-center"><div className="h-5 w-14 bg-white/10 rounded mx-auto" /></td>
+        <td className="py-4 px-6 text-center"><div className="h-5 w-16 bg-white/10 rounded-full mx-auto" /></td>
+        <td className="py-4 px-6 text-center"><div className="h-4 w-16 bg-white/10 rounded mx-auto" /></td>
+        <td className="py-4 px-6 text-left"><div className="h-4 w-20 bg-white/10 rounded" /></td>
+        <td className="py-4 px-6 text-right"><div className="h-7 w-24 bg-white/10 rounded mx-auto" /></td>
+    </tr>
+);
+
 export const InvoiceTable: React.FC<InvoiceTableProps> = ({
     invoices,
     loading,
@@ -28,11 +41,30 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
     settlingId,
     onViewPayments
 }) => {
+    const [initialGrace, setInitialGrace] = useState(true);
+
+    // Always show shimmer for the first 5 seconds after mount, then allow empty state
+    useEffect(() => {
+        const timer = setTimeout(() => setInitialGrace(false), 5000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // If invoices arrive, immediately kill the grace period
+    useEffect(() => {
+        if (invoices.length > 0) {
+            setInitialGrace(false);
+        }
+    }, [invoices.length]);
+
     const filteredInvoices = invoices.filter(inv => !search || inv.invoiceHash?.toLowerCase().includes(search.toLowerCase()));
 
     // Pagination Logic
     const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
     const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    // Show shimmer if loading OR still within the initial grace period (and no data yet)
+    const showShimmer = invoices.length === 0 && (loading || initialGrace);
+    const showEmpty = invoices.length === 0 && !loading && !initialGrace;
 
     return (
         <div className="overflow-x-auto min-h-[300px]">
@@ -42,6 +74,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest">Invoice Hash</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Amount</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Type</th>
+                        <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Wallet</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Tx IDs</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-left">Memo</th>
@@ -49,10 +82,14 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                    {(loading && invoices.length === 0) ? (
-                        <tr><td colSpan={7} className="text-center py-12"><div className="inline-block w-8 h-8 border-2 border-neon-primary border-t-transparent rounded-full animate-spin"></div></td></tr>
-                    ) : filteredInvoices.length === 0 ? (
-                        <tr><td colSpan={7} className="text-center py-12 text-gray-500 italic">{search ? 'No invoices match your search.' : 'No created invoices found.'}</td></tr>
+                    {showShimmer ? (
+                        <>
+                            <ShimmerRow />
+                            <ShimmerRow />
+                            <ShimmerRow />
+                        </>
+                    ) : showEmpty ? (
+                        <tr><td colSpan={8} className="text-center py-12 text-gray-500 italic">{search ? 'No invoices match your search.' : 'No created invoices found.'}</td></tr>
                     ) : (
                         paginatedInvoices.map((inv, i) => {
                             // Base Params
@@ -102,6 +139,18 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                             }`}>
                                             {inv.invoiceType === 1 ? 'Multi' : inv.invoiceType === 2 ? 'Donate' : 'Standard'}
                                         </span>
+                                    </td>
+                                    <td className="py-4 px-6 text-center">
+                                        {inv.walletType === 1 ? (
+                                            <div className="flex items-center justify-center gap-1 text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider border border-neon-primary/40 bg-neon-primary/10 text-neon-primary" title="Funds protected by ephemeral burner address">
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                </svg>
+                                                Burner
+                                            </div>
+                                        ) : (
+                                            <span className="text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider text-gray-500">Main</span>
+                                        )}
                                     </td>
                                     <td className="py-4 px-6 text-center">
                                         <StatusBadge status={inv.status} />

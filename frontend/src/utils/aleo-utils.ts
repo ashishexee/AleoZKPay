@@ -1,6 +1,82 @@
-import { AleoNetworkClient } from '@provablehq/sdk';
-export const PROGRAM_ID = "zk_pay_proofs_privacy_v13.aleo";
+import { AleoNetworkClient, Account } from '@provablehq/sdk';
+export const PROGRAM_ID = "zk_pay_proofs_privacy_v17.aleo";
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
+
+
+export const fetchBurnerRecordsFromTx = async (txId: string, privateKeyStr: string): Promise<any[]> => {
+    try {
+        if (!txId || !privateKeyStr) {
+            console.log("🔍 [fetchBurnerRecords] Skipping - missing txId or privateKey", { txId: !!txId, key: !!privateKeyStr });
+            return [];
+        }
+
+        let retries = 5;
+        while (retries > 0) {
+            const url = `https://api.provable.com/v1/testnet/transaction/${txId}`;
+            console.log(`🔍 [fetchBurnerRecords] Fetching: ${url} (retries left: ${retries})`);
+            const response = await fetch(url);
+            console.log(`🔍 [fetchBurnerRecords] Response status: ${response.status}`);
+
+            if (response.ok) {
+                const tx = await response.json();
+                console.log(`🔍 [fetchBurnerRecords] TX data keys:`, Object.keys(tx));
+                const account = new Account({ privateKey: privateKeyStr });
+                const foundRecords: any[] = [];
+
+                let transitions = [];
+                if (tx.execution && tx.execution.transitions) {
+                    transitions = tx.execution.transitions;
+                } else if (tx.fee && tx.fee.transition) {
+                    transitions = [tx.fee.transition];
+                }
+                console.log(`🔍 [fetchBurnerRecords] Transitions found: ${transitions.length}`);
+
+                for (const transition of transitions) {
+                    const outputs = transition.outputs || [];
+                    console.log(`🔍 [fetchBurnerRecords] Transition ${transition.id} - Program: ${transition.program} - Outputs: ${outputs.length}`);
+                    for (const output of outputs) {
+                        console.log(`🔍 [fetchBurnerRecords] Output type: ${output.type}, id: ${output.id}`);
+                        if (output.type === 'record') {
+                            const ciphertext = output.value;
+                            console.log(`🔍 [fetchBurnerRecords] Found record ciphertext (first 80 chars): ${ciphertext?.substring(0, 80)}...`);
+                            try {
+                                const owns = account.ownsRecordCiphertext(ciphertext);
+                                console.log(`🔍 [fetchBurnerRecords] Owns record? ${owns}`);
+                                if (owns) {
+                                    const plaintextObj = account.decryptRecord(ciphertext);
+                                    const plaintextStr = typeof plaintextObj === 'string' ? plaintextObj : plaintextObj.toString();
+                                    console.log(`✅ [fetchBurnerRecords] DECRYPTED RECORD:\n${plaintextStr}`);
+
+                                    foundRecords.push({
+                                        ...output,
+                                        plaintext: plaintextStr,
+                                        recordCiphertext: ciphertext,
+                                        ciphertext: ciphertext,
+                                        transactionId: txId,
+                                        transitionId: transition.id
+                                    });
+                                }
+                            } catch (e) {
+                                console.warn(`🔍 [fetchBurnerRecords] Decrypt/ownership check failed:`, e);
+                            }
+                        }
+                    }
+                }
+                console.log(`🔍 [fetchBurnerRecords] Total records found for TX ${txId}: ${foundRecords.length}`);
+                return foundRecords;
+            }
+            console.log(`🔍 [fetchBurnerRecords] Response not OK (${response.status}), retrying in 2s...`);
+            await new Promise(r => setTimeout(r, 2000));
+            retries--;
+        }
+
+        console.warn(`Failed to fetch tx ${txId} for burner analysis after retries`);
+        return [];
+    } catch (e) {
+        console.error("Error fetching burner records for tx:", txId, e);
+        return [];
+    }
+};
 
 export const stringToField = (str: string): string => {
     const encoder = new TextEncoder();
@@ -95,7 +171,6 @@ export const getInvoiceData = async (hash: string): Promise<{ status: number, to
 
                     if ('status' in data) status = parseVal(data.status);
 
-                    // Check snake_case and camelCase
                     if ('token_type' in data) tokenType = parseVal(data.token_type);
                     else if ('tokenType' in data) tokenType = parseVal(data.tokenType);
 
@@ -113,8 +188,6 @@ export const getInvoiceData = async (hash: string): Promise<{ status: number, to
     }
     return null;
 };
-
-// --- FreezeList / Proof Helpers ---
 
 export const getFreezeListRoot = async (): Promise<string | null> => {
     try {
@@ -215,11 +288,14 @@ export interface InvoiceRecord {
     invoiceType: number;
     salt: string;
     memo: string;
+    walletType?: number;
 }
 
 export const parseInvoice = (record: any): InvoiceRecord | null => {
     try {
         const data = record.plaintext || '';
+        console.log("📝 parseInvoice checking plaintext:", data);
+
         const getVal = (key: string) => {
             // Handle standard (key: value) and quoted ("key": value)
             const regex = new RegExp(`(?:${key}|"${key}"):\\s*([\\w\\d\\.]+)`);
@@ -236,14 +312,19 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
         const memoField = getVal('memo');
 
         if (invoiceHash && owner) {
+            const invoiceTypeVal = getVal('invoice_type') || getVal('invoiceType');
+            if (invoiceTypeVal === null) return null; // Only Invoices have invoice_type
+
             const amountVal = getVal('amount');
             const amount = amountVal ? parseInt(amountVal.replace('u64', '')) : 0;
 
             const tokenTypeVal = getVal('token_type') || getVal('tokenType');
             const tokenType = tokenTypeVal ? parseInt(tokenTypeVal.replace('u8', '')) : 0;
 
-            const invoiceTypeVal = getVal('invoice_type') || getVal('invoiceType');
             const invoiceType = invoiceTypeVal ? parseInt(invoiceTypeVal.replace('u8', '')) : 0;
+
+            const walletTypeVal = getVal('wallet_type') || getVal('walletType');
+            const walletType = walletTypeVal ? parseInt(walletTypeVal.replace('u8', '')) : 0;
 
             return {
                 owner: owner,
@@ -252,7 +333,8 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
                 tokenType: tokenType,
                 invoiceType: invoiceType,
                 salt: salt || '',
-                memo: memoField ? fieldToString(memoField) : ''
+                memo: memoField ? fieldToString(memoField) : '',
+                walletType: walletType
             };
         }
     } catch (e) { console.error("Error parsing Invoice record:", e); }
@@ -287,6 +369,8 @@ export const parsePayerReceipt = (record: any): PayerReceipt | null => {
         const owner = getVal('owner');
         const merchant = getVal('merchant');
 
+        if (!receiptHash || !merchant) return null;
+
         if (receiptHash && invoiceHash) {
             return {
                 owner: owner || '',
@@ -313,6 +397,7 @@ export interface MerchantReceipt {
 export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
     try {
         const data = record.plaintext || '';
+
         const getVal = (key: string) => {
             const regex = new RegExp(`(?:${key}|"${key}"):\\s*([\\w\\d\\.]+)`);
             const match = data.match(regex);
@@ -325,6 +410,9 @@ export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
         const invoiceHash = getVal('invoice_hash') || getVal('invoiceHash');
         const receiptHash = getVal('receipt_hash') || getVal('receiptHash');
         const owner = getVal('owner');
+        const merchant = getVal('merchant');
+
+        if (merchant) return null;
 
         if (invoiceHash && receiptHash && owner) {
             const amountVal = getVal('amount');
@@ -341,5 +429,49 @@ export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
             };
         }
     } catch (e) { console.error("Error parsing MerchantReceipt record:", e); }
+    return null;
+};
+
+export interface BurnerWalletRecord {
+    owner: string;
+    burnerAddress: string;
+    passwordPart: string;
+    pkParts: string[];
+}
+
+export const parseBurnerBackupRecord = (record: any): BurnerWalletRecord | null => {
+    try {
+        const data = record.plaintext || '';
+
+        const getVal = (key: string) => {
+            const regex = new RegExp(`(?:${key}|"${key}"):\\s*([\\w\\d\\.]+)`);
+            const match = data.match(regex);
+            if (match && match[1]) {
+                return match[1].replace('.private', '').replace('.public', '');
+            }
+            return null;
+        };
+
+        const burnerAddress = getVal('burner_address');
+        const owner = getVal('owner');
+        const passwordPart = getVal('password_part');
+
+        if (!burnerAddress || !passwordPart) return null;
+
+        const pkParts = [];
+        for (let i = 1; i <= 10; i++) {
+            const part = getVal(`pk_part_${i}`);
+            if (part && part !== '0field' && part !== '0') {
+                pkParts.push(part);
+            }
+        }
+
+        return {
+            owner: owner || '',
+            burnerAddress: burnerAddress,
+            passwordPart: passwordPart,
+            pkParts: pkParts
+        };
+    } catch (e) { console.error("Error parsing BurnerWalletRecord:", e); }
     return null;
 };

@@ -1,16 +1,16 @@
-
 import { useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from '../utils/aleo-utils';
 import { InvoiceData } from '../types/invoice';
+import { useBurnerWallet } from './BurnerWalletProvider';
 
 export type InvoiceType = 'standard' | 'multipay' | 'donation';
 
 export const useCreateInvoice = () => {
     const { address, executeTransaction, transactionStatus, requestTransactionHistory } = useWallet();
+    const { burnerAddress } = useBurnerWallet();
     const publicKey = address;
-
     const [amount, setAmount] = useState<number | ''>('');
     const [loading, setLoading] = useState(false);
     const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
@@ -18,6 +18,7 @@ export const useCreateInvoice = () => {
     const [status, setStatus] = useState<string>('');
     const [invoiceType, setInvoiceType] = useState<InvoiceType>('standard');
     const [tokenType, setTokenType] = useState<number>(0);
+    const [walletType, setWalletType] = useState<number>(0);
 
     const handleCreate = async () => {
         if (!publicKey || !executeTransaction || !transactionStatus) {
@@ -60,13 +61,17 @@ export const useCreateInvoice = () => {
             // Encode Memo
             const memoField = memo ? stringToField(memo) : '0field';
 
+            // If Burner Wallet is selected, we must register the invoice under the Burner Address!
+            const merchantAddress = walletType === 1 && burnerAddress ? burnerAddress : publicKey;
+
             const inputs = [
-                publicKey,
+                merchantAddress,
                 amountInput,
                 salt,
                 memoField,
                 '0u32', // expiry hardcoded to 0
-                typeInput
+                typeInput,
+                `${walletType}u8`
             ];
 
             const transaction: TransactionOptions = {
@@ -170,21 +175,25 @@ export const useCreateInvoice = () => {
                                     await createInvoice({
                                         invoice_hash: hash,
                                         merchant_address: merchant,
+                                        designated_address: walletType === 1 && burnerAddress ? burnerAddress : merchant,
                                         // amount removed
                                         // memo removed
                                         status: 'PENDING',
                                         invoice_transaction_id: finalTransactionId,
                                         salt: salt,
                                         invoice_type: dbInvoiceType,
-                                        token_type: tokenType
+                                        token_type: tokenType,
+                                        is_burner: walletType === 1,
                                     });
                                     console.log("Invoice saved to DB");
                                 } catch (dbErr) {
                                     console.error("Failed to save invoice to DB:", dbErr);
                                 }
 
+                                const invoiceMerchantAddress = walletType === 1 && burnerAddress ? burnerAddress : merchant;
+
                                 const params = new URLSearchParams({
-                                    merchant,
+                                    merchant: invoiceMerchantAddress,
                                     amount: amount.toString(),
                                     salt
                                 });
@@ -195,7 +204,7 @@ export const useCreateInvoice = () => {
 
                                 const link = `${window.location.origin}/pay?${params.toString()}`;
 
-                                setInvoiceData({ merchant, amount: Number(amount), salt, hash, link });
+                                setInvoiceData({ merchant: invoiceMerchantAddress, amount: Number(amount), salt, hash, link });
                                 setStatus(`Invoice Created Successfully!`);
                                 return;
                             } else {
@@ -295,6 +304,7 @@ export const useCreateInvoice = () => {
         setStatus('');
         setInvoiceType('standard');
         setTokenType(0);
+        setWalletType(0);
     };
 
     return {
@@ -311,6 +321,8 @@ export const useCreateInvoice = () => {
         invoiceType,
         setInvoiceType,
         tokenType,
-        setTokenType
+        setTokenType,
+        walletType,
+        setWalletType
     };
 };

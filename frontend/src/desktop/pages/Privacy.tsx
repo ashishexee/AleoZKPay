@@ -12,11 +12,7 @@ const Privacy: React.FC = () => {
             animate="animate"
             exit="exit"
         >
-            <div className="fixed inset-0 pointer-events-none z-0 opacity-30">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
-                <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
-                <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] bg-white/5 rounded-full blur-[120px] animate-pulse-slow" />
-            </div>
+
 
             <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 w-screen h-[800px] z-0 pointer-events-none flex justify-center overflow-hidden">
                 <img
@@ -30,7 +26,7 @@ const Privacy: React.FC = () => {
                 />
             </div>
 
-            <div className="w-full max-w-[1600px] mx-auto pt-12 px-6 relative z-10 pb-24">
+            <div className="w-full pt-8 relative z-10 pb-24">
                 {/* HERO HEADER */}
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}
