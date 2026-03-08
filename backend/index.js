@@ -261,10 +261,6 @@ app.patch('/api/invoices/:hash', async (req, res) => {
     }
 });
 
-<<<<<<< HEAD
-server.listen(port, () => {
-=======
-
 app.post('/api/users/profile', async (req, res) => {
     const { main_address, burner_address, encrypted_burner_key } = req.body;
 
@@ -342,7 +338,6 @@ app.get('/api/users/profile/:address', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
->>>>>>> 0ae0c9cd1e709b194ca468f6e5d0b6d2b2f21d3a
-    console.log(`Server running on port ${port}`);
+server.listen(port, () => {
+console.log(`Server running on port ${port}`);
 });
