@@ -27,6 +27,7 @@
     "@provablehq/aleo-wallet-adaptor-shield": "^0.3.0-alpha.2",
     "@provablehq/aleo-wallet-adaptor-soter": "^0.3.0-alpha.2",
     "@provablehq/sdk": "^0.9.17",
+    "@supabase/supabase-js": "^2.98.0",
     "@types/qrcode.react": "^3.0.0",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",
