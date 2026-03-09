@@ -1,7 +1,8 @@
 import credits.aleo;
 import test_usdcx_stablecoin.aleo;
+import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v17.aleo {
+program zk_pay_proofs_privacy_v18.aleo {
     
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     async constructor() {
@@ -12,7 +13,7 @@ program zk_pay_proofs_privacy_v17.aleo {
         expiry_height: u32,
         status: u8, // 0 = Open, 1 = Settled/Paid
         invoice_type: u8, // 0 = Standard, 1 = Multi Pay, 2 = Donation
-        token_type: u8, // 0 = Credits, 1 = USDCx
+        token_type: u8, // 0 = Credits, 1 = USDCx, 2 = USAD
         wallet_type: u8 // 0 = Main Wallet, 1 = Burner Wallet
     }
 
@@ -22,7 +23,7 @@ program zk_pay_proofs_privacy_v17.aleo {
         receipt_hash: field,  // Unique Payment ID (Hash of secret + salt)
         invoice_hash: field,  // Link to specific invoice
         amount: u64,          // Amount Paid (u64 for Credits/USDCx standard)
-        token_type: u8,       // 0 = Credits, 1 = USDCx
+        token_type: u8,       // 0 = Credits, 1 = USDCx, 2 = USAD
         timestamp: u64,       // Approximate block time or 0 if not available
     }
 
@@ -31,14 +32,14 @@ program zk_pay_proofs_privacy_v17.aleo {
         receipt_hash: field,  // Unique Payment ID (Matches Payer's receipt_hash)
         invoice_hash: field,  // Link to specific invoice
         amount: u64,          // Amount Received
-        token_type: u8,       // 0 = Credits, 1 = USDCx
+        token_type: u8,       // 0 = Credits, 1 = USDCx, 2 = USAD
     }
 
     record Invoice {
         owner: address,       // Merchant
         invoice_hash: field,
         amount: u64,          // Amount
-        token_type: u8,       // 0 = Credits, 1 = USDCx
+        token_type: u8,       // 0 = Credits, 1 = USDCx, 2 = USAD
         invoice_type: u8,     // 0 = Standard, 1 = Multi Pay
         salt: field,          // For checking against hash
         memo: field,          // Encoded Memo (max ~31 chars)
@@ -169,6 +170,41 @@ program zk_pay_proofs_privacy_v17.aleo {
 
         // token_type 1 for USDCx
         return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 1u8, wallet_type));
+    }
+
+    async transition create_invoice_usad(
+        private merchant: address,
+        private amount: u128,
+        private salt: field,
+        private memo: field,
+        public expiry_hours: u32,
+        public invoice_type: u8,
+        public wallet_type: u8
+    ) -> (Invoice, public field, Future) {
+        let merchant_field: field = merchant as field; 
+        let amount_field: field = amount as field;
+
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+
+        let amount_u64: u64 = amount as u64; 
+
+        let invoice_record: Invoice = Invoice {
+            owner: merchant,
+            invoice_hash: invoice_hash,
+            amount: amount_u64,
+            token_type: 2u8,
+            invoice_type: invoice_type,
+            salt: salt,
+            memo: memo,
+            wallet_type: wallet_type
+        };
+
+        // token_type 2 for USAD
+        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 2u8, wallet_type));
     }
 
     async function finalize_create_invoice(
@@ -363,6 +399,55 @@ program zk_pay_proofs_privacy_v17.aleo {
         return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
     }
 
+    async transition pay_invoice_usad(
+        pay_record: test_usad_stablecoin.aleo/Token,
+        merchant: address,
+        amount: u128,
+        salt: field,
+        private payment_secret: field,
+        public message: field,
+        private proofs: [test_usad_stablecoin.aleo/MerkleProof; 2]
+    ) -> (test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/ComplianceRecord, PayerReceipt, MerchantReceipt, Future) {
+        
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usad_stablecoin.aleo/ComplianceRecord, test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/Token, Future) = 
+            test_usad_stablecoin.aleo/transfer_private(merchant, amount, pay_record, proofs);
+
+        let merchant_field: field = merchant as field; 
+        let amount_field: field = amount as field;
+        
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+        
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+        
+        let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
+        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+        
+        let payer_receipt: PayerReceipt = PayerReceipt {
+            owner: self.caller,
+            merchant: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: amount as u64,
+            token_type: 2u8,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt: MerchantReceipt = MerchantReceipt {
+            owner: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: amount as u64,
+            token_type: 2u8
+        };
+
+        // Pass 2u8 as expected_token_type for USAD
+        let f0: Future = finalize_pay_invoice_usad(invoice_hash, salt, amount, 2u8, transfer_future);
+        
+        return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
+    }
+
     async transition pay_donation_usdcx(
         pay_record: test_usdcx_stablecoin.aleo/Token,
         merchant: address,
@@ -413,7 +498,81 @@ program zk_pay_proofs_privacy_v17.aleo {
         return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
     }
 
+    async transition pay_donation_usad(
+        pay_record: test_usad_stablecoin.aleo/Token,
+        merchant: address,
+        amount_to_donate: u128,
+        salt: field,
+        private payment_secret: field,
+        public message: field,
+        private proofs: [test_usad_stablecoin.aleo/MerkleProof; 2]
+    ) -> (test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/ComplianceRecord, PayerReceipt, MerchantReceipt, Future) {
+        
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usad_stablecoin.aleo/ComplianceRecord, test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/Token, Future) = 
+            test_usad_stablecoin.aleo/transfer_private(merchant, amount_to_donate, pay_record, proofs);
+
+        let merchant_field: field = merchant as field; 
+        
+        // For donation, the invoice was created with amount 0 (u128)
+        let amount_field: field = 0u128 as field;
+        
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+        
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+        
+        let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
+        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+        
+        let payer_receipt: PayerReceipt = PayerReceipt {
+            owner: self.caller,
+            merchant: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: amount_to_donate as u64, // Cast to u64 for receipt consistency
+            token_type: 2u8,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt: MerchantReceipt = MerchantReceipt {
+            owner: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: amount_to_donate as u64,
+            token_type: 2u8
+        };
+
+        let f0: Future = finalize_pay_donation_usad(invoice_hash, salt, 2u8, transfer_future);
+        
+        return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
+    }
+
     async function finalize_pay_donation_usdcx(
+        invoice_hash: field,
+        salt: field,
+        expected_token_type: u8,
+        f0: Future
+    ) {
+        f0.await();
+        let stored_hash: field = salt_to_invoice.get(salt);
+        assert_eq(invoice_hash, stored_hash);
+
+        let invoice_data: InvoiceData = invoices.get(stored_hash);
+        assert_eq(invoice_data.token_type, expected_token_type);
+
+        // Ensure it is a Donation Invoice (Type 2)
+        assert_eq(invoice_data.invoice_type, 2u8);
+
+        // Enforce Status is Open (0)
+        assert_eq(invoice_data.status, 0u8);
+
+        if invoice_data.expiry_height != 0u32 {
+            assert(block.height <= invoice_data.expiry_height);
+        }
+    }
+
+    async function finalize_pay_donation_usad(
         invoice_hash: field,
         salt: field,
         expected_token_type: u8,
@@ -439,6 +598,42 @@ program zk_pay_proofs_privacy_v17.aleo {
 
 
     async function finalize_pay_invoice_usdcx(
+        invoice_hash: field,
+        salt: field,
+        amount: u128,
+        expected_token_type: u8,
+        f0: Future
+    ) {
+        f0.await();
+        let stored_hash: field = salt_to_invoice.get(salt);
+        assert_eq(invoice_hash, stored_hash);
+
+        let invoice_data: InvoiceData = invoices.get(stored_hash);
+        assert_eq(invoice_data.token_type, expected_token_type);
+
+        if invoice_data.expiry_height != 0u32 {
+            assert(block.height <= invoice_data.expiry_height);
+        }
+
+        // Enforce Status is Open (0) for ALL types
+        assert_eq(invoice_data.status, 0u8);
+
+        if (invoice_data.invoice_type == 0u8) {
+             // For Standard Invoices (0), we auto-settle (set to 1)
+             // No need to check status here again as we checked above
+             
+             let updated_data: InvoiceData = InvoiceData {
+                expiry_height: invoice_data.expiry_height,
+                status: 1u8,
+                invoice_type: invoice_data.invoice_type,
+                token_type: invoice_data.token_type,
+                wallet_type: invoice_data.wallet_type
+            };
+            invoices.set(stored_hash, updated_data);
+        }
+    }
+
+    async function finalize_pay_invoice_usad(
         invoice_hash: field,
         salt: field,
         amount: u128,
