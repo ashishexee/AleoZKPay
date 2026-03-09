@@ -5,7 +5,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { createClient } from '@supabase/supabase-js';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-// Fallback base URL for Socket.IO if API_URL includes /api
+
 const SOCKET_BASE_URL = new URL(API_URL).origin;
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';

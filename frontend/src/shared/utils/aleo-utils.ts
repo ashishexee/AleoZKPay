@@ -1,5 +1,5 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
-export const PROGRAM_ID = "zk_pay_proofs_privacy_v17.aleo";
+export const PROGRAM_ID = "zk_pay_proofs_privacy_v18.aleo";
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
 
 

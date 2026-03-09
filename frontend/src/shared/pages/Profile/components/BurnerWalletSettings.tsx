@@ -249,6 +249,12 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                         <h3 className="text-xl font-bold text-white mb-2">Secure Burner Wallet</h3>
                         <p className="text-sm text-gray-400 mb-6">Create a password to encrypt your private key. NullPay cannot recover this password.</p>
                         
+                        {error && (
+                            <div className="mb-4 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-xs text-center">
+                                {error}
+                            </div>
+                        )}
+                        
                         <div className="relative mb-6">
                             <input
                                 type={showPassword ? "text" : "password"}
@@ -286,6 +292,12 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                         <h3 className="text-xl font-bold text-white mb-2">Unlock Burner Key</h3>
                         <p className="text-sm text-gray-400 mb-6">Enter your password to decrypt and view your burner wallet private key.</p>
                         
+                        {error && (
+                            <div className="mb-4 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-xs text-center">
+                                {error}
+                            </div>
+                        )}
+
                         <div className="relative mb-6">
                             <input
                                 type={showPassword ? "text" : "password"}
@@ -323,6 +335,12 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                         <h3 className="text-xl font-bold text-white mb-2">Confirm Backup</h3>
                         <p className="text-sm text-gray-400 mb-6">Enter your password to securely backup your Burner Wallet credentials on-chain.</p>
                         
+                        {error && (
+                            <div className="mb-4 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-xs text-center">
+                                {error}
+                            </div>
+                        )}
+
                         <div className="relative mb-6">
                             <input
                                 type={showPassword ? "text" : "password"}

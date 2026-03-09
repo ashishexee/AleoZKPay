@@ -12,6 +12,9 @@ import { VerifyModal } from './components/modals/VerifyModal';
 import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from './components/modals/ReceiptHashesModal';
 import { BurnerWalletSettings } from './components/BurnerWalletSettings';
+import { InvoiceDistributionChart } from './components/Charts/InvoiceDistributionChart';
+import { TokenDistributionChart } from './components/Charts/TokenDistributionChart';
+import { WalletBalances } from './components/WalletBalances';
 
 const Profile: React.FC = () => {
     const { address, requestRecords, decrypt, executeTransaction } = useWallet();
@@ -381,19 +384,27 @@ const Profile: React.FC = () => {
 
     const merchantStats = {
         mainCredits: (merchantReceipts
-            .filter(r => r.tokenType !== 1)
+            .filter(r => r.tokenType !== 1 && r.tokenType !== 2)
             .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
         mainUSDCx: (merchantReceipts
             .filter(r => r.tokenType === 1)
             .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
+        mainUSAD: (merchantReceipts
+            .filter(r => r.tokenType === 2)
+            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+            .toFixed(2),
         burnerCredits: (burnerMerchantReceipts
-            .filter(r => r.tokenType !== 1)
+            .filter(r => r.tokenType !== 1 && r.tokenType !== 2)
             .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
         burnerUSDCx: (burnerMerchantReceipts
             .filter(r => r.tokenType === 1)
+            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+            .toFixed(2),
+        burnerUSAD: (burnerMerchantReceipts
+            .filter(r => r.tokenType === 2)
             .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
         invoices: combinedInvoices.length,
@@ -529,18 +540,31 @@ const Profile: React.FC = () => {
                     </p>
 
                     {/* REMOVED GLOBAL VERIFY BUTTON */}
+                    {/* NEW: WALLET BALANCES */}
+                    <WalletBalances itemVariants={itemVariants} />
                 </motion.div>
 
-                {/* STATS */}
-                <StatsCards
-                    merchantStats={merchantStats}
-                    loadingReceipts={loadingReceipts}
-                    loadingCreated={loadingCreated}
-                    loadingBurner={loadingBurner}
-                    itemVariants={itemVariants}
-                />
+                {/* TOP ROW: Stats & Charts */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+                    {/* STATS */}
+                    <div className="xl:col-span-1">
+                        <StatsCards
+                            merchantStats={merchantStats}
+                            loadingReceipts={loadingReceipts}
+                            loadingCreated={loadingCreated}
+                            loadingBurner={loadingBurner}
+                            itemVariants={itemVariants}
+                        />
+                    </div>
 
-                {/* BURNER WALLET SETTINGS */}
+                    {/* CHARTS */}
+                    <motion.div variants={itemVariants} className="xl:col-span-1 grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+                        <InvoiceDistributionChart invoices={loadingBurner ? [] : combinedInvoices} isLoading={loadingCreated || loadingBurner} />
+                        <TokenDistributionChart receipts={[...merchantReceipts, ...burnerMerchantReceipts]} isLoading={loadingReceipts || loadingBurner} />
+                    </motion.div>
+                </div>
+
+                {/* BURNER WALLET SETTINGS - FULL WIDTH */}
                 <BurnerWalletSettings itemVariants={itemVariants} transactions={transactions} />
 
                 {/* INVOICE HISTORY */}

@@ -1,1 +1,0 @@
-﻿src/desktop/DesktopApp.tsx(7,25): error TS2307: Cannot find module './pages/PaymentPage' or its corresponding type declarations.

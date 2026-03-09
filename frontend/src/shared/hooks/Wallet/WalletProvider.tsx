@@ -27,7 +27,7 @@ export const AleoWalletProvider = ({ children }: AleoWalletProviderProps) => {
             decryptPermission={DecryptPermission.AutoDecrypt}
             network={Network.TESTNET}
             autoConnect
-            programs={['zk_pay_proofs_privacy_v17.aleo', 'credits.aleo', 'test_usdcx_stablecoin.aleo']}
+            programs={['zk_pay_proofs_privacy_v18.aleo', 'credits.aleo', 'test_usdcx_stablecoin.aleo','test_usad_stablecoin.aleo']}
         >
             <WalletModalProvider>
                 {children}

@@ -12,7 +12,6 @@ import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-
 const MobilePaymentPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -20,6 +19,8 @@ const MobilePaymentPage = () => {
     const [manualLink, setManualLink] = useState('');
     const [copiedSecret, setCopiedSecret] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
+    const [customConvertAmount, setCustomConvertAmount] = useState<string>('');
+    const [showConvertModal, setShowConvertModal] = useState(false);
 
     const {
         step,
@@ -44,10 +45,15 @@ const MobilePaymentPage = () => {
 
     const handlePay = async () => {
         if (step === 'CONVERT') {
-            await convertPublicToPrivate();
+            setShowConvertModal(true);
         } else {
             await payInvoice();
         }
+    };
+
+    const confirmConversion = async () => {
+        setShowConvertModal(false);
+        await convertPublicToPrivate(customConvertAmount ? Number(customConvertAmount) : undefined);
     };
 
     const processPaymentLink = (rawValue: string) => {
@@ -91,7 +97,7 @@ const MobilePaymentPage = () => {
     ];
 
     const isMultiPay = programId === PROGRAM_ID;
-    const currencyLabel = invoice?.tokenType === 1 ? 'USDCx' : 'Credits';
+    const currencyLabel = invoice?.tokenType === 1 ? 'USDCx' : invoice?.tokenType === 2 ? 'USAD' : 'Credits';
 
     if (!hasParams) {
         return (
@@ -394,6 +400,71 @@ const MobilePaymentPage = () => {
                     Secured by Aleo Zero-Knowledge Proofs
                 </p>
             </motion.div>
+
+            {/* CONVERSION MODAL */}
+            {showConvertModal && (
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowConvertModal(false)} />
+                    <motion.div
+                        initial={{ opacity: 0, y: "100%" }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        className="relative w-full max-w-md mt-auto sm:mt-0"
+                    >
+                        <div className="p-6 pb-10 sm:pb-8 bg-[#0a0a0a] border-b-0 border-x-0 sm:border-b sm:border-x border-t border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col gap-6 relative overflow-hidden">
+                            
+                            {/* Mobile Drag Handle Indicator */}
+                            <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto sm:hidden mb-1" />
+                            
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setShowConvertModal(false)}
+                                className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors hidden sm:block z-10"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+
+                            <div className="text-center relative z-10">
+                                <div className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-2xl font-semibold text-white mb-2 tracking-tight">Convert to Private</h3>
+                                <p className="text-sm text-gray-400 max-w-[280px] mx-auto leading-relaxed">
+                                    Specify how many public <span className="text-white font-medium">{currencyLabel}</span> you want to convert into private records for this payment.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2 bg-[#111] p-5 rounded-2xl border border-white/5 relative z-10 focus-within:border-white/20 transition-colors">
+                                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block text-center mb-1">Amount to Convert</label>
+                                <input
+                                    type="number"
+                                    placeholder={`Default needed: ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')}`}
+                                    value={customConvertAmount}
+                                    onChange={(e) => setCustomConvertAmount(e.target.value)}
+                                    className="w-full bg-transparent text-center text-3xl font-medium text-white placeholder:text-white/20 focus:outline-none focus:ring-0 border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <p className="text-[11px] text-gray-500 text-center mt-2">
+                                    Leave blank to convert exactly the required amount.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col gap-2 mt-2 relative z-10">
+                                <button className="w-full bg-white text-black font-semibold text-sm py-4 h-14 rounded-xl hover:bg-gray-200 transition-colors" onClick={confirmConversion}>
+                                    Confirm Conversion
+                                </button>
+                                <button className="text-sm text-gray-500 hover:text-white transition-colors font-medium py-3 uppercase tracking-widest" onClick={() => setShowConvertModal(false)}>
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 };

@@ -102,7 +102,7 @@ export const VerifyModal: React.FC<VerifyModalProps> = ({
                                                         <CopyButton text={receipt.receiptHash} title="Copy Receipt Hash" className="text-gray-600 hover:text-white flex-shrink-0" />
                                                     </div>
                                                     <span className="font-bold text-white text-sm whitespace-nowrap ml-3">
-                                                        {receipt.amount / 1_000_000} <span className="text-xs text-gray-400 font-normal">{receipt.tokenType === 1 ? 'USDCx' : 'Credits'}</span>
+                                                        {receipt.amount / 1_000_000} <span className="text-xs text-gray-400 font-normal">{receipt.tokenType === 0 ? 'Credits' : receipt.tokenType === 1 ? 'USDCx' : 'USAD'}</span>
                                                     </span>
                                                 </div>
                                             ))}
@@ -121,7 +121,7 @@ export const VerifyModal: React.FC<VerifyModalProps> = ({
                                     <div className="space-y-1 text-sm">
                                         <div className="flex justify-between">
                                             <span className="text-gray-400">Amount Paid:</span>
-                                            <span className="text-white font-mono">{verifiedRecord.amount} {verifiedRecord.tokenType === 1 ? 'USDCx' : 'Credits'}</span>
+                                            <span className="text-white font-mono">{verifiedRecord.amount} {verifiedRecord.tokenType === 0 ? 'Credits' : verifiedRecord.tokenType === 1 ? 'USDCx' : 'USAD'}</span>
                                         </div>
                                         <div className="text-xs text-gray-500 mt-2">Matches your private records.</div>
                                     </div>

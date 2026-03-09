@@ -1,7 +1,7 @@
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { usePaymentMonitor } from './hooks/usePaymentMonitor';
+import { usePaymentMonitor } from './shared/hooks/usePaymentMonitor';
 import './index.css';
 
 const MobileApp = lazy(() => import('./mobile/MobileApp').then(module => ({ default: module.MobileApp })));

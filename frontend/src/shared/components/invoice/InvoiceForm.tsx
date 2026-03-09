@@ -68,6 +68,15 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                             >
                                 USDCx
                             </button>
+                            <button
+                                onClick={() => setTokenType(2)}
+                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 2
+                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                            >
+                                USAD
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -157,7 +166,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
                 {invoiceType !== 'donation' && (
                     <Input
-                        label={`Amount (${tokenType === 0 ? 'Credits' : 'USDCx'})`}
+                        label={`Amount (${tokenType === 0 ? 'Credits' : tokenType === 1 ? 'USDCx' : 'USAD'})`}
                         type="number"
                         placeholder="0.00"
                         value={amount}

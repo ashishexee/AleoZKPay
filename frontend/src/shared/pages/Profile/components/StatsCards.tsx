@@ -7,21 +7,25 @@ interface StatsCardsProps {
     merchantStats: {
         mainCredits: string;
         mainUSDCx: string;
+        mainUSAD: string;
         burnerCredits: string;
         burnerUSDCx: string;
+        burnerUSAD: string;
         invoices: number;
         settled: number;
         pending: number;
     };
     loadingReceipts: boolean;
     loadingCreated: boolean;
+
     loadingBurner: boolean;
     itemVariants: any;
 }
 
 export const StatsCards: React.FC<StatsCardsProps> = ({ merchantStats, loadingReceipts, loadingCreated, loadingBurner, itemVariants }) => {
     return (
-        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-12">
+        <motion.div variants={itemVariants} className="flex flex-col gap-4 h-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <GlassCard className="p-6 flex flex-col justify-center group hover:border-white/20">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 block">Main Volume</span>
                 {(loadingReceipts || loadingBurner) ? (
@@ -35,6 +39,10 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ merchantStats, loadingRe
                         <div className="flex items-baseline gap-2">
                             <span className="text-2xl font-bold text-white tracking-tighter">{merchantStats.mainUSDCx}</span>
                             <span className="text-[10px] font-normal text-purple-400 uppercase">USDCx</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-bold text-white tracking-tighter">{merchantStats.mainUSAD}</span>
+                            <span className="text-[10px] font-normal text-emerald-400 uppercase">USAD</span>
                         </div>
                     </div>
                 )}
@@ -55,10 +63,16 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ merchantStats, loadingRe
                             <span className="text-2xl font-bold text-white tracking-tighter">{merchantStats.burnerUSDCx}</span>
                             <span className="text-[10px] font-normal text-purple-400 uppercase">USDCx</span>
                         </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-bold text-white tracking-tighter">{merchantStats.burnerUSAD}</span>
+                            <span className="text-[10px] font-normal text-emerald-400 uppercase">USAD</span>
+                        </div>
                     </div>
                 )}
             </GlassCard>
-
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4 h-full">
             <GlassCard className="p-6 flex flex-col justify-center group hover:border-white/20">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 block">Total Invoices</span>
                 {(loadingCreated || loadingBurner) ? (
@@ -84,6 +98,7 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ merchantStats, loadingRe
                     <h2 className="text-3xl font-bold text-green-400 tracking-tighter">{merchantStats.settled}</h2>
                 )}
             </GlassCard>
+            </div>
         </motion.div>
     );
 };

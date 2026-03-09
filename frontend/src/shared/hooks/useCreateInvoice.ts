@@ -50,8 +50,16 @@ export const useCreateInvoice = () => {
             const isDonation = invoiceType === 'donation';
             const amountMicro = isDonation ? 0 : Math.round(Number(amount) * 1_000_000);
 
-            const functionName = tokenType === 0 ? 'create_invoice' : 'create_invoice_usdcx';
-            const amountInput = tokenType === 0 ? `${amountMicro}u64` : `${amountMicro}u128`;
+            let functionName = 'create_invoice';
+            let amountInput = `${amountMicro}u64`;
+
+            if (tokenType === 1) { // USDCx
+                functionName = 'create_invoice_usdcx';
+                amountInput = `${amountMicro}u128`;
+            } else if (tokenType === 2) { // USAD
+                functionName = 'create_invoice_usad';
+                amountInput = `${amountMicro}u128`;
+            }
 
             // Ensure salt is ready
             if (!salt) {
@@ -201,6 +209,7 @@ export const useCreateInvoice = () => {
                                 if (invoiceType === 'multipay') params.append('type', 'multipay');
                                 if (invoiceType === 'donation') params.append('type', 'donation');
                                 if (tokenType === 1) params.append('token', 'usdcx');
+                                if (tokenType === 2) params.append('token', 'usad');
 
                                 const link = `${window.location.origin}/pay?${params.toString()}`;
 

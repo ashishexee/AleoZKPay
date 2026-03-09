@@ -100,6 +100,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                             });
 
                             if (inv.tokenType === 1) paymentParams.append('token', 'usdcx');
+                            if (inv.tokenType === 2) paymentParams.append('token', 'usad');
                             if (inv.invoiceType === 1) paymentParams.append('type', 'multipay');
                             if (inv.invoiceType === 2) paymentParams.append('type', 'donation');
 
@@ -129,7 +130,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                     <td className="py-4 px-6 text-center">
                                         <div className="flex flex-col items-center">
                                             <span className="font-bold text-white">{inv.amount}</span>
-                                            <span className="text-[10px] text-gray-500 uppercase">{inv.tokenType === 1 ? 'USDCx' : 'Credits'}</span>
+                                            <span className="text-[10px] text-gray-500 uppercase">{inv.tokenType === 0 ? 'Credits' : inv.tokenType === 1 ? 'USDCx' : 'USAD'}</span>
                                         </div>
                                     </td>
                                     <td className="py-4 px-6 text-center">
