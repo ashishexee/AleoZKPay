@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
+import { GlassCard } from '../../../shared/components/ui/GlassCard';
+import { Input } from '../../../shared/components/ui/Input';
+import { Button } from '../../../shared/components/ui/Button';
 
 const Verification = () => {
     const [secret, setSecret] = useState('');

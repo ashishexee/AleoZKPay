@@ -2,8 +2,8 @@ import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
 import CreateInvoice from './pages/CreateInvoice';
-import PaymentPage from './pages/PaymentPage';
-import Profile from '../pages/Profile';
+import PaymentPage from './pages/Payment';
+import Profile from '../shared/pages/Profile';
 
 const MobileAnimatedRoutes = () => {
     const location = useLocation();

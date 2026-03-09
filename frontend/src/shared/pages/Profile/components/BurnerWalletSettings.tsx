@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { GlassCard } from '../ui/GlassCard';
-import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
+import { GlassCard } from '../../../components/ui/GlassCard';
+import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { PrivateKey } from '@provablehq/sdk';
 import { Eye, EyeOff } from 'lucide-react';
-import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '../../utils/crypto';
-import { PROGRAM_ID } from '../../utils/aleo-utils';
+import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '../../../utils/crypto';
+import { PROGRAM_ID } from '../../../utils/aleo-utils';
 
 interface BurnerWalletSettingsProps {
     itemVariants: any;
@@ -46,7 +46,7 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
             const encryptedKeyPayload = await encryptWithPassword(rawPrivateKeyStr, password);
             
             // Sync with central DB
-            const { updateUserProfile } = await import('../../services/api');
+            const { updateUserProfile } = await import('../../../services/api');
             await updateUserProfile(address, newAddress, encryptedKeyPayload);
             
             setDecryptedBurnerKey(rawPrivateKeyStr);

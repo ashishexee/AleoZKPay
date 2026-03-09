@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CopyButton } from '../../ui/CopyButton';
+import { CopyButton } from '../../../../components/ui/CopyButton';
 
 interface ReceiptHashesModalProps {
     receiptHashes: string[] | null;

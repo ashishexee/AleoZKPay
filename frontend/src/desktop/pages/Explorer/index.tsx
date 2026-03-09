@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import StatusBadge from '../../components/StatusBadge';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Input } from '../../components/ui/Input';
-import { Shimmer } from '../../components/ui/Shimmer';
-import { useTransactions } from '../../hooks/useTransactions';
-import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../utils/animations';
-import { PaymentHistoryModal } from '../../components/profile/modals/PaymentHistoryModal';
-import { getInvoiceStatus } from '../../utils/aleo-utils';
+import StatusBadge from '../../../shared/components/StatusBadge';
+import { GlassCard } from '../../../shared/components/ui/GlassCard';
+import { Input } from '../../../shared/components/ui/Input';
+import { Shimmer } from '../../../shared/components/ui/Shimmer';
+import { useTransactions } from '../../../shared/hooks/useTransactions';
+import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../../shared/utils/animations';
+import { PaymentHistoryModal } from '../../../shared/pages/Profile/components/modals/PaymentHistoryModal';
+import { getInvoiceStatus } from '../../../shared/utils/aleo-utils';
 import React from 'react';
 
 const CopyButton = ({ text, title }: { text: string, title?: string }) => {

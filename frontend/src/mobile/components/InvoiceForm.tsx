@@ -1,9 +1,9 @@
 import React from 'react';
-import GlassCard from '../../components/GlassCard';
+import GlassCard from '../../shared/components/GlassCard';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
-import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
-import type { InvoiceType } from '../../hooks/useCreateInvoice';
+import { Input } from '../../shared/components/ui/Input';
+import { Button } from '../../shared/components/ui/Button';
+import type { InvoiceType } from '../../shared/hooks/useCreateInvoice';
 
 interface InvoiceFormProps {
     amount: number | '';

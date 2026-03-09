@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { Shimmer } from '../ui/Shimmer';
-import { CopyButton } from '../ui/CopyButton';
-import { PayerReceipt } from '../../utils/aleo-utils';
+import { Shimmer } from '../../../components/ui/Shimmer';
+import { CopyButton } from '../../../components/ui/CopyButton';
+import { PayerReceipt } from '../../../utils/aleo-utils';
 
 interface PaidInvoicesTableProps {
     receipts: PayerReceipt[];

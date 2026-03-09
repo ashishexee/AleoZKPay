@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { usePayment } from '../../hooks/usePayment';
-import type { PaymentStep } from '../../hooks/usePayment';
+import { usePayment } from '../../../shared/hooks/usePayment';
+import type { PaymentStep } from '../../../shared/hooks/usePayment';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Shimmer } from '../../components/ui/Shimmer';
-import { PROGRAM_ID } from '../../utils/aleo-utils';
+import { GlassCard } from '../../../shared/components/ui/GlassCard';
+import { Button } from '../../../shared/components/ui/Button';
+import { Input } from '../../../shared/components/ui/Input';
+import { Shimmer } from '../../../shared/components/ui/Shimmer';
+import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 

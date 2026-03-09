@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '../../ui/Button';
-import { CopyButton } from '../../ui/CopyButton';
-import { MerchantReceipt } from '../../../utils/aleo-utils';
+import { Button } from '../../../../components/ui/Button';
+import { CopyButton } from '../../../../components/ui/CopyButton';
+import { MerchantReceipt } from '../../../../utils/aleo-utils';
 
 interface VerifyModalProps {
     isOpen: boolean;

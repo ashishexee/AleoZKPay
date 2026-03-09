@@ -1,17 +1,17 @@
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { GlassCard } from '../components/ui/GlassCard';
-import { useTransactions } from '../hooks/useTransactions';
-import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt, fetchBurnerRecordsFromTx } from '../utils/aleo-utils';
-import { useBurnerWallet } from '../hooks/BurnerWalletProvider';
-import { StatsCards } from '../components/profile/StatsCards';
-import { InvoiceTable } from '../components/profile/InvoiceTable';
-import { PaidInvoicesTable } from '../components/profile/PaidInvoicesTable';
-import { VerifyModal } from '../components/profile/modals/VerifyModal';
-import { PaymentHistoryModal } from '../components/profile/modals/PaymentHistoryModal';
-import { ReceiptHashesModal } from '../components/profile/modals/ReceiptHashesModal';
-import { BurnerWalletSettings } from '../components/profile/BurnerWalletSettings';
+import { GlassCard } from '../../components/ui/GlassCard';
+import { useTransactions } from '../../hooks/useTransactions';
+import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
+import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
+import { StatsCards } from './components/StatsCards';
+import { InvoiceTable } from './components/InvoiceTable';
+import { PaidInvoicesTable } from './components/PaidInvoicesTable';
+import { VerifyModal } from './components/modals/VerifyModal';
+import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal';
+import { ReceiptHashesModal } from './components/modals/ReceiptHashesModal';
+import { BurnerWalletSettings } from './components/BurnerWalletSettings';
 
 const Profile: React.FC = () => {
     const { address, requestRecords, decrypt, executeTransaction } = useWallet();
@@ -56,8 +56,6 @@ const Profile: React.FC = () => {
             console.log("🔥 [fetchBurnerData] Effect fired. decryptedBurnerKey:", !!decryptedBurnerKey, "transactions.length:", transactions.length);
             if (!decryptedBurnerKey || transactions.length === 0) {
                 console.log("🔥 [fetchBurnerData] ABORTED - missing key or empty transactions");
-                // Only stop loading if we KNOW there won't be burner data (no key).
-                // If transactions.length === 0, the DB fetch hasn't finished yet — keep shimmer.
                 if (!decryptedBurnerKey) {
                     setLoadingBurner(false);
                 }
@@ -446,7 +444,7 @@ const Profile: React.FC = () => {
             if (result && result.transactionId) {
                 // Optimistically update DB status
                 try {
-                    const { updateInvoiceStatus } = await import('../services/api');
+                    const { updateInvoiceStatus } = await import('../../services/api');
                     await updateInvoiceStatus(invoice.invoiceHash, {
                         status: 'SETTLED'
                     });

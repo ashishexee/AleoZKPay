@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { pageVariants, staggerContainer, fadeInUp } from '../../utils/animations';
+import { GlassCard } from '../../../shared/components/ui/GlassCard';
+import { pageVariants, staggerContainer, fadeInUp } from '../../../shared/utils/animations';
 
 const Docs = () => {
     const [activeTab, setActiveTab] = useState('overview');

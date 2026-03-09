@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../utils/animations';
+import { GlassCard } from '../../../shared/components/ui/GlassCard';
+import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../../shared/utils/animations';
 
 const Vision = () => {
     const sections = [
