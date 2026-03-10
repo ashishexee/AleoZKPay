@@ -21,6 +21,7 @@ const MobilePaymentPage = () => {
     const [copiedHash, setCopiedHash] = useState(false);
     const [customConvertAmount, setCustomConvertAmount] = useState<string>('');
     const [showConvertModal, setShowConvertModal] = useState(false);
+    const [selectedToken, setSelectedToken] = useState<number>(0);
 
     const {
         step,
@@ -47,13 +48,14 @@ const MobilePaymentPage = () => {
         if (step === 'CONVERT') {
             setShowConvertModal(true);
         } else {
-            await payInvoice();
+            await payInvoice(invoice?.tokenType === 3 ? selectedToken : undefined);
         }
     };
 
     const confirmConversion = async () => {
         setShowConvertModal(false);
-        await convertPublicToPrivate(customConvertAmount ? Number(customConvertAmount) : undefined);
+        const amountToConvert = customConvertAmount ? Number(customConvertAmount) : undefined;
+        await convertPublicToPrivate(amountToConvert, invoice?.tokenType === 3 ? selectedToken : undefined);
     };
 
     const processPaymentLink = (rawValue: string) => {
@@ -97,7 +99,8 @@ const MobilePaymentPage = () => {
     ];
 
     const isMultiPay = programId === PROGRAM_ID;
-    const currencyLabel = invoice?.tokenType === 1 ? 'USDCx' : invoice?.tokenType === 2 ? 'USAD' : 'Credits';
+    const activeTokenType = invoice?.tokenType === 3 ? selectedToken : (invoice?.tokenType ?? 0);
+    const currencyLabel = activeTokenType === 1 ? 'USDCx' : activeTokenType === 2 ? 'USAD' : 'Credits';
 
     if (!hasParams) {
         return (
@@ -249,6 +252,42 @@ const MobilePaymentPage = () => {
                                 )
                             )}
                         </div>
+
+                        {/* ANY TOKEN SELECTOR */}
+                        {invoice?.tokenType === 3 && step !== 'SUCCESS' && step !== 'ALREADY_PAID' && (
+                            <div className="pt-4 border-t border-white/5">
+                                <span className="text-xs font-medium text-gray-400 uppercase tracking-widest block mb-2">Select Payment Token</span>
+                                <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
+                                    <button
+                                        onClick={() => setSelectedToken(0)}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all duration-300 ${selectedToken === 0
+                                            ? 'bg-white text-black shadow-lg'
+                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                            }`}
+                                    >
+                                        Credits
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedToken(1)}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all duration-300 ${selectedToken === 1
+                                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                            }`}
+                                    >
+                                        USDCx
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedToken(2)}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all duration-300 ${selectedToken === 2
+                                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                            }`}
+                                    >
+                                        USAD
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         {invoice?.memo && (
                             <div className="flex justify-between items-center pt-4 border-t border-white/5">
                                 <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Memo</span>

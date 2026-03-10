@@ -2,7 +2,7 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v18.aleo {
+program zk_pay_proofs_privacy_v19.aleo {
     
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     async constructor() {
@@ -207,6 +207,41 @@ program zk_pay_proofs_privacy_v18.aleo {
         return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 2u8, wallet_type));
     }
 
+    async transition create_invoice_any(
+        private merchant: address,
+        private amount: u128,
+        private salt: field,
+        private memo: field,
+        public expiry_hours: u32,
+        public invoice_type: u8,
+        public wallet_type: u8
+    ) -> (Invoice, public field, Future) {
+        let merchant_field: field = merchant as field; 
+        let amount_field: field = amount as field;
+
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+
+        let amount_u64: u64 = amount as u64; 
+
+        let invoice_record: Invoice = Invoice {
+            owner: merchant,
+            invoice_hash: invoice_hash,
+            amount: amount_u64,
+            token_type: 3u8,
+            invoice_type: invoice_type,
+            salt: salt,
+            memo: memo,
+            wallet_type: wallet_type
+        };
+
+        // token_type 3 for ANY
+        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 3u8, wallet_type));
+    }
+
     async function finalize_create_invoice(
         invoice_hash: field,
         expiry_hours: u32,
@@ -254,7 +289,10 @@ program zk_pay_proofs_privacy_v18.aleo {
         let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
         
         let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
-        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+        let amount_hash_for_receipt: field = BHP256::hash_to_field(amount_to_donate as field);
+        let token_hash: field = BHP256::hash_to_field(0u8 as field);
+        let combined_secret: field = payment_secret + amount_hash_for_receipt + token_hash;
+        let receipt_hash: field = BHP256::commit_to_field(combined_secret, salt_scalar);
 
         let payer_receipt: PayerReceipt = PayerReceipt {
             owner: self.caller,
@@ -288,7 +326,10 @@ program zk_pay_proofs_privacy_v18.aleo {
         assert_eq(invoice_hash, stored_hash);
 
         let invoice_data: InvoiceData = invoices.get(stored_hash);
-        assert_eq(invoice_data.token_type, expected_token_type);
+        
+        if invoice_data.token_type != 3u8 {
+            assert_eq(invoice_data.token_type, expected_token_type);
+        }
         
         // Ensure it is a Donation Invoice (Type 2)
         assert_eq(invoice_data.invoice_type, 2u8);
@@ -473,7 +514,10 @@ program zk_pay_proofs_privacy_v18.aleo {
         let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
         
         let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
-        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+        let amount_hash_for_receipt: field = BHP256::hash_to_field(amount_to_donate as field);
+        let token_hash: field = BHP256::hash_to_field(1u8 as field);
+        let combined_secret: field = payment_secret + amount_hash_for_receipt + token_hash;
+        let receipt_hash: field = BHP256::commit_to_field(combined_secret, salt_scalar);
         
         let payer_receipt: PayerReceipt = PayerReceipt {
             owner: self.caller,
@@ -523,7 +567,10 @@ program zk_pay_proofs_privacy_v18.aleo {
         let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
         
         let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
-        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+        let amount_hash_for_receipt: field = BHP256::hash_to_field(amount_to_donate as field);
+        let token_hash: field = BHP256::hash_to_field(2u8 as field);
+        let combined_secret: field = payment_secret + amount_hash_for_receipt + token_hash;
+        let receipt_hash: field = BHP256::commit_to_field(combined_secret, salt_scalar);
         
         let payer_receipt: PayerReceipt = PayerReceipt {
             owner: self.caller,
@@ -559,7 +606,10 @@ program zk_pay_proofs_privacy_v18.aleo {
         assert_eq(invoice_hash, stored_hash);
 
         let invoice_data: InvoiceData = invoices.get(stored_hash);
-        assert_eq(invoice_data.token_type, expected_token_type);
+        
+        if invoice_data.token_type != 3u8 {
+            assert_eq(invoice_data.token_type, expected_token_type);
+        }
 
         // Ensure it is a Donation Invoice (Type 2)
         assert_eq(invoice_data.invoice_type, 2u8);
@@ -583,7 +633,10 @@ program zk_pay_proofs_privacy_v18.aleo {
         assert_eq(invoice_hash, stored_hash);
 
         let invoice_data: InvoiceData = invoices.get(stored_hash);
-        assert_eq(invoice_data.token_type, expected_token_type);
+        
+        if invoice_data.token_type != 3u8 {
+            assert_eq(invoice_data.token_type, expected_token_type);
+        }
 
         // Ensure it is a Donation Invoice (Type 2)
         assert_eq(invoice_data.invoice_type, 2u8);

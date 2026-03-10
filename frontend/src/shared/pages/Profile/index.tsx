@@ -287,12 +287,24 @@ const Profile: React.FC = () => {
                     }
                 });
 
-                const totalDonated = Array.from(uniqueReceipts.values())
-                    .reduce((acc: number, curr: any) => acc + (Number(curr.amount) / 1_000_000 || 0), 0);
+                let totalCredits = 0;
+                let totalUSDCx = 0;
+                let totalUSAD = 0;
 
-                // If we have receipts, show that total. Otherwise 0.
-                if (totalDonated > 0) {
-                    return { ...inv, amount: totalDonated };
+                Array.from(uniqueReceipts.values()).forEach((curr: any) => {
+                    const amt = Number(curr.amount) / 1_000_000 || 0;
+                    if (curr.tokenType === 1) totalUSDCx += amt;
+                    else if (curr.tokenType === 2) totalUSAD += amt;
+                    else totalCredits += amt;
+                });
+
+                inv.donations = { credits: totalCredits, usdcx: totalUSDCx, usad: totalUSAD };
+                
+                // Keep backward compatibility for standard single-token display if it's not tokenType 3
+                if (inv.tokenType !== 3) {
+                    if (inv.tokenType === 1) inv.amount = totalUSDCx;
+                    else if (inv.tokenType === 2) inv.amount = totalUSAD;
+                    else inv.amount = totalCredits;
                 }
             }
             return inv;
@@ -382,30 +394,33 @@ const Profile: React.FC = () => {
 
 
 
+    const uniqueMainReceipts = Array.from(new Map(merchantReceipts.map(r => [r.receiptHash, r])).values());
+    const uniqueBurnerReceipts = Array.from(new Map(burnerMerchantReceipts.map(r => [r.receiptHash, r])).values());
+
     const merchantStats = {
-        mainCredits: (merchantReceipts
-            .filter(r => r.tokenType !== 1 && r.tokenType !== 2)
-            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+        mainCredits: (uniqueMainReceipts
+            .filter((r: any) => r.tokenType !== 1 && r.tokenType !== 2)
+            .reduce((acc, curr: any) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
-        mainUSDCx: (merchantReceipts
-            .filter(r => r.tokenType === 1)
-            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+        mainUSDCx: (uniqueMainReceipts
+            .filter((r: any) => r.tokenType === 1)
+            .reduce((acc, curr: any) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
-        mainUSAD: (merchantReceipts
-            .filter(r => r.tokenType === 2)
-            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+        mainUSAD: (uniqueMainReceipts
+            .filter((r: any) => r.tokenType === 2)
+            .reduce((acc, curr: any) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
-        burnerCredits: (burnerMerchantReceipts
-            .filter(r => r.tokenType !== 1 && r.tokenType !== 2)
-            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+        burnerCredits: (uniqueBurnerReceipts
+            .filter((r: any) => r.tokenType !== 1 && r.tokenType !== 2)
+            .reduce((acc, curr: any) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
-        burnerUSDCx: (burnerMerchantReceipts
-            .filter(r => r.tokenType === 1)
-            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+        burnerUSDCx: (uniqueBurnerReceipts
+            .filter((r: any) => r.tokenType === 1)
+            .reduce((acc, curr: any) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
-        burnerUSAD: (burnerMerchantReceipts
-            .filter(r => r.tokenType === 2)
-            .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
+        burnerUSAD: (uniqueBurnerReceipts
+            .filter((r: any) => r.tokenType === 2)
+            .reduce((acc, curr: any) => acc + (Number(curr.amount) / 1_000_000 || 0), 0))
             .toFixed(2),
         invoices: combinedInvoices.length,
         settled: combinedInvoices.filter(inv => inv.status === 'SETTLED' || inv.status === 1).length,

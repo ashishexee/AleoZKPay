@@ -128,10 +128,21 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                         </div>
                                     </td>
                                     <td className="py-4 px-6 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <span className="font-bold text-white">{inv.amount}</span>
-                                            <span className="text-[10px] text-gray-500 uppercase">{inv.tokenType === 0 ? 'Credits' : inv.tokenType === 1 ? 'USDCx' : 'USAD'}</span>
-                                        </div>
+                                        {inv.tokenType === 3 ? (
+                                            <div className="flex flex-col items-center gap-1">
+                                                {inv.donations?.credits > 0 && <span className="text-xs font-bold text-white">{inv.donations.credits} <span className="text-[10px] text-gray-500 uppercase">Credits</span></span>}
+                                                {inv.donations?.usdcx > 0 && <span className="text-xs font-bold text-white">{inv.donations.usdcx} <span className="text-[10px] text-gray-500 uppercase">USDCx</span></span>}
+                                                {inv.donations?.usad > 0 && <span className="text-xs font-bold text-white">{inv.donations.usad} <span className="text-[10px] text-gray-500 uppercase">USAD</span></span>}
+                                                {(!inv.donations || (inv.donations.credits === 0 && inv.donations.usdcx === 0 && inv.donations.usad === 0)) && (
+                                                    <span className="font-bold text-gray-500">0 <span className="text-[10px] text-gray-600 uppercase">ANY</span></span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center">
+                                                <span className="font-bold text-white">{inv.amount}</span>
+                                                <span className="text-[10px] text-gray-500 uppercase">{inv.tokenType === 0 ? 'Credits' : inv.tokenType === 1 ? 'USDCx' : 'USAD'}</span>
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="py-4 px-6 text-center">
                                         <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider ${inv.invoiceType === 1 ? 'bg-purple-900/30 text-purple-400 border border-purple-500/20' :

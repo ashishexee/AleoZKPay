@@ -29,11 +29,12 @@ export const usePayment = () => {
     const { payInvoiceUSDCx } = createUSDCxPayment(deps);
     const { payInvoiceUSAD } = createUSADPayment(deps);
 
-    const payInvoice = async () => {
+    const payInvoice = async (selectedTokenOverride?: number) => {
         if (!shared.invoice) return;
-        if (shared.invoice.tokenType === 1) {
+        const activeTokenType = selectedTokenOverride !== undefined ? selectedTokenOverride : shared.invoice.tokenType;
+        if (activeTokenType === 1) {
             await payInvoiceUSDCx();
-        } else if (shared.invoice.tokenType === 2) {
+        } else if (activeTokenType === 2) {
             await payInvoiceUSAD();
         } else {
             await payInvoiceCredits();

@@ -56,14 +56,15 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                     </tr>
                 ) : (
                     groupedReceipts.map(([invoiceHash, receipts]) => {
-                        const totalAmount = receipts.reduce((sum, r) => sum + r.amount, 0);
-                        // We assume all receipts for an invoice have the same token type.
-                        // Ideally checking the invoice itself is better, but here we might only have receipts.
-                        // Let's check token type from the first receipt if available, or default.
-                        // PayerReceipt interface might need update if we want tokenType there.
-                        // Current PayerReceipt: { owner, payer, amount, invoiceHash, receiptHash, ... }
-                        // It doesn't seem to have tokenType.
-                        // The original code passed `r.receiptHash` to CopyButton.
+                        let totalCredits = 0;
+                        let totalUSDCx = 0;
+                        let totalUSAD = 0;
+                        
+                        receipts.forEach(r => {
+                           if (r.tokenType === 1) totalUSDCx += r.amount;
+                           else if (r.tokenType === 2) totalUSAD += r.amount;
+                           else totalCredits += r.amount;
+                        });
 
                         return (
                             <tr key={invoiceHash} className="hover:bg-white/5 transition-colors group">
@@ -75,7 +76,12 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                                     <span className="block text-[10px] text-gray-500 mt-0.5">{receipts.length} payments</span>
                                 </td>
                                 <td className="py-5 px-6 text-center">
-                                    <span className="font-bold text-white text-lg">{totalAmount / 1_000_000}</span>
+                                    <div className="flex flex-col items-center gap-1">
+                                        {totalCredits > 0 && <span className="font-bold text-white text-md">{totalCredits / 1_000_000} <span className="text-[10px] text-gray-500 uppercase">Credits</span></span>}
+                                        {totalUSDCx > 0 && <span className="font-bold text-white text-md">{totalUSDCx / 1_000_000} <span className="text-[10px] text-gray-500 uppercase">USDCx</span></span>}
+                                        {totalUSAD > 0 && <span className="font-bold text-white text-md">{totalUSAD / 1_000_000} <span className="text-[10px] text-gray-500 uppercase">USAD</span></span>}
+                                        {totalCredits === 0 && totalUSDCx === 0 && totalUSAD === 0 && <span className="font-bold text-white text-md">0</span>}
+                                    </div>
                                 </td>
                                 <td className="py-5 px-6 text-right font-mono text-neon-accent text-sm">
                                     {receipts.length === 1 ? (

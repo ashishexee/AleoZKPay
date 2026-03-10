@@ -185,22 +185,24 @@ export const useSharedPayment = () => {
     };
 
     // ─── Convert public Credits/Tokens to private ─────────────────────────────
-    const convertPublicToPrivate = async (overrideAmount?: number) => {
+    const convertPublicToPrivate = async (overrideAmount?: number, selectedTokenOverride?: number) => {
         if (!invoice || !publicKey || !executeTransaction) return;
 
         try {
             setLoading(true);
             
+            const activeTokenType = selectedTokenOverride !== undefined ? selectedTokenOverride : invoice.tokenType;
+
             // Determine Program ID and type suffix based on token type
             let tokenProgramId = 'credits.aleo';
             let typeSuffix = 'u64';
             let tokenName = 'Credits';
             
-            if (invoice.tokenType === 1) {
+            if (activeTokenType === 1) {
                 tokenProgramId = 'test_usdcx_stablecoin.aleo';
                 typeSuffix = 'u128';
                 tokenName = 'USDCx';
-            } else if (invoice.tokenType === 2) {
+            } else if (activeTokenType === 2) {
                 tokenProgramId = 'test_usad_stablecoin.aleo';
                 typeSuffix = 'u128';
                 tokenName = 'USAD';

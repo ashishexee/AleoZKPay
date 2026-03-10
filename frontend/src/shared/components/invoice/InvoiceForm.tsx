@@ -45,39 +45,43 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
             <div className="space-y-6">
 
-                {/* CURRENCY TOGGLE */}
-                <div className="flex gap-4">
-                    <div className="w-1/2">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Currency</label>
-                        <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
-                            <button
-                                onClick={() => setTokenType(0)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 0
-                                    ? 'bg-white text-black shadow-lg'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                    }`}
-                            >
-                                Credits
-                            </button>
-                            <button
-                                onClick={() => setTokenType(1)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 1
-                                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                    }`}
-                            >
-                                USDCx
-                            </button>
-                            <button
-                                onClick={() => setTokenType(2)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 2
-                                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                    }`}
-                            >
-                                USAD
-                            </button>
-                        </div>
+                {/* INVOICE TYPE TOGGLE */}
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Invoice Type</label>
+                    <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
+                        <button
+                            onClick={() => {
+                                setInvoiceType('standard');
+                                if (tokenType === 3) setTokenType(0);
+                            }}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
+                                ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Standard
+                        </button>
+                        <button
+                            onClick={() => {
+                                setInvoiceType('multipay');
+                                if (tokenType === 3) setTokenType(0);
+                            }}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
+                                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Multi Pay
+                        </button>
+                        <button
+                            onClick={() => setInvoiceType('donation')}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'donation'
+                                ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            Donation
+                        </button>
                     </div>
                 </div>
 
@@ -119,37 +123,48 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     )}
                 </div>
 
-                {/* INVOICE TYPE TOGGLE */}
+                {/* CURRENCY TOGGLE */}
                 <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Invoice Type</label>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Currency</label>
                     <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
                         <button
-                            onClick={() => setInvoiceType('standard')}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
-                                ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
+                            onClick={() => setTokenType(0)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 0
+                                ? 'bg-white text-black shadow-lg'
                                 : 'text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                         >
-                            Standard
+                            Credits
                         </button>
                         <button
-                            onClick={() => setInvoiceType('multipay')}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
-                                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
+                            onClick={() => setTokenType(1)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 1
+                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
                                 : 'text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                         >
-                            Multi Pay
+                            USDCx
                         </button>
                         <button
-                            onClick={() => setInvoiceType('donation')}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'donation'
-                                ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20'
+                            onClick={() => setTokenType(2)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 2
+                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
                                 : 'text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                         >
-                            Donation
+                            USAD
                         </button>
+                        {invoiceType === 'donation' && (
+                            <button
+                                onClick={() => setTokenType(3)}
+                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 3
+                                    ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                            >
+                                ANY
+                            </button>
+                        )}
                     </div>
                 </div>
 

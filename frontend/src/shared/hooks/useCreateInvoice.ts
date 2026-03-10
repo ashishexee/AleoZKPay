@@ -45,8 +45,6 @@ export const useCreateInvoice = () => {
             if (invoiceType === 'multipay') typeInput = '1u8';
             else if (invoiceType === 'donation') typeInput = '2u8';
 
-            // For donation, the internal record amount is 0. 
-            // In the DB we might still want to track it as 0.
             const isDonation = invoiceType === 'donation';
             const amountMicro = isDonation ? 0 : Math.round(Number(amount) * 1_000_000);
 
@@ -58,6 +56,9 @@ export const useCreateInvoice = () => {
                 amountInput = `${amountMicro}u128`;
             } else if (tokenType === 2) { // USAD
                 functionName = 'create_invoice_usad';
+                amountInput = `${amountMicro}u128`;
+            } else if (tokenType === 3) { // ANY
+                functionName = 'create_invoice_any';
                 amountInput = `${amountMicro}u128`;
             }
 
@@ -210,6 +211,7 @@ export const useCreateInvoice = () => {
                                 if (invoiceType === 'donation') params.append('type', 'donation');
                                 if (tokenType === 1) params.append('token', 'usdcx');
                                 if (tokenType === 2) params.append('token', 'usad');
+                                if (tokenType === 3) params.append('token', 'any');
 
                                 const link = `${window.location.origin}/pay?${params.toString()}`;
 
