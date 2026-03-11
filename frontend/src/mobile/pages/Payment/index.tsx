@@ -15,7 +15,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 const MobilePaymentPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const hasParams = searchParams.get('merchant') && searchParams.get('salt');
+    const hasParams = (searchParams.get('merchant') && searchParams.get('salt')) || searchParams.get('hash');
     const [manualLink, setManualLink] = useState('');
     const [copiedSecret, setCopiedSecret] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
@@ -71,7 +71,7 @@ const MobilePaymentPage = () => {
                 }
                 urlObj = new URL(rawValue, window.location.origin);
             }
-            if (urlObj.searchParams.get('merchant') && urlObj.searchParams.get('salt')) {
+            if ((urlObj.searchParams.get('merchant') && urlObj.searchParams.get('salt')) || urlObj.searchParams.get('hash')) {
                 navigate(`/pay${urlObj.search}`);
             } else {
                 console.warn("Invalid NullPay Link");

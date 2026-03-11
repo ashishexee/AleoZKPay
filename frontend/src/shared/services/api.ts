@@ -92,6 +92,8 @@ export interface UserProfile {
     main_address: string;
     burner_address?: string | null;
     encrypted_burner_key?: string | null;
+    profile_main_invoice_hash?: string | null;
+    profile_burner_invoice_hash?: string | null;
     updated_at?: string;
 }
 
@@ -108,8 +110,10 @@ export const getUserProfile = async (address: string): Promise<UserProfile | nul
 
 export const updateUserProfile = async (
     main_address: string,
-    burner_address: string,
-    encrypted_burner_key: string
+    burner_address?: string,
+    encrypted_burner_key?: string,
+    profile_main_invoice_hash?: string,
+    profile_burner_invoice_hash?: string
 ): Promise<UserProfile> => {
     const response = await fetch(`${API_URL}/users/profile`, {
         method: 'POST',
@@ -119,7 +123,9 @@ export const updateUserProfile = async (
         body: JSON.stringify({ 
             main_address, 
             burner_address, 
-            encrypted_burner_key 
+            encrypted_burner_key,
+            profile_main_invoice_hash,
+            profile_burner_invoice_hash
         }),
     });
 

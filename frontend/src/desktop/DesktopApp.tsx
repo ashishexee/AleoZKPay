@@ -6,6 +6,7 @@ import Explorer from './pages/Explorer';
 import CreateInvoice from './pages/CreateInvoice';
 import PaymentPage from './pages/Payment';
 import Profile from '../shared/pages/Profile';
+import ProfileQRPage from '../shared/pages/ProfileQR';
 import Docs from './pages/Docs';
 import Privacy from './pages/Privacy';
 import Verification from './pages/Verification';
@@ -22,6 +23,7 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/create" element={<CreateInvoice />} />
                 <Route path="/pay" element={<PaymentPage />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/profile-qr" element={<ProfileQRPage />} />
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/docs" element={<Docs />} />
                 <Route path="/privacy" element={<Privacy />} />

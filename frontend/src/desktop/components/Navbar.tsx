@@ -19,7 +19,8 @@ const Navbar = () => {
     const appNavItems = [
         { path: '/explorer', label: 'Explorer' },
         { path: '/create', label: 'Create Invoice' },
-        { path: '/profile', label: 'Profile' },
+        { path: '/profile', label: 'Dashboard' },
+        { path: '/profile-qr', label: 'Profile QR' },
         { path: '/vision', label: 'Vision' },
         { label: 'Privacy', path: '/privacy' },
         { label: 'Docs', path: '/docs' },
