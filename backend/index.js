@@ -429,7 +429,7 @@ app.patch('/v1/checkout/sessions/:id', async (req, res) => {
 
 
 app.post('/api/invoices', async (req, res) => {
-    const { invoice_hash, merchant_address, designated_address, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type } = req.body;
+    const { invoice_hash, merchant_address, designated_address, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items } = req.body;
 
     if (!invoice_hash || !merchant_address) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -451,6 +451,7 @@ app.post('/api/invoices', async (req, res) => {
                 salt: salt || null,  // Store salt for payment link generation
                 invoice_type: invoice_type !== undefined ? invoice_type : 0,  // 0 = Standard, 1 = Fundraising
                 token_type: token_type !== undefined ? token_type : 0,  // 0 = Credits, 1 = USDCx
+                invoice_items: invoice_items || null,  // Line items for standard invoices
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
@@ -510,6 +511,22 @@ app.patch('/api/invoices/:hash', async (req, res) => {
         if (data) {
             data.merchant_address = decrypt(data.merchant_address);
             // payer_address removed
+        }
+        
+        const hasNewPayment = payment_tx_ids && (!current.payment_tx_ids || !current.payment_tx_ids.includes(payment_tx_ids));
+        console.log(`   - Has New Payment?`, hasNewPayment);
+
+        // LOGIC FIX: If there is a payment ID in the request, it IS a new payment event.
+        if (status === 'SETTLED' || payment_tx_ids) {
+            console.log(`📢 Emitting payment_received for hash: ${hash}, Status: ${status}, Merchant: ${data.merchant_address}`);
+            io.emit('payment_received', {
+                invoiceHash: hash,
+                status: data.status,
+                merchantAddress: data.merchant_address,
+                amount: data.amount,
+                invoiceType: data.invoice_type,
+                tokenType: data.token_type
+            });
         }
 
         res.json(data);

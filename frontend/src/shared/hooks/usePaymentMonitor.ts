@@ -9,12 +9,11 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-
+// ─── Notification Sound (Web Audio API — no external file needed) ───
 function playPaymentSound() {
     try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-        // Two-tone chime: ascending notes
         const playTone = (freq: number, start: number, duration: number, gain: number) => {
             const osc = ctx.createOscillator();
             const g = ctx.createGain();
@@ -32,7 +31,6 @@ function playPaymentSound() {
         playTone(659.25, 0.12, 0.15, 0.3);    // E5
         playTone(783.99, 0.24, 0.25, 0.25);   // G5
 
-        // Close context after sounds finish
         setTimeout(() => ctx.close(), 1000);
     } catch (e) {
         console.warn('Could not play notification sound:', e);
@@ -44,69 +42,60 @@ function formatAmount(amountRaw: number | string | null | undefined, isMicro: bo
     if (amountRaw === null || amountRaw === undefined) return '';
     const num = Number(amountRaw);
     if (isNaN(num) || num === 0) return '';
-    // If micro, divide by 1M to get major units
     const actualNum = isMicro ? num / 1_000_000 : num;
     return ` — ${actualNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} `;
 }
 
-export const usePaymentMonitor = (listenInvoiceHash?: string) => {
+export const usePaymentMonitor = () => {
     const { address: publicKey, requestRecords, decrypt } = useWallet();
 
     const notifiedInvoices = useRef<Set<string>>(new Set());
-    const receiptCountPerInvoice = useRef<Map<string, number>>(new Map());
+    const lastSoundPlayed = useRef<Map<string, number>>(new Map());
 
-    const fetchOnChainAmount = async (invoiceHash: string): Promise<{ amount: string, token: string } | null> => {
+    const fetchOnChainAmount = async (invoiceHash: string, expectedCount: number): Promise<{ amount: string, token: string } | null> => {
         try {
             if (!requestRecords || !decrypt) return null;
 
-            console.log(`🔍 [PaymentMonitor] Searching on-chain records for invoice ${invoiceHash.slice(0, 8)}...`);
-            const records = await requestRecords(PROGRAM_ID, true);
-            if (!records || records.length === 0) {
-                console.log(`🔍 [PaymentMonitor] No records returned`);
-                return null;
-            }
-            console.log(`🔍 [PaymentMonitor] Got ${records.length} records, parsing...`);
-
-            // Normalize the DB hash for comparison (strip 'field' suffix if present)
             const normalizedHash = invoiceHash.replace('field', '');
+            const retryDelays = [3000, 5000, 8000, 12000];
 
-            // Collect ALL matching receipts for this invoice
-            const matchingReceipts: { amount: number, tokenType: number }[] = [];
+            for (let attempt = 0; attempt < retryDelays.length; attempt++) {
+                console.log(`🔍 [PaymentMonitor] Attempt ${attempt + 1}/${retryDelays.length}: waiting ${retryDelays[attempt]}ms for on-chain sync...`);
+                await new Promise(r => setTimeout(r, retryDelays[attempt]));
 
-            for (const r of (records as any[])) {
-                if (r.spent) continue;
+                const records = await requestRecords(PROGRAM_ID, true);
+                if (!records || records.length === 0) continue;
 
-                let plaintext = r.plaintext;
-                const cipher = r.recordCiphertext || r.ciphertext;
-                if (!plaintext && cipher) {
-                    try { plaintext = await decrypt(cipher); } catch (e) { continue; }
+                const matchingReceipts: { amount: number, tokenType: number }[] = [];
+
+                for (const r of (records as any[])) {
+                    if (r.spent) continue;
+
+                    let plaintext = r.plaintext;
+                    const cipher = r.recordCiphertext || r.ciphertext;
+                    if (!plaintext && cipher) {
+                        try { plaintext = await decrypt(cipher); } catch (e) { continue; }
+                    }
+                    if (!plaintext) continue;
+
+                    const receipt = parseMerchantReceipt({ ...r, plaintext });
+                    if (!receipt) continue;
+
+                    const receiptInvHash = receipt.invoiceHash.replace('field', '');
+                    if (receiptInvHash === normalizedHash) {
+                        matchingReceipts.push({ amount: receipt.amount, tokenType: receipt.tokenType });
+                    }
                 }
-                if (!plaintext) continue;
 
-                const receipt = parseMerchantReceipt({ ...r, plaintext });
-                if (!receipt) continue;
+                console.log(`🔍 [PaymentMonitor] Attempt ${attempt + 1}: found ${matchingReceipts.length} receipts (expected: ${expectedCount})`);
 
-                const receiptInvHash = receipt.invoiceHash.replace('field', '');
-                if (receiptInvHash === normalizedHash) {
-                    matchingReceipts.push({ amount: receipt.amount, tokenType: receipt.tokenType });
+                if (matchingReceipts.length >= expectedCount) {
+                    const newest = matchingReceipts[matchingReceipts.length - 1];
+                    const token = newest.tokenType === 1 ? 'USDCx' : newest.tokenType === 2 ? 'USAD' : 'Credits';
+                    const amountStr = formatAmount(newest.amount, true);
+                    return { amount: amountStr, token };
                 }
             }
-
-            console.log(`🔍 [PaymentMonitor] Found ${matchingReceipts.length} matching receipts for invoice ${normalizedHash.slice(0, 8)}`);
-
-            const previousCount = receiptCountPerInvoice.current.get(normalizedHash) ?? (matchingReceipts.length - 1);
-            receiptCountPerInvoice.current.set(normalizedHash, matchingReceipts.length);
-
-            if (matchingReceipts.length > previousCount) {
-                // The newest receipt is the last one in the list
-                const newest = matchingReceipts[matchingReceipts.length - 1];
-                const token = newest.tokenType === 1 ? 'USDCx' : newest.tokenType === 2 ? 'USAD' : 'Credits';
-                const amountStr = formatAmount(newest.amount, true);
-                console.log(`✅ [PaymentMonitor] New payment detected! Amount: ${amountStr} ${token} (receipt #${matchingReceipts.length})`);
-                return { amount: amountStr, token };
-            }
-
-            console.log(`⚠️ [PaymentMonitor] No new receipts (count: ${matchingReceipts.length}, previous: ${previousCount})`);
         } catch (error) {
             console.warn('Failed to fetch on-chain records:', error);
         }
@@ -116,102 +105,117 @@ export const usePaymentMonitor = (listenInvoiceHash?: string) => {
     useEffect(() => {
         if (!publicKey) return;
 
-        if (!supabaseUrl || !supabaseKey) {
-            console.warn('⚠️ Supabase credentials missing. Real-time payment monitoring is disabled.');
-            return;
-        }
+        let supabaseChannel: any = null;
 
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        // Added withSound flag (defaults to true)
+        const triggerNotification = (message: string, invoiceHash: string, withSound: boolean = true) => {
+            console.log(`📣 [Notification Triggered]: ${message} | Sound: ${withSound}`);
 
-        const supabaseChannel = supabase.channel('invoices_changes')
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'invoices' },
-                async (payload) => {
-                    const oldRecord = payload.old;
-                    const newRecord = payload.new;
+            if (withSound) {
+                const now = Date.now();
+                const lastPlayed = lastSoundPlayed.current.get(invoiceHash) || 0;
 
-                    let oldTxIds: string[] = [];
-                    let newTxIds: string[] = [];
+                // Brief 5-second cooldown to prevent double-ringing on rapid partial payments
+                if (now - lastPlayed > 5000) {
+                    playPaymentSound();
+                    lastSoundPlayed.current.set(invoiceHash, now);
+                }
+            }
 
-                    try { oldTxIds = Array.isArray(oldRecord.payment_tx_ids) ? oldRecord.payment_tx_ids : JSON.parse(oldRecord.payment_tx_ids || '[]'); } catch (e) { }
-                    try { newTxIds = Array.isArray(newRecord.payment_tx_ids) ? newRecord.payment_tx_ids : JSON.parse(newRecord.payment_tx_ids || '[]'); } catch (e) { }
+            toast.success(message, { 
+                id: invoiceHash, 
+                duration: 6000, 
+                position: 'top-right' 
+            });
+        };
 
-                    if (newTxIds.length > oldTxIds.length) {
+        const setupSupabase = () => {
+            if (!supabaseUrl || !supabaseKey) return;
 
-                        // Prevent duplicate notifications for the exact same transaction hash count
-                        const dedupKey = `${newRecord.invoice_hash}_${newTxIds.length}`;
-                        if (notifiedInvoices.current.has(dedupKey)) return;
+            const supabase = createClient(supabaseUrl, supabaseKey);
 
-                        try {
-                            const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
-                            if (!response.ok) return;
-                            const invoiceData = await response.json();
+            supabaseChannel = supabase.channel('invoices_changes')
+                .on(
+                    'postgres_changes',
+                    { event: 'UPDATE', schema: 'public', table: 'invoices' },
+                    async (payload) => {
+                        const oldRecord = payload.old;
+                        const newRecord = payload.new;
 
-                            if (invoiceData.merchant_address === publicKey || (listenInvoiceHash && newRecord.invoice_hash === listenInvoiceHash)) {
-                                notifiedInvoices.current.add(dedupKey);
-                                notifiedInvoices.current.add(newRecord.invoice_hash);
+                        let oldTxIds: string[] = [];
+                        let newTxIds: string[] = [];
 
-                                let amountStr = '';
-                                let tokenLabel = newRecord.token_type === 1 ? 'USDCx' : newRecord.token_type === 2 ? 'USAD' : 'Credits';
+                        try { oldTxIds = Array.isArray(oldRecord.payment_tx_ids) ? oldRecord.payment_tx_ids : JSON.parse(oldRecord.payment_tx_ids || '[]'); } catch (e) { }
+                        try { newTxIds = Array.isArray(newRecord.payment_tx_ids) ? newRecord.payment_tx_ids : JSON.parse(newRecord.payment_tx_ids || '[]'); } catch (e) { }
 
-                                if (newRecord.invoice_type === 2) {
-                                    const onChain = await fetchOnChainAmount(newRecord.invoice_hash);
-                                    if (onChain) {
-                                        amountStr = onChain.amount;
-                                        tokenLabel = onChain.token;
+                        // SCENARIO 1: New Transaction Added (WAIT FOR SYNC -> PLAY SOUND)
+                        if (newTxIds.length > oldTxIds.length) {
+                            const dedupKey = `${newRecord.invoice_hash}_TX_${newTxIds.length}`;
+                            if (notifiedInvoices.current.has(dedupKey)) return;
+                            notifiedInvoices.current.add(dedupKey);
+
+                            try {
+                                const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
+                                if (!response.ok) return;
+                                const invoiceData = await response.json();
+
+                                if (invoiceData.merchant_address === publicKey) {
+                                    let amountStr = '';
+                                    let tokenLabel = newRecord.token_type === 1 ? 'USDCx' : newRecord.token_type === 2 ? 'USAD' : 'Credits';
+
+                                    if (newRecord.invoice_type === 2) {
+                                        const expectedCount = newTxIds.length;
+                                        const onChain = await fetchOnChainAmount(newRecord.invoice_hash, expectedCount);
+                                        
+                                        if (onChain) {
+                                            amountStr = onChain.amount;
+                                            tokenLabel = onChain.token;
+                                        } else {
+                                            amountStr = formatAmount(newRecord.amount);
+                                        }
                                     } else {
                                         amountStr = formatAmount(newRecord.amount);
                                     }
-                                } else {
-                                    amountStr = formatAmount(newRecord.amount);
+
+                                    const msg = amountStr
+                                        ? `Payment received${amountStr}${tokenLabel} for invoice ${newRecord.invoice_hash.slice(0, 6)}...`
+                                        : `Payment received for invoice ${newRecord.invoice_hash.slice(0, 6)}...`;
+
+                                    // TRUE = Play the sound for this notification
+                                    triggerNotification(msg, newRecord.invoice_hash, true);
                                 }
-
-                                const msg = amountStr
-                                    ? `Payment received${amountStr}${tokenLabel} for invoice ${newRecord.invoice_hash.slice(0, 6)}...`
-                                    : `Payment received for invoice ${newRecord.invoice_hash.slice(0, 6)}...`;
-
-                                playPaymentSound();
-                                toast.success(msg, { duration: 5000, position: 'top-right' });
+                            } catch (error) {
+                                console.error('Failed to process payment event:', error);
                             }
-                        } catch (error) {
-                            console.error('Failed to verify merchant address:', error);
+                        } 
+                        // SCENARIO 2: Status changed to SETTLED (NO SOUND)
+                        else if (newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
+                            const dedupKey = `${newRecord.invoice_hash}_SETTLED`;
+                            if (notifiedInvoices.current.has(dedupKey)) return;
+                            notifiedInvoices.current.add(dedupKey);
+
+                            try {
+                                const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
+                                if (!response.ok) return;
+                                const invoiceData = await response.json();
+
+                                if (invoiceData.merchant_address === publicKey) {
+                                    // FALSE = Do NOT play the sound for the "Settled" status update
+                                    triggerNotification(`Invoice ${newRecord.invoice_hash.slice(0, 6)}... settled!`, newRecord.invoice_hash, false);
+                                }
+                            } catch (error) {
+                                console.error('Failed to process settled event:', error);
+                            }
                         }
-                    } else if (newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
-                        const dedupKey = `${newRecord.invoice_hash}_SETTLED`;
-                        if (notifiedInvoices.current.has(dedupKey)) return;
-
-                        try {
-                            const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
-                            if (!response.ok) return;
-                            const invoiceData = await response.json();
-
-                            if (invoiceData.merchant_address === publicKey || (listenInvoiceHash && newRecord.invoice_hash === listenInvoiceHash)) {
-                                notifiedInvoices.current.add(dedupKey);
-                                notifiedInvoices.current.add(newRecord.invoice_hash);
-
-                                playPaymentSound();
-                                toast.success(
-                                    `Invoice ${newRecord.invoice_hash.slice(0, 6)}... settled!`,
-                                    { duration: 5000, position: 'top-right' }
-                                );
-                            }
-                        } catch (error) { }
                     }
-                }
-            )
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('✅ [NullPay] Real-time payment monitor connected (Supabase Realtime)');
-                } else if (status === 'CHANNEL_ERROR') {
-                    console.error('❌ [NullPay] Supabase Realtime channel error. Real-time monitoring unavailable.');
-                } else if (status === 'TIMED_OUT') {
-                    console.warn('⚠️ [NullPay] Supabase Realtime timed out. Attempting to reconnect...');
-                }
-            });
+                )
+                .subscribe();
+        };
+
+        setupSupabase();
 
         return () => {
-            supabaseChannel.unsubscribe();
+            if (supabaseChannel) supabaseChannel.unsubscribe();
         };
-    }, [publicKey, listenInvoiceHash]);
+    }, [publicKey]);
 };

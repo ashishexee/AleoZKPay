@@ -28,7 +28,7 @@ export const useSharedPayment = () => {
             let amount = searchParams.get('amount');
             let salt = searchParams.get('salt');
             let hashParam = searchParams.get('hash');
-            
+
             const memo = searchParams.get('memo') || '';
             const tokenParam = searchParams.get('token');
             const tokenType = tokenParam === 'usdcx' ? 1 : tokenParam === 'usad' ? 2 : 0;
@@ -42,9 +42,9 @@ export const useSharedPayment = () => {
 
                 setProgramId(PROGRAM_ID);
                 setPaymentSecret(generateSalt());
-                
+
                 let fetchedHash: string | null = hashParam || null;
-                
+
                 // If they provided a raw hash (like from Profile QR), try fetching metadata from DB first
                 if (fetchedHash && (!merchant || !salt)) {
                     try {
@@ -53,7 +53,7 @@ export const useSharedPayment = () => {
                         if (dbInvoice) {
                             merchant = dbInvoice.merchant_address || null;
                             salt = dbInvoice.salt || null;
-                            
+
                             // Amount is conceptually 0 for Donations, but DB doesn't store Amount.
                             // However Profile/Donation QR creates them with 0.
                             const coercedAmount = dbInvoice.amount ? dbInvoice.amount.toString() : amount;
@@ -75,7 +75,7 @@ export const useSharedPayment = () => {
                 }
 
                 setError(null);
-                
+
                 if (!fetchedHash) {
                     fetchedHash = await getInvoiceHashFromMapping(salt || '');
                     if (!fetchedHash) {
@@ -235,14 +235,14 @@ export const useSharedPayment = () => {
 
         try {
             setLoading(true);
-            
+
             const activeTokenType = selectedTokenOverride !== undefined ? selectedTokenOverride : invoice.tokenType;
 
             // Determine Program ID and type suffix based on token type
             let tokenProgramId = 'credits.aleo';
             let typeSuffix = 'u64';
             let tokenName = 'Credits';
-            
+
             if (activeTokenType === 1) {
                 tokenProgramId = 'test_usdcx_stablecoin.aleo';
                 typeSuffix = 'u128';
@@ -256,7 +256,7 @@ export const useSharedPayment = () => {
             setStatus(`Converting Public ${tokenName} to Private...`);
             const parsedDonation = Number(donationAmount);
             const invoiceAmount = (invoice.amount === 0 && parsedDonation > 0) ? parsedDonation : invoice.amount;
-            
+
             const finalAmount = (overrideAmount !== undefined && overrideAmount > 0) ? overrideAmount : invoiceAmount;
             const amountMicro = Math.round(finalAmount * 1_000_000);
 
