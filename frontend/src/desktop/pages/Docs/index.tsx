@@ -11,6 +11,8 @@ const Docs = () => {
 
     const tabs = [
         { id: 'overview', label: 'Overview' },
+        { id: 'guides', label: 'Guides' },
+        { id: 'sdk', label: 'SDK' },
         { id: 'contracts', label: 'Smart Contract' },
         { id: 'privacy', label: 'Privacy System' },
         { id: 'frontend', label: 'Frontend Logic' },
@@ -102,6 +104,42 @@ const Docs = () => {
                                     and receive payments without revealing sensitive transaction details on-chain. NullPay supports both <strong className="text-white">Aleo Credits</strong> and <strong className="text-blue-400">USDCx</strong> (a private stablecoin on Aleo).
                                 </p>
 
+                                <div className="bg-black/40 p-8 rounded-2xl border border-white/5 mb-10 overflow-hidden relative">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-neon-primary/5 rounded-full blur-[60px] pointer-events-none" />
+                                    <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-neon-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        System Workflow
+                                    </h3>
+
+                                    <div className="bg-white/5 rounded-xl p-6 border border-white/5 font-mono text-[11px] leading-relaxed text-blue-300">
+                                        {`sequenceDiagram
+    participant Merchant
+    participant NullPay (ZK)
+    participant Aleo Chain
+    participant Payer
+
+    Merchant->>NullPay (ZK): create_invoice(amount, salt)
+    NullPay (ZK)->>Aleo Chain: State Change: Invoice Created (Hash)
+    NullPay (ZK)->>Merchant: Payment Link (Merchant, Salt, Amount)
+    
+    Merchant->>Payer: Sends Link
+    
+    Payer->>NullPay (ZK): Verifies Hash with Salt
+    Payer->>Aleo Chain: pay_invoice_private(record)
+    Aleo Chain-->>Payer: Generates encrypted PayerReceipt
+    Aleo Chain-->>Merchant: Generates encrypted MerchantReceipt
+    
+    NullPay (ZK)->>Merchant: Realtime Cloud Notification (Supabase)`}
+                                    </div>
+                                    <p className="text-gray-500 text-xs mt-4 italic text-center">
+                                        Figure 1: High-level ZK payment flow from creation to settlement.
+                                    </p>
+                                </div>
+
+
+
                                 <h3 className="text-xl font-bold text-neon-primary mb-4">Key Features</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
@@ -113,13 +151,13 @@ const Docs = () => {
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
                                         <h4 className="text-white font-bold mb-2">Private Payments</h4>
                                         <p className="text-sm text-gray-400">
-                                            Payments use Aleo's <code className="text-neon-primary">credits.aleo/transfer_private</code> and <code className="text-neon-primary">test_usdcx_stablecoin.aleo/transfer_private</code> to hide payer identity.
+                                            Payments use Aleo's <code className="text-neon-primary">credits.aleo/transfer_private</code>, <code className="text-neon-primary">test_usdcx_stablecoin.aleo/transfer_private</code>, and <code className="text-neon-primary">usad.aleo/transfer_private</code> to hide payer identity.
                                         </p>
                                     </div>
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
-                                        <h4 className="text-white font-bold mb-2">USDCx Integration</h4>
+                                        <h4 className="text-white font-bold mb-2">Three Token Support</h4>
                                         <p className="text-sm text-gray-400">
-                                            Full support for <span className="text-blue-400">USDCx</span> (token_type: 1u8), a private USD stablecoin on Aleo with atomic swap execution.
+                                            Full support for <span className="text-white">Aleo Credits</span> (token_type: 0), <span className="text-blue-400">USDCx</span> (token_type: 1), and <span className="text-green-400">USAD</span> (token_type: 2). Any-token donation invoices use token_type: 3.
                                         </p>
                                     </div>
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
@@ -131,7 +169,31 @@ const Docs = () => {
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
                                         <h4 className="text-white font-bold mb-2">Multiple Invoice Types</h4>
                                         <p className="text-sm text-gray-400">
-                                            Support for Standard (single-payment), Multi Pay (multi-contributor), and Donation (open-ended amount) invoices.
+                                            Standard (single-payment), Multi Pay (multi-contributor), and Donation (open-ended, any-token) invoices. All types support all 3 tokens.
+                                        </p>
+                                    </div>
+                                    <div className="bg-black/40 p-6 rounded-xl border border-white/5">
+                                        <h4 className="text-white font-bold mb-2">Burner Wallet Anonymity</h4>
+                                        <p className="text-sm text-gray-400">
+                                            Merchants generate a disposable burner key pair in-browser. All invoices can optionally route payments to this address, completely hiding the merchant's real identity.
+                                        </p>
+                                    </div>
+                                    <div className="bg-black/40 p-6 rounded-xl border border-white/5">
+                                        <h4 className="text-white font-bold mb-2">Permanent Profile QR</h4>
+                                        <p className="text-sm text-gray-400">
+                                            A one-time-setup permanent QR backed by a permanent on-chain multi-pay donation invoice. Accepts any token type, never expires.
+                                        </p>
+                                    </div>
+                                    <div className="bg-black/40 p-6 rounded-xl border border-white/5">
+                                        <h4 className="text-white font-bold mb-2">Live Payment Notifications</h4>
+                                        <p className="text-sm text-gray-400">
+                                            Supabase Realtime channels push instant toast notifications + sound chime the moment a payment hits any invoice. No polling required.
+                                        </p>
+                                    </div>
+                                    <div className="bg-black/40 p-6 rounded-xl border border-white/5">
+                                        <h4 className="text-white font-bold mb-2">Node.js SDK</h4>
+                                        <p className="text-sm text-gray-400">
+                                            <code className="text-neon-primary">npm install @nullpay/node</code> — Official Node.js SDK for merchants to programmatically create checkout sessions and verify webhook signatures.
                                         </p>
                                     </div>
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
@@ -149,29 +211,28 @@ const Docs = () => {
                                     <div className="relative pl-8 border-l-2 border-neon-primary/30">
                                         <div className="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-neon-primary border-4 border-black" />
                                         <h3 className="text-xl font-bold text-white mb-2">1. Invoice Creation (Merchant)</h3>
-                                        <ol className="list-decimal pl-5 text-sm text-gray-400 space-y-2">
-                                            <li>Merchant enters <strong className="text-white">Amount</strong>, <strong className="text-purple-300">Token Type</strong> (Credits or USDCx), and <strong className="text-blue-300">Invoice Type</strong> (Standard, Multi Pay, or Donation).</li>
-                                            <li>Client generates random <code className="text-pink-400">Salt</code> (128-bit).</li>
+                                        <ol className="list-decimal pl-5 text-sm text-gray-400 space-y-2">                                             <li>Merchant enters <strong className="text-white">Amount</strong>, <strong className="text-purple-300">Token Type</strong> (Credits, USDCx, USAD or Any), and <strong className="text-blue-300">Invoice Type</strong> (Standard, Multi Pay, or Donation).</li>
+                                            <li>Client generates random <code className="text-pink-400">Salt</code> (128-bit, using <code>crypto.getRandomValues()</code>).</li>
                                             <li>Client computes <code>Hash = <span className="text-neon-primary">BHP256</span>(Merchant) + <span className="text-neon-primary">BHP256</span>(Amount) + <span className="text-neon-primary">BHP256</span>(Salt)</code>.</li>
-                                            <li>Transaction <code className="text-neon-primary">create_invoice</code> or <code className="text-neon-primary">create_invoice_usdcx</code> is sent to chain.</li>
+                                            <li>Transaction <code className="text-neon-primary">create_invoice</code>, <code className="text-neon-primary">create_invoice_usdcx</code>, <code className="text-neon-primary">create_invoice_usad</code>, or <code className="text-neon-primary">create_invoice_any</code> (for any-token donations) is sent to chain.</li>
                                             <li>On-chain mapping stores <code className="text-purple-400">Salt → Hash</code> and <code className="text-purple-400">Hash → InvoiceData</code>.</li>
-                                            <li>For Donation invoices (type 2), amount is set to 0 on-chain, allowing payers to send any amount.</li>
+                                            <li>For Donation invoices (type 2), amount is set to 0 on-chain, allowing payers to send any amount in any supported token.</li>
+                                            <li>Optionally, invoice is created to a <strong className="text-white">Burner Wallet</strong> address to hide the merchant's real account.</li>
                                         </ol>
                                     </div>
 
                                     <div className="relative pl-8 border-l-2 border-neon-primary/30">
                                         <div className="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-neon-primary border-4 border-black" />
                                         <h3 className="text-xl font-bold text-white mb-2">2. Payment (Payer)</h3>
-                                        <ol className="list-decimal pl-5 text-sm text-gray-400 space-y-2">
-                                            <li>Payer receives link with <code className="text-gray-300">merchant, amount, salt, token_type</code>.</li>
+                                        <ol className="list-decimal pl-5 text-sm text-gray-400 space-y-2">                                             <li>Payer receives link with <code className="text-gray-300">merchant, amount, salt, token_type</code>. For donation invoices, the payment page shows all available tokens.</li>
                                             <li>Client verifies hash on-chain using the salt.</li>
-                                            <li>Client finds a private record with sufficient balance (Credits or USDCx based on token_type).</li>
+                                            <li>Client finds a private record with sufficient balance (Credits, USDCx, or USAD based on token_type, or payer's choice for any-token donations).</li>
                                             <li>Client generates a unique <code className="text-pink-400">payment_secret</code> for receipt tracking.</li>
-                                            <li>Transaction <code className="text-neon-primary">pay_invoice</code> or <code className="text-neon-primary">pay_invoice_usdcx</code> is executed.</li>
+                                            <li>Transaction <code className="text-neon-primary">pay_invoice</code>, <code className="text-neon-primary">pay_invoice_usdcx</code>, <code className="text-neon-primary">pay_invoice_usad</code>, <code className="text-neon-primary">pay_donation</code>, <code className="text-neon-primary">pay_donation_usdcx</code>, or <code className="text-neon-primary">pay_donation_usad</code> is executed.</li>
                                             <li>Payment is completed via <code className="text-blue-400">transfer_private</code>, keeping payer anonymous. Two receipts are generated atomically: <code className="text-green-400">PayerReceipt</code> and <code className="text-blue-400">MerchantReceipt</code>.</li>
                                             <li><strong>Standard Invoice:</strong> Invoice is marked as settled (status = 1) and closed.</li>
                                             <li><strong>Multi Pay Invoice:</strong> Invoice remains open for more payments.</li>
-                                            <li><strong>Donation Invoice:</strong> Payer can specify custom amount via <code>pay_donation</code> or <code>pay_donation_usdcx</code>.</li>
+                                            <li><strong>Donation Invoice:</strong> Payer can specify custom amount and pay in any of 3 supported tokens.</li>
                                         </ol>
                                     </div>
 
@@ -200,9 +261,7 @@ const Docs = () => {
                                 <h2 className="text-2xl font-bold text-white mb-4">Smart Contract Specification</h2>
                                 <p className="text-gray-400 mb-6">
                                     The contract is deployed as <strong className="text-neon-primary">zk_pay_proofs_privacy_v11.aleo</strong>.
-                                    It supports Standard (single-payment), Multi Pay (multi
-
-                                    -payment), and Donation (open-ended amount) invoices for both Aleo Credits and USDCx.
+                                    It supports Standard (single-payment), Multi Pay (multi-payment), and Donation (open-ended amount) invoices for <strong className="text-white">Aleo Credits</strong>, <strong className="text-blue-400">USDCx</strong>, and <strong className="text-green-400">USAD</strong>. The <code className="text-neon-primary">create_invoice_any</code> transition supports any-token donation invoices (token_type: 3).
                                 </p>
 
                                 <h3 className="text-xl font-bold text-white mb-4 mt-8">Imports</h3>
@@ -210,7 +269,8 @@ const Docs = () => {
                                     title="External Program Dependencies"
                                     language="leo"
                                     code={`import credits.aleo;
-import test_usdcx_stablecoin.aleo;`}
+import test_usdcx_stablecoin.aleo;
+import usad.aleo;`}
                                 />
 
                                 <h3 className="text-xl font-bold text-white mb-4">Data Structures</h3>
@@ -221,7 +281,7 @@ import test_usdcx_stablecoin.aleo;`}
     expiry_height: u32,
     status: u8,        // 0 = Open, 1 = Settled/Paid
     invoice_type: u8,  // 0 = Standard, 1 = Multi Pay, 2 = Donation
-    token_type: u8     // 0 = Credits, 1 = USDCx
+    token_type: u8     // 0 = Credits, 1 = USDCx, 2 = USAD, 3 = ANY (multi-token donation)
 }`}
                                 />
 
@@ -257,8 +317,8 @@ import test_usdcx_stablecoin.aleo;`}
                                     code={`record Invoice {
     owner: address,       // Merchant
     invoice_hash: field,
-    amount: u64,          // Amount (0 for Donation type)
-    token_type: u8,       // 0 = Credits, 1 = USDCx
+    amount: u64,          // Amount (0 for Donation type / any-token invoices)
+    token_type: u8,       // 0 = Credits, 1 = USDCx, 2 = USAD, 3 = ANY
     invoice_type: u8,     // 0 = Standard, 1 = Multi Pay, 2 = Donation
     salt: field,          // For checking against hash
 }`}
@@ -270,6 +330,30 @@ import test_usdcx_stablecoin.aleo;`}
                                     code={`mapping invoices: field => InvoiceData;
 mapping salt_to_invoice: field => field;`}
                                 />
+
+                                <h3 className="text-xl font-bold text-white mb-4 mt-12">Full Transition Reference</h3>
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                                        <h4 className="text-neon-primary font-bold text-sm mb-1 uppercase tracking-wider">create_invoice_any</h4>
+                                        <p className="text-xs text-gray-500 mb-2">Used for dynamic donations and permanent profile QRs. Sets amount to 0 and token_type to 3.</p>
+                                        <code className="text-[10px] text-gray-400">inputs: (merchant: address, amount: u128, salt: field, memo: field, expiry: u32, type: u8, wallet_type: u8)</code>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                                        <h4 className="text-neon-primary font-bold text-sm mb-1 uppercase tracking-wider">pay_donation (Credits/USDCx/USAD)</h4>
+                                        <p className="text-xs text-gray-500 mb-2">Payer inputs a custom amount. The contract generates a receipt hash from (payment_secret + amount_hash + token_hash).</p>
+                                        <code className="text-[10px] text-gray-400">transitions: pay_donation, pay_donation_usdcx, pay_donation_usad</code>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                                        <h4 className="text-neon-primary font-bold text-sm mb-1 uppercase tracking-wider">backup_burner_wallet</h4>
+                                        <p className="text-xs text-gray-500 mb-2">Permanently saves an encrypted burner key pair on-chain for the user. Enables device portability.</p>
+                                        <code className="text-[10px] text-gray-400">outputs: BurnerWalletRecord</code>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                                        <h4 className="text-neon-primary font-bold text-sm mb-1 uppercase tracking-wider">settle_invoice</h4>
+                                        <p className="text-xs text-gray-500 mb-2">Manual settlement for multi-pay invoices. Proof of merchant ownership required via calculated hash match.</p>
+                                    </div>
+                                </div>
+
 
                                 <h3 className="text-xl font-bold text-white mb-4 mt-8">Transitions</h3>
 
@@ -681,6 +765,24 @@ let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
                                             </div>
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <h3 className="text-xl font-bold text-neon-primary mb-4">6. On-Chain Burner Wallet Recovery</h3>
+                                        <p className="text-gray-400 mb-4 text-sm leading-relaxed">
+                                            To ensure merchants don't lose access to their burner wallets, we backup an encrypted copy on-chain. This allows "Portability" — you can login from a new device and recover your burner wallet instantly.
+                                        </p>
+                                        <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                                            <h4 className="text-sm font-bold text-white mb-2">BurnerWalletRecord</h4>
+                                            <p className="text-xs text-gray-500 mb-2">
+                                                A custom Leo record containing the encrypted private key and a salt-based password part.
+                                            </p>
+                                            <ul className="text-[10px] text-gray-500 space-y-1 font-mono">
+                                                <li>• owner: Main Wallet Address</li>
+                                                <li>• burner_address: The Burner Address</li>
+                                                <li>• pk_part_1...10: Encrypted PK (256-bit split into fields)</li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
                             </GlassCard>
                         </motion.div>
@@ -913,10 +1015,10 @@ function decrypt(text) {
                                         <ul className="list-disc pl-5 space-y-2 text-sm text-gray-300">
                                             <li><span className="text-neon-primary">Hash integrity</span> verification</li>
                                             <li>Invoice status management (<span className="text-yellow-400">Pending</span> → <span className="text-green-400">Settled</span>)</li>
-                                            <li>Private transfers via <code className="text-blue-400">credits.aleo</code> and <code className="text-blue-400">test_usdcx_stablecoin.aleo</code></li>
+                                            <li>Private transfers via <code className="text-blue-400">credits.aleo</code>, <code className="text-blue-400">test_usdcx_stablecoin.aleo</code>, and <code className="text-blue-400">usad.aleo</code></li>
                                             <li><span className="text-purple-400">Dual-record</span> generation (<span className="text-green-400">PayerReceipt</span> + <span className="text-blue-400">MerchantReceipt</span>)</li>
                                             <li>Support for <span className="text-white">3 invoice types</span>: Standard, Multi Pay, Donation</li>
-                                            <li>Support for <span className="text-white">2 token types</span>: Credits, USDCx</li>
+                                            <li>Support for <span className="text-white">4 token modes</span>: Credits (0), USDCx (1), USAD (2), ANY (3)</li>
                                         </ul>
                                     </div>
 
@@ -976,6 +1078,220 @@ function decrypt(text) {
                                         <p className="text-sm text-gray-400">
                                             All sensitive fields in records are <span className="text-green-400">encrypted</span> under the recipient's <span className="text-purple-400">view key</span>. Public cannot see amounts or owners.
                                         </p>
+                                    </div>
+                                </div>
+                            </GlassCard>
+                        </motion.div>
+                    )}
+
+                    {/* SDK */}
+                    {activeTab === 'sdk' && (
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="space-y-8"
+                        >
+                            <GlassCard className="p-8">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <h2 className="text-2xl font-bold text-white">NullPay Node SDK</h2>
+                                    <span className="px-3 py-1 bg-neon-primary/10 border border-neon-primary/30 rounded-full text-[10px] font-bold text-neon-primary uppercase tracking-widest">v1.0.0 Beta</span>
+                                </div>
+                                <p className="text-gray-400 mb-6">
+                                    The official <code className="text-neon-primary">@nullpay/node</code> SDK lets any Node.js backend integrate NullPay's privacy-preserving checkout in minutes. It handles session creation, status polling, and cryptographic webhook verification.
+                                </p>
+
+                                <h3 className="text-xl font-bold text-white mb-4">Installation</h3>
+                                <CodeBlock
+                                    title="Install via npm"
+                                    language="bash"
+                                    code={`npm install @nullpay/node`}
+                                />
+
+                                <h3 className="text-xl font-bold text-white mb-4 mt-8">Quick Start</h3>
+                                <CodeBlock
+                                    title="Initialize the SDK"
+                                    language="typescript"
+                                    code={`import { NullPay } from '@nullpay/node';
+
+const nullpay = new NullPay({
+    secretKey: process.env.NULLPAY_SECRET_KEY,  // From your NullPay merchant dashboard
+    baseURL: 'https://null-pay-rs8i.vercel.app/api'  // Optional: defaults to production
+});`}
+                                />
+
+                                <h3 className="text-xl font-bold text-neon-accent mb-4 mt-8">Creating a Checkout Session</h3>
+                                <p className="text-gray-400 text-sm mb-4">
+                                    Create a hosted checkout session and redirect the user. The session contains a pre-linked invoice hash and salt that the NullPay checkout UI uses directly.
+                                </p>
+                                <CodeBlock
+                                    title="checkout.sessions.create()"
+                                    language="typescript"
+                                    code={`const session = await nullpay.checkout.sessions.create({
+    amount: 10.00,                          // Amount in major units (10 = 10 USAD)
+    currency: 'USAD',                       // 'CREDITS' | 'USDCX' | 'USAD'
+    invoice_hash: '<your_pre_gen_hash>',    // Optional: attach a pre-generated invoice
+    salt: '<your_salt>',                    // Optional: salt for the invoice
+    success_url: 'https://yourshop.com/success',
+    cancel_url:  'https://yourshop.com/cancel',
+});
+
+// session.checkout_url contains the hosted NullPay payment page
+res.redirect(session.checkout_url);`}
+                                />
+
+                                <h3 className="text-xl font-bold text-neon-accent mb-4 mt-8">Retrieving a Session</h3>
+                                <CodeBlock
+                                    title="checkout.sessions.retrieve()"
+                                    language="typescript"
+                                    code={`const session = await nullpay.checkout.sessions.retrieve(sessionId);
+
+console.log(session.status);   // 'PENDING' | 'SETTLED' | 'FAILED'
+console.log(session.invoice_hash);
+console.log(session.salt);`}
+                                />
+
+                                <h3 className="text-xl font-bold text-neon-accent mb-4 mt-8">Webhook Signature Verification</h3>
+                                <p className="text-gray-400 text-sm mb-4">
+                                    NullPay sends HMAC-SHA256 signed webhooks to your endpoint when a payment is received. Always verify the signature before processing.
+                                </p>
+                                <CodeBlock
+                                    title="Express.js Webhook Handler"
+                                    language="typescript"
+                                    code={`import express from 'express';
+import { NullPay } from '@nullpay/node';
+
+const nullpay = new NullPay({ secretKey: process.env.NULLPAY_SECRET_KEY });
+const app = express();
+
+// IMPORTANT: Use raw body parser for webhook signature verification
+app.post('/webhook/nullpay', express.raw({ type: 'application/json' }), (req, res) => {
+    const payload   = req.body.toString('utf8');
+    const signature = req.headers['x-nullpay-signature'] as string;
+
+    let event;
+    try {
+        // constructEvent verifies + parses in one call — throws if signature invalid
+        event = nullpay.webhooks.constructEvent(payload, signature);
+    } catch (err) {
+        console.error('Invalid NullPay webhook:', err);
+        return res.status(400).send('Webhook Error');
+    }
+
+    // Process the verified event
+    if (event.status === 'SETTLED') {
+        console.log('Payment received:', event.amount, event.token_type);
+        // Fulfill the order...
+    }
+
+    res.json({ received: true });
+});`}
+                                />
+
+                                <h3 className="text-xl font-bold text-neon-accent mb-4 mt-8">WebhookEvent Type Reference</h3>
+                                <CodeBlock
+                                    title="WebhookEvent Interface"
+                                    language="typescript"
+                                    code={`interface WebhookEvent {
+    id: string;                                           // Session ID
+    amount: number;                                       // Amount in major units
+    token_type: string;                                   // 'CREDITS' | 'USDCX' | 'USAD'
+    status: 'SETTLED' | 'FAILED' | 'PROCESSING' | 'PENDING';
+    tx_id: string | null;                                 // On-chain transaction ID
+    timestamp: string;                                    // ISO 8601 timestamp
+}`}
+                                />
+
+                                <h3 className="text-xl font-bold text-white mb-4 mt-8">Testing Environment</h3>
+                                <p className="text-gray-400 text-sm mb-4">
+                                    A fully deployed test merchant website demonstrates end-to-end SDK usage. It shows session creation, checkout redirect, and webhook handling — exactly how a real integration works.
+                                </p>
+                                <div className="bg-black/40 p-4 rounded-xl border border-white/5 text-sm text-gray-400">
+                                    <p className="text-white font-bold mb-2">What the testing environment covers:</p>
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        <li>Session creation for all 3 token types (Credits, USDCx, USAD)</li>
+                                        <li>Redirect to NullPay hosted checkout with pre-linked invoice</li>
+                                        <li>Webhook signature verification on payment receipt</li>
+                                        <li>Success/failure redirect handling with <code className="text-neon-primary">session_id</code> query param</li>
+                                    </ul>
+                                </div>
+                            </GlassCard>
+                        </motion.div>
+                    )}
+
+                    {/* GUIDES */}
+                    {activeTab === 'guides' && (
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="space-y-8"
+                        >
+                            <GlassCard className="p-8">
+                                <h2 className="text-2xl font-bold text-white mb-6">Integration Guides</h2>
+
+                                {/* GUIDE 1 */}
+                                <div className="p-6 bg-white/5 rounded-2xl border border-white/5 mb-8">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="w-10 h-10 rounded-full bg-neon-primary/20 flex items-center justify-center text-neon-primary font-bold">1</div>
+                                        <h3 className="text-lg font-bold text-white">Setting up the Node.js SDK</h3>
+                                    </div>
+                                    <p className="text-sm text-gray-400 mb-4 ml-14">
+                                        NullPay's SDK is designed to be lightweight and zero-dependency (other than axios/crypto).
+                                    </p>
+                                    <div className="ml-14 space-y-4">
+                                        <div className="text-xs text-gray-500">
+                                            <strong>Step A:</strong> Install the package.
+                                            <code className="block mt-2 p-3 bg-black/40 rounded-lg text-neon-primary">npm install @nullpay/node</code>
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            <strong>Step B:</strong> Set your environment variables. <code>NULLPAY_SECRET_KEY</code> can be found in your profile settings.
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            <strong>Step C:</strong> Implement the fulfillment webhook. Always use the <code>rawBody</code> to verify signatures correctly.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* GUIDE 2 */}
+                                <div className="p-6 bg-white/5 rounded-2xl border border-white/5 mb-8">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold">2</div>
+                                        <h3 className="text-lg font-bold text-white">Enabling Anonymity: Burner Wallets</h3>
+                                    </div>
+                                    <p className="text-sm text-gray-400 mb-4 ml-14">
+                                        Burner wallets allow you to hide your main on-chain address from customers.
+                                    </p>
+                                    <div className="ml-14 space-y-4">
+                                        <div className="text-xs text-gray-500">
+                                            <strong>Creation:</strong> When you "Generate Burner", we create a full Aleo keypair in your browser.
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            <strong>On-Chain Backup:</strong> We use the <code>backup_burner_wallet</code> transition to save an encrypted copy of this key on Aleo. This copy is encrypted with your login wallet, not our servers.
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            <strong>Usage:</strong> Select "Burner Wallet" in the create invoice form. The payment link will now point towards your burner address.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* GUIDE 3 */}
+                                <div className="p-6 bg-white/5 rounded-2xl border border-white/5">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold">3</div>
+                                        <h3 className="text-lg font-bold text-white">Realtime Notifications</h3>
+                                    </div>
+                                    <p className="text-sm text-gray-400 mb-4 ml-14">
+                                        Stay updated on every payment without refreshing.
+                                    </p>
+                                    <div className="ml-14 space-y-4">
+                                        <div className="text-xs text-gray-500">
+                                            We use <strong>Supabase Realtime Channels</strong> to broadcast payment events based on your merchant address.
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            <strong>Sound Alerts:</strong> A chime plays when a payment status changes from <code>PENDING</code> to <code>SETTLED</code>.
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            <strong>Fulfillment:</strong> If you use the SDK, our backend automatically triggers your webhook after the on-chain confirmation is detected by our monitoring engine.
+                                        </div>
                                     </div>
                                 </div>
                             </GlassCard>

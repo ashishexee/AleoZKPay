@@ -419,7 +419,7 @@ if (session.status === 'SETTLED') {
                                 </div>
 
                                 <h3 className="text-lg font-bold text-white mb-4">Raw HTTP API (without SDK)</h3>
-                                <CodeBlock title="POST /v1/checkout/sessions" language="http" code={`POST https://null-pay-rs8i.vercel.app/api/v1/checkout/sessions
+                                <CodeBlock title="POST /api/checkout/sessions" language="http" code={`POST https://null-pay-rs8i.vercel.app/api/checkout/sessions
 Authorization: Bearer sk_test_xxxxxxxxxxxxxxxx
 Content-Type: application/json
 
@@ -440,7 +440,7 @@ Content-Type: application/json
     "created_at": "2025-03-13T07:30:00.000Z"
 }`} />
 
-                                <CodeBlock title="GET /v1/checkout/sessions/:id" language="http" code={`GET https://null-pay-rs8i.vercel.app/api/v1/checkout/sessions/ses_a1b2c3d4
+                                <CodeBlock title="GET /api/checkout/sessions/:id" language="http" code={`GET https://null-pay-rs8i.vercel.app/api/checkout/sessions/ses_a1b2c3d4
 Authorization: Bearer sk_test_xxxxxxxxxxxxxxxx
 
 // Response 200 OK — payment settled

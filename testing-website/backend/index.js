@@ -13,7 +13,7 @@ app.use(express.json({
 
 const nullpay = new NullPay({
     secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_b1a814f7dfd1e0a0bac55a7512e9696a9bfceeaf5a77e3a8', // Connected to DB!
-    baseURL: 'http://localhost:3000/v1'
+    baseURL: 'https://null-pay-rs8i.vercel.app/api'
 });
 
 const PORT = 4000;

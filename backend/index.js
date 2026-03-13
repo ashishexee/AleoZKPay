@@ -7,6 +7,7 @@ const { encrypt, decrypt } = require('./encryption');
 const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
+const FRONTEND_URL = 'https://www.nullpay.app';
 
 app.use(cors({
     origin: ['https://nullpay.app', 'http://localhost:5173'],
@@ -20,7 +21,6 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
     console.error('CRITICAL: SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env');
-    // process.exit(1); // Do not exit in production to allow function to report errors
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -148,7 +148,7 @@ app.get('/api/invoice/:hash', async (req, res) => {
 });
 
 
-app.post('/v1/merchants/register', async (req, res) => {
+app.post('/api/merchants/register', async (req, res) => {
     const { name, aleo_address, webhook_url } = req.body;
 
     if (!name || !aleo_address) {
@@ -191,7 +191,7 @@ app.post('/v1/merchants/register', async (req, res) => {
     }
 });
 
-app.post('/v1/checkout/sessions', async (req, res) => {
+app.post('/api/checkout/sessions', async (req, res) => {
     // 1. Authenticate the Merchant using Bearer token (secret_key)
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -281,8 +281,7 @@ app.post('/v1/checkout/sessions', async (req, res) => {
 
         if (intentError) throw intentError;
 
-        // 5. Return the Checkout URL
-        const checkoutUrl = `http://localhost:5173/checkout/${intent.id}`;
+        const checkoutUrl = `${FRONTEND_URL}/checkout/${intent.id}`;
 
         res.status(200).json({
             id: intent.id,
@@ -301,7 +300,7 @@ app.post('/v1/checkout/sessions', async (req, res) => {
 /**
  * Retrieves a Checkout Session for the frontend Checkout Page.
  */
-app.get('/v1/checkout/sessions/:id', async (req, res) => {
+app.get('/api/checkout/sessions/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
@@ -353,7 +352,7 @@ app.get('/v1/checkout/sessions/:id', async (req, res) => {
  * In a fully decentralized production app, this would be done trustlessly by an Indexer parsing blocks.
  * For MVP/SDK flow, the frontend wallet calls this after confirmation.
  */
-app.patch('/v1/checkout/sessions/:id', async (req, res) => {
+app.patch('/api/checkout/sessions/:id', async (req, res) => {
     const { id } = req.params;
     const { status, tx_id } = req.body;
 
