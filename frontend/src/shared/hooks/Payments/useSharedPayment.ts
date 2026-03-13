@@ -34,6 +34,7 @@ export const useSharedPayment = () => {
             const tokenType = tokenParam === 'usdcx' ? 1 : tokenParam === 'usad' ? 2 : 0;
             const typeParam = searchParams.get('type');
             let initialType = typeParam === 'donation' ? 2 : (typeParam === 'multipay' ? 1 : 0);
+            const sessionId = searchParams.get('session_id');
 
             try {
                 setLoading(true);
@@ -113,6 +114,7 @@ export const useSharedPayment = () => {
                         tokenType: tokenTypeOnChain,
                         invoiceType: invoiceTypeOnChain,
                         items: dbInvoice?.invoice_items || undefined
+                        sessionId: sessionId || undefined
                     });
                     setStep('ALREADY_PAID');
                     setLoading(false);
@@ -128,6 +130,7 @@ export const useSharedPayment = () => {
                     tokenType: tokenTypeOnChain,
                     invoiceType: invoiceTypeOnChain,
                     items: dbInvoice?.invoice_items || undefined
+                    sessionId: sessionId || undefined
                 });
 
                 setStatus(''); // Clear status after verification
@@ -148,7 +151,6 @@ export const useSharedPayment = () => {
         init();
     }, [searchParams, publicKey]);
 
-    // ─── Poll transaction until confirmed ───────────────────────────────────
     const pollTransaction = async (initialTxId: string) => {
         if (!wallet || !wallet.adapter) return;
 
@@ -193,6 +195,22 @@ export const useSharedPayment = () => {
                             await updateInvoiceStatus(invoice.hash, updatePayload);
                             console.log("✅ DB Update Successful!");
                         }
+                        
+                        if (invoice?.sessionId) {
+                            try {
+                                console.log(`📢 [usePayment] Updating Checkout Session ${invoice.sessionId}`);
+                                const checkoutApiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '/v1');
+                                await fetch(`${checkoutApiUrl}/checkout/sessions/${invoice.sessionId}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ status: 'SETTLED', tx_id: onChainId })
+                                });
+                                console.log("✅ Checkout Session Updated!");
+                            } catch (checkoutErr) {
+                                console.error("❌ Failed to update checkout session:", checkoutErr);
+                            }
+                        }
+
                         if (programId && invoice?.hash) {
                             setStatus('Syncing Receipt Record...');
                             await new Promise(r => setTimeout(r, 1000));

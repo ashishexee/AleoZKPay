@@ -4,9 +4,13 @@ const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { encrypt, decrypt } = require('./encryption');
+const { executeRelayerTransition, loadSDK } = require('./relayerWorker');
+loadSDK().then(() => console.log('Provable SDK loaded successfully')).catch(console.error);
 const http = require('http');
 const { Server } = require('socket.io');
-
+const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
+const { spawn } = require('child_process');
 const app = express();
 const server = http.createServer(app);
 const port = process.env.PORT || 3000;
@@ -14,10 +18,9 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Initialize Socket.IO
 const io = new Server(server, {
     cors: {
-        origin: "*", // Allow all origins for now, restrict in production
+        origin: "*",
         methods: ["GET", "POST", "PATCH"]
     }
 });
@@ -94,7 +97,7 @@ app.get('/api/invoices/merchant/:address', async (req, res) => {
                 merchant_address: decrypt(inv.merchant_address)
             };
             if (inv.designated_address) {
-                try { decrypted.designated_address = decrypt(inv.designated_address); } catch(e) { /* keep as-is */ }
+                try { decrypted.designated_address = decrypt(inv.designated_address); } catch (e) { /* keep as-is */ }
             }
             return decrypted;
         })
@@ -122,7 +125,7 @@ app.get('/api/invoices/recent', async (req, res) => {
             merchant_address: decrypt(inv.merchant_address)
         };
         if (inv.designated_address) {
-            try { decrypted.designated_address = decrypt(inv.designated_address); } catch(e) { /* keep as-is */ }
+            try { decrypted.designated_address = decrypt(inv.designated_address); } catch (e) { /* keep as-is */ }
         }
         return decrypted;
     });
@@ -160,6 +163,340 @@ app.get('/api/invoice/:hash', async (req, res) => {
 
     res.json(data);
 });
+
+
+app.post('/v1/merchants/register', async (req, res) => {
+    const { name, aleo_address, webhook_url } = req.body;
+
+    if (!name || !aleo_address) {
+        return res.status(400).json({ error: 'Missing required fields: name, aleo_address' });
+    }
+
+    try {
+        const encryptedAddress = encrypt(aleo_address);
+        // Generate a random secure API secretly starting with the prefix
+        const secretKey = 'sk_test_' + crypto.randomBytes(24).toString('hex');
+        
+        // Salted hash for O(1) lookup without decrypting every row
+        const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
+        const encryptedSecretKey = encrypt(secretKey);
+        const encryptedWebhookUrl = webhook_url ? encrypt(webhook_url) : null;
+
+        const { data: merchant, error } = await supabase
+            .from('merchants')
+            .insert([{
+                name: name,
+                encrypted_aleo_address: encryptedAddress,
+                encrypted_secret_key: encryptedSecretKey, // Renamed for clarity
+                secret_key_hash: secretKeyHash,
+                encrypted_webhook_url: encryptedWebhookUrl
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json({
+            id: merchant.id,
+            name: merchant.name,
+            secret_key: secretKey, // Only returned ONCE during creation!
+            webhook_url: webhook_url || null
+        });
+    } catch (err) {
+        console.error("Error registering merchant:", err);
+        res.status(500).json({ error: 'Internal server error while registering merchant.' });
+    }
+});
+
+app.post('/v1/checkout/sessions', async (req, res) => {
+    // 1. Authenticate the Merchant using Bearer token (secret_key)
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid Authorization header. Expected: Bearer <secret_key>' });
+    }
+    const secretKey = authHeader.split(' ')[1];
+    const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
+
+    // Fetch merchant from DB
+    const { data: merchant, error: merchantError } = await supabase
+        .from('merchants')
+        .select('*')
+        .eq('secret_key_hash', secretKeyHash)
+        .single();
+
+    if (merchantError || !merchant) {
+        return res.status(401).json({ error: 'Invalid API key.' });
+    }
+
+    // 2. Validate Request Body
+    const { amount, currency, success_url, cancel_url, invoice_hash, salt: providedSalt } = req.body;
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ error: 'Invalid amount. Must be a positive number.' });
+    }
+
+    // Map string currency to our token system
+    const validCurrencies = ['CREDITS', 'USDCX', 'USAD'];
+    const uppercaseCurrency = currency ? currency.toUpperCase() : 'CREDITS';
+    if (!validCurrencies.includes(uppercaseCurrency)) {
+        return res.status(400).json({ error: `Invalid currency. Must be one of: ${validCurrencies.join(', ')}` });
+    }
+
+    // 3. Use provided parameters for Multi-Pay or generate temp ones for Relayer
+    let finalSalt = providedSalt;
+    let finalInvoiceHash = invoice_hash;
+    let initialStatus = 'PROCESSING'; // Default to Relayer flow
+    let finalCurrency = uppercaseCurrency;
+
+    if (invoice_hash && providedSalt) {
+        initialStatus = 'OPEN'; // Merchant already provided the ZK parameters
+        console.log(`[Checkout] Using pre-generated Multi-Pay hash: ${invoice_hash}`);
+        
+        // If currency wasn't explicitly provided, fetch it from the invoice
+        if (!currency) {
+            const { data: invoice } = await supabase
+                .from('invoices')
+                .select('token_type')
+                .eq('invoice_hash', invoice_hash)
+                .single();
+            
+            if (invoice) {
+                finalCurrency = invoice.token_type === 1 ? 'USDCX' : invoice.token_type === 2 ? 'USAD' : 'CREDITS';
+                console.log(`[Checkout] Derived currency from invoice: ${finalCurrency}`);
+            }
+        }
+    } else {
+        // Fallback to generating temp ones for the slow Relayer flow (legacy)
+        const randomBuffer = crypto.randomBytes(16);
+        let randomBigInt = 0n;
+        for (const byte of randomBuffer) {
+            randomBigInt = (randomBigInt << 8n) + BigInt(byte);
+        }
+        finalSalt = `${randomBigInt}field`;
+        finalInvoiceHash = crypto.randomInt(100000000, 999999999).toString() + "field";
+    }
+
+    try {
+        // Encypt urls
+        const encryptedSuccess = success_url ? encrypt(success_url) : null;
+        const encryptedCancel = cancel_url ? encrypt(cancel_url) : null;
+
+        // 4. Create the Payment Intent in Supabase
+        const { data: intent, error: intentError } = await supabase
+            .from('payment_intents')
+            .insert([{
+                merchant_id: merchant.id,
+                amount: amount,
+                token_type: finalCurrency,
+                salt: finalSalt,
+                invoice_hash: finalInvoiceHash,
+                status: initialStatus,
+                success_url: encryptedSuccess,
+                cancel_url: encryptedCancel
+            }])
+            .select()
+            .single();
+
+        if (intentError) throw intentError;
+
+        // 5. Return the Checkout URL
+        const checkoutUrl = `http://localhost:5173/checkout/${intent.id}`;
+
+        res.status(200).json({
+            id: intent.id,
+            checkout_url: checkoutUrl,
+            status: intent.status,
+            invoice_hash: finalInvoiceHash,
+            salt: finalSalt
+        });
+
+    } catch (err) {
+        console.error("Error creating checkout session:", err);
+        res.status(500).json({ error: 'Internal server error while creating checkout session.' });
+    }
+});
+
+/**
+ * Retrieves a Checkout Session for the frontend Checkout Page.
+ */
+app.get('/v1/checkout/sessions/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const { data: intent, error } = await supabase
+            .from('payment_intents')
+            .select(`
+                *,
+                merchants:merchant_id (
+                    name,
+                    encrypted_aleo_address
+                )
+            `)
+            .eq('id', id)
+            .single();
+
+        if (error || !intent) {
+            return res.status(404).json({ error: 'Checkout session not found.' });
+        }
+
+        // Decrypt merchant address for the frontend
+        if (intent.merchants && intent.merchants.encrypted_aleo_address) {
+            intent.merchants.aleo_address = decrypt(intent.merchants.encrypted_aleo_address);
+        }
+
+        // Return safe data for the frontend (do NOT return secret_key or webhook URLs)
+        const sessionData = {
+            id: intent.id,
+            amount: intent.amount,
+            token_type: intent.token_type,
+            status: intent.status,
+            invoice_hash: intent.invoice_hash,
+            salt: intent.salt,
+            success_url: intent.success_url ? decrypt(intent.success_url) : null,
+            cancel_url: intent.cancel_url ? decrypt(intent.cancel_url) : null,
+            merchant_name: intent.merchants ? intent.merchants.name : 'Unknown Merchant',
+            merchant_address: decrypt(intent.merchants.encrypted_aleo_address)
+        };
+
+        res.json(sessionData);
+
+    } catch (err) {
+        console.error("Error fetching checkout session:", err);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+/**
+ * Triggers the relayerWorker on-demand to construct the invoice on-chain.
+ * Called by the frontend Checkout page.
+ */
+app.post('/v1/checkout/sessions/:id/execute-relayer', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const { data: intent, error } = await supabase
+            .from('payment_intents')
+            .select(`
+                *,
+                merchants:merchant_id (
+                    encrypted_aleo_address
+                )
+            `)
+            .eq('id', id)
+            .single();
+
+        if (error || !intent) {
+            return res.status(404).json({ error: 'Checkout session not found.' });
+        }
+
+        if (intent.status !== 'PROCESSING') {
+            return res.status(400).json({ error: 'Checkout session is not in PROCESSING state.' });
+        }
+
+        const merchantAddress = decrypt(intent.merchants.encrypted_aleo_address);
+
+        if (!merchantAddress) {
+            return res.status(500).json({ error: 'Failed to decrypt merchant address.' });
+        }
+
+        // Fire and wait for the relayer (this takes 10-20 seconds usually)
+        const result = await executeRelayerTransition(
+            merchantAddress,
+            intent.amount,
+            intent.token_type,
+            intent.salt,
+            intent.id
+        );
+
+        if (result.success) {
+            res.json({ success: true, invoice_hash: result.invoice_hash });
+        } else {
+            res.status(500).json({ error: result.error });
+        }
+
+    } catch (err) {
+        console.error("Error executing relayer:", err);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+
+/**
+ * Updates a Checkout Session status (e.g. to SETTLED) after frontend transaction success.
+ * In a fully decentralized production app, this would be done trustlessly by an Indexer parsing blocks.
+ * For MVP/SDK flow, the frontend wallet calls this after confirmation.
+ */
+app.patch('/v1/checkout/sessions/:id', async (req, res) => {
+    const { id } = req.params;
+    const { status, tx_id } = req.body;
+
+    try {
+        if (status !== 'SETTLED' && status !== 'FAILED') {
+            return res.status(400).json({ error: 'Invalid status update.' });
+        }
+
+        // 1. Update the Payment Intent
+        const { data: intent, error: updateError } = await supabase
+            .from('payment_intents')
+            .update({ status })
+            .eq('id', id)
+            .select(`
+                *,
+                merchants:merchant_id (
+                    id,
+                    encrypted_webhook_url,
+                    encrypted_secret_key
+                )
+            `)
+            .single();
+
+        if (updateError || !intent) {
+            return res.status(404).json({ error: 'Checkout session not found.' });
+        }
+
+        // 2. Dispatch Webhook if SETTLED and webhook_url exists
+        if (status === 'SETTLED' && intent.merchants && intent.merchants.encrypted_webhook_url) {
+            const secretKey = decrypt(intent.merchants.encrypted_secret_key);
+            const webhookUrl = decrypt(intent.merchants.encrypted_webhook_url);
+
+            const payload = {
+                id: intent.id,
+                amount: intent.amount,
+                token_type: intent.token_type,
+                status: intent.status,
+                tx_id: tx_id || null,
+                timestamp: new Date().toISOString()
+            };
+
+            const payloadString = JSON.stringify(payload);
+            const signature = crypto
+                .createHmac('sha256', secretKey)
+                .update(payloadString)
+                .digest('hex');
+
+            console.log(`[Webhook] Dispatching to ${webhookUrl} for session ${intent.id}`);
+
+            // Dispatch async (fire and forget)
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-nullpay-signature': signature
+                },
+                body: payloadString
+            }).then(resp => {
+                console.log(`[Webhook] Response status: ${resp.status}`);
+            }).catch(err => {
+                console.error(`[Webhook] Dispatch failed:`, err.message);
+            });
+        }
+
+        res.json({ success: true, status: intent.status });
+
+    } catch (err) {
+        console.error("Error updating checkout session:", err);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
+});
+// ==========================================
 
 
 app.post('/api/invoices', async (req, res) => {
@@ -245,7 +582,7 @@ app.patch('/api/invoices/:hash', async (req, res) => {
             data.merchant_address = decrypt(data.merchant_address);
             // payer_address removed
         }
-        
+
         const hasNewPayment = payment_tx_ids && (!current.payment_tx_ids || !current.payment_tx_ids.includes(payment_tx_ids));
         console.log(`   - Has New Payment?`, hasNewPayment);
 
@@ -321,7 +658,7 @@ app.post('/api/users/profile', async (req, res) => {
         }
 
         if (error) throw error;
-        
+
         // Return decrypted values in the response
         data.main_address = main_address;
         if (burner_address) data.burner_address = burner_address;
@@ -362,10 +699,10 @@ app.get('/api/users/profile/:address', async (req, res) => {
         // Decrypt all sensitive fields before returning
         userProfile.main_address = address;
         if (userProfile.burner_address) {
-            try { userProfile.burner_address = decrypt(userProfile.burner_address); } catch(e) { userProfile.burner_address = null; }
+            try { userProfile.burner_address = decrypt(userProfile.burner_address); } catch (e) { userProfile.burner_address = null; }
         }
         if (userProfile.encrypted_burner_key) {
-            try { userProfile.encrypted_burner_key = decrypt(userProfile.encrypted_burner_key); } catch(e) { userProfile.encrypted_burner_key = null; }
+            try { userProfile.encrypted_burner_key = decrypt(userProfile.encrypted_burner_key); } catch (e) { userProfile.encrypted_burner_key = null; }
         }
         res.json(userProfile);
 
@@ -375,6 +712,10 @@ app.get('/api/users/profile/:address', async (req, res) => {
     }
 });
 
+
+console.log('Backend initialized. (Relayer daemon removed, relayer is now on-demand)');
+
+// START SERVER
 server.listen(port, () => {
-console.log(`Server running on port ${port}`);
+    console.log(`HTTP/WebSocket Server running on http://localhost:${port}`);
 });

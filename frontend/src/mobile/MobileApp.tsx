@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import CreateInvoice from './pages/CreateInvoice';
 import PaymentPage from './pages/Payment';
 import Profile from '../shared/pages/Profile';
+import CheckoutPage from '../shared/pages/Checkout';
 
 const MobileAnimatedRoutes = () => {
     const location = useLocation();
@@ -15,6 +16,7 @@ const MobileAnimatedRoutes = () => {
                 <Route path="/create" element={<CreateInvoice />} />
                 <Route path="/pay" element={<PaymentPage />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/checkout/:id" element={<CheckoutPage />} />
                 <Route path="*" element={<Navigate to="/create" replace />} />
             </Routes>
         </AnimatePresence>

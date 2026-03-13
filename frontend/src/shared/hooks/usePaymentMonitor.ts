@@ -162,7 +162,7 @@ export const usePaymentMonitor = () => {
                                 if (!response.ok) return;
                                 const invoiceData = await response.json();
 
-                                if (invoiceData.merchant_address === publicKey) {
+                                if (invoiceData.merchant_address === publicKey || (listenInvoiceHash && newRecord.invoice_hash === listenInvoiceHash)) {
                                     notifiedInvoices.current.add(dedupKey);
                                     // Add base hash as well so WebSocket knows it's been handled recently
                                     // For Profile QRs (Type 2), fetch actual amount from records
@@ -200,7 +200,7 @@ export const usePaymentMonitor = () => {
                                 if (!response.ok) return;
                                 const invoiceData = await response.json();
 
-                                if (invoiceData.merchant_address === publicKey) {
+                                if (invoiceData.merchant_address === publicKey || (listenInvoiceHash && newRecord.invoice_hash === listenInvoiceHash)) {
                                     notifiedInvoices.current.add(dedupKey);
                                     notifiedInvoices.current.add(newRecord.invoice_hash);
 
@@ -237,8 +237,8 @@ export const usePaymentMonitor = () => {
             }
         });
 
-        socket.on('payment_received', async (data: any) => {
-            if (data.merchantAddress !== publicKey) return;
+        socket.on('payment_received', (data: any) => {
+            if (data.merchantAddress !== publicKey && (!listenInvoiceHash || data.invoiceHash !== listenInvoiceHash)) return;
 
             // If Supabase is active, it handles ALL notifications. We completely ignore Socket.IO events
             // to prevent race conditions where Socket.IO fires slightly before Supabase's async fetch completes.
@@ -300,5 +300,5 @@ export const usePaymentMonitor = () => {
             if (socket) socket.disconnect();
             if (supabaseChannel) supabaseChannel.unsubscribe();
         };
-    }, [publicKey]);
+    }, [publicKey, listenInvoiceHash]);
 };
