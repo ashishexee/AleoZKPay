@@ -7,7 +7,7 @@ const { encrypt, decrypt } = require('./encryption');
 const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
-const FRONTEND_URL = 'https://www.nullpay.app';
+const FRONTEND_URL = 'https://nullpay.app';
 
 app.use(cors({
     origin: ['https://nullpay.app', 'http://localhost:5173'],
