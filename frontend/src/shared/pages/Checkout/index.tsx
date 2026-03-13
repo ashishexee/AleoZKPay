@@ -24,7 +24,7 @@ export const CheckoutPage = () => {
     } = useCheckoutPayment(session);
 
     // Call payment monitor. If the session isn't processing anymore, we have a real hash
-    usePaymentMonitor(session?.invoice_hash);
+    usePaymentMonitor();
 
     const handlePay = () => {
         if (step === 'CONVERT') {
