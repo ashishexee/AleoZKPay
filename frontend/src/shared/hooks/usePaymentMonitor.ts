@@ -1,13 +1,10 @@
 import { useEffect, useRef } from 'react';
-import { io } from "socket.io-client";
 import toast from 'react-hot-toast';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { createClient } from '@supabase/supabase-js';
 import { PROGRAM_ID, parseMerchantReceipt } from '../utils/aleo-utils';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const SOCKET_BASE_URL = new URL(API_URL).origin;
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -57,6 +54,7 @@ export const usePaymentMonitor = (listenInvoiceHash?: string) => {
 
     const notifiedInvoices = useRef<Set<string>>(new Set());
     const receiptCountPerInvoice = useRef<Map<string, number>>(new Map());
+
     const fetchOnChainAmount = async (invoiceHash: string): Promise<{ amount: string, token: string } | null> => {
         try {
             if (!requestRecords || !decrypt) return null;
@@ -118,182 +116,102 @@ export const usePaymentMonitor = (listenInvoiceHash?: string) => {
     useEffect(() => {
         if (!publicKey) return;
 
-        let socket: any = null;
-        let supabaseChannel: any = null;
-        let isSupabaseActive = false;
+        if (!supabaseUrl || !supabaseKey) {
+            console.warn('⚠️ Supabase credentials missing. Real-time payment monitoring is disabled.');
+            return;
+        }
 
-        // --- SUPABASE REALTIME (Primary) ---
-        const setupSupabase = () => {
-            if (!supabaseUrl || !supabaseKey) {
-                console.log('⚠️ Supabase credentials missing. Falling back to Socket.IO only.');
-                return;
-            }
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-            const supabase = createClient(supabaseUrl, supabaseKey);
+        const supabaseChannel = supabase.channel('invoices_changes')
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'invoices' },
+                async (payload) => {
+                    const oldRecord = payload.old;
+                    const newRecord = payload.new;
 
-            supabaseChannel = supabase.channel('invoices_changes')
-                .on(
-                    'postgres_changes',
-                    { event: 'UPDATE', schema: 'public', table: 'invoices' },
-                    async (payload) => {
-                        const oldRecord = payload.old;
-                        const newRecord = payload.new;
+                    let oldTxIds: string[] = [];
+                    let newTxIds: string[] = [];
 
-                        let oldTxIds: string[] = [];
-                        let newTxIds: string[] = [];
+                    try { oldTxIds = Array.isArray(oldRecord.payment_tx_ids) ? oldRecord.payment_tx_ids : JSON.parse(oldRecord.payment_tx_ids || '[]'); } catch (e) { }
+                    try { newTxIds = Array.isArray(newRecord.payment_tx_ids) ? newRecord.payment_tx_ids : JSON.parse(newRecord.payment_tx_ids || '[]'); } catch (e) { }
 
-                        try { oldTxIds = Array.isArray(oldRecord.payment_tx_ids) ? oldRecord.payment_tx_ids : JSON.parse(oldRecord.payment_tx_ids || '[]'); } catch (e) { }
-                        try { newTxIds = Array.isArray(newRecord.payment_tx_ids) ? newRecord.payment_tx_ids : JSON.parse(newRecord.payment_tx_ids || '[]'); } catch (e) { }
+                    if (newTxIds.length > oldTxIds.length) {
 
-                        if (newTxIds.length > oldTxIds.length) {
+                        // Prevent duplicate notifications for the exact same transaction hash count
+                        const dedupKey = `${newRecord.invoice_hash}_${newTxIds.length}`;
+                        if (notifiedInvoices.current.has(dedupKey)) return;
 
-                            // Prevent duplicate notifications for the exact same transaction hash count
-                            const dedupKey = `${newRecord.invoice_hash}_${newTxIds.length}`;
-                            if (notifiedInvoices.current.has(dedupKey)) return;
+                        try {
+                            const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
+                            if (!response.ok) return;
+                            const invoiceData = await response.json();
 
-                            try {
-                                const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
-                                if (!response.ok) return;
-                                const invoiceData = await response.json();
+                            if (invoiceData.merchant_address === publicKey || (listenInvoiceHash && newRecord.invoice_hash === listenInvoiceHash)) {
+                                notifiedInvoices.current.add(dedupKey);
+                                notifiedInvoices.current.add(newRecord.invoice_hash);
 
-                                if (invoiceData.merchant_address === publicKey || (listenInvoiceHash && newRecord.invoice_hash === listenInvoiceHash)) {
-                                    notifiedInvoices.current.add(dedupKey);
-                                    // Add base hash as well so WebSocket knows it's been handled recently
-                                    notifiedInvoices.current.add(newRecord.invoice_hash);
-                                    // For Profile QRs (Type 2), fetch actual amount from records
-                                    let amountStr = '';
-                                    let tokenLabel = newRecord.token_type === 1 ? 'USDCx' : newRecord.token_type === 2 ? 'USAD' : 'Credits';
+                                let amountStr = '';
+                                let tokenLabel = newRecord.token_type === 1 ? 'USDCx' : newRecord.token_type === 2 ? 'USAD' : 'Credits';
 
-                                    if (newRecord.invoice_type === 2) {
-                                        const onChain = await fetchOnChainAmount(newRecord.invoice_hash);
-                                        if (onChain) {
-                                            amountStr = onChain.amount;
-                                            tokenLabel = onChain.token;
-                                        } else {
-                                            amountStr = formatAmount(newRecord.amount);
-                                        }
+                                if (newRecord.invoice_type === 2) {
+                                    const onChain = await fetchOnChainAmount(newRecord.invoice_hash);
+                                    if (onChain) {
+                                        amountStr = onChain.amount;
+                                        tokenLabel = onChain.token;
                                     } else {
                                         amountStr = formatAmount(newRecord.amount);
                                     }
-
-                                    const msg = amountStr
-                                        ? `Payment received${amountStr}${tokenLabel} for invoice ${newRecord.invoice_hash.slice(0, 6)}...`
-                                        : `Payment received for invoice ${newRecord.invoice_hash.slice(0, 6)}...`;
-
-                                    playPaymentSound();
-                                    toast.success(msg, { duration: 5000, position: 'top-right' });
+                                } else {
+                                    amountStr = formatAmount(newRecord.amount);
                                 }
-                            } catch (error) {
-                                console.error('Failed to verify merchant address:', error);
+
+                                const msg = amountStr
+                                    ? `Payment received${amountStr}${tokenLabel} for invoice ${newRecord.invoice_hash.slice(0, 6)}...`
+                                    : `Payment received for invoice ${newRecord.invoice_hash.slice(0, 6)}...`;
+
+                                playPaymentSound();
+                                toast.success(msg, { duration: 5000, position: 'top-right' });
                             }
-                        } else if (newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
-                            const dedupKey = `${newRecord.invoice_hash}_SETTLED`;
-                            if (notifiedInvoices.current.has(dedupKey)) return;
-
-                            try {
-                                const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
-                                if (!response.ok) return;
-                                const invoiceData = await response.json();
-
-                                if (invoiceData.merchant_address === publicKey || (listenInvoiceHash && newRecord.invoice_hash === listenInvoiceHash)) {
-                                    notifiedInvoices.current.add(dedupKey);
-                                    notifiedInvoices.current.add(newRecord.invoice_hash);
-
-                                    playPaymentSound();
-                                    toast.success(
-                                        `Invoice ${newRecord.invoice_hash.slice(0, 6)}... settled!`,
-                                        { duration: 5000, position: 'top-right' }
-                                    );
-                                }
-                            } catch (error) { }
+                        } catch (error) {
+                            console.error('Failed to verify merchant address:', error);
                         }
+                    } else if (newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
+                        const dedupKey = `${newRecord.invoice_hash}_SETTLED`;
+                        if (notifiedInvoices.current.has(dedupKey)) return;
+
+                        try {
+                            const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
+                            if (!response.ok) return;
+                            const invoiceData = await response.json();
+
+                            if (invoiceData.merchant_address === publicKey || (listenInvoiceHash && newRecord.invoice_hash === listenInvoiceHash)) {
+                                notifiedInvoices.current.add(dedupKey);
+                                notifiedInvoices.current.add(newRecord.invoice_hash);
+
+                                playPaymentSound();
+                                toast.success(
+                                    `Invoice ${newRecord.invoice_hash.slice(0, 6)}... settled!`,
+                                    { duration: 5000, position: 'top-right' }
+                                );
+                            }
+                        } catch (error) { }
                     }
-                )
-                .subscribe((status) => {
-                    if (status === 'SUBSCRIBED') {
-                        isSupabaseActive = true;
-                        console.log('✅ Connected to payment monitor (Supabase Primary)');
-                    } else if (status === 'CHANNEL_ERROR') {
-                        isSupabaseActive = false;
-                        console.log('❌ Supabase Realtime failed, relying on Socket.IO fallback');
-                    }
-                });
-        };
-
-        setupSupabase();
-
-        // --- SOCKET.IO (Fallback) ---
-        socket = io(SOCKET_BASE_URL);
-
-        socket.on('connect', () => {
-            // Only log WebSocket connection if we aren't using Supabase
-            if (!isSupabaseActive) {
-                console.log('✅ Connected to payment monitor (Socket.IO Fallback)');
-            }
-        });
-
-        socket.on('payment_received', async (data: any) => {
-            if (data.merchantAddress !== publicKey && (!listenInvoiceHash || data.invoiceHash !== listenInvoiceHash)) return;
-
-            // If Supabase is active, it handles ALL notifications. We completely ignore Socket.IO events
-            // to prevent race conditions where Socket.IO fires slightly before Supabase's async fetch completes.
-            if (isSupabaseActive) {
-                return;
-            }
-
-            if (data.status === 'SETTLED') {
-                const dedupKey = `${data.invoiceHash}_SETTLED`;
-                if (notifiedInvoices.current.has(dedupKey)) return;
-                notifiedInvoices.current.add(dedupKey);
-
-                playPaymentSound();
-                toast.success(`Invoice ${data.invoiceHash.slice(0, 6)}... settled!`, {
-                    duration: 5000,
-                    position: 'top-right',
-                });
-            } else {
-                // Since Socket.IO backend event doesn't tell us exactly *which* payment it was,
-                // we debounce by adding a generic hash flag and clearing it after 2 seconds
-                // so we don't double-fire if the backend emits multiple rapid events for one payment.
-                if (notifiedInvoices.current.has(data.invoiceHash) && data.invoiceType !== 2) return;
-                notifiedInvoices.current.add(data.invoiceHash);
-
-                let amountStr = '';
-                let tokenLabel = data.tokenType === 1 ? 'USDCx' : data.tokenType === 2 ? 'USAD' : 'Credits';
-
-                if (data.invoiceType === 2) {
-                    const onChain = await fetchOnChainAmount(data.invoiceHash);
-                    if (onChain) {
-                        amountStr = onChain.amount;
-                        tokenLabel = onChain.token;
-                    } else {
-                        amountStr = formatAmount(data.amount);
-                    }
-                } else {
-                    amountStr = formatAmount(data.amount);
                 }
-
-                const msg = amountStr
-                    ? `Payment received${amountStr}${tokenLabel} for invoice ${data.invoiceHash.slice(0, 6)}...`
-                    : `Payment received for invoice ${data.invoiceHash.slice(0, 6)}...`;
-
-                playPaymentSound();
-                toast.success(msg, {
-                    duration: 5000,
-                    position: 'top-right',
-                });
-
-                // Clear the generic hash block after a short delay so future distinct payments 
-                // on the same invoice can still trigger a fallback toast if needed.
-                setTimeout(() => {
-                    notifiedInvoices.current.delete(data.invoiceHash);
-                }, 2000);
-            }
-        });
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('✅ [NullPay] Real-time payment monitor connected (Supabase Realtime)');
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('❌ [NullPay] Supabase Realtime channel error. Real-time monitoring unavailable.');
+                } else if (status === 'TIMED_OUT') {
+                    console.warn('⚠️ [NullPay] Supabase Realtime timed out. Attempting to reconnect...');
+                }
+            });
 
         return () => {
-            if (socket) socket.disconnect();
-            if (supabaseChannel) supabaseChannel.unsubscribe();
+            supabaseChannel.unsubscribe();
         };
     }, [publicKey, listenInvoiceHash]);
 };

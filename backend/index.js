@@ -6,13 +6,10 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { encrypt, decrypt } = require('./encryption');
 const { executeRelayerTransition, loadSDK } = require('./relayerWorker');
 loadSDK().then(() => console.log('Provable SDK loaded successfully')).catch(console.error);
-const http = require('http');
-const { Server } = require('socket.io');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { spawn } = require('child_process');
 const app = express();
-const server = http.createServer(app);
 const port = process.env.PORT || 3000;
 
 app.use(cors({
@@ -21,20 +18,6 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-
-const io = new Server(server, {
-    cors: {
-        origin: ["https://nullpay.app", "http://localhost:5173"],
-        methods: ["GET", "POST", "PATCH"]
-    }
-});
-
-io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-    });
-});
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
@@ -587,21 +570,6 @@ app.patch('/api/invoices/:hash', async (req, res) => {
             // payer_address removed
         }
 
-        const hasNewPayment = payment_tx_ids && (!current.payment_tx_ids || !current.payment_tx_ids.includes(payment_tx_ids));
-        console.log(`   - Has New Payment?`, hasNewPayment);
-
-        // LOGIC FIX: If there is a payment ID in the request, it IS a new payment event.
-        if (status === 'SETTLED' || payment_tx_ids) {
-            console.log(`📢 Emitting payment_received for hash: ${hash}, Status: ${status}, Merchant: ${data.merchant_address}`);
-            io.emit('payment_received', {
-                invoiceHash: hash,
-                status: data.status,
-                merchantAddress: data.merchant_address,
-                amount: data.amount, // Note: amount might be needed but was removed from DB? Assuming it's fetched or available elsewhere if needed.
-                invoiceType: data.invoice_type
-            });
-        }
-
         res.json(data);
 
     } catch (err) {
@@ -720,6 +688,6 @@ app.get('/api/users/profile/:address', async (req, res) => {
 console.log('Backend initialized. (Relayer daemon removed, relayer is now on-demand)');
 
 // START SERVER
-server.listen(port, () => {
-    console.log(`HTTP/WebSocket Server running on http://localhost:${port}`);
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
 });
