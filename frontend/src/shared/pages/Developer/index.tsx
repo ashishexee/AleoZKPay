@@ -244,9 +244,7 @@ export const DeveloperPortal = () => {
                                     The <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">@nullpay/node</code> SDK is a lightweight client for your Node.js backend.
                                     Never expose your secret key on the frontend.
                                 </p>
-                                <CodeBlock title="Install via npm or yarn" language="bash" code={`npm install @nullpay/node
-# or
-yarn add @nullpay/node`} />
+                                <CodeBlock title="Install SDK" language="bash" code={`npm install @nullpay/node`} />
 
                                 <h2 className="text-2xl font-bold text-white mt-10 mb-2">Initialize the Client</h2>
                                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">
@@ -264,7 +262,7 @@ export default nullpay;`} />
                                 <h2 className="text-2xl font-bold text-white mt-10 mb-2">Create a Checkout Session</h2>
                                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">
                                     Call this from your server when a user initiates a purchase.
-                                    The returned <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">session.url</code> is a unique, one-time payment page
+                                    The returned <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">session.checkout_url</code> is a unique, one-time payment page
                                     hosted on NullPay where the user's browser generates the ZK-proof.
                                 </p>
                                 <CodeBlock title="POST /api/checkout — Your backend route" code={`import nullpay from './nullpay';
@@ -280,7 +278,7 @@ export async function createCheckout(req, res) {
     });
 
     // Redirect the user to the NullPay payment page
-    res.redirect(303, session.url);
+    res.redirect(303, session.checkout_url);
 }`} />
 
                                 <h2 className="text-2xl font-bold text-white mt-10 mb-2">Verify the Payment on Success</h2>
@@ -343,7 +341,7 @@ const nullpay = new NullPay({ secretKey: 'sk_test_••••••••' });`
                                             nullpay.checkout.sessions.create(params)
                                         </h3>
                                         <p className="text-gray-500 text-sm mb-5 leading-relaxed">
-                                            Creates a new Checkout Session. Returns a session object with a unique <code className="text-neon-primary">url</code>.
+                                            Creates a new Checkout Session. Returns a session object with a unique <code className="text-neon-primary">checkout_url</code>.
                                             The user must be redirected to this URL to complete payment. Each session is single-use.
                                         </p>
                                         <div className="bg-black/40 rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04] px-4 mb-5">
@@ -360,7 +358,7 @@ const nullpay = new NullPay({ secretKey: 'sk_test_••••••••' });`
 });
 
 console.log(session.id);   // ses_abc123
-console.log(session.url);  // https://nullpay.xyz/checkout/ses_abc123`} />
+console.log(session.checkout_url);  // https://nullpay.app/checkout/ses_abc123`} />
                                     </div>
 
                                     <div className="pt-4 border-t border-white/[0.06]">
@@ -379,8 +377,8 @@ console.log(session.url);  // https://nullpay.xyz/checkout/ses_abc123`} />
 
 // Always guard on status before fulfilling
 if (session.status === 'SETTLED') {
-    console.log('Payment confirmed:', session.tx_id);
-    console.log('Amount paid:', session.amount, session.currency);
+    console.log('Payment confirmed! Invoice:', session.invoice_hash);
+    console.log('Amount paid:', session.amount, session.token_type);
 }`} />
                                     </div>
                                 </div>
@@ -402,12 +400,11 @@ if (session.status === 'SETTLED') {
                                 <h3 className="text-lg font-bold text-white mb-4">Session Properties</h3>
                                 <div className="bg-black/40 rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04] px-4 mb-10">
                                     <PropRow name="id" type="string" desc="Unique identifier for the session. Format: ses_xxxxxxxx." />
-                                    <PropRow name="status" type="string" desc="Payment status. One of: PENDING, SETTLED, FAILED, EXPIRED." />
-                                    <PropRow name="amount" type="number" desc="The amount charged, in whole token units (e.g. 50 for 50 USDCX)." />
-                                    <PropRow name="currency" type="string" desc="Token type: CREDITS, USDCX, or USAD." />
-                                    <PropRow name="tx_id" type="string" desc="The Aleo transaction ID once the payment is settled on-chain. Null until SETTLED." />
-                                    <PropRow name="url" type="string" desc="The one-time checkout URL to redirect your customer to. Expires when session does." />
-                                    <PropRow name="created_at" type="string (ISO 8601)" desc="Timestamp of session creation." />
+                                    <PropRow name="status" type="string" desc="Payment status. One of: PROCESSING, PENDING, SETTLED, FAILED." />
+                                    <PropRow name="amount" type="number" desc="The amount charged, in whole token units (e.g. 50 for 50 USDCX). Available on retrieve." />
+                                    <PropRow name="token_type" type="string" desc="Token type: CREDITS, USDCX, or USAD. Available on retrieve." />
+                                    <PropRow name="checkout_url" type="string" desc="The one-time checkout URL to redirect your customer to." />
+                                    <PropRow name="invoice_hash" type="string" desc="The zero-knowledge invoice hash." />
                                 </div>
 
                                 <h3 className="text-lg font-bold text-white mb-4">Status Lifecycle</h3>
@@ -433,11 +430,10 @@ Content-Type: application/json
 // Response 200 OK
 {
     "id": "ses_a1b2c3d4",
-    "url": "https://nullpay.xyz/checkout/ses_a1b2c3d4",
-    "status": "PENDING",
-    "amount": 100,
-    "currency": "USDCX",
-    "created_at": "2025-03-13T07:30:00.000Z"
+    "checkout_url": "https://nullpay.app/checkout/ses_a1b2c3d4",
+    "status": "PROCESSING",
+    "invoice_hash": "...",
+    "salt": "..."
 }`} />
 
                                 <CodeBlock title="GET /api/checkout/sessions/:id" language="http" code={`GET https://null-pay-rs8i.vercel.app/api/checkout/sessions/ses_a1b2c3d4
@@ -448,9 +444,9 @@ Authorization: Bearer sk_test_xxxxxxxxxxxxxxxx
     "id": "ses_a1b2c3d4",
     "status": "SETTLED",
     "amount": 100,
-    "currency": "USDCX",
-    "tx_id": "at1abc...xyz",
-    "created_at": "2025-03-13T07:30:00.000Z"
+    "token_type": "USDCX",
+    "invoice_hash": "...",
+    "merchant_name": "My Premium Store"
 }`} />
                             </GlassCard>
                         </motion.div>
@@ -470,18 +466,15 @@ Authorization: Bearer sk_test_xxxxxxxxxxxxxxxx
 
                                 <h3 className="text-lg font-bold text-white mb-4">Event Payload</h3>
                                 <p className="text-gray-500 text-sm mb-5 leading-relaxed">
-                                    NullPay sends a JSON body with an <code className="text-neon-primary">event</code> type and the full <code className="text-neon-primary">session</code> object.
+                                    NullPay sends a JSON body containing the webhook event object. Use the SDK's <code className="text-neon-primary">constructEvent</code> to automatically parse and verify the HMAC-SHA256 signature in one step.
                                 </p>
                                 <CodeBlock title="Webhook POST body" language="json" code={`{
-    "event": "checkout.session.settled",
-    "session": {
-        "id": "ses_a1b2c3d4",
-        "status": "SETTLED",
-        "amount": 100,
-        "currency": "USDCX",
-        "tx_id": "at1abc...xyz",
-        "created_at": "2025-03-13T07:30:00.000Z"
-    }
+    "id": "ses_a1b2c3d4",
+    "amount": 100,
+    "token_type": "USDCX",
+    "status": "SETTLED",
+    "tx_id": "at1abc...xyz",
+    "timestamp": "2025-03-13T07:30:00.000Z"
 }`} />
 
                                 <h3 className="text-lg font-bold text-white mb-4 mt-8">Handling Webhooks in Express</h3>
@@ -494,25 +487,29 @@ import nullpay from './nullpay';
 
 const app = express();
 
-// ⚠️ Use raw body parser for webhook routes
+// ⚠️ Ensure you capture the raw body for signature verification
 app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    const body = JSON.parse(req.body.toString());
+    const signature = req.headers['x-nullpay-signature'];
 
-    if (body.event === 'checkout.session.settled') {
-        const session = body.session;
+    try {
+        const event = nullpay.webhooks.constructEvent(req.body.toString(), signature);
 
-        // ✅ Double-check session status via API before fulfilling
-        const verified = await nullpay.checkout.sessions.retrieve(session.id);
+        if (event.status === 'SETTLED') {
+            // ✅ Double-check session status via API before fulfilling
+            const verified = await nullpay.checkout.sessions.retrieve(event.id);
 
-        if (verified.status === 'SETTLED') {
-            // Fulfill the order in your database
-            await db.orders.updateStatus(session.id, 'fulfilled');
-            console.log('Order fulfilled for session:', session.id);
+            if (verified.status === 'SETTLED') {
+                // Fulfill the order in your database
+                await db.orders.updateStatus(event.id, 'fulfilled');
+                console.log('Order fulfilled for session:', event.id);
+            }
         }
-    }
 
-    // Always return 200 to acknowledge receipt
-    res.status(200).json({ received: true });
+        // Always return 200 to acknowledge receipt
+        res.status(200).json({ received: true });
+    } catch (err) {
+        res.status(400).send(\`Webhook Error: \${err.message}\`);
+    }
 });`} />
 
                                 <div className="mt-8 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">

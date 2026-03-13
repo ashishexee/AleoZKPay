@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
+
 import { pageVariants, staggerContainer, fadeInUp } from '../../../shared/utils/animations';
 
 const Docs = () => {
     const [activeTab, setActiveTab] = useState('overview');
-
     const containerVariants = staggerContainer;
     const itemVariants = fadeInUp;
 
@@ -101,43 +101,8 @@ const Docs = () => {
                                 <h2 className="text-3xl font-bold text-white mb-6">What is NullPay?</h2>
                                 <p className="text-gray-400 mb-8 leading-relaxed">
                                     NullPay is a privacy-first payment protocol built on Aleo. It enables merchants to create invoices
-                                    and receive payments without revealing sensitive transaction details on-chain. NullPay supports both <strong className="text-white">Aleo Credits</strong> and <strong className="text-blue-400">USDCx</strong> (a private stablecoin on Aleo).
+                                    and receive payments without revealing sensitive transaction details on-chain. NullPay supports <strong className="text-white">Aleo Credits</strong>, <strong className="text-blue-400">USDCx</strong>, and <strong className="text-green-400">USAD</strong> (private stablecoins on Aleo).
                                 </p>
-
-                                <div className="bg-black/40 p-8 rounded-2xl border border-white/5 mb-10 overflow-hidden relative">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-neon-primary/5 rounded-full blur-[60px] pointer-events-none" />
-                                    <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-neon-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                        System Workflow
-                                    </h3>
-
-                                    <div className="bg-white/5 rounded-xl p-6 border border-white/5 font-mono text-[11px] leading-relaxed text-blue-300">
-                                        {`sequenceDiagram
-    participant Merchant
-    participant NullPay (ZK)
-    participant Aleo Chain
-    participant Payer
-
-    Merchant->>NullPay (ZK): create_invoice(amount, salt)
-    NullPay (ZK)->>Aleo Chain: State Change: Invoice Created (Hash)
-    NullPay (ZK)->>Merchant: Payment Link (Merchant, Salt, Amount)
-    
-    Merchant->>Payer: Sends Link
-    
-    Payer->>NullPay (ZK): Verifies Hash with Salt
-    Payer->>Aleo Chain: pay_invoice_private(record)
-    Aleo Chain-->>Payer: Generates encrypted PayerReceipt
-    Aleo Chain-->>Merchant: Generates encrypted MerchantReceipt
-    
-    NullPay (ZK)->>Merchant: Realtime Cloud Notification (Supabase)`}
-                                    </div>
-                                    <p className="text-gray-500 text-xs mt-4 italic text-center">
-                                        Figure 1: High-level ZK payment flow from creation to settlement.
-                                    </p>
-                                </div>
-
 
 
                                 <h3 className="text-xl font-bold text-neon-primary mb-4">Key Features</h3>

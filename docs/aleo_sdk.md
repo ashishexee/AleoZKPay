@@ -1,7 +1,6 @@
 Getting Started
 Installation
 NPM
-Yarn
 Build From Source
 npm install @provablehq/sdk
 
