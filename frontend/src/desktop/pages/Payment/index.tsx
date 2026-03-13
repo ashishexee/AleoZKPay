@@ -152,6 +152,30 @@ const PaymentPage = () => {
                                 </span>
                             )}
                         </div>
+
+                        {/* LINE ITEMS BREAKDOWN */}
+                        {invoice?.items && invoice.items.length > 0 && (
+                            <div className="pt-4 border-t border-white/5">
+                                <span className="text-sm font-medium text-gray-400 uppercase tracking-widest block mb-3">Items</span>
+                                <div className="bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                                    <div className="grid grid-cols-[1fr_60px_80px_80px] gap-2 px-3 py-2 bg-white/5 border-b border-white/5">
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Item</span>
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Qty</span>
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">Price</span>
+                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">Total</span>
+                                    </div>
+                                    {invoice.items.map((item, idx) => (
+                                        <div key={idx} className="grid grid-cols-[1fr_60px_80px_80px] gap-2 px-3 py-2 border-b border-white/5 last:border-b-0">
+                                            <span className="text-sm text-white truncate">{item.name || 'Unnamed'}</span>
+                                            <span className="text-sm text-gray-400 text-center">{item.quantity}</span>
+                                            <span className="text-sm text-gray-400 text-center">{item.unitPrice}</span>
+                                            <span className="text-sm text-neon-primary font-mono text-right">{item.total.toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex justify-between items-center pt-4 border-t border-white/5">
                             <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">Amount</span>
                             {loading && !invoice ? (

@@ -19,6 +19,7 @@ export interface Invoice {
     salt?: string;
     invoice_type?: number;
     token_type?: number;
+    invoice_items?: { name: string; quantity: number; unitPrice: number; total: number }[];
 }
 
 export const fetchInvoices = async (status?: string): Promise<Invoice[]> => {

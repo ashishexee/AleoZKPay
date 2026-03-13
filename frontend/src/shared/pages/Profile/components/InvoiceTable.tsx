@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import StatusBadge from '../../../components/StatusBadge';
 import { LinkButton } from '../../../components/ui/LinkButton';
 import { CopyButton } from '../../../components/ui/CopyButton';
+import { generateInvoicePdf } from '../../../utils/generateInvoicePdf';
 
 interface InvoiceTableProps {
     invoices: any[];
@@ -14,6 +15,7 @@ interface InvoiceTableProps {
     onSettle: (invoice: any) => void;
     settlingId: string | null;
     onViewPayments: (paymentIds: string[]) => void;
+    transactions: any[];
 }
 
 const ShimmerRow: React.FC = () => (
@@ -39,7 +41,8 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
     onVerify,
     onSettle,
     settlingId,
-    onViewPayments
+    onViewPayments,
+    transactions
 }) => {
     const [initialGrace, setInitialGrace] = useState(true);
 
@@ -128,13 +131,13 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                         </div>
                                     </td>
                                     <td className="py-4 px-6 text-center">
-                                        {inv.tokenType === 3 ? (
+                                        {inv.invoiceType === 2 ? (
                                             <div className="flex flex-col items-center gap-1">
                                                 {inv.donations?.credits > 0 && <span className="text-xs font-bold text-white">{inv.donations.credits} <span className="text-[10px] text-gray-500 uppercase">Credits</span></span>}
                                                 {inv.donations?.usdcx > 0 && <span className="text-xs font-bold text-white">{inv.donations.usdcx} <span className="text-[10px] text-gray-500 uppercase">USDCx</span></span>}
                                                 {inv.donations?.usad > 0 && <span className="text-xs font-bold text-white">{inv.donations.usad} <span className="text-[10px] text-gray-500 uppercase">USAD</span></span>}
                                                 {(!inv.donations || (inv.donations.credits === 0 && inv.donations.usdcx === 0 && inv.donations.usad === 0)) && (
-                                                    <span className="font-bold text-gray-500">0 <span className="text-[10px] text-gray-600 uppercase">ANY</span></span>
+                                                    <span className="font-bold text-gray-500">0 <span className="text-[10px] text-gray-600 uppercase">{inv.tokenType === 0 ? 'Credits' : inv.tokenType === 1 ? 'USDCx' : inv.tokenType === 2 ? 'USAD' : 'ANY'}</span></span>
                                                 )}
                                             </div>
                                         ) : (
@@ -191,6 +194,32 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                     </td>
                                     <td className="py-4 px-6 text-right">
                                         <div className="flex gap-2 justify-end w-full">
+                                            {/* DOWNLOAD PDF */}
+                                            <button
+                                                onClick={() => {
+                                                    const dbTx = transactions.find((t: any) => t.invoice_hash === inv.invoiceHash);
+                                                    generateInvoicePdf({
+                                                        invoiceHash: inv.invoiceHash,
+                                                        amount: inv.amount,
+                                                        tokenType: inv.tokenType,
+                                                        invoiceType: inv.invoiceType,
+                                                        walletType: inv.walletType,
+                                                        status: inv.status,
+                                                        memo: inv.memo,
+                                                        creationTx: inv.creationTx,
+                                                        paymentTxIds: inv.paymentTxIds,
+                                                        items: dbTx?.invoice_items || undefined,
+                                                        donations: inv.donations || undefined,
+                                                    });
+                                                }}
+                                                className="flex items-center justify-center w-8 h-8 rounded-md bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all text-gray-400 hover:text-white"
+                                                title="Download Invoice PDF"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                </svg>
+                                            </button>
+
                                             {(inv.amount === 0 && inv.invoiceType !== 2) ? (
                                                 <span className="text-[10px] text-yellow-500 animate-pulse px-2">Syncing...</span>
                                             ) : (

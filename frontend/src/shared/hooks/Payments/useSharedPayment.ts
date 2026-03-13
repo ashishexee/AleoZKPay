@@ -111,7 +111,8 @@ export const useSharedPayment = () => {
                         hash: fetchedHash,
                         memo,
                         tokenType: tokenTypeOnChain,
-                        invoiceType: invoiceTypeOnChain
+                        invoiceType: invoiceTypeOnChain,
+                        items: dbInvoice?.invoice_items || undefined
                     });
                     setStep('ALREADY_PAID');
                     setLoading(false);
@@ -125,7 +126,8 @@ export const useSharedPayment = () => {
                     hash: fetchedHash,
                     memo,
                     tokenType: tokenTypeOnChain,
-                    invoiceType: invoiceTypeOnChain
+                    invoiceType: invoiceTypeOnChain,
+                    items: dbInvoice?.invoice_items || undefined
                 });
 
                 setStatus(''); // Clear status after verification

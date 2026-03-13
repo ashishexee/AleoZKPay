@@ -298,6 +298,33 @@ const Profile: React.FC = () => {
                 isValidOnChain: true
             });
         });
+        // 3. Aggregate donation totals from MerchantReceipts
+        const allReceipts = [...merchantReceipts, ...burnerMerchantReceipts];
+        const donationTotals = new Map<string, { credits: number, usdcx: number, usad: number }>();
+        allReceipts.forEach(receipt => {
+            const hash = receipt.invoiceHash.replace('field', '');
+            if (!donationTotals.has(hash)) {
+                donationTotals.set(hash, { credits: 0, usdcx: 0, usad: 0 });
+            }
+            const totals = donationTotals.get(hash)!;
+            const amt = receipt.amount / 1_000_000;
+            if (receipt.tokenType === 0) totals.credits += amt;
+            else if (receipt.tokenType === 1) totals.usdcx += amt;
+            else if (receipt.tokenType === 2) totals.usad += amt;
+        });
+
+        // Attach donation totals to donation invoices (invoiceType === 2)
+        merged.forEach((inv, hash) => {
+            if (inv.invoiceType === 2) {
+                const normalizedHash = hash.replace('field', '');
+                const totals = donationTotals.get(normalizedHash);
+                if (totals) {
+                    inv.donations = totals;
+                    // Set the display amount to the total across all token types
+                    inv.amount = totals.credits + totals.usdcx + totals.usad;
+                }
+            }
+        });
 
         const finalArr = Array.from(merged.values());
         console.log("🔄 Final Combined Invoices Array (excluding Tips):", finalArr.length, finalArr);
@@ -644,6 +671,7 @@ const Profile: React.FC = () => {
                                 onSettle={handleSettle}
                                 settlingId={settling}
                                 onViewPayments={(ids) => setSelectedPaymentIds(ids)}
+                                transactions={transactions}
                             />
                         </div>
 

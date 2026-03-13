@@ -3,6 +3,7 @@ import { GlassCard } from '../ui/GlassCard';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { InvoiceType } from '../../hooks/useCreateInvoice';
+import { InvoiceItem } from '../../types/invoice';
 
 interface InvoiceFormProps {
     amount: number | '';
@@ -20,6 +21,12 @@ interface InvoiceFormProps {
     walletType: number;
     setWalletType: (val: number) => void;
     hasBurnerWallet: boolean;
+    items: InvoiceItem[];
+    showItems: boolean;
+    setShowItems: (val: boolean) => void;
+    addItem: () => void;
+    updateItem: (index: number, field: keyof InvoiceItem, value: string | number) => void;
+    removeItem: (index: number) => void;
 }
 
 export const InvoiceForm: React.FC<InvoiceFormProps> = ({
@@ -37,7 +44,13 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setTokenType,
     walletType,
     setWalletType,
-    hasBurnerWallet
+    hasBurnerWallet,
+    items,
+    showItems,
+    setShowItems,
+    addItem,
+    updateItem,
+    removeItem
 }) => {
     return (
         <GlassCard variant="heavy" className="p-8">
@@ -187,6 +200,106 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         value={amount}
                         onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
                     />
+                )}
+
+                {/* LINE ITEMS TOGGLE — Standard Invoice only */}
+                {invoiceType === 'standard' && (
+                    <div>
+                        <label
+                            className="flex items-center gap-3 cursor-pointer select-none group"
+                            onClick={() => {
+                                if (!showItems) addItem();
+                                setShowItems(!showItems);
+                            }}
+                        >
+                            <div className={`w-10 h-5 rounded-full relative transition-all duration-300 ${
+                                showItems
+                                    ? 'bg-neon-primary/30 border-neon-primary/50'
+                                    : 'bg-white/10 border-white/10'
+                            } border`}>
+                                <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${
+                                    showItems
+                                        ? 'left-[22px] bg-neon-primary shadow-[0_0_8px_rgba(0,243,255,0.5)]'
+                                        : 'left-0.5 bg-gray-500'
+                                }`} />
+                            </div>
+                            <span className="text-sm text-gray-300 group-hover:text-white transition-colors">Add Line Items</span>
+                        </label>
+                    </div>
+                )}
+
+                {/* LINE ITEMS TABLE */}
+                {invoiceType === 'standard' && showItems && (
+                    <div className="bg-black/30 rounded-xl border border-white/5 overflow-hidden">
+                        {/* Table Header */}
+                        <div className="grid grid-cols-[1fr_80px_100px_100px_40px] gap-2 px-4 py-3 bg-white/5 border-b border-white/5">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Item</span>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Qty</span>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Unit Price</span>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Total</span>
+                            <span></span>
+                        </div>
+
+                        {/* Table Rows */}
+                        {items.map((item, index) => (
+                            <div key={index} className="grid grid-cols-[1fr_80px_100px_100px_40px] gap-2 px-4 py-2 border-b border-white/5 last:border-b-0 items-center group hover:bg-white/[0.02] transition-colors">
+                                <input
+                                    type="text"
+                                    placeholder="Item name"
+                                    value={item.name}
+                                    onChange={(e) => updateItem(index, 'name', e.target.value)}
+                                    className="bg-transparent text-sm text-white placeholder:text-gray-600 focus:outline-none focus:placeholder:text-gray-500 w-full"
+                                />
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={item.quantity || ''}
+                                    onChange={(e) => updateItem(index, 'quantity', e.target.value)}
+                                    className="bg-white/5 rounded-lg text-sm text-white text-center py-1 focus:outline-none focus:ring-1 focus:ring-neon-primary/30 w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={item.unitPrice || ''}
+                                    onChange={(e) => updateItem(index, 'unitPrice', e.target.value)}
+                                    className="bg-white/5 rounded-lg text-sm text-white text-center py-1 focus:outline-none focus:ring-1 focus:ring-neon-primary/30 w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <span className="text-sm text-neon-primary font-mono text-right">
+                                    {item.total > 0 ? item.total.toFixed(2) : '—'}
+                                </span>
+                                <button
+                                    onClick={() => removeItem(index)}
+                                    className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        ))}
+
+                        {/* Add Item Button */}
+                        <button
+                            onClick={addItem}
+                            className="w-full py-3 text-sm text-gray-400 hover:text-neon-primary hover:bg-neon-primary/5 transition-all flex items-center justify-center gap-2 border-t border-white/5"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Item
+                        </button>
+
+                        {/* Items Total */}
+                        {items.length > 0 && items.some(i => i.total > 0) && (
+                            <div className="flex justify-between items-center px-4 py-3 bg-neon-primary/5 border-t border-neon-primary/20">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total</span>
+                                <span className="text-lg font-bold text-neon-primary font-mono">
+                                    {items.reduce((sum, i) => sum + i.total, 0).toFixed(2)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 <Input
