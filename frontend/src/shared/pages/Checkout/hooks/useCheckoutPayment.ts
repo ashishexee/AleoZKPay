@@ -161,6 +161,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 // 4. Poll for Success
                 let isPending = true;
                 let attempts = 0;
+                let onChainId = result.transactionId; // Will be updated to real at1... ID
                 while (isPending && attempts < 120) {
                     attempts++;
                     await new Promise(r => setTimeout(r, 1000));
@@ -170,6 +171,13 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                             ? (statusRes as string).toLowerCase()
                             : (statusRes as any)?.status?.toLowerCase();
 
+                        // Extract the real on-chain ID once available (replaces initial Shield ID)
+                        if ((statusRes as any)?.transactionId) {
+                            onChainId = (statusRes as any).transactionId;
+                            console.log('[useCheckoutPayment] Real on-chain TX ID found:', onChainId);
+                            setTxId(onChainId);
+                        }
+
                         // We will rely on our Supabase WebSocket listener to do the real redirect. 
                         // But locally, we can mark success to show UI and notify the backend to trigger webhooks.
                         if (statusStr === 'completed' || statusStr === 'finalized' || statusStr === 'accepted') {
@@ -177,23 +185,21 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
 
                             try {
                                 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-                                // Update the new standard invoice with the payment TX ID.
-                                // The backend will then emit the 'payment_received' socket event,
-                                // which usePaymentMonitor catches to set the session to SETTLED.
+                                // Update the new standard invoice with the REAL on-chain payment TX ID.
                                 await fetch(`${API_URL}/invoices/${session.invoice_hash}`, {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
                                         status: 'SETTLED',
-                                        payment_tx_ids: [result.transactionId]
+                                        payment_tx_ids: [onChainId]
                                     })
                                 });
 
-                                // Also update the old session intent directly, just to be safe for legacy code.
+                                // Also update the checkout session with the REAL on-chain TX ID.
                                 await fetch(`${API_URL}/checkout/sessions/${session.id}`, {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ status: 'SETTLED', tx_id: result.transactionId })
+                                    body: JSON.stringify({ status: 'SETTLED', tx_id: onChainId })
                                 });
                             } catch (err) {
                                 console.error("Failed to notify backend", err);
