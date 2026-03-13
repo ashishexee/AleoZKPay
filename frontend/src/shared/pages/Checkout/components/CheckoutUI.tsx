@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
@@ -10,8 +10,6 @@ import { CheckoutSession } from '../types';
 interface CheckoutUIProps {
     session: CheckoutSession | null;
     loading: boolean;
-    executingRelayer: boolean;
-    triggerRelayer: () => void;
     error: string | null;
     publicKey: string | null | undefined;
     paymentStatus: string;
@@ -24,8 +22,6 @@ interface CheckoutUIProps {
 export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     session,
     loading,
-    executingRelayer,
-    triggerRelayer,
     error,
     publicKey,
     paymentStatus,
@@ -33,18 +29,10 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     success,
     onPay
 }) => {
-    const PROCESSING_LOGS = [
-        "Verifying merchant intent signatures...",
-        "Synthesizing Aleo Zero-Knowledge proofs...",
-        "Executing create_invoice transition...",
-        "Broadcasting transaction to Aleo network...",
-        "Awaiting block confirmation..."
-    ];
-
-    const [logIndex, setLogIndex] = useState(0);
-    const [copiedLink, setCopiedLink] = useState(false);
+const [copiedLink, setCopiedLink] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
     const [copiedSalt, setCopiedSalt] = useState(false);
+
 
     const paymentLink = typeof window !== 'undefined' && session ? (() => {
         const params = new URLSearchParams({
@@ -57,22 +45,6 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
         });
         return `${window.location.origin}/pay?${params.toString()}`;
     })() : '';
-
-    useEffect(() => {
-        if (session?.status !== 'PROCESSING') return;
-
-        const interval = setInterval(() => {
-            setLogIndex(prev => (prev < PROCESSING_LOGS.length - 1 ? prev + 1 : prev));
-        }, 3500);
-
-        return () => clearInterval(interval);
-    }, [session?.status]);
-
-    useEffect(() => {
-        if (session?.status === 'PROCESSING' && !executingRelayer) {
-            triggerRelayer();
-        }
-    }, [session?.status, executingRelayer, triggerRelayer]);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[85vh]">
@@ -236,7 +208,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     <Button
                                         variant="primary"
                                         onClick={onPay}
-                                        disabled={paymentLoading || session.status === 'PROCESSING' || executingRelayer}
+                                        disabled={paymentLoading}
                                         glow
                                         className="w-full text-lg h-14"
                                     >
@@ -244,11 +216,6 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             <span className="flex items-center gap-2">
                                                 <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                                                 Processing on-chain...
-                                            </span>
-                                        ) : session.status === 'PROCESSING' || executingRelayer ? (
-                                            <span className="flex items-center gap-2">
-                                                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                                <span className="text-sm">{PROCESSING_LOGS[logIndex]}</span>
                                             </span>
                                         ) : (
                                             `Pay ${session.amount} ${session.token_type}`

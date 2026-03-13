@@ -4,8 +4,6 @@ const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { encrypt, decrypt } = require('./encryption');
-const { executeRelayerTransition, loadSDK } = require('./relayerWorker');
-loadSDK().then(() => console.log('Provable SDK loaded successfully')).catch(console.error);
 const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
@@ -346,60 +344,6 @@ app.get('/v1/checkout/sessions/:id', async (req, res) => {
 
     } catch (err) {
         console.error("Error fetching checkout session:", err);
-        res.status(500).json({ error: 'Internal server error.' });
-    }
-});
-
-/**
- * Triggers the relayerWorker on-demand to construct the invoice on-chain.
- * Called by the frontend Checkout page.
- */
-app.post('/v1/checkout/sessions/:id/execute-relayer', async (req, res) => {
-    const { id } = req.params;
-
-    try {
-        const { data: intent, error } = await supabase
-            .from('payment_intents')
-            .select(`
-                *,
-                merchants:merchant_id (
-                    encrypted_aleo_address
-                )
-            `)
-            .eq('id', id)
-            .single();
-
-        if (error || !intent) {
-            return res.status(404).json({ error: 'Checkout session not found.' });
-        }
-
-        if (intent.status !== 'PROCESSING') {
-            return res.status(400).json({ error: 'Checkout session is not in PROCESSING state.' });
-        }
-
-        const merchantAddress = decrypt(intent.merchants.encrypted_aleo_address);
-
-        if (!merchantAddress) {
-            return res.status(500).json({ error: 'Failed to decrypt merchant address.' });
-        }
-
-        // Fire and wait for the relayer (this takes 10-20 seconds usually)
-        const result = await executeRelayerTransition(
-            merchantAddress,
-            intent.amount,
-            intent.token_type,
-            intent.salt,
-            intent.id
-        );
-
-        if (result.success) {
-            res.json({ success: true, invoice_hash: result.invoice_hash });
-        } else {
-            res.status(500).json({ error: result.error });
-        }
-
-    } catch (err) {
-        console.error("Error executing relayer:", err);
         res.status(500).json({ error: 'Internal server error.' });
     }
 });

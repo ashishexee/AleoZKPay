@@ -8,7 +8,7 @@ import { usePaymentMonitor } from '../../hooks/usePaymentMonitor';
 
 export const CheckoutPage = () => {
     const { id } = useParams<{ id: string }>();
-    const { session, loading, error: sessionError, executingRelayer, triggerRelayer } = useCheckoutSession(id);
+    const { session, loading, error: sessionError } = useCheckoutSession(id);
     const [showConvertModal, setShowConvertModal] = useState(false);
     const [customConvertAmount, setCustomConvertAmount] = useState<string>('');
     const {
@@ -49,8 +49,6 @@ export const CheckoutPage = () => {
             <CheckoutUI
                 session={session}
                 loading={loading}
-                executingRelayer={executingRelayer}
-                triggerRelayer={triggerRelayer}
                 error={sessionError || paymentError}
                 publicKey={publicKey}
                 paymentStatus={paymentStatus}

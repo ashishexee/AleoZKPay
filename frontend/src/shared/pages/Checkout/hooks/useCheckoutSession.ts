@@ -8,7 +8,6 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 export const useCheckoutSession = (sessionId: string | undefined) => {
     const [session, setSession] = useState<CheckoutSession | null>(null);
     const [loading, setLoading] = useState(true);
-    const [executingRelayer, setExecutingRelayer] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -21,7 +20,8 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
         const fetchSession = async () => {
             try {
                 // In production, use the actual backend API URL from env
-                const response = await fetch(`http://localhost:3000/v1/checkout/sessions/${sessionId}`);
+                const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
+                const response = await fetch(`${API_BASE}/v1/checkout/sessions/${sessionId}`);
 
                 if (!response.ok) {
                     if (response.status === 404) {
@@ -41,26 +41,6 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
 
         fetchSession();
     }, [sessionId]);
-
-    const triggerRelayer = async () => {
-        if (!sessionId || !session || session.status !== 'PROCESSING') return;
-        setExecutingRelayer(true);
-        try {
-            const response = await fetch(`http://localhost:3000/v1/checkout/sessions/${sessionId}/execute-relayer`, {
-                method: 'POST'
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error || "Failed to execute invoice.");
-            }
-            // Update local session with new hash and status
-            setSession(prev => prev ? { ...prev, status: 'PENDING', invoice_hash: data.invoice_hash } : prev);
-        } catch (err: any) {
-            setError(err.message || 'Error generating invoice.');
-        } finally {
-            setExecutingRelayer(false);
-        }
-    };
 
     // Real-Time Supabase Listener
     useEffect(() => {
@@ -86,11 +66,9 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
 
                         // If it settled, handle the automatic redirect
                         const redirectUrl = payload.new.success_url || session.success_url;
-                        console.log(`[useCheckoutSession] Status changed to ${newStatus}. Payload success_url: ${payload.new.success_url}, Local: ${session.success_url}, Chosen: ${redirectUrl}`);
                         if (newStatus === 'SETTLED' && redirectUrl) {
-                            console.log(`[useCheckoutSession] Scheduling WebSocket redirect to: ${redirectUrl} in 3 seconds...`);
+                            console.log(`[useCheckoutSession] Scheduling redirect to: ${redirectUrl} in 3 seconds...`);
                             setTimeout(() => {
-                                console.log(`[useCheckoutSession] Executing WebSocket redirect now!`);
                                 try {
                                     const url = new URL(redirectUrl as string);
                                     url.searchParams.set('session_id', sessionId);
@@ -98,7 +76,7 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
                                 } catch (e) {
                                     window.location.href = redirectUrl as string + `?session_id=${sessionId}`;
                                 }
-                            }, 3000); // Wait 3 seconds to show the pretty success screen
+                            }, 3000);
                         }
                     }
                 }
@@ -114,5 +92,5 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
         };
     }, [sessionId, session?.status, supabaseUrl]);
 
-    return { session, loading, error, triggerRelayer, executingRelayer };
+    return { session, loading, error };
 };
