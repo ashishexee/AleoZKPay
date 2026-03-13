@@ -163,7 +163,7 @@ app.get('/api/invoice/:hash', async (req, res) => {
 
 
 app.post('/api/invoices', async (req, res) => {
-    const { invoice_hash, merchant_address, designated_address, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type } = req.body;
+    const { invoice_hash, merchant_address, designated_address, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items } = req.body;
 
     if (!invoice_hash || !merchant_address) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -185,6 +185,7 @@ app.post('/api/invoices', async (req, res) => {
                 salt: salt || null,  // Store salt for payment link generation
                 invoice_type: invoice_type !== undefined ? invoice_type : 0,  // 0 = Standard, 1 = Fundraising
                 token_type: token_type !== undefined ? token_type : 0,  // 0 = Credits, 1 = USDCx
+                invoice_items: invoice_items || null,  // Line items for standard invoices
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
@@ -256,8 +257,9 @@ app.patch('/api/invoices/:hash', async (req, res) => {
                 invoiceHash: hash,
                 status: data.status,
                 merchantAddress: data.merchant_address,
-                amount: data.amount, // Note: amount might be needed but was removed from DB? Assuming it's fetched or available elsewhere if needed.
-                invoiceType: data.invoice_type
+                amount: data.amount,
+                invoiceType: data.invoice_type,
+                tokenType: data.token_type
             });
         }
 
