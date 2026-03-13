@@ -113,7 +113,7 @@ export const useSharedPayment = () => {
                         memo,
                         tokenType: tokenTypeOnChain,
                         invoiceType: invoiceTypeOnChain,
-                        items: dbInvoice?.invoice_items || undefined
+                        items: dbInvoice?.invoice_items || undefined,
                         sessionId: sessionId || undefined
                     });
                     setStep('ALREADY_PAID');
@@ -129,7 +129,7 @@ export const useSharedPayment = () => {
                     memo,
                     tokenType: tokenTypeOnChain,
                     invoiceType: invoiceTypeOnChain,
-                    items: dbInvoice?.invoice_items || undefined
+                    items: dbInvoice?.invoice_items || undefined,
                     sessionId: sessionId || undefined
                 });
 
