@@ -12,7 +12,7 @@ app.use(express.json({
 }));
 
 const nullpay = new NullPay({
-    secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_115a5433b50619ff4d13eac26bb974d79220c40d9ee1cc62', // Connected to DB!
+    secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_cd1469c40d28100ef42bfb0bc2fd6bb0a05eb21b882c1e00', // Connected to DB!
     baseURL: 'https://null-pay-rs8i.vercel.app/api'
 });
 
@@ -25,8 +25,8 @@ app.post('/api/create-checkout', async (req, res) => {
         const frontendUrl = process.env.FRONTEND_URL || 'https://testing-website-frontend.vercel.app';
         const session = await nullpay.checkout.sessions.create({
             amount: price,
-            invoice_hash: '947784221320317855223851146427035324574742326751465596223330701216638110914field',
-            salt: '175790449236021826210524364451519030111field',
+            invoice_hash: '1115746144388697626639199193629687485898491210296849134687801972477586805400field',
+            salt: '337031781705903168303998209154958292665field',
             success_url: `${frontendUrl}/success`,
             cancel_url: `${frontendUrl}/cart`
         });
