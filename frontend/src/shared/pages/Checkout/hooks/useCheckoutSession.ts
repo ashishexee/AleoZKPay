@@ -19,9 +19,8 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
 
         const fetchSession = async () => {
             try {
-                // In production, use the actual backend API URL from env
-                const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
-                const response = await fetch(`${API_BASE}/v1/checkout/sessions/${sessionId}`);
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
 
                 if (!response.ok) {
                     if (response.status === 404) {

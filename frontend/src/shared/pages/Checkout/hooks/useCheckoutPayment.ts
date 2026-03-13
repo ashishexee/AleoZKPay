@@ -176,10 +176,11 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                             setStatus('Payment Successful! Notifying Merchant...');
 
                             try {
+                                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
                                 // Update the new standard invoice with the payment TX ID.
                                 // The backend will then emit the 'payment_received' socket event,
                                 // which usePaymentMonitor catches to set the session to SETTLED.
-                                await fetch(`http://localhost:3000/api/invoices/${session.invoice_hash}`, {
+                                await fetch(`${API_URL}/invoices/${session.invoice_hash}`, {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
@@ -189,7 +190,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                                 });
 
                                 // Also update the old session intent directly, just to be safe for legacy code.
-                                await fetch(`http://localhost:3000/v1/checkout/sessions/${session.id}`, {
+                                await fetch(`${API_URL}/checkout/sessions/${session.id}`, {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ status: 'SETTLED', tx_id: result.transactionId })

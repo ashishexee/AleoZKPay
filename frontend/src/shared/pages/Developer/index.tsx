@@ -87,7 +87,7 @@ export const DeveloperPortal = () => {
         try {
             setLoading(true);
             setError(null);
-            const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '/v1');
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
             const response = await fetch(`${apiUrl}/merchants/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -495,7 +495,7 @@ import nullpay from './nullpay';
 const app = express();
 
 // ⚠️ Use raw body parser for webhook routes
-app.post('/v1/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     const body = JSON.parse(req.body.toString());
 
     if (body.event === 'checkout.session.settled') {
@@ -601,7 +601,7 @@ app.post('/v1/webhook', express.raw({ type: 'application/json' }), async (req, r
                                                     type="url"
                                                     value={webhookUrl}
                                                     onChange={e => setWebhookUrl(e.target.value)}
-                                                    placeholder="https://yoursite.com/v1/webhook"
+                                                    placeholder="https://yoursite.com/api/webhook"
                                                     className="w-full bg-black/40 border border-white/[0.08] rounded-xl p-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30 transition-colors font-mono"
                                                 />
                                                 <p className="text-[10px] text-gray-600 mt-1.5 ml-1">NullPay will POST here every time a payment settles.</p>

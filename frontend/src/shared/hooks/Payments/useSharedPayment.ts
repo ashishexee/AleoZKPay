@@ -199,7 +199,7 @@ export const useSharedPayment = () => {
                         if (invoice?.sessionId) {
                             try {
                                 console.log(`📢 [usePayment] Updating Checkout Session ${invoice.sessionId}`);
-                                const checkoutApiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace('/api', '/v1');
+                                const checkoutApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
                                 await fetch(`${checkoutApiUrl}/checkout/sessions/${invoice.sessionId}`, {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
