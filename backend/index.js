@@ -15,12 +15,16 @@ const app = express();
 const server = http.createServer(app);
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+app.use(cors({
+    origin: ['https://nullpay.app', 'http://localhost:5173'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true
+}));
 app.use(express.json());
 
 const io = new Server(server, {
     cors: {
-        origin: "*",
+        origin: ["https://nullpay.app", "http://localhost:5173"],
         methods: ["GET", "POST", "PATCH"]
     }
 });
@@ -36,8 +40,8 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-    console.error('Error: SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env');
-    process.exit(1);
+    console.error('CRITICAL: SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env');
+    // process.exit(1); // Do not exit in production to allow function to report errors
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);

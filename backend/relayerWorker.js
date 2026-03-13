@@ -8,8 +8,6 @@ async function loadSDK() {
     AleoKeyProvider = sdk.AleoKeyProvider;
     NetworkRecordProvider = sdk.NetworkRecordProvider;
     initThreadPool = sdk.initThreadPool;
-
-    // Initialize the thread pool for fast ZK proof execution
     await initThreadPool();
 }
 const { createClient } = require('@supabase/supabase-js');
