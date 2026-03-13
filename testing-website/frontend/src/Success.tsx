@@ -9,7 +9,7 @@ function Success() {
     const sessionId = params.get('session_id');
 
     if (sessionId) {
-      fetch(`http://localhost:4000/api/verify-session?session_id=${sessionId}`)
+      fetch(`https://testing-website-backend.vercel.app/api/verify-session?session_id=${sessionId}`)
         .then(res => res.json())
         .then(data => {
           if (data.isPremium) {

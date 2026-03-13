@@ -8,7 +8,7 @@ function App() {
   const handleCheckout = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:4000/api/create-checkout', {
+      const res = await fetch('https://testing-website-backend.vercel.app/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
