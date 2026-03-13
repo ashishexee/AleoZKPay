@@ -22,12 +22,13 @@ app.post('/api/create-checkout', async (req, res) => {
     try {
         const { item, price } = req.body;
         console.log(`[Merchant] Creating checkout for ${item} at ${price}`);
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
         const session = await nullpay.checkout.sessions.create({
             amount: price,
-            invoice_hash: '947784221320317855223851146427035324574742326751465596223330701216638110914field', // Example Multi-Pay Hash
+            invoice_hash: '947784221320317855223851146427035324574742326751465596223330701216638110914field',
             salt: '175790449236021826210524364451519030111field',
-            success_url: `http://localhost:5174/success`,
-            cancel_url: `http://localhost:5174/cart`
+            success_url: `${frontendUrl}/success`,
+            cancel_url: `${frontendUrl}/cart`
         });
         res.json({ checkoutUrl: session.checkout_url });
     } catch (error) {
@@ -78,7 +79,10 @@ app.post('/api/webhook', (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Merchant Backend running on http://localhost:${PORT}`);
-    console.log(`-> Waiting for checkout requests...`);
-});
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`Merchant Backend running on http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;

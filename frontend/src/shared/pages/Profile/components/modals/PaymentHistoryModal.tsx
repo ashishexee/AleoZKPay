@@ -35,7 +35,9 @@ export const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ paymen
                         <div className="space-y-3">
                             {paymentIds.map((id, idx) => (
                                 <div key={idx} className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/5 hover:border-white/10">
-                                    <span className="font-mono text-sm text-gray-300">{id.slice(0, 10)}...{id.slice(-8)}</span>
+                                    <span className="font-mono text-xs text-gray-300 truncate flex-1 mr-4" title={id}>
+                                        {id.length > 24 ? `${id.slice(0, 12)}...${id.slice(-10)}` : id}
+                                    </span>
                                     <Button size="sm" variant="ghost" className="text-xs" onClick={() => onViewTx(id)}>
                                         View Tx
                                     </Button>

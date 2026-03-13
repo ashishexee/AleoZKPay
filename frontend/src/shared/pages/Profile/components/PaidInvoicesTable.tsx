@@ -70,7 +70,9 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                             <tr key={invoiceHash} className="hover:bg-white/5 transition-colors group">
                                 <td className="py-5 px-6">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-mono text-sm text-gray-300">{invoiceHash.slice(0, 10)}...{invoiceHash.slice(-8)}</span>
+                                        <span className="font-mono text-sm text-gray-300 truncate max-w-[120px]" title={invoiceHash}>
+                                            {invoiceHash.slice(0, 10)}...{invoiceHash.slice(-8)}
+                                        </span>
                                         <CopyButton text={invoiceHash} title="Copy Invoice Hash" className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-white" />
                                     </div>
                                     <span className="block text-[10px] text-gray-500 mt-0.5">{receipts.length} payments</span>
@@ -86,7 +88,9 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                                 <td className="py-5 px-6 text-right font-mono text-neon-accent text-sm">
                                     {receipts.length === 1 ? (
                                         <div className="flex justify-end items-center gap-3 group/rh">
-                                            <span className="text-gray-400 group-hover:text-white transition-colors">{receipts[0].receiptHash.slice(0, 8)}...{receipts[0].receiptHash.slice(-6)}</span>
+                                            <span className="text-gray-400 group-hover:text-white transition-colors truncate max-w-[100px]" title={receipts[0].receiptHash}>
+                                                {receipts[0].receiptHash.slice(0, 8)}...{receipts[0].receiptHash.slice(-6)}
+                                            </span>
                                             <CopyButton text={receipts[0].receiptHash} title="Copy Receipt Hash" className="flex items-center gap-1.5 text-xs bg-neon-accent/10 hover:bg-neon-accent/20 text-neon-accent px-3 py-1.5 rounded border border-neon-accent/30 transition-all hover:shadow-[0_0_10px_rgba(34,197,94,0.2)]" />
                                         </div>
                                     ) : (

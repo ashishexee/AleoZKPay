@@ -32,7 +32,9 @@ export const ReceiptHashesModal: React.FC<ReceiptHashesModalProps> = ({ receiptH
                         <div className="space-y-3">
                             {receiptHashes.map((hash, idx) => (
                                 <div key={idx} className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/5 hover:border-white/10">
-                                    <span className="font-mono text-sm text-gray-300">{hash.slice(0, 10)}...{hash.slice(-8)}</span>
+                                    <span className="font-mono text-xs text-gray-300 truncate flex-1 mr-4" title={hash}>
+                                        {hash.length > 24 ? `${hash.slice(0, 12)}...${hash.slice(-10)}` : hash}
+                                    </span>
                                     <CopyButton text={hash} title="Copy Receipt Hash" className="flex items-center gap-1.5 text-xs bg-neon-accent/10 hover:bg-neon-accent/20 text-neon-accent px-3 py-1.5 rounded border border-neon-accent/30 transition-all" />
                                 </div>
                             ))}
