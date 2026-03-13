@@ -150,7 +150,15 @@ app.get('/api/invoice/:hash', async (req, res) => {
     // Decrypt
     data.merchant_address = decrypt(data.merchant_address);
     if (data.designated_address) {
-        try { data.designated_address = decrypt(data.designated_address); } catch (e) { /* keep as-is */ }
+        try { 
+            data.designated_address = decrypt(data.designated_address); 
+            
+            // Critical Fix for Burner Wallet Shared Links
+            // The payer needs to see and pay the Burner (Designated) Address, NOT the Main Address!
+            if (data.is_burner) {
+                data.merchant_address = data.designated_address;
+            }
+        } catch(e) { /* keep as-is */ }
     }
 
     res.json(data);
@@ -599,34 +607,63 @@ app.patch('/api/invoices/:hash', async (req, res) => {
 });
 
 app.post('/api/users/profile', async (req, res) => {
-    const { main_address, burner_address, encrypted_burner_key } = req.body;
+    const { main_address, burner_address, encrypted_burner_key, profile_main_invoice_hash, profile_burner_invoice_hash } = req.body;
 
     if (!main_address) {
         return res.status(400).json({ error: 'Missing main_address' });
     }
 
     try {
-        const encryptedMain = encrypt(main_address);
+        // Find existing user first to get their exact encrypted main_address
+        const { data: allUsers, error: fetchError } = await supabase.from('users').select('*');
+        if (fetchError) throw fetchError;
+
+        let existingUser = allUsers.find(u => {
+            try { return decrypt(u.main_address) === main_address; } catch (e) { return false; }
+        });
+
+        const encryptedMain = existingUser ? existingUser.main_address : encrypt(main_address);
         const encryptedBurner = burner_address ? encrypt(burner_address) : null;
         const encryptedKey = encrypted_burner_key ? encrypt(encrypted_burner_key) : null;
+        
+        const updates = {
+            main_address: encryptedMain,
+            updated_at: new Date().toISOString()
+        };
 
-        const { data, error } = await supabase
-            .from('users')
-            .upsert({
-                main_address: encryptedMain,
-                burner_address: encryptedBurner,
-                encrypted_burner_key: encryptedKey,
-                updated_at: new Date().toISOString()
-            })
-            .select()
-            .single();
+        if (burner_address !== undefined) updates.burner_address = encryptedBurner;
+        if (encrypted_burner_key !== undefined) updates.encrypted_burner_key = encryptedKey;
+        if (profile_main_invoice_hash !== undefined) updates.profile_main_invoice_hash = profile_main_invoice_hash;
+        if (profile_burner_invoice_hash !== undefined) updates.profile_burner_invoice_hash = profile_burner_invoice_hash;
+
+        let data, error;
+        
+        if (existingUser) {
+            const response = await supabase
+                .from('users')
+                .update(updates)
+                .eq('main_address', existingUser.main_address)
+                .select()
+                .single();
+            data = response.data;
+            error = response.error;
+        } else {
+            const response = await supabase
+                .from('users')
+                .insert(updates)
+                .select()
+                .single();
+            data = response.data;
+            error = response.error;
+        }
 
         if (error) throw error;
 
         // Return decrypted values in the response
         data.main_address = main_address;
-        data.burner_address = burner_address || null;
-        data.encrypted_burner_key = encrypted_burner_key || null;
+        if (burner_address) data.burner_address = burner_address;
+        if (encrypted_burner_key) data.encrypted_burner_key = encrypted_burner_key;
+        
         res.json(data);
 
     } catch (err) {

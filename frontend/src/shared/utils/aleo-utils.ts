@@ -392,6 +392,7 @@ export interface MerchantReceipt {
     invoiceHash: string;
     amount: number;
     tokenType: number;
+    timestamp?: number;
 }
 
 export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {

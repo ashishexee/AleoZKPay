@@ -9,7 +9,8 @@ const MobileNavbar = () => {
     const navItems = [
         { path: '/create', label: 'Create' },
         { path: '/pay', label: 'Pay' },
-        { path: '/profile', label: 'Profile' },
+        { path: '/profile', label: 'Dashboard' },
+        { path: '/profile-qr', label: 'QR' },
     ];
 
     return (

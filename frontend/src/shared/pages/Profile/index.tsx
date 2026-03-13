@@ -44,6 +44,27 @@ const Profile: React.FC = () => {
     const itemsPerPage = 10;
     const fetchPayerReceiptsRef = useRef(0);
 
+    const [profileMainHash, setProfileMainHash] = useState<string | null>(null);
+    const [profileBurnerHash, setProfileBurnerHash] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchProfileData = async () => {
+            if (publicKey) {
+                try {
+                    const { getUserProfile } = await import('../../services/api');
+                    const profile = await getUserProfile(publicKey);
+                    if (profile) {
+                        setProfileMainHash(profile.profile_main_invoice_hash || null);
+                        setProfileBurnerHash(profile.profile_burner_invoice_hash || null);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch profile hashes for exclusion", e);
+                }
+            }
+        };
+        fetchProfileData();
+    }, [publicKey]);
+
     useEffect(() => {
         if (publicKey) {
             console.log("Profile mounted/updated. Fetching all data...");
@@ -215,7 +236,6 @@ const Profile: React.FC = () => {
         }
     };
 
-    // MERGE LOGIC: Combine DB Transactions + On-Chain Records
     const combinedInvoices = useMemo(() => {
         const merged = new Map<string, any>();
         console.log("🔄 Merging Invoices! Created:", createdInvoices.length, "Burner Created:", burnerCreatedInvoices.length);
@@ -229,6 +249,8 @@ const Profile: React.FC = () => {
         // 2. Layer on On-Chain Records (Authoritative Data)
         // MAIN WALLET INVOICES
         createdInvoices.forEach(record => {
+            if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
+            
             const dbTx = dbMap.get(record.invoiceHash);
 
             merged.set(record.invoiceHash, {
@@ -253,6 +275,8 @@ const Profile: React.FC = () => {
 
         // BURNER WALLET INVOICES
         burnerCreatedInvoices.forEach(record => {
+            if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
+            
             const dbTx = dbMap.get(record.invoiceHash);
 
             merged.set(record.invoiceHash, {
@@ -274,42 +298,36 @@ const Profile: React.FC = () => {
                 isValidOnChain: true
             });
         });
-        // Note: DB-only invoices (waiting for sync) are now hidden as they have no confirmed amount.
+        // 3. Aggregate donation totals from MerchantReceipts
+        const allReceipts = [...merchantReceipts, ...burnerMerchantReceipts];
+        const donationTotals = new Map<string, { credits: number, usdcx: number, usad: number }>();
+        allReceipts.forEach(receipt => {
+            const hash = receipt.invoiceHash.replace('field', '');
+            if (!donationTotals.has(hash)) {
+                donationTotals.set(hash, { credits: 0, usdcx: 0, usad: 0 });
+            }
+            const totals = donationTotals.get(hash)!;
+            const amt = receipt.amount / 1_000_000;
+            if (receipt.tokenType === 0) totals.credits += amt;
+            else if (receipt.tokenType === 1) totals.usdcx += amt;
+            else if (receipt.tokenType === 2) totals.usad += amt;
+        });
 
-        const finalArr = Array.from(merged.values()).map(inv => {
-            // For Donation Invoices, calculate total received from merchant receipts
+        // Attach donation totals to donation invoices (invoiceType === 2)
+        merged.forEach((inv, hash) => {
             if (inv.invoiceType === 2) {
-                // Deduplicate receipts based on receiptHash to avoid double counting
-                const uniqueReceipts = new Map();
-                [...merchantReceipts, ...burnerMerchantReceipts].forEach(r => {
-                    if (r.invoiceHash === inv.invoiceHash) {
-                        uniqueReceipts.set(r.receiptHash, r);
-                    }
-                });
-
-                let totalCredits = 0;
-                let totalUSDCx = 0;
-                let totalUSAD = 0;
-
-                Array.from(uniqueReceipts.values()).forEach((curr: any) => {
-                    const amt = Number(curr.amount) / 1_000_000 || 0;
-                    if (curr.tokenType === 1) totalUSDCx += amt;
-                    else if (curr.tokenType === 2) totalUSAD += amt;
-                    else totalCredits += amt;
-                });
-
-                inv.donations = { credits: totalCredits, usdcx: totalUSDCx, usad: totalUSAD };
-                
-                // Keep backward compatibility for standard single-token display if it's not tokenType 3
-                if (inv.tokenType !== 3) {
-                    if (inv.tokenType === 1) inv.amount = totalUSDCx;
-                    else if (inv.tokenType === 2) inv.amount = totalUSAD;
-                    else inv.amount = totalCredits;
+                const normalizedHash = hash.replace('field', '');
+                const totals = donationTotals.get(normalizedHash);
+                if (totals) {
+                    inv.donations = totals;
+                    // Set the display amount to the total across all token types
+                    inv.amount = totals.credits + totals.usdcx + totals.usad;
                 }
             }
-            return inv;
-        }); // Show newest first (roughly)
-        console.log("🔄 Final Combined Invoices Array:", finalArr.length, finalArr);
+        });
+
+        const finalArr = Array.from(merged.values());
+        console.log("🔄 Final Combined Invoices Array (excluding Tips):", finalArr.length, finalArr);
         return finalArr;
     }, [transactions, createdInvoices, merchantReceipts, burnerCreatedInvoices, burnerMerchantReceipts]);
 
@@ -394,8 +412,11 @@ const Profile: React.FC = () => {
 
 
 
-    const uniqueMainReceipts = Array.from(new Map(merchantReceipts.map(r => [r.receiptHash, r])).values());
-    const uniqueBurnerReceipts = Array.from(new Map(burnerMerchantReceipts.map(r => [r.receiptHash, r])).values());
+    const uniqueMainReceipts = Array.from(new Map(merchantReceipts.map(r => [r.receiptHash, r])).values())
+        .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash);
+        
+    const uniqueBurnerReceipts = Array.from(new Map(burnerMerchantReceipts.map(r => [r.receiptHash, r])).values())
+        .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash);
 
     const merchantStats = {
         mainCredits: (uniqueMainReceipts
@@ -650,6 +671,7 @@ const Profile: React.FC = () => {
                                 onSettle={handleSettle}
                                 settlingId={settling}
                                 onViewPayments={(ids) => setSelectedPaymentIds(ids)}
+                                transactions={transactions}
                             />
                         </div>
 

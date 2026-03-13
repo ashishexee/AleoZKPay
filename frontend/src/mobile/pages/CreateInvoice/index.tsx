@@ -19,7 +19,13 @@ const MobileCreateInvoice: React.FC = () => {
         tokenType,
         setTokenType,
         walletType,
-        setWalletType
+        setWalletType,
+        items,
+        showItems,
+        setShowItems,
+        addItem,
+        updateItem,
+        removeItem
     } = useCreateInvoice();
 
     const { burnerAddress } = useBurnerWallet();
@@ -65,6 +71,12 @@ const MobileCreateInvoice: React.FC = () => {
                                 walletType={walletType}
                                 setWalletType={setWalletType}
                                 hasBurnerWallet={hasBurnerWallet}
+                                items={items}
+                                showItems={showItems}
+                                setShowItems={setShowItems}
+                                addItem={addItem}
+                                updateItem={updateItem}
+                                removeItem={removeItem}
                             />
                         ) : (
                             <InvoiceCard

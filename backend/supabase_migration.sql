@@ -50,3 +50,9 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_tx_ids TEXT[];
 
 -- 4. Index for the new array column (GIN is best for array containment queries)
 CREATE INDEX IF NOT EXISTS idx_payment_tx_ids ON invoices USING GIN (payment_tx_ids);
+
+-- ==========================================
+-- MIGRATION: PROFILE QR (USERS TABLE)
+-- ==========================================
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_main_invoice_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_burner_invoice_hash TEXT;

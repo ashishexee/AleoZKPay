@@ -24,9 +24,11 @@ export const useSharedPayment = () => {
 
     useEffect(() => {
         const init = async () => {
-            const merchant = searchParams.get('merchant');
-            const amount = searchParams.get('amount');
-            const salt = searchParams.get('salt');
+            let merchant = searchParams.get('merchant');
+            let amount = searchParams.get('amount');
+            let salt = searchParams.get('salt');
+            let hashParam = searchParams.get('hash');
+            
             const memo = searchParams.get('memo') || '';
             const tokenParam = searchParams.get('token');
             const tokenType = tokenParam === 'usdcx' ? 1 : tokenParam === 'usad' ? 2 : 0;
@@ -34,30 +36,53 @@ export const useSharedPayment = () => {
             let initialType = typeParam === 'donation' ? 2 : (typeParam === 'multipay' ? 1 : 0);
             const sessionId = searchParams.get('session_id');
 
-            if (!merchant || !salt) {
-                setError('Invalid Invoice Link: Missing parameters');
-                return;
-            }
-            if (!amount && initialType !== 2) {
-                setError('Invalid Invoice Link: Missing amount');
-                return;
-            }
-
-            setError(null);
-
             try {
                 setLoading(true);
-                setStatus('Verifying Invoice on-chain...');
+                setStatus('Verifying Invoice...');
 
                 setProgramId(PROGRAM_ID);
                 setPaymentSecret(generateSalt());
+                
+                let fetchedHash: string | null = hashParam || null;
+                
+                // If they provided a raw hash (like from Profile QR), try fetching metadata from DB first
+                if (fetchedHash && (!merchant || !salt)) {
+                    try {
+                        const { fetchInvoiceByHash } = await import('../../services/api');
+                        const dbInvoice = await fetchInvoiceByHash(fetchedHash);
+                        if (dbInvoice) {
+                            merchant = dbInvoice.merchant_address || null;
+                            salt = dbInvoice.salt || null;
+                            
+                            // Amount is conceptually 0 for Donations, but DB doesn't store Amount.
+                            // However Profile/Donation QR creates them with 0.
+                            const coercedAmount = dbInvoice.amount ? dbInvoice.amount.toString() : amount;
+                            amount = dbInvoice.invoice_type === 2 ? '0' : (coercedAmount || null);
+                            initialType = dbInvoice.invoice_type !== undefined ? dbInvoice.invoice_type : initialType;
+                        }
+                    } catch (e) { console.warn("Could not fetch missing DB details for Hash-only link", e); }
+                }
 
-                const fetchedHash = await getInvoiceHashFromMapping(salt);
-
-                if (!fetchedHash) {
-                    setError('Invoice not found or invalid salt.');
+                if (!merchant || !salt) {
+                    setError('Invalid Invoice Link: Missing merchant or salt parameters');
                     setLoading(false);
                     return;
+                }
+                if (!amount && initialType !== 2) {
+                    setError('Invalid Invoice Link: Missing amount');
+                    setLoading(false);
+                    return;
+                }
+
+                setError(null);
+                
+                if (!fetchedHash) {
+                    fetchedHash = await getInvoiceHashFromMapping(salt || '');
+                    if (!fetchedHash) {
+                        setError('Invoice not found or invalid salt.');
+                        setLoading(false);
+                        return;
+                    }
                 }
 
                 const invoiceData = await getInvoiceData(fetchedHash);
@@ -88,6 +113,7 @@ export const useSharedPayment = () => {
                         memo,
                         tokenType: tokenTypeOnChain,
                         invoiceType: invoiceTypeOnChain,
+                        items: dbInvoice?.invoice_items || undefined
                         sessionId: sessionId || undefined
                     });
                     setStep('ALREADY_PAID');
@@ -103,6 +129,7 @@ export const useSharedPayment = () => {
                     memo,
                     tokenType: tokenTypeOnChain,
                     invoiceType: invoiceTypeOnChain,
+                    items: dbInvoice?.invoice_items || undefined
                     sessionId: sessionId || undefined
                 });
 

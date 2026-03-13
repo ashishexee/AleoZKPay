@@ -15,7 +15,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 const MobilePaymentPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const hasParams = searchParams.get('merchant') && searchParams.get('salt');
+    const hasParams = (searchParams.get('merchant') && searchParams.get('salt')) || searchParams.get('hash');
     const [manualLink, setManualLink] = useState('');
     const [copiedSecret, setCopiedSecret] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
@@ -71,7 +71,7 @@ const MobilePaymentPage = () => {
                 }
                 urlObj = new URL(rawValue, window.location.origin);
             }
-            if (urlObj.searchParams.get('merchant') && urlObj.searchParams.get('salt')) {
+            if ((urlObj.searchParams.get('merchant') && urlObj.searchParams.get('salt')) || urlObj.searchParams.get('hash')) {
                 navigate(`/pay${urlObj.search}`);
             } else {
                 console.warn("Invalid NullPay Link");
@@ -231,6 +231,25 @@ const MobilePaymentPage = () => {
                                 </span>
                             )}
                         </div>
+
+                        {/* LINE ITEMS BREAKDOWN */}
+                        {invoice?.items && invoice.items.length > 0 && (
+                            <div className="pt-4 border-t border-white/5">
+                                <span className="text-xs font-medium text-gray-400 uppercase tracking-widest block mb-2">Items</span>
+                                <div className="space-y-2">
+                                    {invoice.items.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-center bg-black/20 rounded-lg px-3 py-2 border border-white/5">
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-sm text-white block truncate">{item.name || 'Unnamed'}</span>
+                                                <span className="text-[10px] text-gray-500">{item.quantity} × {item.unitPrice}</span>
+                                            </div>
+                                            <span className="text-sm text-neon-primary font-mono ml-3">{item.total.toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex justify-between items-center pt-4 border-t border-white/5">
                             <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">Amount</span>
                             {loading && !invoice ? (

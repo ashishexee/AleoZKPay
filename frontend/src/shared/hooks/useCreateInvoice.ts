@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from '../utils/aleo-utils';
-import { InvoiceData } from '../types/invoice';
+import { InvoiceData, InvoiceItem } from '../types/invoice';
 import { useBurnerWallet } from './BurnerWalletProvider';
 
 export type InvoiceType = 'standard' | 'multipay' | 'donation';
@@ -19,6 +19,42 @@ export const useCreateInvoice = () => {
     const [invoiceType, setInvoiceType] = useState<InvoiceType>('standard');
     const [tokenType, setTokenType] = useState<number>(0);
     const [walletType, setWalletType] = useState<number>(0);
+    const [items, setItems] = useState<InvoiceItem[]>([]);
+    const [showItems, setShowItems] = useState(false);
+
+    const addItem = useCallback(() => {
+        setItems(prev => [...prev, { name: '', quantity: 1, unitPrice: 0, total: 0 }]);
+    }, []);
+
+    const updateItem = useCallback((index: number, field: keyof InvoiceItem, value: string | number) => {
+        setItems(prev => {
+            const updated = [...prev];
+            const item = { ...updated[index] };
+            if (field === 'name') {
+                item.name = value as string;
+            } else if (field === 'quantity') {
+                item.quantity = Number(value) || 0;
+                item.total = item.quantity * item.unitPrice;
+            } else if (field === 'unitPrice') {
+                item.unitPrice = Number(value) || 0;
+                item.total = item.quantity * item.unitPrice;
+            }
+            updated[index] = item;
+            // Auto-update amount
+            const total = updated.reduce((sum, i) => sum + i.total, 0);
+            setAmount(total > 0 ? total : '');
+            return updated;
+        });
+    }, []);
+
+    const removeItem = useCallback((index: number) => {
+        setItems(prev => {
+            const updated = prev.filter((_, i) => i !== index);
+            const total = updated.reduce((sum, i) => sum + i.total, 0);
+            setAmount(updated.length > 0 && total > 0 ? total : '');
+            return updated;
+        });
+    }, []);
 
     const handleCreate = async () => {
         if (!publicKey || !executeTransaction || !transactionStatus) {
@@ -193,6 +229,7 @@ export const useCreateInvoice = () => {
                                         invoice_type: dbInvoiceType,
                                         token_type: tokenType,
                                         is_burner: walletType === 1,
+                                        invoice_items: showItems && items.length > 0 ? items : undefined,
                                     });
                                     console.log("Invoice saved to DB");
                                 } catch (dbErr) {
@@ -316,6 +353,8 @@ export const useCreateInvoice = () => {
         setInvoiceType('standard');
         setTokenType(0);
         setWalletType(0);
+        setItems([]);
+        setShowItems(false);
     };
 
     return {
@@ -334,6 +373,12 @@ export const useCreateInvoice = () => {
         tokenType,
         setTokenType,
         walletType,
-        setWalletType
+        setWalletType,
+        items,
+        showItems,
+        setShowItems,
+        addItem,
+        updateItem,
+        removeItem
     };
 };
