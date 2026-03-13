@@ -8,4 +8,5 @@ export interface InvoiceState {
     memo: string;
     tokenType: number;
     invoiceType: number;
+    sessionId?: string;
 }

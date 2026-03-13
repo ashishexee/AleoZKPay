@@ -11,6 +11,8 @@ import Privacy from './pages/Privacy';
 import Verification from './pages/Verification';
 import Vision from './pages/Vision';
 import { ChangelogOverlay } from './components/ChangelogOverlay';
+import CheckoutPage from '../shared/pages/Checkout';
+import DeveloperPortal from '../shared/pages/Developer';
 
 const DesktopAnimatedRoutes = () => {
     const location = useLocation();
@@ -26,6 +28,8 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/docs" element={<Docs />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/verify" element={<Verification />} />
+                <Route path="/developer" element={<DeveloperPortal />} />
+                <Route path="/checkout/:id" element={<CheckoutPage />} />
             </Routes>
         </AnimatePresence>
     );
