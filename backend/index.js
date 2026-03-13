@@ -7,8 +7,6 @@ const { encrypt, decrypt } = require('./encryption');
 const { executeRelayerTransition, loadSDK } = require('./relayerWorker');
 loadSDK().then(() => console.log('Provable SDK loaded successfully')).catch(console.error);
 const crypto = require('crypto');
-const { v4: uuidv4 } = require('uuid');
-const { spawn } = require('child_process');
 const app = express();
 const port = process.env.PORT || 3000;
 
