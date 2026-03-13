@@ -12,7 +12,7 @@ const SOCKET_BASE_URL = new URL(API_URL).origin;
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// ─── Notification Sound (Web Audio API — no external file needed) ───
+
 function playPaymentSound() {
     try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -52,17 +52,11 @@ function formatAmount(amountRaw: number | string | null | undefined, isMicro: bo
     return ` — ${actualNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} `;
 }
 
-export const usePaymentMonitor = () => {
+export const usePaymentMonitor = (listenInvoiceHash?: string) => {
     const { address: publicKey, requestRecords, decrypt } = useWallet();
 
-    // Track notified invoices to prevent overlap between Supabase and Socket.IO
     const notifiedInvoices = useRef<Set<string>>(new Set());
-    // Track known receipt count per invoice to detect new payments
     const receiptCountPerInvoice = useRef<Map<string, number>>(new Map());
-
-    // Fetch the latest payment amount from on-chain MerchantReceipt records.
-    // Uses count-based tracking: compares current receipt count vs stored count
-    // to identify the newest receipt without race conditions.
     const fetchOnChainAmount = async (invoiceHash: string): Promise<{ amount: string, token: string } | null> => {
         try {
             if (!requestRecords || !decrypt) return null;
@@ -165,6 +159,7 @@ export const usePaymentMonitor = () => {
                                 if (invoiceData.merchant_address === publicKey || (listenInvoiceHash && newRecord.invoice_hash === listenInvoiceHash)) {
                                     notifiedInvoices.current.add(dedupKey);
                                     // Add base hash as well so WebSocket knows it's been handled recently
+                                    notifiedInvoices.current.add(newRecord.invoice_hash);
                                     // For Profile QRs (Type 2), fetch actual amount from records
                                     let amountStr = '';
                                     let tokenLabel = newRecord.token_type === 1 ? 'USDCx' : newRecord.token_type === 2 ? 'USAD' : 'Credits';
@@ -237,7 +232,7 @@ export const usePaymentMonitor = () => {
             }
         });
 
-        socket.on('payment_received', (data: any) => {
+        socket.on('payment_received', async (data: any) => {
             if (data.merchantAddress !== publicKey && (!listenInvoiceHash || data.invoiceHash !== listenInvoiceHash)) return;
 
             // If Supabase is active, it handles ALL notifications. We completely ignore Socket.IO events
