@@ -13,6 +13,7 @@ import Verification from './pages/Verification';
 import Vision from './pages/Vision';
 import { ChangelogOverlay } from './components/ChangelogOverlay';
 import CheckoutPage from '../shared/pages/Checkout';
+import InvoiceDetails from '../shared/pages/InvoiceDetails';
 import DeveloperPortal from '../shared/pages/Developer';
 
 const DesktopAnimatedRoutes = () => {
@@ -32,6 +33,7 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/verify" element={<Verification />} />
                 <Route path="/developer" element={<DeveloperPortal />} />
                 <Route path="/checkout/:id" element={<CheckoutPage />} />
+                <Route path="/invoice/:hash" element={<InvoiceDetails />} />
             </Routes>
         </AnimatePresence>
     );

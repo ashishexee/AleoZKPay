@@ -30,6 +30,86 @@ app.get('/', (req, res) => {
     res.send('AleoZKPay Backend is running');
 });
 
+// Proxy for Record Scanner to bypass CORS
+app.use('/api/scanner/:network', async (req, res) => {
+    try {
+        const pathSuffix = req.path === '/' ? '' : req.path;
+        const url = `https://api.provable.com/scanner/${req.params.network}${pathSuffix}`;
+
+        const fetchOptions = {
+            method: req.method,
+            headers: {
+                'authorization': req.headers['authorization'],
+                'x-provable-api-key': req.headers['x-provable-api-key'],
+                'accept': 'application/json'
+            }
+        };
+
+        Object.keys(fetchOptions.headers).forEach(key => 
+            fetchOptions.headers[key] === undefined && delete fetchOptions.headers[key]
+        );
+
+        if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+            if (Object.keys(req.body).length > 0) {
+                fetchOptions.body = JSON.stringify(req.body);
+                fetchOptions.headers['content-type'] = 'application/json';
+            }
+        }
+
+        const response = await fetch(url, fetchOptions);
+        
+        res.status(response.status);
+        
+        const contentType = response.headers.get('content-type');
+        if (contentType) res.setHeader('content-type', contentType);
+
+        const data = await response.text();
+        res.send(data);
+    } catch (error) {
+        console.error('Scanner Proxy Error:', error);
+        res.status(500).json({ error: 'Record Scanner proxy error' });
+    }
+});
+
+app.post('/api/proxy/provable/jwts/:id', async (req, res) => {
+    try {
+        console.log(`Proxying JWT request for Consumer ID: ${req.params.id}`);
+        const providedKey = req.headers['x-provable-api-key'] || "";
+        console.log(`Received X-Provable-API-Key: ${providedKey.substring(0, 5)}...`);
+
+        const fetchOptions = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Provable-API-Key': providedKey
+            }
+        };
+
+        const response = await fetch(`https://api.provable.com/jwts/${req.params.id}`, fetchOptions);
+        
+        console.log(`Provable API returned Status: ${response.status}`);
+        res.status(response.status);
+        
+        // Ensure the authorization header from Provable is forwarded
+        const authHeader = response.headers.get('authorization');
+        if (authHeader) {
+            console.log(`Found Authorization header: ${authHeader.substring(0, 15)}...`);
+            // Expose the header back to the frontend since CORS by default hides non-standard headers from JS fetch()
+            res.setHeader('Access-Control-Expose-Headers', 'Authorization, authorization');
+            res.setHeader('authorization', authHeader);
+        } else {
+            console.log("No authorization header found in response.");
+        }
+        
+        const data = await response.text();
+        console.log("Response data:", data);
+        res.send(data);
+    } catch (error) {
+        console.error('JWT Proxy Error:', error);
+        res.status(500).json({ error: 'JWT fetch proxy error' });
+    }
+});
+
 app.get('/api/invoices', async (req, res) => {
     const { status, limit = 50, merchant } = req.query;
     let query = supabase.from('invoices').select('*').order('created_at', { ascending: false }).limit(limit);
@@ -133,15 +213,15 @@ app.get('/api/invoice/:hash', async (req, res) => {
     // Decrypt
     data.merchant_address = decrypt(data.merchant_address);
     if (data.designated_address) {
-        try { 
-            data.designated_address = decrypt(data.designated_address); 
-            
+        try {
+            data.designated_address = decrypt(data.designated_address);
+
             // Critical Fix for Burner Wallet Shared Links
             // The payer needs to see and pay the Burner (Designated) Address, NOT the Main Address!
             if (data.is_burner) {
                 data.merchant_address = data.designated_address;
             }
-        } catch(e) { /* keep as-is */ }
+        } catch (e) { /* keep as-is */ }
     }
 
     res.json(data);
@@ -159,7 +239,7 @@ app.post('/api/merchants/register', async (req, res) => {
         const encryptedAddress = encrypt(aleo_address);
         // Generate a random secure API secretly starting with the prefix
         const secretKey = 'sk_test_' + crypto.randomBytes(24).toString('hex');
-        
+
         // Salted hash for O(1) lookup without decrypting every row
         const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
         const encryptedSecretKey = encrypt(secretKey);
@@ -233,7 +313,7 @@ app.post('/api/checkout/sessions', async (req, res) => {
     if (invoice_hash && providedSalt) {
         initialStatus = 'OPEN'; // Merchant already provided the ZK parameters
         console.log(`[Checkout] Using pre-generated Multi-Pay hash: ${invoice_hash}`);
-        
+
         // If currency wasn't explicitly provided, fetch it from the invoice
         if (!currency) {
             const { data: invoice } = await supabase
@@ -241,7 +321,7 @@ app.post('/api/checkout/sessions', async (req, res) => {
                 .select('token_type')
                 .eq('invoice_hash', invoice_hash)
                 .single();
-            
+
             if (invoice) {
                 finalCurrency = invoice.token_type === 1 ? 'USDCX' : invoice.token_type === 2 ? 'USAD' : 'CREDITS';
                 console.log(`[Checkout] Derived currency from invoice: ${finalCurrency}`);
@@ -511,7 +591,7 @@ app.patch('/api/invoices/:hash', async (req, res) => {
             data.merchant_address = decrypt(data.merchant_address);
             // payer_address removed
         }
-        
+
         const hasNewPayment = payment_tx_ids && (!current.payment_tx_ids || !current.payment_tx_ids.includes(payment_tx_ids));
         console.log(`   - Has New Payment?`, hasNewPayment);
 
@@ -555,7 +635,7 @@ app.post('/api/users/profile', async (req, res) => {
         const encryptedMain = existingUser ? existingUser.main_address : encrypt(main_address);
         const encryptedBurner = burner_address ? encrypt(burner_address) : null;
         const encryptedKey = encrypted_burner_key ? encrypt(encrypted_burner_key) : null;
-        
+
         const updates = {
             main_address: encryptedMain,
             updated_at: new Date().toISOString()
@@ -567,7 +647,7 @@ app.post('/api/users/profile', async (req, res) => {
         if (profile_burner_invoice_hash !== undefined) updates.profile_burner_invoice_hash = profile_burner_invoice_hash;
 
         let data, error;
-        
+
         if (existingUser) {
             const response = await supabase
                 .from('users')
@@ -593,7 +673,7 @@ app.post('/api/users/profile', async (req, res) => {
         data.main_address = main_address;
         if (burner_address) data.burner_address = burner_address;
         if (encrypted_burner_key) data.encrypted_burner_key = encrypted_burner_key;
-        
+
         res.json(data);
 
     } catch (err) {
@@ -644,6 +724,179 @@ app.get('/api/users/profile/:address', async (req, res) => {
 
 
 console.log('Backend initialized. (Relayer daemon removed, relayer is now on-demand)');
+
+
+const PROVABLE_PROVER_BASE = 'https://api.provable.com/prove/testnet';
+
+let _dpsProxyCookie = null;
+app.post('/api/dps/jwt', async (req, res) => {
+    const apiKey = process.env.PROVABLE_API_KEY;
+    const consumerId = process.env.PROVABLE_CONSUMER_ID;
+    if (!apiKey || !consumerId) return res.status(500).json({ error: 'Provable credentials not configured.' });
+    try {
+        const r = await fetch(`https://api.provable.com/jwts/${consumerId}`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-Provable-API-Key': apiKey },
+        });
+        const text = await r.text();
+        return res.status(r.status).set('Content-Type', 'application/json').send(text);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+app.get('/api/dps/pubkey', async (req, res) => {
+    const apiKey = process.env.PROVABLE_API_KEY;
+    const consumerId = process.env.PROVABLE_CONSUMER_ID;
+    if (!apiKey || !consumerId) return res.status(500).json({ error: 'Provable credentials not configured.' });
+    try {
+        // Step 1: Issue JWT session — auth token comes back as Set-Cookie, not in body
+        const jwtRes = await fetch(`https://api.provable.com/jwts/${consumerId}`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-Provable-API-Key': apiKey },
+        });
+        console.log('[DPS] JWT status:', jwtRes.status);
+        if (!jwtRes.ok) {
+            const t = await jwtRes.text();
+            return res.status(jwtRes.status).json({ error: `JWT fetch failed: ${t}` });
+        }
+        const jwtAuth = jwtRes.headers.get('authorization');
+        console.log('[DPS] JWT Authorization header:', jwtAuth?.slice(0, 40));
+        if (!jwtAuth) {
+            return res.status(500).json({ error: 'Provable did not return an Authorization header from /jwts.' });
+        }
+        const pkRes = await fetch(`${PROVABLE_PROVER_BASE}/pubkey`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json', 'Authorization': jwtAuth },
+        });
+        const pkText = await pkRes.text();
+        console.log('[DPS] Pubkey status:', pkRes.status, pkText);
+        if (!pkRes.ok) return res.status(pkRes.status).json({ error: `Pubkey fetch failed: ${pkText}` });
+
+        const pkData = JSON.parse(pkText);
+        // Send pubkey + JWT auth header back to browser so prove endpoint can use it
+        return res.json({ ...pkData, _auth: jwtAuth });
+    } catch (err) {
+        console.error('DPS pubkey proxy error:', err);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// 3) POST /api/dps/prove — forwards encrypted ciphertext to Provable TEE
+app.post('/api/dps/prove', async (req, res) => {
+    const { key_id, ciphertext, _auth } = req.body;
+    if (!key_id || !ciphertext) return res.status(400).json({ error: 'key_id and ciphertext are required.' });
+    try {
+        const r = await fetch(`${PROVABLE_PROVER_BASE}/prove/encrypted`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': _auth,
+            },
+            body: JSON.stringify({ key_id, ciphertext }),
+        });
+        const text = await r.text();
+        console.log('[DPS] Prove response:', r.status, text.slice(0, 300));
+        let body;
+        try { body = JSON.parse(text); } catch { body = { message: text }; }
+        return res.status(r.status).json(body);
+    } catch (err) {
+        console.error('DPS prove proxy error:', err);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// 4) POST /api/dps/sponsor-sweep — Backend pays gas fee for burner wallet execution
+app.post('/api/dps/sponsor-sweep', async (req, res) => {
+    const { execution_authorization_string } = req.body;
+    if (!execution_authorization_string) {
+        return res.status(400).json({ error: 'Missing execution_authorization_string' });
+    }
+
+    const relayerPrivateKeyStr = process.env.RELAYER_PRIVATE_KEY;
+    if (!relayerPrivateKeyStr) {
+        return res.status(500).json({ error: 'Backend RELAYER_PRIVATE_KEY is not configured.' });
+    }
+
+    try {
+        console.log('[DPS] Starting backend fee sponsorship...');
+        const sdk = await import('@provablehq/sdk');
+
+        const relayerAccount = new sdk.Account({ privateKey: relayerPrivateKeyStr });
+        const host = "https://api.explorer.provable.com/v1";
+        const networkClient = new sdk.AleoNetworkClient(host);
+        const keyProvider = new sdk.AleoKeyProvider();
+        keyProvider.useCache(true);
+        const recordProvider = new sdk.NetworkRecordProvider(relayerAccount, networkClient);
+
+        const programManager = new sdk.ProgramManager(host, keyProvider, recordProvider);
+        programManager.setAccount(relayerAccount);
+        console.log('[DPS] 1. Parsing execution authorization from frontend...');
+        const executionAuth = sdk.Authorization.fromString(execution_authorization_string);
+
+        // 2. Estimate the required fee from the execution authorization
+        const baseFeeMicrocredits = await programManager.estimateFeeForAuthorization({
+            programName: req.body.programName,
+            authorization: executionAuth
+        });
+
+        // Add a 10% safety buffer for testnet congestion
+        const safeFeeMicrocredits = Number(baseFeeMicrocredits) * 1.1;
+        const feeCredits = safeFeeMicrocredits / 1_000_000; // SDK requires ALEO format, not microcredits
+
+        console.log(`[DPS] 2. Building fee authorization with Relayer wallet (${feeCredits} ALEO)...`);
+
+        // buildFeeAuthorization expects: { privateKey, deploymentOrExecutionId, baseFeeCredits, priorityFeeCredits, feeRecord }
+        const executionId = executionAuth.toExecutionId().toString();
+        const feeAuth = await programManager.buildFeeAuthorization({
+            privateKey: relayerAccount.privateKey(),
+            deploymentOrExecutionId: executionId,
+            baseFeeCredits: feeCredits,
+            priorityFeeCredits: 0
+        });
+        console.log('[DPS] 3. Building ProvingRequest for Remote DPS...');
+        const apiKey = process.env.PROVABLE_API_KEY;
+        const consumerId = process.env.PROVABLE_CONSUMER_ID;
+
+        if (!apiKey || !consumerId) {
+            throw new Error("Missing PROVABLE_API_KEY or PROVABLE_CONSUMER_ID in backend .env");
+        }
+
+        const pReq = sdk.ProvingRequest.new(executionAuth, feeAuth, true);
+
+        console.log('[DPS] 4. Submitting secure payload to Provable Network DPS...');
+        const dpsRes = await networkClient.submitProvingRequestSafe({
+            provingRequest: pReq,
+            dpsPrivacy: true,
+            apiKey: apiKey,
+            consumerId: consumerId,
+            url: "https://api.provable.com/prove/testnet"
+        });
+
+        if (dpsRes.ok) {
+            const { transaction, broadcast_result } = dpsRes.data;
+            const txId = transaction?.id || broadcast_result?.id;
+            console.log(`[DPS] Sponsored Transaction actively proving on remote DPS! TXID: ${txId}`);
+            console.log(`[DPS] Broadcast Status:`, broadcast_result);
+            const serializedPayload = JSON.stringify({
+                success: true,
+                transaction: { id: txId || transaction },
+                broadcast_result
+            }, (key, value) => typeof value === 'bigint' ? value.toString() : value);
+
+            res.setHeader('Content-Type', 'application/json');
+            return res.send(serializedPayload);
+        } else {
+            console.error('[DPS] Remote DPS Error:', dpsRes.status, dpsRes.error);
+            const errMsg = dpsRes.error?.message || JSON.stringify(dpsRes.error) || String(dpsRes.status);
+            throw new Error(`DPS Rejected Request: ${errMsg}`);
+        }
+
+    } catch (err) {
+        console.error('[DPS] Sponsor Sweep Error:', err);
+        return res.status(500).json({ error: err.message || 'Failed to sponsor sweep transaction' });
+    }
+});
 
 // START SERVER
 app.listen(port, () => {

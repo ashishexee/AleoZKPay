@@ -122,11 +122,18 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                             return (
                                 <tr
                                     key={i}
-                                    className="hover:bg-white/5 transition-colors group"
+                                    className="hover:bg-white/5 transition-colors group cursor-pointer"
+                                    onClick={() => window.open(`/invoice/${inv.invoiceHash}`, '_blank')}
                                 >
-                                    <td className="py-4 px-6">
+                                    <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
                                         <div className="flex items-center gap-2">
-                                            <span className="font-mono text-xs text-gray-300">{inv.invoiceHash?.slice(0, 10)}...{inv.invoiceHash?.slice(-6)}</span>
+                                            <button
+                                                onClick={() => window.open(`/invoice/${inv.invoiceHash}`, '_blank')}
+                                                className="font-mono text-xs text-blue-400 hover:text-blue-300 transition-colors underline-offset-2 hover:underline text-left"
+                                                title="Open invoice details in new tab"
+                                            >
+                                                {inv.invoiceHash?.slice(0, 10)}...{inv.invoiceHash?.slice(-6)}
+                                            </button>
                                             <CopyButton text={inv.invoiceHash} title="Copy Invoice Hash" className="text-gray-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100" />
                                         </div>
                                     </td>
