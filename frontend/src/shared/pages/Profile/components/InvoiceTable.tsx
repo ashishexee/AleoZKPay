@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../../../components/StatusBadge';
 import { LinkButton } from '../../../components/ui/LinkButton';
 import { CopyButton } from '../../../components/ui/CopyButton';
@@ -44,6 +45,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
     onViewPayments,
     transactions
 }) => {
+    const navigate = useNavigate();
     const [initialGrace, setInitialGrace] = useState(true);
 
     // Always show shimmer for the first 5 seconds after mount, then allow empty state
@@ -123,14 +125,14 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                 <tr
                                     key={i}
                                     className="hover:bg-white/5 transition-colors group cursor-pointer"
-                                    onClick={() => window.open(`/invoice/${inv.invoiceHash}`, '_blank')}
+                                    onClick={() => navigate(`/invoice/${inv.invoiceHash}`)}
                                 >
                                     <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => window.open(`/invoice/${inv.invoiceHash}`, '_blank')}
+                                                onClick={() => navigate(`/invoice/${inv.invoiceHash}`)}
                                                 className="font-mono text-xs text-blue-400 hover:text-blue-300 transition-colors underline-offset-2 hover:underline text-left"
-                                                title="Open invoice details in new tab"
+                                                title="Open invoice details"
                                             >
                                                 {inv.invoiceHash?.slice(0, 10)}...{inv.invoiceHash?.slice(-6)}
                                             </button>
