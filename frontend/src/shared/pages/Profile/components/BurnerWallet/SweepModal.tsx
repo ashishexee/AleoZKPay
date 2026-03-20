@@ -34,8 +34,18 @@ export const SweepModal: React.FC<SweepModalProps> = ({
     const isAmountTooHigh = sweepAmount !== '' && !isNaN(Number(sweepAmount)) && Number(sweepAmount) > currentBalance && currentBalance >= 0;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-            <form onSubmit={onSubmit} className="bg-[#111] border border-blue-500/30 rounded-2xl p-6 w-full max-w-lg shadow-[0_0_30px_rgba(59,130,246,0.15)] my-4">
+        <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => !isSweeping && onClose()}
+        >
+            <form 
+                onSubmit={onSubmit} 
+                onClick={(e) => e.stopPropagation()}
+                className="bg-[#111] border border-blue-500/30 rounded-2xl p-6 w-full max-w-lg shadow-[0_0_30px_rgba(59,130,246,0.15)] my-4 max-h-[90vh] flex flex-col overflow-hidden"
+            >
+
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+
 
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-1">
@@ -219,7 +229,9 @@ export const SweepModal: React.FC<SweepModalProps> = ({
                         </button>
                     )}
                 </div>
+                </div>
             </form>
         </div>
+
     );
 };
