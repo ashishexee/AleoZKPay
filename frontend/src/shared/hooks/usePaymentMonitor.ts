@@ -3,8 +3,7 @@ import toast from 'react-hot-toast';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { createClient } from '@supabase/supabase-js';
 import { PROGRAM_ID, parseMerchantReceipt } from '../utils/aleo-utils';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { hashAddress } from '../utils/crypto';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -152,11 +151,13 @@ export const usePaymentMonitor = () => {
                             notifiedInvoices.current.add(dedupKey);
 
                             try {
-                                const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
-                                if (!response.ok) return;
-                                const invoiceData = await response.json();
+                                const currentHash = await hashAddress(publicKey);
 
-                                if (invoiceData.merchant_address === publicKey) {
+                                if (newRecord.merchant_address_hash === currentHash) {
+                                    // 1. Instantly notify the user that a payment was detected (optimistic UI)
+                                    const initializingMsg = `Payment processing for invoice ${newRecord.invoice_hash.slice(0, 6)}... fetching exact amount...`;
+                                    triggerNotification(initializingMsg, newRecord.invoice_hash, true);
+
                                     let amountStr = '';
                                     let tokenLabel = newRecord.token_type === 1 ? 'USDCx' : newRecord.token_type === 2 ? 'USAD' : 'Credits';
 
@@ -174,12 +175,13 @@ export const usePaymentMonitor = () => {
                                         amountStr = formatAmount(newRecord.amount);
                                     }
 
-                                    const msg = amountStr
-                                        ? `Payment received${amountStr}${tokenLabel} for invoice ${newRecord.invoice_hash.slice(0, 6)}...`
-                                        : `Payment received for invoice ${newRecord.invoice_hash.slice(0, 6)}...`;
+                                    // 2. Update the existing toast with the final amount!
+                                    // Because toast.success replaces the toast with the same ID, we just call it again without playing sound.
+                                    const finalMsg = amountStr
+                                        ? `Payment received${amountStr}${tokenLabel} for invoice ${newRecord.invoice_hash.slice(0, 6)}!`
+                                        : `Payment received for invoice ${newRecord.invoice_hash.slice(0, 6)}!`;
 
-                                    // TRUE = Play the sound for this notification
-                                    triggerNotification(msg, newRecord.invoice_hash, true);
+                                    triggerNotification(finalMsg, newRecord.invoice_hash, false);
                                 }
                             } catch (error) {
                                 console.error('Failed to process payment event:', error);
@@ -192,11 +194,9 @@ export const usePaymentMonitor = () => {
                             notifiedInvoices.current.add(dedupKey);
 
                             try {
-                                const response = await fetch(`${API_URL}/invoice/${newRecord.invoice_hash}`);
-                                if (!response.ok) return;
-                                const invoiceData = await response.json();
+                                const currentHash = await hashAddress(publicKey);
 
-                                if (invoiceData.merchant_address === publicKey) {
+                                if (newRecord.merchant_address_hash === currentHash) {
                                     // FALSE = Do NOT play the sound for the "Settled" status update
                                     triggerNotification(`Invoice ${newRecord.invoice_hash.slice(0, 6)}... settled!`, newRecord.invoice_hash, false);
                                 }

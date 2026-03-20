@@ -24,14 +24,14 @@ export const useProfilePayments = (
 ) => {
     const { requestRecords, decrypt } = useWallet();
     const { decryptedBurnerKey } = useBurnerWallet();
-    
+
     const [livePayments, setLivePayments] = useState<ProfilePayment[]>([]);
     const handledTxIds = useRef<Set<string>>(new Set());
 
     useEffect(() => {
         // Derive initial feed
         const base: ProfilePayment[] = [];
-        
+
         if (mainHash) {
             initialMainReceipts.forEach(r => {
                 if (r.invoiceHash === mainHash) {
@@ -47,7 +47,7 @@ export const useProfilePayments = (
                 }
             });
         }
-        
+
         if (burnerHash) {
             initialBurnerReceipts.forEach(r => {
                 if (r.invoiceHash === burnerHash) {
@@ -57,7 +57,7 @@ export const useProfilePayments = (
                         tokenType: r.tokenType,
                         timestamp: r.timestamp || 0,
                         receiptHash: r.receiptHash,
-                         txId: ''
+                        txId: ''
                     });
                     handledTxIds.current.add(r.receiptHash);
                 }
@@ -79,8 +79,8 @@ export const useProfilePayments = (
 
         const fetchNewMainReceipt = async (txId: string) => {
             if (!requestRecords || !decrypt) return;
-            // A naive way: Wait briefly for chain sync, then fetch all records and extract our new one
-            await new Promise(r => setTimeout(r, 8000));
+            // Wait briefly for chain sync, then fetch all records and extract our new one
+            await new Promise(r => setTimeout(r, 3000));
             try {
                 const records = await requestRecords('nullpay_main_v1.aleo', true); // Replace with PROGRAM_ID if exported
                 if (records) {
@@ -91,7 +91,7 @@ export const useProfilePayments = (
                         if (!plaintext && r.recordCiphertext) {
                             try { plaintext = await decrypt(r.recordCiphertext); } catch (e) { }
                         }
-                        const receipt = parseMerchantReceipt({...r, plaintext});
+                        const receipt = parseMerchantReceipt({ ...r, plaintext });
                         if (receipt && receipt.invoiceHash === mainHash) {
                             if (!handledTxIds.current.has(receipt.receiptHash)) {
                                 handledTxIds.current.add(receipt.receiptHash);
@@ -114,7 +114,7 @@ export const useProfilePayments = (
 
         const fetchNewBurnerReceipt = async (txId: string) => {
             if (!decryptedBurnerKey) return;
-            await new Promise(r => setTimeout(r, 4000));
+            await new Promise(r => setTimeout(r, 3000));
             try {
                 const records = await fetchBurnerRecordsFromTx(txId, decryptedBurnerKey);
                 for (const r of records) {
@@ -134,7 +134,7 @@ export const useProfilePayments = (
                     }
                 }
             } catch (e) {
-                 console.error("Failed to fetch new burner receipt", e);
+                console.error("Failed to fetch new burner receipt", e);
             }
         };
 

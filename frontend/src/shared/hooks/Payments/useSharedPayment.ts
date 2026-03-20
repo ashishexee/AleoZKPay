@@ -55,7 +55,8 @@ export const useSharedPayment = () => {
                         const { fetchInvoiceByHash } = await import('../../services/api');
                         const dbInvoice = await fetchInvoiceByHash(fetchedHash);
                         if (dbInvoice) {
-                            merchant = dbInvoice.merchant_address || null;
+                            // Use designated_address (plaintext) since merchant_address is now encrypted
+                            merchant = dbInvoice.designated_address || dbInvoice.merchant_address || null;
                             salt = dbInvoice.salt || null;
 
                             // Amount is conceptually 0 for Donations, but DB doesn't store Amount.
@@ -69,11 +70,6 @@ export const useSharedPayment = () => {
 
                 if (!merchant || !salt) {
                     setError('Invalid Invoice Link: Missing merchant or salt parameters');
-                    setLoading(false);
-                    return;
-                }
-                if (!amount && initialType !== 2) {
-                    setError('Invalid Invoice Link: Missing amount');
                     setLoading(false);
                     return;
                 }
@@ -92,9 +88,6 @@ export const useSharedPayment = () => {
                 const invoiceData = await getInvoiceData(fetchedHash);
                 const statusOnChain = invoiceData ? invoiceData.status : 0;
                 const tokenTypeOnChain = invoiceData ? invoiceData.tokenType : (tokenType || 0);
-                const invoiceTypeOnChain = invoiceData ? invoiceData.invoiceType : initialType;
-
-                console.log(`🔗 On-Chain Invoice Data | Status: ${statusOnChain}, Token Type: ${tokenTypeOnChain}, Type: ${invoiceTypeOnChain}`);
 
                 // Fetch DB details to check for manual settlement or off-chain status
                 let dbInvoice = null;
@@ -103,6 +96,15 @@ export const useSharedPayment = () => {
                     dbInvoice = await fetchInvoiceByHash(fetchedHash);
                 } catch (e) { console.warn("Could not fetch DB details", e); }
 
+                const finalInvoiceType = invoiceData ? invoiceData.invoiceType : (dbInvoice?.invoice_type !== undefined ? dbInvoice.invoice_type : initialType);
+
+                console.log(`🔗 On-Chain Invoice Data | Status: ${statusOnChain}, Token Type: ${tokenTypeOnChain}, Type: ${finalInvoiceType}`);
+
+                if (!amount && finalInvoiceType !== 2) {
+                    setError('Invalid Invoice Link: Missing amount');
+                    setLoading(false);
+                    return;
+                }
                 // Safely parse URL amount which might be a micro-token string like '1000000u128' or '1000000u64'
                 let finalAmount = 0;
                 if (amount) {
@@ -129,10 +131,10 @@ export const useSharedPayment = () => {
                         merchant,
                         amount: finalAmount,
                         salt,
-                        hash: fetchedHash,
+                        hash: fetchedHash!,
                         memo,
                         tokenType: tokenTypeOnChain,
-                        invoiceType: invoiceTypeOnChain,
+                        invoiceType: finalInvoiceType,
                         items: dbInvoice?.invoice_items || undefined,
                         sessionId: sessionId || undefined
                     });
@@ -145,10 +147,10 @@ export const useSharedPayment = () => {
                     merchant,
                     amount: finalAmount,
                     salt,
-                    hash: fetchedHash,
+                    hash: fetchedHash!,
                     memo,
                     tokenType: tokenTypeOnChain,
-                    invoiceType: invoiceTypeOnChain,
+                    invoiceType: finalInvoiceType,
                     items: dbInvoice?.invoice_items || undefined,
                     sessionId: sessionId || undefined
                 });

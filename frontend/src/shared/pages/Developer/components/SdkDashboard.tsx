@@ -3,7 +3,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { CopyButton } from '../../../components/ui/CopyButton';
-import { fetchInvoicesByMerchant, getUserProfile, Invoice, updateInvoiceStatus } from '../../../services/api';
+import { fetchInvoicesByMerchantForSdk, getUserProfile, Invoice, updateInvoiceStatus } from '../../../services/api';
 import {
     PROGRAM_ID,
     InvoiceRecord,
@@ -202,7 +202,7 @@ export const SdkDashboard: React.FC = () => {
 
         setLoadingTransactions(true);
         try {
-            const data = await fetchInvoicesByMerchant(publicKey, { forSdk: true });
+            const data = await fetchInvoicesByMerchantForSdk(publicKey, { forSdk: true });
             setTransactions(data.filter((invoice) => !invoice.is_burner));
         } catch (error) {
             console.error('Failed to fetch SDK invoices', error);

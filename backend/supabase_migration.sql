@@ -56,3 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_payment_tx_ids ON invoices USING GIN (payment_tx_
 -- ==========================================
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_main_invoice_hash TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_burner_invoice_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS address_hash TEXT UNIQUE;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS merchant_address_hash TEXT;
+CREATE INDEX IF NOT EXISTS idx_merchant_address_hash ON invoices(merchant_address_hash);
+CREATE INDEX IF NOT EXISTS idx_address_hash ON users(address_hash);

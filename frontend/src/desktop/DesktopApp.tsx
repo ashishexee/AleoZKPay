@@ -15,6 +15,7 @@ import { ChangelogOverlay } from './components/ChangelogOverlay';
 import CheckoutPage from '../shared/pages/Checkout';
 import InvoiceDetails from '../shared/pages/InvoiceDetails';
 import DeveloperPortal from '../shared/pages/Developer';
+import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 
 const DesktopAnimatedRoutes = () => {
     const location = useLocation();
@@ -23,10 +24,10 @@ const DesktopAnimatedRoutes = () => {
         <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
                 <Route path="/explorer" element={<Explorer />} />
-                <Route path="/create" element={<CreateInvoice />} />
+                <Route path="/create" element={<ProtectedRoute><CreateInvoice /></ProtectedRoute>} />
                 <Route path="/pay" element={<PaymentPage />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/profile-qr" element={<ProfileQRPage />} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/profile-qr" element={<ProtectedRoute><ProfileQRPage /></ProtectedRoute>} />
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/docs" element={<Docs />} />
                 <Route path="/privacy" element={<Privacy />} />

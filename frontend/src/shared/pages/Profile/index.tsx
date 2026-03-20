@@ -12,6 +12,7 @@ import { VerifyModal } from './components/modals/VerifyModal';
 import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from './components/modals/ReceiptHashesModal';
 import { BurnerWalletSettings } from './components/BurnerWalletSettings';
+import { BackupBanner } from './components/BackupBanner';
 import { InvoiceDistributionChart } from './components/Charts/InvoiceDistributionChart';
 import { TokenDistributionChart } from './components/Charts/TokenDistributionChart';
 import { WalletBalances } from './components/WalletBalances';
@@ -575,10 +576,12 @@ const Profile: React.FC = () => {
                         Manage your invoices and settlements.
                     </p>
 
-                    {/* REMOVED GLOBAL VERIFY BUTTON */}
                     {/* NEW: WALLET BALANCES */}
                     <WalletBalances itemVariants={itemVariants} />
                 </motion.div>
+
+                {/* BACKUP BANNER */}
+                <BackupBanner />
 
                 {/* TOP ROW: Stats & Charts */}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">

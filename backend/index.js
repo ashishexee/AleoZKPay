@@ -3,7 +3,6 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-const { encrypt, decrypt } = require('./encryption');
 const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
@@ -111,11 +110,14 @@ app.post('/api/proxy/provable/jwts/:id', async (req, res) => {
 });
 
 app.get('/api/invoices', async (req, res) => {
-    const { status, limit = 50, merchant } = req.query;
+    const { status, limit = 50, merchant_hash } = req.query;
     let query = supabase.from('invoices').select('*').order('created_at', { ascending: false }).limit(limit);
 
     if (status) {
         query = query.eq('status', status);
+    }
+    if (merchant_hash) {
+        query = query.eq('merchant_address_hash', merchant_hash);
     }
 
     const { data, error } = await query;
@@ -125,26 +127,18 @@ app.get('/api/invoices', async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 
-    const decryptedData = data.map(inv => ({
-        ...inv,
-        merchant_address: decrypt(inv.merchant_address)
-    }));
-    let finalData = decryptedData;
-    if (merchant) {
-        finalData = finalData.filter(inv => inv.merchant_address === merchant);
-    }
-
-    res.json(finalData);
+    res.json(data);
 });
 
-app.get('/api/invoices/merchant/:address', async (req, res) => {
-    const { address } = req.params;
+app.get('/api/invoices/merchant/:hash', async (req, res) => {
+    const { hash } = req.params;
     const { for_sdk } = req.query;
 
     // Fetch recent invoices (limit 100 for now to prevent overload)
     let query = supabase
         .from('invoices')
         .select('*')
+        .eq('merchant_address_hash', hash)
         .order('created_at', { ascending: false })
         .limit(5000);
 
@@ -159,21 +153,7 @@ app.get('/api/invoices/merchant/:address', async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 
-    // Decrypt and Filter
-    const merchantInvoices = data
-        .map(inv => {
-            const decrypted = {
-                ...inv,
-                merchant_address: decrypt(inv.merchant_address)
-            };
-            if (inv.designated_address) {
-                try { decrypted.designated_address = decrypt(inv.designated_address); } catch (e) { /* keep as-is */ }
-            }
-            return decrypted;
-        })
-        .filter(inv => inv.merchant_address === address);
-
-    res.json(merchantInvoices);
+    res.json(data);
 });
 
 app.get('/api/invoices/recent', async (req, res) => {
@@ -189,18 +169,7 @@ app.get('/api/invoices/recent', async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 
-    const decryptedData = data.map(inv => {
-        const decrypted = {
-            ...inv,
-            merchant_address: decrypt(inv.merchant_address)
-        };
-        if (inv.designated_address) {
-            try { decrypted.designated_address = decrypt(inv.designated_address); } catch (e) { /* keep as-is */ }
-        }
-        return decrypted;
-    });
-
-    res.json(decryptedData);
+    res.json(data);
 });
 
 app.get('/api/invoice/:hash', async (req, res) => {
@@ -217,18 +186,12 @@ app.get('/api/invoice/:hash', async (req, res) => {
         return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    // Decrypt
-    data.merchant_address = decrypt(data.merchant_address);
-    if (data.designated_address) {
-        try {
-            data.designated_address = decrypt(data.designated_address);
-
-            // Critical Fix for Burner Wallet Shared Links
-            // The payer needs to see and pay the Burner (Designated) Address, NOT the Main Address!
-            if (data.is_burner) {
-                data.merchant_address = data.designated_address;
-            }
-        } catch (e) { /* keep as-is */ }
+    // Critical Fix for Burner Wallet Shared Links
+    // The payer needs to see and pay the Burner (Designated) Address, NOT the Main Address!
+    // At this point both are encrypted strings, so we copy the encrypted designated address.
+    // The payer MUST be provided the plaintext address in the URL query params in this new system.
+    if (data.is_burner && data.designated_address) {
+        data.merchant_address = data.designated_address;
     }
 
     res.json(data);
@@ -243,23 +206,21 @@ app.post('/api/merchants/register', async (req, res) => {
     }
 
     try {
-        const encryptedAddress = encrypt(aleo_address);
-        // Generate a random secure API secretly starting with the prefix
         const secretKey = 'sk_test_' + crypto.randomBytes(24).toString('hex');
 
-        // Salted hash for O(1) lookup without decrypting every row
+        // Salted hash for O(1) lookup
         const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
-        const encryptedSecretKey = encrypt(secretKey);
-        const encryptedWebhookUrl = webhook_url ? encrypt(webhook_url) : null;
 
+        // Note: With the removal of server-side encryption, developer API metadata is stored natively
+        // Developers manage their own privacy by keeping their secret keys secure.
         const { data: merchant, error } = await supabase
             .from('merchants')
             .insert([{
                 name: name,
-                encrypted_aleo_address: encryptedAddress,
-                encrypted_secret_key: encryptedSecretKey, // Renamed for clarity
+                encrypted_aleo_address: aleo_address,
+                encrypted_secret_key: secretKey,
                 secret_key_hash: secretKeyHash,
-                encrypted_webhook_url: encryptedWebhookUrl
+                encrypted_webhook_url: webhook_url || null
             }])
             .select()
             .single();
@@ -454,10 +415,6 @@ app.post('/api/checkout/sessions', async (req, res) => {
     }
 
     try {
-        // Encypt urls
-        const encryptedSuccess = success_url ? encrypt(success_url) : null;
-        const encryptedCancel = cancel_url ? encrypt(cancel_url) : null;
-
         // 4. Create the Payment Intent in Supabase
         const { data: intent, error: intentError } = await supabase
             .from('payment_intents')
@@ -469,8 +426,8 @@ app.post('/api/checkout/sessions', async (req, res) => {
                 salt: finalSalt,
                 invoice_hash: finalInvoiceHash,
                 status: initialStatus,
-                success_url: encryptedSuccess,
-                cancel_url: encryptedCancel
+                success_url: success_url || null,
+                cancel_url: cancel_url || null
             }])
             .select()
             .single();
@@ -538,9 +495,9 @@ app.get('/api/checkout/sessions/:id', async (req, res) => {
             return res.status(404).json({ error: 'Checkout session not found.' });
         }
 
-        // Decrypt merchant address for the frontend
+        // Return merchant address as-is (checkout/merchant data uses its own developer-side encryption)
         if (intent.merchants && intent.merchants.encrypted_aleo_address) {
-            intent.merchants.aleo_address = decrypt(intent.merchants.encrypted_aleo_address);
+            intent.merchants.aleo_address = intent.merchants.encrypted_aleo_address;
         }
 
         // Return safe data for the frontend (do NOT return secret_key or webhook URLs)
@@ -555,7 +512,7 @@ app.get('/api/checkout/sessions/:id', async (req, res) => {
             success_url: intent.success_url ? decrypt(intent.success_url) : null,
             cancel_url: intent.cancel_url ? decrypt(intent.cancel_url) : null,
             merchant_name: intent.merchants ? intent.merchants.name : 'Unknown Merchant',
-            merchant_address: decrypt(intent.merchants.encrypted_aleo_address)
+            merchant_address: intent.merchants ? intent.merchants.encrypted_aleo_address : null
         };
 
         res.json(sessionData);
@@ -597,8 +554,8 @@ app.patch('/api/checkout/sessions/:id', async (req, res) => {
 
         // 2. Dispatch Webhook if SETTLED and webhook_url exists
         if (status === 'SETTLED' && intent.merchants && intent.merchants.encrypted_webhook_url) {
-            const secretKey = decrypt(intent.merchants.encrypted_secret_key);
-            const webhookUrl = decrypt(intent.merchants.encrypted_webhook_url);
+            const secretKey = intent.merchants.encrypted_secret_key;
+            const webhookUrl = intent.merchants.encrypted_webhook_url;
 
             const payload = {
                 id: intent.id,
@@ -641,22 +598,21 @@ app.patch('/api/checkout/sessions/:id', async (req, res) => {
 });
 
 app.post('/api/invoices', async (req, res) => {
-    const { invoice_hash, merchant_address, designated_address, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk } = req.body;
+    const { invoice_hash, merchant_address, designated_address, merchant_address_hash, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk } = req.body;
 
     if (!invoice_hash || !merchant_address) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
     try {
-        const encryptedMerchant = encrypt(merchant_address);
-        const encryptedDesignated = designated_address ? encrypt(designated_address) : encryptedMerchant;
-
+        // Frontend sends merchant_address already encrypted — store directly
         const { data, error } = await supabase
             .from('invoices')
             .upsert({
                 invoice_hash,
-                merchant_address: encryptedMerchant,
-                designated_address: encryptedDesignated,
+                merchant_address,
+                merchant_address_hash: merchant_address_hash || null,
+                designated_address: designated_address || merchant_address,
                 is_burner: is_burner || false,
                 status: status || 'PENDING',
                 invoice_transaction_id,  // Invoice creation TX
@@ -672,7 +628,6 @@ app.post('/api/invoices', async (req, res) => {
             .single();
 
         if (error) throw error;
-        data.merchant_address = merchant_address;
         res.json(data);
 
     } catch (err) {
@@ -720,11 +675,8 @@ app.patch('/api/invoices/:hash', async (req, res) => {
 
         if (error) throw error;
 
-        // Decrypt for response
-        if (data) {
-            data.merchant_address = decrypt(data.merchant_address);
-            // payer_address removed
-        }
+        // Return data as-is — merchant_address is encrypted on the client side
+        // The frontend will decrypt it using the user's password
 
         const hasNewPayment = payment_tx_ids && (!current.payment_tx_ids || !current.payment_tx_ids.includes(payment_tx_ids));
         console.log(`   - Has New Payment?`, hasNewPayment);
@@ -827,32 +779,28 @@ app.patch('/api/invoices/:hash', async (req, res) => {
 });
 
 app.post('/api/users/profile', async (req, res) => {
-    const { main_address, burner_address, encrypted_burner_key, profile_main_invoice_hash, profile_burner_invoice_hash } = req.body;
+    const { address_hash, main_address, burner_address, encrypted_burner_key, profile_main_invoice_hash, profile_burner_invoice_hash } = req.body;
 
-    if (!main_address) {
-        return res.status(400).json({ error: 'Missing main_address' });
+    if (!address_hash) {
+        return res.status(400).json({ error: 'Missing address_hash' });
     }
 
     try {
-        // Find existing user first to get their exact encrypted main_address
-        const { data: allUsers, error: fetchError } = await supabase.from('users').select('*');
+        // Find existing user by deterministic address_hash
+        const { data: allUsers, error: fetchError } = await supabase.from('users').select('*').eq('address_hash', address_hash);
         if (fetchError) throw fetchError;
 
-        let existingUser = allUsers.find(u => {
-            try { return decrypt(u.main_address) === main_address; } catch (e) { return false; }
-        });
-
-        const encryptedMain = existingUser ? existingUser.main_address : encrypt(main_address);
-        const encryptedBurner = burner_address ? encrypt(burner_address) : null;
-        const encryptedKey = encrypted_burner_key ? encrypt(encrypted_burner_key) : null;
+        let existingUser = allUsers && allUsers.length > 0 ? allUsers[0] : null;
 
         const updates = {
-            main_address: encryptedMain,
+            address_hash: address_hash,
             updated_at: new Date().toISOString()
         };
 
-        if (burner_address !== undefined) updates.burner_address = encryptedBurner;
-        if (encrypted_burner_key !== undefined) updates.encrypted_burner_key = encryptedKey;
+        // Store already-encrypted values from frontend directly
+        if (main_address !== undefined) updates.main_address = main_address;
+        if (burner_address !== undefined) updates.burner_address = burner_address;
+        if (encrypted_burner_key !== undefined) updates.encrypted_burner_key = encrypted_burner_key;
         if (profile_main_invoice_hash !== undefined) updates.profile_main_invoice_hash = profile_main_invoice_hash;
         if (profile_burner_invoice_hash !== undefined) updates.profile_burner_invoice_hash = profile_burner_invoice_hash;
 
@@ -862,7 +810,7 @@ app.post('/api/users/profile', async (req, res) => {
             const response = await supabase
                 .from('users')
                 .update(updates)
-                .eq('main_address', existingUser.main_address)
+                .eq('address_hash', address_hash)
                 .select()
                 .single();
             data = response.data;
@@ -879,11 +827,6 @@ app.post('/api/users/profile', async (req, res) => {
 
         if (error) throw error;
 
-        // Return decrypted values in the response
-        data.main_address = main_address;
-        if (burner_address) data.burner_address = burner_address;
-        if (encrypted_burner_key) data.encrypted_burner_key = encrypted_burner_key;
-
         res.json(data);
 
     } catch (err) {
@@ -896,35 +839,22 @@ app.get('/api/users/profile/:address', async (req, res) => {
     const { address } = req.params;
 
     try {
+        // The frontend now sends the address_hash as the :address param
         const { data, error } = await supabase
             .from('users')
-            .select('*');
+            .select('*')
+            .eq('address_hash', address)
+            .single();
 
         if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ error: 'Profile not found' });
+            }
             return res.status(500).json({ error: error.message });
         }
 
-        const userProfile = data.find(u => {
-            try {
-                return decrypt(u.main_address) === address;
-            } catch (e) {
-                return false;
-            }
-        });
-
-        if (!userProfile) {
-            return res.status(404).json({ error: 'Profile not found' });
-        }
-
-        // Decrypt all sensitive fields before returning
-        userProfile.main_address = address;
-        if (userProfile.burner_address) {
-            try { userProfile.burner_address = decrypt(userProfile.burner_address); } catch (e) { userProfile.burner_address = null; }
-        }
-        if (userProfile.encrypted_burner_key) {
-            try { userProfile.encrypted_burner_key = decrypt(userProfile.encrypted_burner_key); } catch (e) { userProfile.encrypted_burner_key = null; }
-        }
-        res.json(userProfile);
+        // Return encrypted row directly — frontend decrypts using password
+        res.json(data);
 
     } catch (err) {
         console.error("Error fetching user profile:", err);
@@ -932,6 +862,27 @@ app.get('/api/users/profile/:address', async (req, res) => {
     }
 });
 
+
+// Clear burner data from DB after successful on-chain backup
+app.post('/api/users/profile/clear-burner', async (req, res) => {
+    const { address_hash } = req.body;
+    if (!address_hash) return res.status(400).json({ error: 'Missing address_hash' });
+
+    try {
+        const { data, error } = await supabase
+            .from('users')
+            .update({ burner_address: null, encrypted_burner_key: null, updated_at: new Date().toISOString() })
+            .eq('address_hash', address_hash)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        console.error("Error clearing burner data:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 console.log('Backend initialized. (Relayer daemon removed, relayer is now on-demand)');
 
@@ -1112,3 +1063,4 @@ app.post('/api/dps/sponsor-sweep', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
+
