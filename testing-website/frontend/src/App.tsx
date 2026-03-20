@@ -379,7 +379,7 @@ function App() {
 
       <div style={{ position: 'relative', zIndex: 1 }}>
 
-          <main style={{ padding: '60px 48px', maxWidth: '1200px', margin: '0 auto' }}>
+        <main style={{ padding: '60px 48px', maxWidth: '1200px', margin: '0 auto' }}>
 
           {/* ─── SECTION 1: SUBSCRIPTIONS ─────────────────────────────────────── */}
           <section style={{ marginBottom: '140px', position: 'relative' }}>
@@ -401,8 +401,8 @@ function App() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
               {[
                 { id: 'CREDITS', label: 'Credits', price: 10, accent: 'rgba(255,255,255,0.9)' },
-                { id: 'USDCX',   label: 'USDCx',   price: 10, accent: 'rgba(200,200,200,0.9)', featured: true },
-                { id: 'USAD',    label: 'USAD',     price: 10, accent: 'rgba(160,160,160,0.9)' },
+                { id: 'USDCX', label: 'USDCx', price: 10, accent: 'rgba(200,200,200,0.9)', featured: true },
+                { id: 'USAD', label: 'USAD', price: 10, accent: 'rgba(160,160,160,0.9)' },
               ].map((cur, i) => (
                 <div
                   key={cur.id}
@@ -651,10 +651,10 @@ function App() {
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     {[
-                      { id: 'ANY',     label: 'Any',     sub: 'Payer chooses' },
+                      { id: 'ANY', label: 'Any', sub: 'Payer chooses' },
                       { id: 'CREDITS', label: 'Credits', sub: 'CREDITS only' },
-                      { id: 'USDCX',  label: 'USDCx',   sub: 'USDCX only' },
-                      { id: 'USAD',   label: 'USAD',    sub: 'USAD only' },
+                      { id: 'USDCX', label: 'USDCx', sub: 'USDCX only' },
+                      { id: 'USAD', label: 'USAD', sub: 'USAD only' },
                     ].map(opt => {
                       const active = donationCurrency === opt.id;
                       return (

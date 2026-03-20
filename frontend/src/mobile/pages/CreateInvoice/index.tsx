@@ -20,6 +20,8 @@ const MobileCreateInvoice: React.FC = () => {
         setTokenType,
         walletType,
         setWalletType,
+        forSdk,
+        setForSdk,
         items,
         showItems,
         setShowItems,
@@ -70,6 +72,8 @@ const MobileCreateInvoice: React.FC = () => {
                                 setTokenType={setTokenType}
                                 walletType={walletType}
                                 setWalletType={setWalletType}
+                                forSdk={forSdk}
+                                setForSdk={setForSdk}
                                 hasBurnerWallet={hasBurnerWallet}
                                 items={items}
                                 showItems={showItems}

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Terminal, Key, Globe, BookOpen, ArrowRight, CheckCircle, Lock, Zap, Shield, Copy, Check, Activity } from 'lucide-react';
+import { SdkDashboard } from './components/SdkDashboard';
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -79,12 +80,10 @@ export const DeveloperPortal = () => {
     const [secretKey, setSecretKey] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('keys');
     const [commandCopied, setCommandCopied] = useState(false);
-    
-    // Stats State
     const [stats, setStats] = useState<any>(null);
     const [loadingStats, setLoadingStats] = useState(false);
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (activeTab === 'analytics' && publicKey) {
             setLoadingStats(true);
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -123,7 +122,8 @@ export const DeveloperPortal = () => {
 
     const tabs = [
         { id: 'keys', label: 'API Keys', icon: BookOpen },
-        { id: 'analytics', label: 'Analytics', icon: Activity },
+        { id: 'sdk_dashboard', label: 'SDK Dashboard', icon: Activity },
+        { id: 'analytics', label: 'Legacy Analytics', icon: Activity },
         { id: 'quickstart', label: 'Quick Start', icon: Zap },
         { id: 'sdk', label: 'SDK Reference', icon: Terminal },
         { id: 'sessions', label: 'Sessions API', icon: Key },
@@ -217,6 +217,11 @@ export const DeveloperPortal = () => {
 
                 {/* ── Tab Content ───────────────────────────────────────── */}
                 <AnimatePresence mode="wait">
+                    {activeTab === 'sdk_dashboard' && (
+                        <motion.div key="sdk_dashboard" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <SdkDashboard />
+                        </motion.div>
+                    )}
                     {/* ── ANALYTICS ── */}
                     {activeTab === 'analytics' && (
                         <motion.div key="analytics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">

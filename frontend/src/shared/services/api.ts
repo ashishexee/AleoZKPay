@@ -3,8 +3,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 export interface Invoice {
     invoice_hash: string;
     merchant_address: string;
-    designated_address?: string; // The address used for this specific invoice
-    is_burner?: boolean;         // True if the designated address is a burner wallet
+    designated_address?: string;
+    is_burner?: boolean;
+    for_sdk?: boolean;
     payer_address?: string;
     amount: number;
     memo?: string;
@@ -70,15 +71,20 @@ export const updateInvoiceStatus = async (hash: string, data: Partial<Invoice>):
     return response.json();
 };
 
-export const fetchInvoicesByMerchant = async (merchant: string): Promise<Invoice[]> => {
-    console.log(`📡 [API CALL] Fetching invoices for merchant: ${merchant}`);
-    const response = await fetch(`${API_URL}/invoices/merchant/${merchant}`);
+export const fetchInvoicesByMerchant = async (
+    merchant: string,
+    options?: { forSdk?: boolean }
+): Promise<Invoice[]> => {
+    const url = new URL(`${API_URL}/invoices/merchant/${merchant}`);
+    if (options?.forSdk) {
+        url.searchParams.append('for_sdk', 'true');
+    }
+
+    const response = await fetch(url.toString());
     if (!response.ok) {
         throw new Error('Failed to fetch merchant invoices');
     }
-    const data = await response.json();
-    console.log(`📦 [API RESPONSE] Invoices for ${merchant}:`, data.length, data);
-    return data;
+    return response.json();
 };
 
 export const fetchRecentTransactions = async (limit: number = 10): Promise<Invoice[]> => {
@@ -102,7 +108,7 @@ export const getUserProfile = async (address: string): Promise<UserProfile | nul
     const response = await fetch(`${API_URL}/users/profile/${address}`);
     if (!response.ok) {
         if (response.status === 404) {
-             return null;
+            return null;
         }
         throw new Error('Failed to fetch user profile');
     }
@@ -121,9 +127,9 @@ export const updateUserProfile = async (
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-            main_address, 
-            burner_address, 
+        body: JSON.stringify({
+            main_address,
+            burner_address,
             encrypted_burner_key,
             profile_main_invoice_hash,
             profile_burner_invoice_hash
@@ -133,6 +139,6 @@ export const updateUserProfile = async (
     if (!response.ok) {
         throw new Error('Failed to update user profile');
     }
-    
+
     return response.json();
 };

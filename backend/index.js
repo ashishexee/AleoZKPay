@@ -139,13 +139,20 @@ app.get('/api/invoices', async (req, res) => {
 
 app.get('/api/invoices/merchant/:address', async (req, res) => {
     const { address } = req.params;
+    const { for_sdk } = req.query;
 
     // Fetch recent invoices (limit 100 for now to prevent overload)
-    const { data, error } = await supabase
+    let query = supabase
         .from('invoices')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(5000);
+
+    if (for_sdk === 'true') {
+        query = query.eq('for_sdk', true);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching invoices:', error);
@@ -634,7 +641,7 @@ app.patch('/api/checkout/sessions/:id', async (req, res) => {
 });
 
 app.post('/api/invoices', async (req, res) => {
-    const { invoice_hash, merchant_address, designated_address, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items } = req.body;
+    const { invoice_hash, merchant_address, designated_address, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk } = req.body;
 
     if (!invoice_hash || !merchant_address) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -656,6 +663,7 @@ app.post('/api/invoices', async (req, res) => {
                 salt: salt || null,  // Store salt for payment link generation
                 invoice_type: invoice_type !== undefined ? invoice_type : 0,  // 0 = Standard, 1 = Fundraising
                 token_type: token_type !== undefined ? token_type : 0,  // 0 = Credits, 1 = USDCx
+                for_sdk: for_sdk === true,
                 invoice_items: invoice_items || null,  // Line items for standard invoices
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()

@@ -20,6 +20,8 @@ interface InvoiceFormProps {
     setTokenType: (val: number) => void;
     walletType: number;
     setWalletType: (val: number) => void;
+    forSdk: boolean;
+    setForSdk: (val: boolean) => void;
     hasBurnerWallet: boolean;
     items: InvoiceItem[];
     showItems: boolean;
@@ -44,6 +46,8 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setTokenType,
     walletType,
     setWalletType,
+    forSdk,
+    setForSdk,
     hasBurnerWallet,
     items,
     showItems,
@@ -132,6 +136,45 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     {!hasBurnerWallet && walletType === 0 && (
                         <div className="mt-2 text-xs text-gray-500 text-center">
                             No Burner Wallet found. Create one from your <span className="text-neon-primary">Dashboard</span>.
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">SDK Dashboard</label>
+                    <button
+                        onClick={() => {
+                            if (walletType === 1) return;
+                            setForSdk(!forSdk);
+                        }}
+                        disabled={walletType === 1}
+                        className={`w-full rounded-xl border p-4 text-left transition-all duration-300 ${
+                            walletType === 1
+                                ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-gray-600'
+                                : forSdk
+                                    ? 'border-cyan-400/30 bg-cyan-400/10 text-white shadow-[0_0_20px_rgba(34,211,238,0.08)]'
+                                    : 'border-white/10 bg-black/20 text-gray-400 hover:border-white/20 hover:text-white'
+                        }`}
+                    >
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <div className="text-sm font-semibold">Create For SDK Dashboard</div>
+                                <div className="mt-1 text-xs leading-relaxed text-inherit/80">
+                                    Tag this invoice for the SDK dashboard so only SDK invoices and receipts show there.
+                                </div>
+                            </div>
+                            <div className={`h-6 w-11 rounded-full border transition-colors ${
+                                forSdk ? 'border-cyan-300/60 bg-cyan-300/20' : 'border-white/10 bg-white/5'
+                            }`}>
+                                <div className={`mt-0.5 h-5 w-5 rounded-full transition-all ${
+                                    forSdk ? 'ml-5 bg-cyan-300' : 'ml-0.5 bg-gray-500'
+                                }`} />
+                            </div>
+                        </div>
+                    </button>
+                    {walletType === 1 && (
+                        <div className="mt-2 text-xs text-amber-400/80 bg-amber-500/5 border border-amber-500/10 rounded-lg p-2 text-center">
+                            SDK invoices are main-wallet only. Switch back to Main Wallet to enable this tag.
                         </div>
                     )}
                 </div>
