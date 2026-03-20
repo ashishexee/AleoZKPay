@@ -104,6 +104,7 @@ export const useSharedPayment = () => {
                     setError('Invalid Invoice Link: Missing amount');
                     setLoading(false);
                     return;
+                }
                 // Safely parse URL amount which might be a micro-token string like '1000000u128' or '1000000u64'
                 let finalAmount = 0;
                 if (amount) {

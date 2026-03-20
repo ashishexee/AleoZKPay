@@ -90,7 +90,8 @@ export const fetchInvoicesByMerchantForSdk = async (
     merchant: string,
     options?: { forSdk?: boolean }
 ): Promise<Invoice[]> => {
-    const url = new URL(`${API_URL}/invoices/merchant/${merchant}`);
+    const hash = await hashAddress(merchant);
+    const url = new URL(`${API_URL}/invoices/merchant/${hash}`);
     if (options?.forSdk) {
         url.searchParams.append('for_sdk', 'true');
     }

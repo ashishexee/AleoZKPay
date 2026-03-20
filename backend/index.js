@@ -130,8 +130,8 @@ app.get('/api/invoices', async (req, res) => {
     res.json(data);
 });
 
-app.get('/api/invoices/merchant/:address', async (req, res) => {
-    const { address } = req.params;
+app.get('/api/invoices/merchant/:hash', async (req, res) => {
+    const { hash } = req.params;
     const { for_sdk } = req.query;
 
     // Fetch recent invoices (limit 100 for now to prevent overload)
