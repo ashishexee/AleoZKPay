@@ -252,7 +252,7 @@ export const useCreateInvoice = () => {
                                     console.error("Failed to save invoice to DB:", dbErr);
                                 }
 
-                                const invoiceMerchantAddress = walletType === 1 && burnerAddress && !forSdk ? burnerAddress : merchant;
+                                
 
                                 const params = new URLSearchParams({
                                     merchant: merchantAddress,
