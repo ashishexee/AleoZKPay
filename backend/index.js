@@ -239,6 +239,38 @@ app.post('/api/merchants/register', async (req, res) => {
     }
 });
 
+app.post('/api/sdk/onboard/validate', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid Authorization header.' });
+    }
+    const secretKey = authHeader.split(' ')[1];
+    const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
+
+    const { data: merchant, error: merchantError } = await supabase
+        .from('merchants')
+        .select('*')
+        .eq('secret_key_hash', secretKeyHash)
+        .single();
+
+    if (merchantError || !merchant) {
+        return res.status(401).json({ error: 'Invalid API key.' });
+    }
+
+    const merchantAddress = decrypt(merchant.encrypted_aleo_address);
+
+    const { merchant_address } = req.body;
+    if (merchant_address && merchant_address !== merchantAddress) {
+        return res.status(400).json({ error: 'Merchant address does not match the registered address for this API key.' });
+    }
+
+    res.json({
+        valid: true,
+        merchant_name: merchant.name,
+        merchant_address: merchantAddress
+    });
+});
+
 app.post('/api/dps/relayer/create-invoice', async (req, res) => {
     console.log(`[SDK] POST /api/dps/relayer/create-invoice - Merchant Key Hash check...`);
     const authHeader = req.headers.authorization;

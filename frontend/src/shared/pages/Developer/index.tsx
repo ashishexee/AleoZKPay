@@ -6,6 +6,11 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Terminal, Key, Globe, BookOpen, ArrowRight, CheckCircle, Lock, Zap, Shield, Copy, Check, Activity } from 'lucide-react';
 import { SdkDashboard } from './components/SdkDashboard';
+import { MerchantConsole } from './components/MerchantConsole';
+import { QuickStartGuide } from './components/QuickStartGuide';
+import { HostedCheckoutGuide } from './components/HostedCheckoutGuide';
+import { SdkMethodsGuide } from './components/SdkMethodsGuide';
+import { WebhooksGuide } from './components/WebhooksGuide';
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -78,7 +83,7 @@ export const DeveloperPortal = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [secretKey, setSecretKey] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState('keys');
+    const [activeTab, setActiveTab] = useState('console');
     const [commandCopied, setCommandCopied] = useState(false);
     const [stats, setStats] = useState<any>(null);
     const [loadingStats, setLoadingStats] = useState(false);
@@ -121,13 +126,11 @@ export const DeveloperPortal = () => {
     };
 
     const tabs = [
-        { id: 'keys', label: 'API Keys', icon: BookOpen },
-        { id: 'sdk_dashboard', label: 'SDK Dashboard', icon: Activity },
-        { id: 'analytics', label: 'Legacy Analytics', icon: Activity },
-        { id: 'quickstart', label: 'Quick Start', icon: Zap },
-        { id: 'sdk', label: 'SDK Reference', icon: Terminal },
-        { id: 'sessions', label: 'Sessions API', icon: Key },
-        { id: 'webhooks', label: 'Webhooks', icon: Globe },
+        { id: 'console', label: 'Console', icon: Activity },
+        { id: 'guide', label: 'Quick Start', icon: Zap },
+        { id: 'hosted', label: 'Hosted Checkout', icon: Globe },
+        { id: 'methods', label: 'SDK Methods', icon: Terminal },
+        { id: 'delivery', label: 'Webhooks', icon: Shield },
     ];
 
     return (
@@ -217,6 +220,42 @@ export const DeveloperPortal = () => {
 
                 {/* ── Tab Content ───────────────────────────────────────── */}
                 <AnimatePresence mode="wait">
+                    {activeTab === 'console' && (
+                        <motion.div key="console" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <MerchantConsole
+                                publicKey={publicKey}
+                                name={name}
+                                setName={setName}
+                                webhookUrl={webhookUrl}
+                                setWebhookUrl={setWebhookUrl}
+                                loading={loading}
+                                error={error}
+                                secretKey={secretKey}
+                                setSecretKey={setSecretKey}
+                                handleRegister={handleRegister}
+                            />
+                        </motion.div>
+                    )}
+                    {activeTab === 'guide' && (
+                        <motion.div key="guide" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <QuickStartGuide />
+                        </motion.div>
+                    )}
+                    {activeTab === 'hosted' && (
+                        <motion.div key="hosted" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <HostedCheckoutGuide />
+                        </motion.div>
+                    )}
+                    {activeTab === 'methods' && (
+                        <motion.div key="methods" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <SdkMethodsGuide />
+                        </motion.div>
+                    )}
+                    {activeTab === 'delivery' && (
+                        <motion.div key="delivery" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <WebhooksGuide />
+                        </motion.div>
+                    )}
                     {activeTab === 'sdk_dashboard' && (
                         <motion.div key="sdk_dashboard" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                             <SdkDashboard />
