@@ -64,7 +64,7 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
                         setSession(prev => prev ? { ...prev, status: newStatus as any } : prev);
 
                         // If it settled, handle the automatic redirect
-                        const redirectUrl = payload.new.success_url || session.success_url;
+                        const redirectUrl = session.success_url;
                         if (newStatus === 'SETTLED' && redirectUrl) {
                             console.log(`[useCheckoutSession] Scheduling redirect to: ${redirectUrl} in 3 seconds...`);
                             setTimeout(() => {
@@ -86,8 +86,39 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
                 }
             });
 
+        // Fallback Polling Mechanism (in case Supabase Realtime requires DB config)
+        const intervalId = setInterval(async () => {
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'SETTLED' && session.status !== 'SETTLED') {
+                        console.log(`📡 [Polling] Checkout Session status updated to SETTLED`);
+                        setSession(prev => prev ? { ...prev, status: 'SETTLED' } : prev);
+                        const redirectUrl = data.success_url;
+                        if (redirectUrl) {
+                            console.log(`[useCheckoutSession] Scheduling redirect to: ${redirectUrl} in 3 seconds...`);
+                            setTimeout(() => {
+                                try {
+                                    const url = new URL(redirectUrl as string);
+                                    url.searchParams.set('session_id', sessionId);
+                                    window.location.href = url.toString();
+                                } catch (e) {
+                                    window.location.href = redirectUrl as string + (redirectUrl.includes('?') ? '&' : '?') + `session_id=${sessionId}`;
+                                }
+                            }, 3000);
+                        }
+                    } else if (data.status === 'FAILED') {
+                        setSession(prev => prev ? { ...prev, status: 'FAILED' } : prev);
+                    }
+                }
+            } catch (e) {}
+        }, 3000);
+
         return () => {
             channel.unsubscribe();
+            clearInterval(intervalId);
         };
     }, [sessionId, session?.status, supabaseUrl]);
 

@@ -34,7 +34,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         return 0;
     };
 
-    const pay = async () => {
+    const pay = async (donationAmount?: number, selectedTokenOverride?: string) => {
         if (!session || !publicKey || !executeTransaction || !wallet?.adapter) return;
 
         try {
@@ -42,20 +42,30 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             setError(null);
             setStatus('Searching your wallet for private balance...');
 
+            // Compute Final Amount
+            const isDonationType = session.amount === 0;
+            const finalAmount = (isDonationType && donationAmount && donationAmount > 0) ? donationAmount : session.amount;
+            
+            if (finalAmount <= 0) {
+                throw new Error("Amount must be greater than zero.");
+            }
+
+            const actualTokenType = session.token_type === 'ANY' ? (selectedTokenOverride || 'CREDITS') : session.token_type;
+
             // 1. Determine Token Program
             let tokenProgram = 'credits.aleo';
-            let amountMicro = Math.round(session.amount * 1_000_000);
+            let amountMicro = Math.round(finalAmount * 1_000_000);
             let typeSuffix = 'u64';
-            let funcName = 'pay_invoice'; // In standard ZK Pay, we have pay_invoice, pay_invoice_usdcx, etc.
+            let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
 
-            if (session.token_type === 'USDCX') {
+            if (actualTokenType === 'USDCX') {
                 tokenProgram = 'test_usdcx_stablecoin.aleo';
                 typeSuffix = 'u128';
-                funcName = 'pay_invoice_usdcx';
-            } else if (session.token_type === 'USAD') {
+                funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+            } else if (actualTokenType === 'USAD') {
                 tokenProgram = 'test_usad_stablecoin.aleo';
                 typeSuffix = 'u128';
-                funcName = 'pay_invoice_usad';
+                funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
             }
 
             // 2. Request Records from Wallet
@@ -70,7 +80,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                     try { r.plaintext = await decrypt(r.recordCiphertext); } catch { }
                 }
 
-                const bal = getBalance(r, session.token_type);
+                const bal = getBalance(r, actualTokenType);
                 if (bal >= amountMicro) {
                     payRecord = r;
                     break;
@@ -81,7 +91,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 let totalPrivateBalance = 0;
                 for (const r of (records as any[])) {
                     if (!r.spent) {
-                        totalPrivateBalance += getBalance(r, session.token_type);
+                        totalPrivateBalance += getBalance(r, actualTokenType);
                     }
                 }
 
@@ -92,14 +102,14 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                     return;
                 } else {
                     setStep('CONVERT');
-                    setStatus(`Insufficient Private ${session.token_type} balance. Please convert public tokens.`);
+                    setStatus(`Insufficient Private ${actualTokenType} balance. Please convert public tokens.`);
                     setLoading(false);
                     return;
                 }
             }
 
             let proofsInput = undefined;
-            if (session.token_type !== 'CREDITS') {
+            if (actualTokenType !== 'CREDITS') {
                 setStatus('Generating Compliance Proofs for Stablecoin...');
                 const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex } = await import('../../../utils/aleo-utils');
                 // Ensure we call them even if unused to wake up the node state if needed
@@ -134,7 +144,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             const inputs = [
                 payRecord.plaintext || payRecord.ciphertext || payRecord,
                 session.merchant_address,
-            `${amountMicro}${typeSuffix}`,
+                `${amountMicro}${typeSuffix}`,
                 session.salt,
                 paymentSecret,
                 session.invoice_hash
@@ -191,7 +201,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
                                         status: 'SETTLED',
-                                        payment_tx_ids: [onChainId]
+                                        payment_tx_ids: [onChainId],
+                                        session_id: session.id
                                     })
                                 });
 
@@ -244,7 +255,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         }
     };
 
-    const convertPublicToPrivate = async (overrideAmount?: number) => {
+    const convertPublicToPrivate = async (overrideAmount?: number, selectedTokenOverride?: string) => {
         if (!session || !publicKey || !executeTransaction) return;
 
         try {
@@ -253,12 +264,14 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             let tokenProgramId = 'credits.aleo';
             let typeSuffix = 'u64';
             let tokenName = 'Credits';
+            
+            const actualTokenType = session.token_type === 'ANY' ? (selectedTokenOverride || 'CREDITS') : session.token_type;
 
-            if (session.token_type === 'USDCX') {
+            if (actualTokenType === 'USDCX') {
                 tokenProgramId = 'test_usdcx_stablecoin.aleo';
                 typeSuffix = 'u128';
                 tokenName = 'USDCX';
-            } else if (session.token_type === 'USAD') {
+            } else if (actualTokenType === 'USAD') {
                 tokenProgramId = 'test_usad_stablecoin.aleo';
                 typeSuffix = 'u128';
                 tokenName = 'USAD';

@@ -26,11 +26,11 @@ export const CheckoutPage = () => {
     // Call payment monitor. If the session isn't processing anymore, we have a real hash
     usePaymentMonitor();
 
-    const handlePay = () => {
+    const handlePay = (donationAmount?: number, selectedToken?: string) => {
         if (step === 'CONVERT') {
             setShowConvertModal(true);
         } else {
-            pay();
+            pay(donationAmount, selectedToken);
         }
     };
 

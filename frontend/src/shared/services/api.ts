@@ -5,8 +5,9 @@ export interface Invoice {
     invoice_hash: string;
     merchant_address: string;
     merchant_address_hash?: string;
-    designated_address?: string; // The address used for this specific invoice
-    is_burner?: boolean;         // True if the designated address is a burner wallet
+    designated_address?: string;
+    is_burner?: boolean;
+    for_sdk?: boolean;
     payer_address?: string;
     amount: number;
     memo?: string;
@@ -75,13 +76,30 @@ export const updateInvoiceStatus = async (hash: string, data: Partial<Invoice>):
 export const fetchInvoicesByMerchant = async (merchant: string): Promise<Invoice[]> => {
     const hash = await hashAddress(merchant);
     console.log(`📡 [API CALL] Fetching invoices for merchant: ${merchant} (Hash: ${hash})`);
+
     const response = await fetch(`${API_URL}/invoices/merchant/${hash}`);
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch invoices: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+};
+export const fetchInvoicesByMerchantForSdk = async (
+    merchant: string,
+    options?: { forSdk?: boolean }
+): Promise<Invoice[]> => {
+    const url = new URL(`${API_URL}/invoices/merchant/${merchant}`);
+    if (options?.forSdk) {
+        url.searchParams.append('for_sdk', 'true');
+    }
+
+    const response = await fetch(url.toString());
     if (!response.ok) {
         throw new Error('Failed to fetch merchant invoices');
     }
-    const data = await response.json();
-    console.log(`📦 [API RESPONSE] Invoices for ${merchant}:`, data.length, data);
-    return data;
+    return response.json();
 };
 
 export const fetchRecentTransactions = async (limit: number = 10): Promise<Invoice[]> => {

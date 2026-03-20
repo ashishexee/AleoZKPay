@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from '../utils/aleo-utils';
@@ -22,6 +22,13 @@ export const useCreateInvoice = () => {
     const [walletType, setWalletType] = useState<number>(0);
     const [items, setItems] = useState<InvoiceItem[]>([]);
     const [showItems, setShowItems] = useState(false);
+    const [forSdk, setForSdk] = useState(false);
+
+    useEffect(() => {
+        if (walletType === 1 && forSdk) {
+            setForSdk(false);
+        }
+    }, [walletType, forSdk]);
 
     const addItem = useCallback(() => {
         setItems(prev => [...prev, { name: '', quantity: 1, unitPrice: 0, total: 0 }]);
@@ -111,7 +118,7 @@ export const useCreateInvoice = () => {
             const memoField = memo ? stringToField(memo) : '0field';
 
             // If Burner Wallet is selected, we must register the invoice under the Burner Address!
-            const merchantAddress = walletType === 1 && burnerAddress ? burnerAddress : publicKey;
+            const merchantAddress = walletType === 1 && burnerAddress && !forSdk ? burnerAddress : publicKey;
 
             const inputs = [
                 merchantAddress,
@@ -236,13 +243,16 @@ export const useCreateInvoice = () => {
                                         salt: salt,
                                         invoice_type: dbInvoiceType,
                                         token_type: tokenType,
-                                        is_burner: walletType === 1,
+                                        is_burner: walletType === 1 && !forSdk,
+                                        for_sdk: forSdk,
                                         invoice_items: showItems && items.length > 0 ? items : undefined,
                                     });
                                     console.log("Invoice saved to DB");
                                 } catch (dbErr) {
                                     console.error("Failed to save invoice to DB:", dbErr);
                                 }
+
+                                const invoiceMerchantAddress = walletType === 1 && burnerAddress && !forSdk ? burnerAddress : merchant;
 
                                 const params = new URLSearchParams({
                                     merchant: merchantAddress,
@@ -361,6 +371,7 @@ export const useCreateInvoice = () => {
         setWalletType(0);
         setItems([]);
         setShowItems(false);
+        setForSdk(false);
     };
 
     return {
@@ -383,6 +394,8 @@ export const useCreateInvoice = () => {
         items,
         showItems,
         setShowItems,
+        forSdk,
+        setForSdk,
         addItem,
         updateItem,
         removeItem

@@ -6,7 +6,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
-const FRONTEND_URL = 'https://nullpay.app';
+const FRONTEND_URL = 'http://localhost:5173';
 
 app.use(cors({
     origin: ['https://nullpay.app', 'http://localhost:5173'],
@@ -130,16 +130,23 @@ app.get('/api/invoices', async (req, res) => {
     res.json(data);
 });
 
-app.get('/api/invoices/merchant/:hash', async (req, res) => {
-    const { hash } = req.params;
+app.get('/api/invoices/merchant/:address', async (req, res) => {
+    const { address } = req.params;
+    const { for_sdk } = req.query;
 
-    // Fetch recent invoices (limit 5000 for now to prevent overload)
-    const { data, error } = await supabase
+    // Fetch recent invoices (limit 100 for now to prevent overload)
+    let query = supabase
         .from('invoices')
         .select('*')
         .eq('merchant_address_hash', hash)
         .order('created_at', { ascending: false })
         .limit(5000);
+
+    if (for_sdk === 'true') {
+        query = query.eq('for_sdk', true);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching invoices:', error);
@@ -232,6 +239,103 @@ app.post('/api/merchants/register', async (req, res) => {
     }
 });
 
+app.post('/api/dps/relayer/create-invoice', async (req, res) => {
+    console.log(`[SDK] POST /api/dps/relayer/create-invoice - Merchant Key Hash check...`);
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid Authorization header.' });
+    }
+    const secretKey = authHeader.split(' ')[1];
+    const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
+
+    const { data: merchant, error: merchantError } = await supabase
+        .from('merchants')
+        .select('*')
+        .eq('secret_key_hash', secretKeyHash)
+        .single();
+
+    if (merchantError || !merchant) return res.status(401).json({ error: 'Invalid API key.' });
+
+    const { amount, currency, salt, memo, invoice_type } = req.body;
+    if (!salt) return res.status(400).json({ error: 'Salt is required.' });
+
+    const uppercaseCurrency = (currency || 'CREDITS').toUpperCase();
+    const isDonation = invoice_type === 2;
+    const amountVal = amount ? Number(amount) : 0;
+    const amountMicro = isDonation ? 0n : BigInt(Math.round(amountVal * 1000000));
+    
+    let funcName = 'create_invoice';
+    let amountStr = `${amountMicro}u64`;
+    let tokenTypeNum = 0;
+    
+    if (uppercaseCurrency === 'USDCX') { funcName = 'create_invoice_usdcx'; amountStr = `${amountMicro}u128`; tokenTypeNum = 1; }
+    else if (uppercaseCurrency === 'USAD') { funcName = 'create_invoice_usad'; amountStr = `${amountMicro}u128`; tokenTypeNum = 2; }
+
+    const merchantPubKey = decrypt(merchant.encrypted_aleo_address);
+    if (!merchantPubKey) return res.status(500).json({ error: "Merchant public key missing" });
+
+    // String to Field for memo
+    let memoField = '0field';
+    if (memo) {
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(memo);
+        let hex = '0x';
+        for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
+        memoField = `${BigInt(hex).toString()}field`;
+    }
+
+    const typeStr = `${invoice_type !== undefined ? invoice_type : 0}u8`; // 0=Standard, 1=Multipay, 2=Donation
+    const inputs = [merchantPubKey, amountStr, salt, memoField, "0u32", typeStr, "0u8"];
+
+    try {
+        const relayerPrivateKeyStr = process.env.RELAYER_PRIVATE_KEY;
+        if (!relayerPrivateKeyStr) throw new Error("RELAYER_PRIVATE_KEY missing");
+
+        const sdk = await import('@provablehq/sdk');
+        const host = "https://api.explorer.provable.com/v1";
+        const networkClient = new sdk.AleoNetworkClient(host);
+        const relayerAccount = new sdk.Account({ privateKey: relayerPrivateKeyStr });
+        
+        const keyProvider = new sdk.AleoKeyProvider();
+        keyProvider.useCache(true);
+        const pm = new sdk.ProgramManager(host, keyProvider, undefined);
+        pm.setAccount(relayerAccount);
+
+        const auth = await pm.buildAuthorization({
+            programName: "zk_pay_proofs_privacy_v20.aleo",
+            functionName: funcName,
+            inputs: inputs,
+            fee: 0.1
+        });
+
+        const feeAuth = await pm.buildFeeAuthorization({
+            privateKey: relayerAccount.privateKey(),
+            deploymentOrExecutionId: auth.toExecutionId().toString(),
+            baseFeeCredits: 0.05,
+            priorityFeeCredits: 0
+        });
+
+        const pReq = sdk.ProvingRequest.new(auth, feeAuth, true);
+        const dpsRes = await networkClient.submitProvingRequestSafe({
+            provingRequest: pReq,
+            dpsPrivacy: true,
+            apiKey: process.env.PROVABLE_API_KEY,
+            consumerId: process.env.PROVABLE_CONSUMER_ID,
+            url: "https://api.provable.com/prove/testnet"
+        });
+
+        if (!dpsRes.ok) throw new Error(`DPS Rejected Request: ${dpsRes.error?.message || JSON.stringify(dpsRes.error)}`);
+
+        const { transaction, broadcast_result } = dpsRes.data;
+        const txId = transaction?.id || broadcast_result?.id;
+
+        res.json({ success: true, tx_id: txId, salt: salt });
+    } catch (err) {
+        console.error("Relayer execution via DPS failed:", err);
+        res.status(500).json({ error: err.message || 'Failed to dispatch relayer tx' });
+    }
+});
+
 app.post('/api/checkout/sessions', async (req, res) => {
     // 1. Authenticate the Merchant using Bearer token (secret_key)
     const authHeader = req.headers.authorization;
@@ -253,13 +357,23 @@ app.post('/api/checkout/sessions', async (req, res) => {
     }
 
     // 2. Validate Request Body
-    const { amount, currency, success_url, cancel_url, invoice_hash, salt: providedSalt } = req.body;
-    if (!amount || typeof amount !== 'number' || amount <= 0) {
-        return res.status(400).json({ error: 'Invalid amount. Must be a positive number.' });
+    const { amount, currency, success_url, cancel_url, invoice_hash, salt: providedSalt, invoice_type, type } = req.body;
+    
+    // Map SDK string 'type' to backend integer 'invoice_type'
+    let finalInvoiceType = invoice_type !== undefined ? invoice_type : 0;
+    if (invoice_type === undefined && type) {
+        if (type === 'multipay') finalInvoiceType = 1;
+        else if (type === 'donation') finalInvoiceType = 2;
+        else finalInvoiceType = 0; // 'standard' or unrecognized
+    }
+
+    // For standard invoices amount must be > 0. For donations, it can be 0 or omitted.
+    if (finalInvoiceType !== 2 && (!amount || typeof amount !== 'number' || amount <= 0)) {
+        return res.status(400).json({ error: 'Invalid amount. Must be a positive number for standard invoices.' });
     }
 
     // Map string currency to our token system
-    const validCurrencies = ['CREDITS', 'USDCX', 'USAD'];
+    const validCurrencies = ['CREDITS', 'USDCX', 'USAD', 'ANY'];
     const uppercaseCurrency = currency ? currency.toUpperCase() : 'CREDITS';
     if (!validCurrencies.includes(uppercaseCurrency)) {
         return res.status(400).json({ error: `Invalid currency. Must be one of: ${validCurrencies.join(', ')}` });
@@ -273,7 +387,8 @@ app.post('/api/checkout/sessions', async (req, res) => {
 
     if (invoice_hash && providedSalt) {
         initialStatus = 'OPEN'; // Merchant already provided the ZK parameters
-        console.log(`[Checkout] Using pre-generated Multi-Pay hash: ${invoice_hash}`);
+        const typeName = finalInvoiceType === 1 ? 'Multi-Pay' : (finalInvoiceType === 2 ? 'Donation' : 'Standard');
+        console.log(`[Checkout] Using pre-generated ${typeName} hash: ${invoice_hash}`);
 
         // If currency wasn't explicitly provided, fetch it from the invoice
         if (!currency) {
@@ -305,8 +420,9 @@ app.post('/api/checkout/sessions', async (req, res) => {
             .from('payment_intents')
             .insert([{
                 merchant_id: merchant.id,
-                amount: amount,
+                amount: amount || 0,
                 token_type: finalCurrency,
+                invoice_type: finalInvoiceType,
                 salt: finalSalt,
                 invoice_hash: finalInvoiceHash,
                 status: initialStatus,
@@ -317,6 +433,28 @@ app.post('/api/checkout/sessions', async (req, res) => {
             .single();
 
         if (intentError) throw intentError;
+
+        // 5. Also insert into the main `invoices` table for dashboard visibility
+        const tokenTypeNum = finalCurrency === 'ANY' ? 3 : (finalCurrency === 'USDCX' ? 1 : (finalCurrency === 'USAD' ? 2 : 0));
+        
+        const { error: invTableError } = await supabase.from('invoices').upsert({
+            invoice_hash: finalInvoiceHash,
+            merchant_address: merchant.encrypted_aleo_address,
+            designated_address: merchant.encrypted_aleo_address,
+            is_burner: false,
+            token_type: tokenTypeNum,
+            invoice_type: finalInvoiceType,
+            salt: finalSalt,
+            status: 'PENDING',
+            for_sdk: true,
+            invoice_items: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        });
+
+        if (invTableError) {
+            console.error("[Checkout] Failed to insert invoice to dashboard:", invTableError);
+        }
 
         const checkoutUrl = `${FRONTEND_URL}/checkout/${intent.id}`;
 
@@ -370,8 +508,9 @@ app.get('/api/checkout/sessions/:id', async (req, res) => {
             status: intent.status,
             invoice_hash: intent.invoice_hash,
             salt: intent.salt,
-            success_url: intent.success_url || null,
-            cancel_url: intent.cancel_url || null,
+            invoice_type: intent.invoice_type,
+            success_url: intent.success_url ? decrypt(intent.success_url) : null,
+            cancel_url: intent.cancel_url ? decrypt(intent.cancel_url) : null,
             merchant_name: intent.merchants ? intent.merchants.name : 'Unknown Merchant',
             merchant_address: intent.merchants ? intent.merchants.encrypted_aleo_address : null
         };
@@ -384,11 +523,7 @@ app.get('/api/checkout/sessions/:id', async (req, res) => {
     }
 });
 
-/**
- * Updates a Checkout Session status (e.g. to SETTLED) after frontend transaction success.
- * In a fully decentralized production app, this would be done trustlessly by an Indexer parsing blocks.
- * For MVP/SDK flow, the frontend wallet calls this after confirmation.
- */
+
 app.patch('/api/checkout/sessions/:id', async (req, res) => {
     const { id } = req.params;
     const { status, tx_id } = req.body;
@@ -461,11 +596,9 @@ app.patch('/api/checkout/sessions/:id', async (req, res) => {
         res.status(500).json({ error: 'Internal server error.' });
     }
 });
-// ==========================================
-
 
 app.post('/api/invoices', async (req, res) => {
-    const { invoice_hash, merchant_address, merchant_address_hash, designated_address, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items } = req.body;
+    const { invoice_hash, merchant_address, designated_address, merchant_address_hash, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk } = req.body;
 
     if (!invoice_hash || !merchant_address) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -482,11 +615,12 @@ app.post('/api/invoices', async (req, res) => {
                 designated_address: designated_address || merchant_address,
                 is_burner: is_burner || false,
                 status: status || 'PENDING',
-                invoice_transaction_id,
-                salt: salt || null,
-                invoice_type: invoice_type !== undefined ? invoice_type : 0,
-                token_type: token_type !== undefined ? token_type : 0,
-                invoice_items: invoice_items || null,
+                invoice_transaction_id,  // Invoice creation TX
+                salt: salt || null,  // Store salt for payment link generation
+                invoice_type: invoice_type !== undefined ? invoice_type : 0,  // 0 = Standard, 1 = Fundraising
+                token_type: token_type !== undefined ? token_type : 0,  // 0 = Credits, 1 = USDCx
+                for_sdk: for_sdk === true,
+                invoice_items: invoice_items || null,  // Line items for standard invoices
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
@@ -504,7 +638,7 @@ app.post('/api/invoices', async (req, res) => {
 
 app.patch('/api/invoices/:hash', async (req, res) => {
     const { hash } = req.params;
-    const { status, payment_tx_ids, payer_address, block_settled } = req.body;
+    const { status, payment_tx_ids, payer_address, block_settled, session_id } = req.body;
 
     try {
         const { data: current, error: fetchError } = await supabase
@@ -549,16 +683,90 @@ app.patch('/api/invoices/:hash', async (req, res) => {
 
         // LOGIC FIX: If there is a payment ID in the request, it IS a new payment event.
         if (status === 'SETTLED' || payment_tx_ids) {
-            console.log(`📢 Emitting payment_received for hash: ${hash}, Status: ${status}, Merchant: ${data.merchant_address}`);
-            if (typeof io !== 'undefined') {
-                io.emit('payment_received', {
-                    invoiceHash: hash,
-                    status: data.status,
-                    merchantAddress: data.merchant_address,
-                    amount: data.amount,
-                    invoiceType: data.invoice_type,
-                    tokenType: data.token_type
-                });
+            console.log(`📢 Backend detected SETTLED event for hash: ${hash}, Status: ${status}, Merchant: ${data.merchant_address}`);
+
+            // Auto-Sync SDK Checkouts: Use exact session_id if provided (for multi-pay safety)
+            if (status === 'SETTLED') {
+                try {
+                    let intentIdToSync = session_id;
+                    
+                    if (!intentIdToSync) {
+                        // Fallback: strictly safe ONLY if it's uniquely mapped
+                        const { data: intentInfo } = await supabase
+                            .from('payment_intents')
+                            .select('id')
+                            .eq('invoice_hash', hash)
+                            .maybeSingle();
+                        if (intentInfo) intentIdToSync = intentInfo.id;
+                    }
+
+                    if (intentIdToSync) {
+                        console.log(`🔗 Matching SDK Session found (${intentIdToSync}). Triggering direct sync & webhooks...`);
+                        
+                        // 1. Update the Payment Intent directly
+                        const { data: intent, error: updateError } = await supabase
+                            .from('payment_intents')
+                            .update({ status: 'SETTLED' })
+                            .eq('id', intentIdToSync)
+                            .select(`
+                                *,
+                                merchants:merchant_id (
+                                    id,
+                                    encrypted_webhook_url,
+                                    encrypted_secret_key
+                                )
+                            `)
+                            .single();
+
+                        if (!updateError && intent) {
+                            console.log(`✅ SDK Session ${intent.id} synced directly in DB.`);
+                            
+                            // 2. Dispatch Webhook
+                            if (intent.merchants && intent.merchants.encrypted_webhook_url) {
+                                try {
+                                    const secretKey = decrypt(intent.merchants.encrypted_secret_key);
+                                    const webhookUrl = decrypt(intent.merchants.encrypted_webhook_url);
+
+                                    const payload = {
+                                        id: intent.id,
+                                        amount: intent.amount,
+                                        token_type: intent.token_type,
+                                        status: intent.status,
+                                        tx_id: payment_tx_ids || null,
+                                        timestamp: new Date().toISOString()
+                                    };
+
+                                    const payloadString = JSON.stringify(payload);
+                                    const signature = crypto
+                                        .createHmac('sha256', secretKey)
+                                        .update(payloadString)
+                                        .digest('hex');
+
+                                    console.log(`[Webhook] Dispatching to ${webhookUrl} for auto-synced session ${intent.id}`);
+
+                                    fetch(webhookUrl, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'x-nullpay-signature': signature
+                                        },
+                                        body: payloadString
+                                    }).then(resp => {
+                                        console.log(`[Webhook] Response status: ${resp.status}`);
+                                    }).catch(err => {
+                                        console.error(`[Webhook] Dispatch failed:`, err.message);
+                                    });
+                                } catch (err) {
+                                    console.error("Webhook processing error:", err);
+                                }
+                            }
+                        } else {
+                            console.error("❌ Failed to update intent via Supabase auto-sync:", updateError);
+                        }
+                    }
+                } catch (syncError) {
+                    console.error("Failed to lookup intent for auto-sync:", syncError);
+                }
             }
         }
 
