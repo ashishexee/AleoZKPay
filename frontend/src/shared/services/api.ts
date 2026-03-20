@@ -1,8 +1,10 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { hashAddress } from '../utils/crypto';
 
 export interface Invoice {
     invoice_hash: string;
     merchant_address: string;
+    merchant_address_hash?: string;
     designated_address?: string; // The address used for this specific invoice
     is_burner?: boolean;         // True if the designated address is a burner wallet
     payer_address?: string;
@@ -71,8 +73,9 @@ export const updateInvoiceStatus = async (hash: string, data: Partial<Invoice>):
 };
 
 export const fetchInvoicesByMerchant = async (merchant: string): Promise<Invoice[]> => {
-    console.log(`📡 [API CALL] Fetching invoices for merchant: ${merchant}`);
-    const response = await fetch(`${API_URL}/invoices/merchant/${merchant}`);
+    const hash = await hashAddress(merchant);
+    console.log(`📡 [API CALL] Fetching invoices for merchant: ${merchant} (Hash: ${hash})`);
+    const response = await fetch(`${API_URL}/invoices/merchant/${hash}`);
     if (!response.ok) {
         throw new Error('Failed to fetch merchant invoices');
     }
@@ -95,14 +98,16 @@ export interface UserProfile {
     encrypted_burner_key?: string | null;
     profile_main_invoice_hash?: string | null;
     profile_burner_invoice_hash?: string | null;
+    encrypted_address_check?: string | null;
     updated_at?: string;
 }
 
 export const getUserProfile = async (address: string): Promise<UserProfile | null> => {
-    const response = await fetch(`${API_URL}/users/profile/${address}`);
+    const hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/users/profile/${hash}`);
     if (!response.ok) {
         if (response.status === 404) {
-             return null;
+            return null;
         }
         throw new Error('Failed to fetch user profile');
     }
@@ -110,20 +115,23 @@ export const getUserProfile = async (address: string): Promise<UserProfile | nul
 };
 
 export const updateUserProfile = async (
-    main_address: string,
+    address: string,
+    encrypted_main_address: string,
     burner_address?: string,
     encrypted_burner_key?: string,
     profile_main_invoice_hash?: string,
     profile_burner_invoice_hash?: string
 ): Promise<UserProfile> => {
+    const address_hash = await hashAddress(address);
     const response = await fetch(`${API_URL}/users/profile`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-            main_address, 
-            burner_address, 
+        body: JSON.stringify({
+            address_hash,
+            main_address: encrypted_main_address,
+            burner_address,
             encrypted_burner_key,
             profile_main_invoice_hash,
             profile_burner_invoice_hash
@@ -133,6 +141,18 @@ export const updateUserProfile = async (
     if (!response.ok) {
         throw new Error('Failed to update user profile');
     }
-    
+
     return response.json();
+};
+
+export const clearBurnerData = async (address: string): Promise<void> => {
+    const address_hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/users/profile/clear-burner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address_hash }),
+    });
+    if (!response.ok) {
+        throw new Error('Failed to clear burner data');
+    }
 };

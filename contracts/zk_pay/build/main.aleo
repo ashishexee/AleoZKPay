@@ -6,7 +6,7 @@ import test_usdcx_stablecoin.aleo;
 import test_usad_multisig_core.aleo;
 import test_usad_freezelist.aleo;
 import test_usad_stablecoin.aleo;
-program zk_pay_proofs_privacy_v20.aleo;
+program zk_pay_proofs_privacy_v22.aleo;
 
 record PayerReceipt:
     owner as address.private;
@@ -78,6 +78,11 @@ mapping salt_to_invoice:
     key as field.public;
     value as field.public;
 
+function backup_password:
+    input r0 as field.private;
+    cast self.caller self.caller r0 0field 0field 0field 0field 0field 0field 0field 0field 0field 0field into r1 as BurnerWalletRecord.record;
+    output r1 as BurnerWalletRecord.record;
+
 function backup_burner_wallet:
     input r0 as address.private;
     input r1 as field.private;
@@ -113,7 +118,7 @@ function create_invoice:
     async create_invoice r13 r4 r2 r5 0u8 r6 into r15;
     output r14 as Invoice.record;
     output r13 as field.public;
-    output r15 as zk_pay_proofs_privacy_v20.aleo/create_invoice.future;
+    output r15 as zk_pay_proofs_privacy_v22.aleo/create_invoice.future;
 
 finalize create_invoice:
     input r0 as field.public;
@@ -150,7 +155,7 @@ function create_invoice_usdcx:
     async create_invoice_usdcx r13 r4 r2 r5 1u8 r6 into r16;
     output r15 as Invoice.record;
     output r13 as field.public;
-    output r16 as zk_pay_proofs_privacy_v20.aleo/create_invoice_usdcx.future;
+    output r16 as zk_pay_proofs_privacy_v22.aleo/create_invoice_usdcx.future;
 
 finalize create_invoice_usdcx:
     input r0 as field.public;
@@ -187,7 +192,7 @@ function create_invoice_usad:
     async create_invoice_usad r13 r4 r2 r5 2u8 r6 into r16;
     output r15 as Invoice.record;
     output r13 as field.public;
-    output r16 as zk_pay_proofs_privacy_v20.aleo/create_invoice_usad.future;
+    output r16 as zk_pay_proofs_privacy_v22.aleo/create_invoice_usad.future;
 
 finalize create_invoice_usad:
     input r0 as field.public;
@@ -224,7 +229,7 @@ function create_invoice_any:
     async create_invoice_any r13 r4 r2 r5 3u8 r6 into r16;
     output r15 as Invoice.record;
     output r13 as field.public;
-    output r16 as zk_pay_proofs_privacy_v20.aleo/create_invoice_any.future;
+    output r16 as zk_pay_proofs_privacy_v22.aleo/create_invoice_any.future;
 
 finalize create_invoice_any:
     input r0 as field.public;
@@ -268,7 +273,7 @@ function pay_donation:
     output r7 as credits.aleo/credits.record;
     output r20 as PayerReceipt.record;
     output r21 as MerchantReceipt.record;
-    output r22 as zk_pay_proofs_privacy_v20.aleo/pay_donation.future;
+    output r22 as zk_pay_proofs_privacy_v22.aleo/pay_donation.future;
 
 finalize pay_donation:
     input r0 as field.public;
@@ -318,7 +323,7 @@ function pay_invoice:
     output r7 as credits.aleo/credits.record;
     output r17 as PayerReceipt.record;
     output r18 as MerchantReceipt.record;
-    output r20 as zk_pay_proofs_privacy_v20.aleo/pay_invoice.future;
+    output r20 as zk_pay_proofs_privacy_v22.aleo/pay_invoice.future;
 
 finalize pay_invoice:
     input r0 as field.public;
@@ -373,7 +378,7 @@ function pay_invoice_usdcx:
     output r7 as test_usdcx_stablecoin.aleo/ComplianceRecord.record;
     output r21 as PayerReceipt.record;
     output r23 as MerchantReceipt.record;
-    output r24 as zk_pay_proofs_privacy_v20.aleo/pay_invoice_usdcx.future;
+    output r24 as zk_pay_proofs_privacy_v22.aleo/pay_invoice_usdcx.future;
 
 finalize pay_invoice_usdcx:
     input r0 as field.public;
@@ -430,7 +435,7 @@ function pay_invoice_usad:
     output r7 as test_usad_stablecoin.aleo/ComplianceRecord.record;
     output r21 as PayerReceipt.record;
     output r23 as MerchantReceipt.record;
-    output r24 as zk_pay_proofs_privacy_v20.aleo/pay_invoice_usad.future;
+    output r24 as zk_pay_proofs_privacy_v22.aleo/pay_invoice_usad.future;
 
 finalize pay_invoice_usad:
     input r0 as field.public;
@@ -490,7 +495,7 @@ function pay_donation_usdcx:
     output r7 as test_usdcx_stablecoin.aleo/ComplianceRecord.record;
     output r24 as PayerReceipt.record;
     output r26 as MerchantReceipt.record;
-    output r27 as zk_pay_proofs_privacy_v20.aleo/pay_donation_usdcx.future;
+    output r27 as zk_pay_proofs_privacy_v22.aleo/pay_donation_usdcx.future;
 
 finalize pay_donation_usdcx:
     input r0 as field.public;
@@ -548,7 +553,7 @@ function pay_donation_usad:
     output r7 as test_usad_stablecoin.aleo/ComplianceRecord.record;
     output r24 as PayerReceipt.record;
     output r26 as MerchantReceipt.record;
-    output r27 as zk_pay_proofs_privacy_v20.aleo/pay_donation_usad.future;
+    output r27 as zk_pay_proofs_privacy_v22.aleo/pay_donation_usad.future;
 
 finalize pay_donation_usad:
     input r0 as field.public;
@@ -586,7 +591,7 @@ function settle_invoice:
     add r4 r5 into r7;
     add r7 r6 into r8;
     async settle_invoice r8 r0 into r9;
-    output r9 as zk_pay_proofs_privacy_v20.aleo/settle_invoice.future;
+    output r9 as zk_pay_proofs_privacy_v22.aleo/settle_invoice.future;
 
 finalize settle_invoice:
     input r0 as field.public;
@@ -600,11 +605,11 @@ finalize settle_invoice:
 function get_invoice_status:
     input r0 as field.public;
     async get_invoice_status r0 into r1;
-    output r1 as zk_pay_proofs_privacy_v20.aleo/get_invoice_status.future;
+    output r1 as zk_pay_proofs_privacy_v22.aleo/get_invoice_status.future;
 
 finalize get_invoice_status:
     input r0 as field.public;
     get invoices[r0] into r1;
 
 constructor:
-    assert.eq program_owner aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0;
+    assert.eq program_owner aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge;

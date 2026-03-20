@@ -1,9 +1,6 @@
 import React from 'react';
 import { GlassCard } from '../../../../components/ui/GlassCard';
 import { useBurnerActions } from './useBurnerActions';
-import { GenerateModal } from './GenerateModal';
-import { UnlockModal } from './UnlockModal';
-import { BackupModal } from './BackupModal';
 import { SweepModal } from './SweepModal';
 import type { BurnerWalletSettingsProps } from './types';
 
@@ -37,9 +34,14 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                             Generate one to enable enhanced privacy. Your key will be secured with a password only you know.
                         </p>
                         <button
-                            onClick={() => { a.setError(null); a.setPassword(''); a.setShowGenerateModal(true); }}
-                            className="px-5 py-1.5 bg-gradient-to-r from-neon-primary to-neon-accent hover:opacity-90 text-black font-bold rounded-lg transition-all text-sm">
-                            Generate Burner Wallet
+                            onClick={(e) => { 
+                                if (window.confirm("Generating a new Burner Wallet will create a permanent private key. Continue?")) {
+                                    a.handleGenerateBurner(e); 
+                                }
+                            }}
+                            disabled={a.isGenerating}
+                            className="px-5 py-1.5 bg-gradient-to-r from-neon-primary to-neon-accent hover:opacity-90 text-black font-bold rounded-lg transition-all text-sm disabled:opacity-50">
+                            {a.isGenerating ? 'Generating...' : 'Generate Burner Wallet'}
                         </button>
                     </div>
                 ) : (
@@ -48,7 +50,7 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                         <div className="flex flex-col md:flex-row gap-3 items-center justify-between p-3 bg-black/40 rounded-xl border border-white/10">
                             <div className="flex-1 overflow-hidden">
                                 <label className="text-[10px] text-gray-500 uppercase tracking-wider font-bold block">Burner Address</label>
-                                <div className="text-xs text-white font-mono truncate" title={a.burnerAddress}>{a.burnerAddress}</div>
+                                <div className="text-xs text-white font-mono truncate" title={a.decryptedBurnerAddress || a.burnerAddress || ''}>{a.decryptedBurnerAddress || a.burnerAddress}</div>
                             </div>
                             <div className="shrink-0">
                                 {a.decryptedBurnerKey ? (
@@ -66,10 +68,11 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                         {/* Locked state */}
                         {!a.decryptedBurnerKey ? (
                             <div className="p-3 border border-orange-500/20 bg-orange-500/5 rounded-xl flex items-center justify-between gap-3">
-                                <p className="text-xs text-orange-200/80">Unlock with your password to view the private key.</p>
-                                <button onClick={() => { a.setError(null); a.setPassword(''); a.setShowUnlockModal(true); }}
-                                    className="px-4 py-1.5 shrink-0 bg-transparent border border-orange-500/50 hover:bg-orange-500/10 text-orange-400 font-bold rounded-lg transition-all text-xs">
-                                    Unlock Key
+                                <p className="text-xs text-orange-200/80">Wallet data is being decrypted with your password...</p>
+                                <button onClick={(e) => a.handleUnlockBurner(e)}
+                                    disabled={a.isDecrypting}
+                                    className="px-4 py-1.5 shrink-0 bg-transparent border border-orange-500/50 hover:bg-orange-500/10 text-orange-400 font-bold rounded-lg transition-all text-xs disabled:opacity-50">
+                                    {a.isDecrypting ? 'Unlocking...' : 'Retry Unlock'}
                                 </button>
                             </div>
                         ) : (
@@ -85,10 +88,15 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                                         Copy your burner private key and import it into <strong className="text-white">Shield Wallet</strong>.
                                     </p>
                                     <div className="flex gap-2 shrink-0">
-                                        {!(a.fetchedFromChain || a.hasOnChainRecord) && (
-                                            <button onClick={() => { a.setError(null); a.setPassword(''); a.setShowBackupModal(true); }}
-                                                className="px-4 py-1.5 bg-transparent border border-white/20 hover:bg-white/5 text-white font-bold rounded-lg transition-all text-xs">
-                                                Backup as Record (Optional)
+                                        {!(a.fetchedFromChain || a.hasBurnerOnChainRecord) && (
+                                            <button onClick={(e) => {
+                                                if (window.confirm("This will save an encrypted backup of your burner wallet on the Aleo blockchain. A network fee will be applied. Continue?")) {
+                                                    a.handleBackupRecord(e);
+                                                }
+                                            }}
+                                                disabled={a.isBackingUp}
+                                                className="px-4 py-1.5 bg-transparent border border-white/20 hover:bg-white/5 text-white font-bold rounded-lg transition-all text-xs disabled:opacity-50">
+                                                {a.isBackingUp ? 'Backing up...' : 'Backup as Record (Optional)'}
                                             </button>
                                         )}
                                         <button onClick={a.openSweepModal}
@@ -108,33 +116,6 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
             </GlassCard>
 
             {/* ── Modals ── */}
-            {a.showGenerateModal && (
-                <GenerateModal
-                    error={a.error} isGenerating={a.isGenerating}
-                    password={a.password} setPassword={a.setPassword}
-                    showPassword={a.showPassword} setShowPassword={a.setShowPassword}
-                    onSubmit={a.handleGenerateBurner}
-                    onClose={() => a.setShowGenerateModal(false)}
-                />
-            )}
-            {a.showUnlockModal && (
-                <UnlockModal
-                    error={a.error} isDecrypting={a.isDecrypting}
-                    password={a.password} setPassword={a.setPassword}
-                    showPassword={a.showPassword} setShowPassword={a.setShowPassword}
-                    onSubmit={a.handleUnlockBurner}
-                    onClose={() => a.setShowUnlockModal(false)}
-                />
-            )}
-            {a.showBackupModal && (
-                <BackupModal
-                    error={a.error} isBackingUp={a.isBackingUp}
-                    password={a.password} setPassword={a.setPassword}
-                    showPassword={a.showPassword} setShowPassword={a.setShowPassword}
-                    onSubmit={a.handleBackupRecord}
-                    onClose={() => a.setShowBackupModal(false)}
-                />
-            )}
             {a.showSweepModal && (
                 <SweepModal
                     privateBalances={a.privateBalances}

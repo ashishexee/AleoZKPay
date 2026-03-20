@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { generateInvoicePdf } from '../../utils/generateInvoicePdf';
 import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt } from '../../utils/aleo-utils';
 import { VerifyModal } from '../Profile/components/modals/VerifyModal';
+import { hashAddress } from '../../utils/crypto';
 
 interface InvoiceData {
     invoice_hash: string;
     merchant_address?: string;
+    merchant_address_hash?: string;
     designated_address?: string;
     is_burner?: boolean;
     payer_address?: string;
@@ -216,9 +218,16 @@ const InvoiceDetailsPage: React.FC = () => {
                 const data = await fetchInvoiceByHash(hash);
                 if (!data) { setError('Invoice not found.'); setLoading(false); return; }
                 setInvoice(data);
-                if (!address) setAuthStatus('no-wallet');
-                else if (address.toLowerCase() === (data.merchant_address || '').toLowerCase()) setAuthStatus('authorized');
-                else setAuthStatus('unauthorized');
+                if (!address) {
+                    setAuthStatus('no-wallet');
+                } else {
+                    const hashedAddress = await hashAddress(address);
+                    if (hashedAddress === data.merchant_address_hash || address.toLowerCase() === (data.merchant_address || '').toLowerCase()) {
+                        setAuthStatus('authorized');
+                    } else {
+                        setAuthStatus('unauthorized');
+                    }
+                }
             } catch (e: any) { setError(e.message || 'Failed to load invoice.'); }
             finally { setLoading(false); }
         };

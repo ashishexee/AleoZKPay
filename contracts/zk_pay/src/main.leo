@@ -2,9 +2,9 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v20.aleo {
+program zk_pay_proofs_privacy_v22.aleo {
     
-    @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
+    @admin(address="aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge")
     async constructor() {
         // The Leo compiler automatically generates the constructor logic.
     }
@@ -64,6 +64,27 @@ program zk_pay_proofs_privacy_v20.aleo {
 
     mapping invoices: field => InvoiceData;
     mapping salt_to_invoice: field => field;
+
+    // Transition to permanently backup ONLY the password on-chain
+    transition backup_password(
+        private password_part: field
+    ) -> BurnerWalletRecord {
+        return BurnerWalletRecord {
+            owner: self.caller,
+            burner_address: self.caller,
+            password_part: password_part,
+            pk_part_1: 0field,
+            pk_part_2: 0field,
+            pk_part_3: 0field,
+            pk_part_4: 0field,
+            pk_part_5: 0field,
+            pk_part_6: 0field,
+            pk_part_7: 0field,
+            pk_part_8: 0field,
+            pk_part_9: 0field,
+            pk_part_10: 0field
+        };
+    }
 
     // Transition to permanently backup encrypted Burner Wallet credentials on-chain
     transition backup_burner_wallet(

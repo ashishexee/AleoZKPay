@@ -4,12 +4,13 @@ import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from '../utils/aleo-utils';
 import { InvoiceData, InvoiceItem } from '../types/invoice';
 import { useBurnerWallet } from './BurnerWalletProvider';
+import { encryptWithPassword, hashAddress } from '../utils/crypto';
 
 export type InvoiceType = 'standard' | 'multipay' | 'donation';
 
 export const useCreateInvoice = () => {
     const { address, executeTransaction, transactionStatus, requestTransactionHistory } = useWallet();
-    const { burnerAddress } = useBurnerWallet();
+    const { burnerAddress, appPassword } = useBurnerWallet();
     const publicKey = address;
     const [amount, setAmount] = useState<number | ''>('');
     const [loading, setLoading] = useState(false);
@@ -62,9 +63,13 @@ export const useCreateInvoice = () => {
             return;
         }
 
-        // For donation, amount is 0, so we skip this check
         if (invoiceType !== 'donation' && (!amount || amount <= 0)) {
             setStatus('Please enter a valid amount.');
+            return;
+        }
+
+        if (!appPassword) {
+            setStatus('Application is locked. Please refresh and enter your password.');
             return;
         }
 
@@ -72,7 +77,6 @@ export const useCreateInvoice = () => {
         setStatus('Initializing invoice creation...');
 
         try {
-            const merchant = publicKey;
             let salt = generateSalt();
             console.log('this is the salt', salt);
             setStatus('Requesting wallet signature...');
@@ -217,10 +221,14 @@ export const useCreateInvoice = () => {
                                     if (invoiceType === 'multipay') dbInvoiceType = 1;
                                     if (invoiceType === 'donation') dbInvoiceType = 2;
 
+                                    const encryptedMerchant = await encryptWithPassword(merchantAddress, appPassword);
+                                    const merchantHash = await hashAddress(merchantAddress);
+
                                     await createInvoice({
                                         invoice_hash: hash,
-                                        merchant_address: merchant,
-                                        designated_address: walletType === 1 && burnerAddress ? burnerAddress : merchant,
+                                        merchant_address: encryptedMerchant,
+                                        merchant_address_hash: merchantHash,
+                                        designated_address: encryptedMerchant,
                                         // amount removed
                                         // memo removed
                                         status: 'PENDING',
@@ -236,10 +244,8 @@ export const useCreateInvoice = () => {
                                     console.error("Failed to save invoice to DB:", dbErr);
                                 }
 
-                                const invoiceMerchantAddress = walletType === 1 && burnerAddress ? burnerAddress : merchant;
-
                                 const params = new URLSearchParams({
-                                    merchant: invoiceMerchantAddress,
+                                    merchant: merchantAddress,
                                     amount: amount.toString(),
                                     salt
                                 });
@@ -252,7 +258,7 @@ export const useCreateInvoice = () => {
 
                                 const link = `${window.location.origin}/pay?${params.toString()}`;
 
-                                setInvoiceData({ merchant: invoiceMerchantAddress, amount: Number(amount), salt, hash, link });
+                                setInvoiceData({ merchant: merchantAddress, amount: Number(amount), salt, hash, link });
                                 setStatus(`Invoice Created Successfully!`);
                                 return;
                             } else {

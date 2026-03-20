@@ -9,11 +9,12 @@ import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from 
 import type { PrivateBalances, SweepCurrency } from './types';
 
 export function useBurnerActions() {
-    const { address, executeTransaction } = useWallet();
+    const { address, executeTransaction, transactionStatus } = useWallet();
     const {
         burnerAddress, encryptedBurnerKey, decryptedBurnerKey,
         setDecryptedBurnerKey, refreshProfile, fetchedFromChain,
-        hasOnChainRecord, setHasOnChainRecord,
+        hasOnChainRecord, setHasOnChainRecord, appPassword,
+        decryptedBurnerAddress, hasBurnerOnChainRecord
     } = useBurnerWallet();
 
     // ── UI state ──
@@ -88,19 +89,23 @@ export function useBurnerActions() {
     }, [decryptedBurnerKey]);
 
     // ── Handlers ──
-    const handleGenerateBurner = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleGenerateBurner = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         if (!address) { setError('Wallet not connected.'); return; }
-        if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+        if (!appPassword) { setError('App is locked.'); return; }
         try {
             setIsGenerating(true);
             setError(null);
             const newPrivateKey = new PrivateKey();
             const newAddress = newPrivateKey.to_address().to_string();
             const rawPrivateKeyStr = newPrivateKey.to_string();
-            const encryptedKeyPayload = await encryptWithPassword(rawPrivateKeyStr, password);
+            const encryptedKeyPayload = await encryptWithPassword(rawPrivateKeyStr, appPassword);
+            const encryptedBurnerAddress = await encryptWithPassword(newAddress, appPassword);
+            // Re-encrypt the main address (it's needed if this is a fresh profile)
+            const encryptedMainAddress = await encryptWithPassword(address, appPassword);
             const { updateUserProfile } = await import('../../../../services/api');
-            await updateUserProfile(address, newAddress, encryptedKeyPayload);
+            // Params: address, encrypted_main_address, burner_address, encrypted_burner_key
+            await updateUserProfile(address, encryptedMainAddress, encryptedBurnerAddress, encryptedKeyPayload);
             setDecryptedBurnerKey(rawPrivateKeyStr);
             await refreshProfile();
             setShowGenerateModal(false);
@@ -113,14 +118,14 @@ export function useBurnerActions() {
         }
     };
 
-    const handleUnlockBurner = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleUnlockBurner = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         if (!encryptedBurnerKey) return;
-        if (!password) { setError('Password required.'); return; }
+        if (!appPassword) { setError('App is locked.'); return; }
         try {
             setIsDecrypting(true);
             setError(null);
-            const decryptedKey = await decryptWithPassword(encryptedBurnerKey, password);
+            const decryptedKey = await decryptWithPassword(encryptedBurnerKey, appPassword);
             try { PrivateKey.from_string(decryptedKey); } catch {
                 throw new Error('Invalid decryption result. Please check your password.');
             }
@@ -135,22 +140,97 @@ export function useBurnerActions() {
         }
     };
 
-    const handleBackupRecord = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!decryptedBurnerKey || !burnerAddress || !password || !encryptedBurnerKey || !executeTransaction) {
-            setError('Wallet must be unlocked and connected, and password must be entered.');
+    const handleBackupRecord = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (!executeTransaction || !appPassword || !transactionStatus) {
+            setError('Wallet must be connected and unlocked.');
             return;
         }
         try {
             setIsBackingUp(true);
             setError(null);
-            const passField = stringToFieldChunks(password, 1, 15)[0];
-            const payloadFields = stringToFieldChunks(encryptedBurnerKey, 10, 15);
-            const inputs = [burnerAddress, passField, ...payloadFields];
-            await executeTransaction({ program: PROGRAM_ID, function: 'backup_burner_wallet', inputs, fee: 500_000 });
+            const passField = stringToFieldChunks(appPassword, 1, 15)[0];
+
+            let inputs;
+            let functionName;
+            let isBurnerBackup = false;
+
+            if (!burnerAddress || !encryptedBurnerKey) {
+                // Password-only backup
+                inputs = [passField];
+                functionName = 'backup_password';
+            } else {
+                isBurnerBackup = true;
+                let plaintextBurnerAddr = decryptedBurnerAddress;
+                if (!plaintextBurnerAddr) {
+                    plaintextBurnerAddr = await decryptWithPassword(burnerAddress, appPassword);
+                }
+                const payloadFields = stringToFieldChunks(encryptedBurnerKey, 10, 15);
+                inputs = [plaintextBurnerAddr, passField, ...payloadFields];
+                functionName = 'backup_burner_wallet';
+            }
+
+            const result = await executeTransaction({ program: PROGRAM_ID, function: functionName, inputs, fee: 500_000, privateFee: false });
+            let txId = '';
+            if (result && (result as any).transactionId) {
+                txId = (result as any).transactionId;
+            }
+
+            if (txId) {
+                console.log(`⏳ Backup transaction submitted: ${txId}. Polling for confirmation...`);
+                let isPending = true;
+                let attempts = 0;
+                const MAX_ATTEMPTS = 120;
+
+                while (isPending && attempts < MAX_ATTEMPTS) {
+                    attempts++;
+                    await new Promise(r => setTimeout(r, 1000));
+
+                    try {
+                        const statusResponse = await transactionStatus(txId);
+                        const currentStatus = typeof statusResponse === 'string'
+                            ? (statusResponse as string).toLowerCase()
+                            : (statusResponse as any)?.status?.toLowerCase();
+
+                        console.log(`🔍 [Backup Polling] Status: ${currentStatus}`);
+
+                        if (currentStatus !== 'pending' && currentStatus !== 'processing' && currentStatus !== 'submitted') {
+                            isPending = false;
+
+                            if (currentStatus === 'completed' || currentStatus === 'finalized' || currentStatus === 'accepted') {
+                                const { default: toast } = await import('react-hot-toast');
+                                toast.success(`✅ Backup confirmed on-chain! TxID: ${txId.substring(0, 12)}...`);
+                            } else {
+                                throw new Error(`Backup transaction failed with status: ${currentStatus}`);
+                            }
+                        }
+                    } catch (e: any) {
+                        if (e.message?.includes('failed with status')) throw e;
+                        console.warn('Polling error:', e);
+                    }
+                }
+
+                if (isPending) {
+                    const { default: toast } = await import('react-hot-toast');
+                    toast.success(`Backup submitted (TxID: ${txId.substring(0, 12)}...). Confirmation may take a moment.`);
+                }
+            }
+
+            setHasOnChainRecord(true);
+            if (isBurnerBackup) {
+                try {
+                    if (address) {
+                        const { clearBurnerData } = await import('../../../../services/api');
+                        await clearBurnerData(address);
+                        console.log('🗑️ Burner data cleared from DB after on-chain backup.');
+                    }
+                } catch (clearErr) {
+                    console.warn('Failed to clear burner data from DB:', clearErr);
+                }
+            }
+
             setShowBackupModal(false);
             setPassword('');
-            setHasOnChainRecord(true);
         } catch (err: any) {
             console.error('Backup failed', err);
             setError(err.message || 'Failed to trigger backup transaction.');
@@ -274,6 +354,7 @@ export function useBurnerActions() {
     return {
         // wallet context
         address, burnerAddress, decryptedBurnerKey, fetchedFromChain, hasOnChainRecord,
+        decryptedBurnerAddress, hasBurnerOnChainRecord,
         // loading states
         isGenerating, isDecrypting, isBackingUp, isSweeping, copied,
         // error/success

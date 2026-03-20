@@ -3,15 +3,18 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../utils/aleo-utils';
 import { useBurnerWallet } from './BurnerWalletProvider';
-import { updateUserProfile, getUserProfile, createInvoice } from '../services/api';
+import { updateUserProfile, getUserProfile, createInvoice, fetchInvoiceByHash } from '../services/api';
+import { encryptWithPassword, hashAddress } from '../utils/crypto';
 
 export const useProfileQR = () => {
     const { address, executeTransaction, transactionStatus } = useWallet();
-    const { burnerAddress } = useBurnerWallet();
+    const { burnerAddress, appPassword, userProfileMainAddress } = useBurnerWallet();
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
     const [mainHash, setMainHash] = useState<string | null>(null);
+    const [mainSalt, setMainSalt] = useState<string | null>(null);
     const [burnerHash, setBurnerHash] = useState<string | null>(null);
+    const [burnerSalt, setBurnerSalt] = useState<string | null>(null);
     const [initialized, setInitialized] = useState(false);
 
     useEffect(() => {
@@ -27,9 +30,15 @@ export const useProfileQR = () => {
                 if (profile.profile_main_invoice_hash) {
                     setMainHash(profile.profile_main_invoice_hash);
                     setInitialized(true);
+                    fetchInvoiceByHash(profile.profile_main_invoice_hash)
+                        .then(inv => { if (inv?.salt) setMainSalt(inv.salt); })
+                        .catch(console.warn);
                 }
                 if (profile.profile_burner_invoice_hash) {
                     setBurnerHash(profile.profile_burner_invoice_hash);
+                    fetchInvoiceByHash(profile.profile_burner_invoice_hash)
+                        .then(inv => { if (inv?.salt) setBurnerSalt(inv.salt); })
+                        .catch(console.warn);
                 }
             }
         } catch (e) {
@@ -37,8 +46,9 @@ export const useProfileQR = () => {
         }
     };
 
-    const generateSingleInvoice = async (isBurner: boolean): Promise<string> => {
+    const generateSingleInvoice = async (isBurner: boolean): Promise<{ hash: string, salt: string }> => {
         if (!address || !executeTransaction) throw new Error("Wallet not connected");
+        if (!appPassword) throw new Error("Please enter your password to unlock the application.");
 
         const salt = generateSalt();
         const merchantAddress = isBurner && burnerAddress ? burnerAddress : address;
@@ -106,11 +116,16 @@ export const useProfileQR = () => {
                     }
                     if (!hash) throw new Error("Could not retrieve Invoice Hash");
 
+                    const encryptedMerchant = await encryptWithPassword(address, appPassword);
+                    const merchantHash = await hashAddress(address);
+                    const encryptedDesignated = await encryptWithPassword(merchantAddress, appPassword);
+
                     // Save to backend invoices table
                     await createInvoice({
                         invoice_hash: hash,
-                        merchant_address: address, // Real merchant is the main address logging in
-                        designated_address: merchantAddress,
+                        merchant_address: encryptedMerchant,
+                        merchant_address_hash: merchantHash,
+                        designated_address: encryptedDesignated,
                         status: 'PENDING',
                         invoice_transaction_id: finalTxId,
                         salt,
@@ -119,7 +134,7 @@ export const useProfileQR = () => {
                         is_burner: isBurner,
                     });
                     
-                    return hash;
+                    return { hash, salt };
                 } else if (currentStatus !== 'pending' && currentStatus !== 'processing' && currentStatus !== 'submitted') {
                     throw new Error(`Transaction failed: ${currentStatus}`);
                 }
@@ -142,22 +157,35 @@ export const useProfileQR = () => {
             let newMainHash = mainHash;
             if (!newMainHash) {
                 setStatus("Please approve the Main Wallet invoice creation...");
-                newMainHash = await generateSingleInvoice(false);
-                setMainHash(newMainHash);
+                const res = await generateSingleInvoice(false);
+                newMainHash = res.hash;
+                setMainHash(res.hash);
+                setMainSalt(res.salt);
             }
             
             let newBurnerHash = burnerHash;
             if (!newBurnerHash && burnerAddress) {
                 setStatus("Please approve the Burner Wallet invoice creation...");
-                newBurnerHash = await generateSingleInvoice(true);
-                setBurnerHash(newBurnerHash);
+                const res = await generateSingleInvoice(true);
+                newBurnerHash = res.hash;
+                setBurnerHash(res.hash);
+                setBurnerSalt(res.salt);
             }
             
             setStatus("Saving your Profile QR details...");
             
             // Only update backend if something was newly generated
             if (!mainHash || (!burnerHash && burnerAddress)) {
-                await updateUserProfile(address, undefined, undefined, newMainHash || undefined, newBurnerHash || undefined);
+                if (!appPassword) throw new Error("Password missing for profile update");
+                const currentEncryptedMain = userProfileMainAddress || await encryptWithPassword(address, appPassword);
+                await updateUserProfile(
+                    address, 
+                    currentEncryptedMain, 
+                    undefined, 
+                    undefined, 
+                    newMainHash || undefined, 
+                    newBurnerHash || undefined
+                );
             }
             
             setInitialized(true);
@@ -175,7 +203,9 @@ export const useProfileQR = () => {
         loading,
         status,
         mainHash,
+        mainSalt,
         burnerHash,
+        burnerSalt,
         initializeQRs
     };
 };
