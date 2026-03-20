@@ -3,8 +3,9 @@ export interface NullPayConfig {
     baseURL?: string;
 }
 export interface CreateCheckoutSessionParams {
-    amount: number;
-    currency?: 'CREDITS' | 'USDCX' | 'USAD';
+    amount?: number;
+    currency?: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
+    type?: 'standard' | 'donation' | 'multipay';
     success_url?: string;
     cancel_url?: string;
     invoice_hash?: string;

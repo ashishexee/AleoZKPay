@@ -4,6 +4,10 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
 import type { PaymentStep, InvoiceState } from './types';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const useSharedPayment = () => {
     const [searchParams] = useSearchParams();
@@ -99,6 +103,22 @@ export const useSharedPayment = () => {
                     dbInvoice = await fetchInvoiceByHash(fetchedHash);
                 } catch (e) { console.warn("Could not fetch DB details", e); }
 
+                // Safely parse URL amount which might be a micro-token string like '1000000u128' or '1000000u64'
+                let finalAmount = 0;
+                if (amount) {
+                    if (amount.includes('u')) {
+                        const rawVal = parseFloat(amount.split('u')[0]);
+                        if (!isNaN(rawVal)) finalAmount = rawVal / 1_000_000;
+                    } else {
+                        finalAmount = Number(amount) || 0;
+                    }
+                }
+                
+                // Override with exact DB amount if available
+                if (dbInvoice && dbInvoice.amount !== undefined) {
+                    finalAmount = dbInvoice.invoice_type === 2 ? 0 : Number(dbInvoice.amount);
+                }
+
                 // Check if Settled on-chain OR manually settled in DB
                 if (statusOnChain === 1 || (dbInvoice && dbInvoice.status === 'SETTLED')) {
                     if (dbInvoice && dbInvoice.payment_tx_id) {
@@ -107,7 +127,7 @@ export const useSharedPayment = () => {
 
                     setInvoice({
                         merchant,
-                        amount: Number(amount) || 0,
+                        amount: finalAmount,
                         salt,
                         hash: fetchedHash,
                         memo,
@@ -123,7 +143,7 @@ export const useSharedPayment = () => {
 
                 setInvoice({
                     merchant,
-                    amount: Number(amount) || 0,
+                    amount: finalAmount,
                     salt,
                     hash: fetchedHash,
                     memo,
@@ -150,6 +170,92 @@ export const useSharedPayment = () => {
 
         init();
     }, [searchParams, publicKey]);
+
+    // Real-Time Supabase Listener for Payment Intents
+    useEffect(() => {
+        const sessionId = invoice?.sessionId;
+        if (!sessionId || !supabaseUrl || !supabaseKey) return;
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const channel = supabase.channel(`intent_monitor_${sessionId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'payment_intents',
+                    filter: `id=eq.${sessionId}`
+                },
+                async (payload) => {
+                    const newStatus = payload.new.status;
+                    if (newStatus === 'SETTLED') {
+                        console.log(`📡 [Real-Time] Payment Intent settled! Fetching session redirect URL...`);
+                        setStep('SUCCESS');
+                        setStatus('Payment Successful! Redirecting...');
+                        
+                        try {
+                            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                            const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
+                            if (response.ok) {
+                                const data = await response.json();
+                                const redirectUrl = data.success_url;
+                                
+                                if (redirectUrl) {
+                                    console.log(`[useSharedPayment] Scheduling redirect to: ${redirectUrl} in 2 seconds...`);
+                                    setTimeout(() => {
+                                        try {
+                                            const url = new URL(redirectUrl as string);
+                                            url.searchParams.set('session_id', sessionId);
+                                            window.location.href = url.toString();
+                                        } catch (e) {
+                                            window.location.href = redirectUrl as string + (redirectUrl.includes('?') ? '&' : '?') + `session_id=${sessionId}`;
+                                        }
+                                    }, 2000);
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Failed to fetch session redirect url", err);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+        const intervalId = setInterval(async () => {
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'SETTLED' && step !== 'SUCCESS') {
+                        console.log(`📡 [Polling] Payment Intent settled! Fetching session redirect URL...`);
+                        setStep('SUCCESS');
+                        setStatus('Payment Successful! Redirecting...');
+                        
+                        const redirectUrl = data.success_url;
+                        if (redirectUrl) {
+                            console.log(`[useSharedPayment] Scheduling redirect to: ${redirectUrl} in 2 seconds...`);
+                            setTimeout(() => {
+                                try {
+                                    const url = new URL(redirectUrl as string);
+                                    url.searchParams.set('session_id', sessionId);
+                                    window.location.href = url.toString();
+                                } catch (e) {
+                                    window.location.href = redirectUrl as string + (redirectUrl.includes('?') ? '&' : '?') + `session_id=${sessionId}`;
+                                }
+                            }, 2000);
+                        }
+                    }
+                }
+            } catch (err) {}
+        }, 3000);
+
+        return () => {
+            channel.unsubscribe();
+            clearInterval(intervalId);
+        };
+    }, [invoice?.sessionId]);
+
 
     const pollTransaction = async (initialTxId: string) => {
         if (!wallet || !wallet.adapter) return;
@@ -184,6 +290,11 @@ export const useSharedPayment = () => {
                         const updatePayload: any = {
                             payment_tx_ids: onChainId
                         };
+                        
+                        if (invoice?.sessionId) {
+                            updatePayload.session_id = invoice.sessionId;
+                        }
+
                         if (invoice?.hash) {
                             const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
                             if (currentDbInvoice && (currentDbInvoice.invoice_type === 1 || currentDbInvoice.invoice_type === 2)) {

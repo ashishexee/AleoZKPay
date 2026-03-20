@@ -129,10 +129,11 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
             {a.showBackupModal && (
                 <BackupModal
                     error={a.error} isBackingUp={a.isBackingUp}
+                    backupSuccess={a.backupSuccess} backupTxId={a.backupTxId}
                     password={a.password} setPassword={a.setPassword}
                     showPassword={a.showPassword} setShowPassword={a.setShowPassword}
                     onSubmit={a.handleBackupRecord}
-                    onClose={() => a.setShowBackupModal(false)}
+                    onClose={() => { a.setShowBackupModal(false); a.setBackupSuccess(''); a.setBackupTxId(null); }}
                 />
             )}
             {a.showSweepModal && (

@@ -7,8 +7,9 @@ export interface NullPayConfig {
 }
 
 export interface CreateCheckoutSessionParams {
-    amount: number;
-    currency?: 'CREDITS' | 'USDCX' | 'USAD';
+    amount?: number;
+    currency?: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
+    type?: 'standard' | 'donation' | 'multipay';
     success_url?: string;
     cancel_url?: string;
     invoice_hash?: string;
@@ -41,19 +42,96 @@ export class NullPay {
             throw new Error("NullPay API Key is required.");
         }
         this.secretKey = config.secretKey;
-        this.baseURL = config.baseURL || 'https://null-pay-rs8i.vercel.app/api';
+        this.baseURL = config.baseURL || 'https://null-pay-rs8i.vercel.app/api'; // Usually pointed to backend
     }
 
     public checkout = {
         sessions: {
             create: async (params: CreateCheckoutSessionParams): Promise<CheckoutSession> => {
+                const isDonation = params.type === 'donation';
+                
+                if (!isDonation && (params.amount === undefined || params.amount <= 0)) {
+                    throw new Error("Amount is required and must be greater than 0 for standard invoices.");
+                }
+
+                let finalInvoiceHash = params.invoice_hash;
+                let finalSalt = params.salt;
+
+                // Automatic Pre-Generation using NullPay Relayer via DPS
+                if (!finalInvoiceHash || !finalSalt) {
+                    // Generate securely random salt natively in Node.js
+                    const randomBuffer = crypto.randomBytes(16);
+                    let randomBigInt = BigInt(0);
+                    for (const byte of randomBuffer) {
+                        randomBigInt = (randomBigInt << BigInt(8)) + BigInt(byte);
+                    }
+                    finalSalt = `${randomBigInt.toString()}field`;
+
+                    let invoiceTypeNum = 0; // 0=Standard
+                    if (params.type === 'donation') invoiceTypeNum = 2;
+                    else if (params.type === 'multipay') invoiceTypeNum = 1;
+
+                    // Call NullPay Relayer Endpoint
+                    const relayerRes = await fetch(`${this.baseURL}/dps/relayer/create-invoice`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${this.secretKey}`
+                        },
+                        body: JSON.stringify({
+                            amount: isDonation ? 0 : params.amount,
+                            currency: params.currency || 'CREDITS',
+                            salt: finalSalt,
+                            invoice_type: invoiceTypeNum
+                        })
+                    });
+
+                    if (!relayerRes.ok) {
+                        const errorData = await relayerRes.json().catch(() => ({}));
+                        throw new Error(`NullPay Relayer Pre-gen Error: ${relayerRes.status} - ${errorData.error || relayerRes.statusText}`);
+                    }
+
+                    // Poll ZK Program Mapping for the resultant Hash
+                    let hashStr: string | null = null;
+                    let retries = 0;
+                    const MAX_RETRIES = 60; // 2 minutes polling (DPS/Aleo testnet confirmation)
+
+                    while (!hashStr && retries < MAX_RETRIES) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        try {
+                            const mapRes = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v20.aleo/mapping/salt_to_invoice/${finalSalt}`);
+                            if (mapRes.ok) {
+                                const textVal = await mapRes.json();
+                                if (textVal) hashStr = textVal.toString().replace(/(['"])/g, '');
+                            }
+                        } catch (e) {
+                            // Transient API error, ignore and retry
+                        }
+                        retries++;
+                    }
+
+                    if (!hashStr) {
+                        throw new Error("Timed out waiting for Aleo network blockchain confirmation. Invoice was sent, but hash was not resolved.");
+                    }
+
+                    finalInvoiceHash = hashStr;
+                }
+
+                // Inject discovered parameters
+                const sessionPayload = {
+                    ...params,
+                    amount: isDonation ? 0 : params.amount,
+                    invoice_hash: finalInvoiceHash,
+                    salt: finalSalt
+                };
+
                 const response = await fetch(`${this.baseURL}/checkout/sessions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${this.secretKey}`
                     },
-                    body: JSON.stringify(params)
+                    body: JSON.stringify(sessionPayload)
                 });
 
                 if (!response.ok) {

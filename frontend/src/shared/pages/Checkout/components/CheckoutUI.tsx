@@ -16,7 +16,7 @@ interface CheckoutUIProps {
     paymentLoading: boolean;
     txId: string | null;
     success: boolean;
-    onPay: () => void;
+    onPay: (donationAmount?: number, selectedToken?: string) => void;
 }
 
 export const CheckoutUI: React.FC<CheckoutUIProps> = ({
@@ -29,22 +29,41 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     success,
     onPay
 }) => {
-const [copiedLink, setCopiedLink] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
     const [copiedSalt, setCopiedSalt] = useState(false);
+    const [donationAmount, setDonationAmount] = useState<string>('');
+    const [selectedPayerToken, setSelectedPayerToken] = useState<string>('CREDITS');
 
+    const isDonation = session?.amount === 0;
+    const displayToken = session?.token_type === 'ANY' ? selectedPayerToken : session?.token_type;
 
     const paymentLink = typeof window !== 'undefined' && session ? (() => {
+        const amtStr = isDonation && donationAmount ? `${Math.round(parseFloat(donationAmount) * 1_000_000)}` : `${Math.round(session.amount * 1_000_000)}`;
+        let invoiceTypeStr = isDonation ? 'donation' : 'multipay';
+        if (session.invoice_type === 0) invoiceTypeStr = 'standard';
+        else if (session.invoice_type === 1) invoiceTypeStr = 'multipay';
+        else if (session.invoice_type === 2) invoiceTypeStr = 'donation';
+
         const params = new URLSearchParams({
             merchant: session.merchant_address || session.merchants?.aleo_address || '',
-            amount: `${Math.round(session.amount * 1_000_000)}${session.token_type === 'CREDITS' ? 'u64' : 'u128'}`,
+            amount: `${amtStr}${displayToken === 'CREDITS' ? 'u64' : 'u128'}`,
             salt: session.salt || '',
-            type: 'multipay',
-            token: (session.token_type || 'usdcx').toLowerCase(),
+            type: invoiceTypeStr,
+            token: (displayToken || 'usdcx').toLowerCase(),
             session_id: session.id
         });
         return `${window.location.origin}/pay?${params.toString()}`;
     })() : '';
+
+    const handlePayClick = () => {
+        const tokenToPass = session?.token_type === 'ANY' ? selectedPayerToken : undefined;
+        if (isDonation) {
+            onPay(parseFloat(donationAmount || '0'), tokenToPass);
+        } else {
+            onPay(undefined, tokenToPass);
+        }
+    };
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[85vh]">
@@ -96,9 +115,42 @@ const [copiedLink, setCopiedLink] = useState(false);
 
                             {/* Amount Info */}
                             <div className="text-center pb-6 border-b border-white/10">
-                                <p className="text-4xl font-black text-white tracking-tighter mb-1">
-                                    {session.amount} <span className="text-sm font-medium text-gray-500">{session.token_type}</span>
-                                </p>
+                                {isDonation ? (
+                                    <div className="flex flex-col items-center justify-center space-y-2">
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-left w-full max-w-[200px] pl-1">Donation Amount</p>
+                                        <div className="relative w-full max-w-[200px]">
+                                            <input 
+                                                type="number" 
+                                                step="0.01"
+                                                min="0.01"
+                                                value={donationAmount}
+                                                onChange={(e) => setDonationAmount(e.target.value)}
+                                                placeholder="0.00"
+                                                className="w-full bg-black/40 border-2 border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-4xl font-black tracking-tighter text-white p-3 pr-16 text-right transition-colors"
+                                            />
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500 uppercase">{displayToken === 'ANY' ? '' : displayToken}</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-4xl font-black text-white tracking-tighter mb-1">
+                                        {session.amount} <span className="text-sm font-medium text-gray-500">{displayToken}</span>
+                                    </p>
+                                )}
+                                
+                                {session.token_type === 'ANY' && (
+                                    <div className="mt-4 flex flex-col items-center justify-center space-y-2 animate-fade-in">
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-left w-full max-w-[200px] pl-1">Select Token</p>
+                                        <select
+                                            value={selectedPayerToken}
+                                            onChange={(e) => setSelectedPayerToken(e.target.value)}
+                                            className="w-full max-w-[200px] bg-black/40 border-2 border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-lg font-bold text-white p-3 transition-colors text-center"
+                                        >
+                                            <option value="CREDITS">Aleo Credits</option>
+                                            <option value="USDCX">USDCx</option>
+                                            <option value="USAD">USAD</option>
+                                        </select>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Invoice Details */}
@@ -207,8 +259,8 @@ const [copiedLink, setCopiedLink] = useState(false);
                                 ) : (
                                     <Button
                                         variant="primary"
-                                        onClick={onPay}
-                                        disabled={paymentLoading}
+                                        onClick={handlePayClick}
+                                        disabled={paymentLoading || (isDonation && (!donationAmount || parseFloat(donationAmount) <= 0))}
                                         glow
                                         className="w-full text-lg h-14"
                                     >
@@ -218,7 +270,7 @@ const [copiedLink, setCopiedLink] = useState(false);
                                                 Processing on-chain...
                                             </span>
                                         ) : (
-                                            `Pay ${session.amount} ${session.token_type}`
+                                            isDonation ? `Pay ${donationAmount || '0'} ${displayToken}` : `Pay ${session.amount} ${displayToken}`
                                         )}
                                     </Button>
                                 )}

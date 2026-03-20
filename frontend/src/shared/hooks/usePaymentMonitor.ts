@@ -104,10 +104,7 @@ export const usePaymentMonitor = () => {
 
     useEffect(() => {
         if (!publicKey) return;
-
         let supabaseChannel: any = null;
-
-        // Added withSound flag (defaults to true)
         const triggerNotification = (message: string, invoiceHash: string, withSound: boolean = true) => {
             console.log(`📣 [Notification Triggered]: ${message} | Sound: ${withSound}`);
 
@@ -115,7 +112,7 @@ export const usePaymentMonitor = () => {
                 const now = Date.now();
                 const lastPlayed = lastSoundPlayed.current.get(invoiceHash) || 0;
 
-                // Brief 5-second cooldown to prevent double-ringing on rapid partial payments
+
                 if (now - lastPlayed > 5000) {
                     playPaymentSound();
                     lastSoundPlayed.current.set(invoiceHash, now);

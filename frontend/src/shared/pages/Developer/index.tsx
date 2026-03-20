@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { Terminal, Key, Globe, BookOpen, ArrowRight, CheckCircle, Lock, Zap, Shield, Copy, Check } from 'lucide-react';
+import { Terminal, Key, Globe, BookOpen, ArrowRight, CheckCircle, Lock, Zap, Shield, Copy, Check, Activity } from 'lucide-react';
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -79,6 +79,24 @@ export const DeveloperPortal = () => {
     const [secretKey, setSecretKey] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('keys');
     const [commandCopied, setCommandCopied] = useState(false);
+    
+    // Stats State
+    const [stats, setStats] = useState<any>(null);
+    const [loadingStats, setLoadingStats] = useState(false);
+
+    useEffect(() => {
+        if (activeTab === 'analytics' && publicKey) {
+            setLoadingStats(true);
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            fetch(`${apiUrl}/merchants/stats/${publicKey}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.error) setStats(data);
+                })
+                .catch(err => console.error(err))
+                .finally(() => setLoadingStats(false));
+        }
+    }, [activeTab, publicKey]);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -105,6 +123,7 @@ export const DeveloperPortal = () => {
 
     const tabs = [
         { id: 'keys', label: 'API Keys', icon: BookOpen },
+        { id: 'analytics', label: 'Analytics', icon: Activity },
         { id: 'quickstart', label: 'Quick Start', icon: Zap },
         { id: 'sdk', label: 'SDK Reference', icon: Terminal },
         { id: 'sessions', label: 'Sessions API', icon: Key },
@@ -198,6 +217,53 @@ export const DeveloperPortal = () => {
 
                 {/* ── Tab Content ───────────────────────────────────────── */}
                 <AnimatePresence mode="wait">
+                    {/* ── ANALYTICS ── */}
+                    {activeTab === 'analytics' && (
+                        <motion.div key="analytics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <GlassCard className="p-8 md:p-10">
+                                <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">SDK Analytics</span>
+                                <h2 className="text-3xl font-bold text-white mt-3 mb-2">Checkout Metrics</h2>
+                                <p className="text-gray-400 text-sm leading-relaxed mb-10">
+                                    Monitor your payment volume and conversion rates across all generated checkout sessions.
+                                    Only sessions with <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">SETTLED</code> status are counted in volume.
+                                </p>
+                                
+                                {!publicKey ? (
+                                    <div className="text-center p-8 bg-white/[0.02] rounded-2xl border border-white/[0.06]">
+                                        <p className="text-gray-400 mb-4">Connect your wallet to view analytics.</p>
+                                        <div className="flex justify-center"><WalletMultiButton className="!bg-white !text-black !font-bold !rounded-xl !h-12" /></div>
+                                    </div>
+                                ) : loadingStats ? (
+                                    <div className="flex space-x-6">
+                                        <div className="h-32 w-full bg-white/5 animate-pulse rounded-2xl" />
+                                        <div className="h-32 w-full bg-white/5 animate-pulse rounded-2xl" />
+                                        <div className="h-32 w-full bg-white/5 animate-pulse rounded-2xl" />
+                                    </div>
+                                ) : !stats ? (
+                                    <div className="text-center py-10">
+                                        <p className="text-gray-500 mb-4">Register as a merchant to start tracking analytics.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Total Volume</p>
+                                            <p className="text-3xl font-black text-white">{stats.total_volume || 0} <span className="text-sm text-gray-400 font-medium">Credits</span></p>
+                                        </div>
+                                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Successful Sessions</p>
+                                            <p className="text-3xl font-black text-white">{stats.successful_sessions || 0}</p>
+                                            <p className="text-xs text-gray-500 mt-2">out of {stats.total_sessions || 0}</p>
+                                        </div>
+                                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Conversion Rate</p>
+                                            <p className="text-3xl font-black text-white">{stats.conversion_rate || '0.0'}%</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </GlassCard>
+                        </motion.div>
+                    )}
+
                     {/* ── QUICK START ── */}
                     {activeTab === 'quickstart' && (
                         <motion.div key="quickstart" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-10">

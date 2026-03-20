@@ -9,7 +9,7 @@ import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from 
 import type { PrivateBalances, SweepCurrency } from './types';
 
 export function useBurnerActions() {
-    const { address, executeTransaction } = useWallet();
+    const { address, executeTransaction, transactionStatus } = useWallet();
     const {
         burnerAddress, encryptedBurnerKey, decryptedBurnerKey,
         setDecryptedBurnerKey, refreshProfile, fetchedFromChain,
@@ -17,31 +17,33 @@ export function useBurnerActions() {
     } = useBurnerWallet();
 
     // ── UI state ──
-    const [isGenerating, setIsGenerating]     = useState(false);
-    const [isDecrypting, setIsDecrypting]     = useState(false);
-    const [isBackingUp, setIsBackingUp]       = useState(false);
-    const [isSweeping, setIsSweeping]         = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isDecrypting, setIsDecrypting] = useState(false);
+    const [isBackingUp, setIsBackingUp] = useState(false);
+    const [backupSuccess, setBackupSuccess] = useState('');
+    const [backupTxId, setBackupTxId] = useState<string | null>(null);
+    const [isSweeping, setIsSweeping] = useState(false);
     const [isScanningBalances, setIsScanningBalances] = useState(false);
-    const [copied, setCopied]                 = useState(false);
-    const [error, setError]                   = useState<string | null>(null);
+    const [copied, setCopied] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // ── Modal visibility ──
     const [showGenerateModal, setShowGenerateModal] = useState(false);
-    const [showUnlockModal, setShowUnlockModal]     = useState(false);
-    const [showBackupModal, setShowBackupModal]     = useState(false);
-    const [showSweepModal, setShowSweepModal]       = useState(false);
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [showBackupModal, setShowBackupModal] = useState(false);
+    const [showSweepModal, setShowSweepModal] = useState(false);
 
     // ── Form values ──
-    const [password, setPassword]               = useState('');
-    const [showPassword, setShowPassword]       = useState(false);
-    const [sweepAmount, setSweepAmount]         = useState('');
-    const [sweepCurrency, setSweepCurrency]     = useState<SweepCurrency>('ALEO');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [sweepAmount, setSweepAmount] = useState('');
+    const [sweepCurrency, setSweepCurrency] = useState<SweepCurrency>('ALEO');
     const [sweepDestination, setSweepDestination] = useState(address || '');
 
     // ── Sweep result ──
-    const [sweepSuccess, setSweepSuccess]       = useState('');
-    const [sweepTxId, setSweepTxId]             = useState<string | null>(null);
-    const [sweepLogs, setSweepLogs]             = useState<string[]>([]);
+    const [sweepSuccess, setSweepSuccess] = useState('');
+    const [sweepTxId, setSweepTxId] = useState<string | null>(null);
+    const [sweepLogs, setSweepLogs] = useState<string[]>([]);
 
     // ── Private balances ──
     const [privateBalances, setPrivateBalances] = useState<PrivateBalances>({ ALEO: -1, USDCx: -1, USAD: -1 });
@@ -144,13 +146,68 @@ export function useBurnerActions() {
         try {
             setIsBackingUp(true);
             setError(null);
+            setBackupSuccess('');
+            setBackupTxId(null);
             const passField = stringToFieldChunks(password, 1, 15)[0];
             const payloadFields = stringToFieldChunks(encryptedBurnerKey, 10, 15);
             const inputs = [burnerAddress, passField, ...payloadFields];
-            await executeTransaction({ program: PROGRAM_ID, function: 'backup_burner_wallet', inputs, fee: 500_000 });
-            setShowBackupModal(false);
-            setPassword('');
-            setHasOnChainRecord(true);
+            const result = await executeTransaction({
+                program: PROGRAM_ID,
+                function: 'backup_burner_wallet',
+                inputs, fee: 100_000,
+                privateFee: false
+            });
+            let finalTxId: string | null = null;
+            if (typeof result === 'string') finalTxId = result;
+            else if (result && typeof result === 'object') {
+                finalTxId = (result as any).transactionId || (result as any).id || String(result);
+            }
+
+            if (finalTxId && finalTxId !== '[object Object]') {
+                let isPending = true;
+                let onChainTxId = finalTxId;
+                let attempts = 0;
+                const MAX_ATTEMPTS = 120; // ~2 minutes polling timeout
+
+                while (isPending && attempts < MAX_ATTEMPTS) {
+                    attempts++;
+                    await new Promise(r => setTimeout(r, 1000));
+                    try {
+                        if (!transactionStatus) break; // Fallback if unsupported
+                        const statusResponse = await transactionStatus(finalTxId);
+                        const currentStatus = typeof statusResponse === 'string'
+                            ? (statusResponse as string).toLowerCase()
+                            : (statusResponse as any)?.status?.toLowerCase();
+
+                        if (typeof statusResponse === 'object' && (statusResponse as any).transactionId) {
+                            onChainTxId = (statusResponse as any).transactionId;
+                        }
+
+                        if (currentStatus !== 'pending' && currentStatus !== 'processing' && currentStatus !== 'submitted') {
+                            isPending = false;
+                            if (currentStatus === 'completed' || currentStatus === 'finalized' || currentStatus === 'accepted') {
+                                setBackupTxId(onChainTxId);
+                                setBackupSuccess('Backup permanently recorded on-chain!');
+                                setHasOnChainRecord(true);
+                                setPassword('');
+                                return;
+                            } else {
+                                throw new Error(`Transaction failed: ${currentStatus}`);
+                            }
+                        }
+                    } catch (pollErr: any) {
+                        // ignore transient polling errors
+                    }
+                }
+
+                // If polling times out or isn't supported, we just set the temp one and hope for the best
+                setBackupTxId(onChainTxId);
+                setBackupSuccess('Backup transaction submitted! Check explorer shortly.');
+                setHasOnChainRecord(true);
+                setPassword('');
+            } else {
+                throw new Error("Failed to get a valid transaction ID from wallet.");
+            }
         } catch (err: any) {
             console.error('Backup failed', err);
             setError(err.message || 'Failed to trigger backup transaction.');
@@ -221,7 +278,7 @@ export function useBurnerActions() {
                     const firstIndex = await getFreezeListIndex(0);
                     let index0FieldStr: string | undefined;
                     if (firstIndex) {
-                        try { index0FieldStr = Address.from_string(firstIndex).toGroup().toXCoordinate().toString(); } catch {}
+                        try { index0FieldStr = Address.from_string(firstIndex).toGroup().toXCoordinate().toString(); } catch { }
                     }
                     const proof = await generateFreezeListProof(1, index0FieldStr);
                     proofsInput = `[${proof}, ${proof}]`;
@@ -283,6 +340,8 @@ export function useBurnerActions() {
         showUnlockModal, setShowUnlockModal,
         showBackupModal, setShowBackupModal,
         showSweepModal, setShowSweepModal,
+        // backup state
+        backupSuccess, setBackupSuccess, backupTxId, setBackupTxId,
         // form values
         password, setPassword, showPassword, setShowPassword,
         sweepAmount, setSweepAmount,
