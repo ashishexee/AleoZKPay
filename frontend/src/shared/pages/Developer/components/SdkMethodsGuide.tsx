@@ -36,13 +36,14 @@ export const SdkMethodsGuide: React.FC = () => {
                 />
 
                 <div className="bg-black/40 rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04] px-4 mt-10">
-                    <PropRow name="amount" type="number" desc="Required for standard and multipay sessions. Whole-unit amount in the selected token." />
-                    <PropRow name="currency" type="'CREDITS' | 'USDCX' | 'USAD' | 'ANY'" desc="Requested token type for the checkout session." />
-                    <PropRow name="type" type="'standard' | 'multipay' | 'donation'" desc="Invoice mode. Donation allows payer-defined amount and can support `ANY`." />
+                    <PropRow name="amount" type="number" desc="Amount in whole tokens. Intrinsically auto-resolved if utilizing nullpay_invoice_name." />
+                    <PropRow name="currency" type="'CREDITS' | 'USDCX' | 'USAD' | 'ANY'" desc="Token type. Intrinsically auto-resolved if utilizing nullpay_invoice_name." />
+                    <PropRow name="type" type="'standard' | 'multipay' | 'donation'" desc="Invoice mode. Intrinsically auto-resolved if utilizing nullpay_invoice_name." />
                     <PropRow name="success_url" type="string" desc="Your redirect URL after settlement. Supports `{CHECKOUT_SESSION_ID}` placeholder." />
                     <PropRow name="cancel_url" type="string" desc="Optional redirect URL when the user exits the checkout." />
-                    <PropRow name="invoice_hash" type="string" desc="Optional pre-generated invoice hash for multipay or donation flows." />
-                    <PropRow name="salt" type="string" desc="Optional pre-generated salt paired with the invoice hash." />
+                    <PropRow name="invoice_hash" type="string" desc="Zero-knowledge hash. Intrinsically auto-resolved if utilizing nullpay_invoice_name." />
+                    <PropRow name="salt" type="string" desc="Private salt. Intrinsically auto-resolved if utilizing nullpay_invoice_name." />
+                    <PropRow name="nullpay_invoice_name" type="string" desc="Shorthand. Automatically gets merged with amount, currency, invoice_hash, and salt from your local nullpay.json!" />
                 </div>
 
                 <DeveloperCodeBlock

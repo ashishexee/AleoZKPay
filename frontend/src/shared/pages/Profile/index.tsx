@@ -238,6 +238,10 @@ const Profile: React.FC = () => {
         }
     };
 
+    const sdkHashSet = useMemo(() => {
+        return new Set(transactions.filter(tx => tx.for_sdk).map(tx => tx.invoice_hash));
+    }, [transactions]);
+
     const combinedInvoices = useMemo(() => {
         const merged = new Map<string, any>();
         console.log("🔄 Merging Invoices! Created:", createdInvoices.length, "Burner Created:", burnerCreatedInvoices.length);
@@ -252,6 +256,7 @@ const Profile: React.FC = () => {
         // MAIN WALLET INVOICES
         createdInvoices.forEach(record => {
             if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
+            if (sdkHashSet.has(record.invoiceHash)) return; // Filter explicitly SDK invoices from the Main Dashboard!
             
             const dbTx = dbMap.get(record.invoiceHash);
 
@@ -278,6 +283,7 @@ const Profile: React.FC = () => {
         // BURNER WALLET INVOICES
         burnerCreatedInvoices.forEach(record => {
             if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
+            if (sdkHashSet.has(record.invoiceHash)) return; // Filter explicitly SDK invoices from the Main Dashboard!
             
             const dbTx = dbMap.get(record.invoiceHash);
 
@@ -415,10 +421,10 @@ const Profile: React.FC = () => {
 
 
     const uniqueMainReceipts = Array.from(new Map(merchantReceipts.map(r => [r.receiptHash, r])).values())
-        .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash);
+        .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash && !sdkHashSet.has(r.invoiceHash));
         
     const uniqueBurnerReceipts = Array.from(new Map(burnerMerchantReceipts.map(r => [r.receiptHash, r])).values())
-        .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash);
+        .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash && !sdkHashSet.has(r.invoiceHash));
 
     const merchantStats = {
         mainCredits: (uniqueMainReceipts

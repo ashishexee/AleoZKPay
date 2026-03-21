@@ -42,10 +42,6 @@ const node_fetch_1 = __importDefault(require("node-fetch"));
 const crypto_1 = __importDefault(require("crypto"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-/**
- * Loads the nullpay.json config file from the given project root (defaults to process.cwd()).
- * Returns null if the file does not exist.
- */
 function loadNullPayConfig(projectRoot) {
     const root = projectRoot || process.cwd();
     const filePath = path.join(root, 'nullpay.json');

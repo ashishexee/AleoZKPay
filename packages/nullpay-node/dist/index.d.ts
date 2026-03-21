@@ -16,10 +16,6 @@ export interface NullPayJson {
     generated_at: string;
     invoices: NullPayInvoice[];
 }
-/**
- * Loads the nullpay.json config file from the given project root (defaults to process.cwd()).
- * Returns null if the file does not exist.
- */
 export declare function loadNullPayConfig(projectRoot?: string): NullPayJson | null;
 export interface CreateCheckoutSessionParams {
     amount?: number;
