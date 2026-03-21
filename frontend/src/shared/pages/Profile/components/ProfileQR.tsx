@@ -9,6 +9,7 @@ import { useProfilePayments } from '../../../hooks/useProfilePayments';
 import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { MerchantReceipt } from '../../../utils/aleo-utils';
+import toast from 'react-hot-toast';
 
 interface ProfileQRProps {
     initialMainReceipts: MerchantReceipt[];
@@ -39,7 +40,7 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
     const handleCopy = () => {
         if (paymentLink) {
             navigator.clipboard.writeText(paymentLink);
-            alert('Copied to clipboard!');
+            toast.success('Copied to clipboard!');
         }
     };
 
@@ -115,7 +116,7 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
                             // Auto trigger Burner QR creation since they haven't generated it yet
                             initializeQRs();
                         } else {
-                            alert('Enable Burner Wallet in settings first!');
+                            toast.error('Enable Burner Wallet in settings first!');
                         }
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold uppercase tracking-wider rounded-full transition-all duration-300 ${qrType === 'private' ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'text-gray-400 hover:text-white'

@@ -26,10 +26,7 @@ export interface NullPayJson {
     invoices: NullPayInvoice[];
 }
 
-/**
- * Loads the nullpay.json config file from the given project root (defaults to process.cwd()).
- * Returns null if the file does not exist.
- */
+
 export function loadNullPayConfig(projectRoot?: string): NullPayJson | null {
     const root = projectRoot || process.cwd();
     const filePath = path.join(root, 'nullpay.json');
@@ -207,7 +204,7 @@ export class NullPay {
                     while (!hashStr && retries < MAX_RETRIES) {
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         try {
-                            const mapRes = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v20.aleo/mapping/salt_to_invoice/${finalSalt}`);
+                            const mapRes = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v22.aleo/mapping/salt_to_invoice/${finalSalt}`);
                             if (mapRes.ok) {
                                 const textVal = await mapRes.json();
                                 if (textVal) hashStr = textVal.toString().replace(/(['"'])/g, '');

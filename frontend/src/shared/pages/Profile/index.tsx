@@ -9,6 +9,7 @@ import { StatsCards } from './components/StatsCards';
 import { InvoiceTable } from './components/InvoiceTable';
 import { PaidInvoicesTable } from './components/PaidInvoicesTable';
 import { VerifyModal } from './components/modals/VerifyModal';
+import toast from 'react-hot-toast';
 import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from './components/modals/ReceiptHashesModal';
 import { BurnerWalletSettings } from './components/BurnerWalletSettings';
@@ -506,7 +507,7 @@ const Profile: React.FC = () => {
             }
         } catch (e: any) {
             console.error("Settlement failed", e);
-            alert("Failed to settle invoice: " + (e.message || "Unknown error"));
+                toast.error("Failed to settle invoice: " + (e.message || "Unknown error"));
         } finally {
             setSettling(null);
         }

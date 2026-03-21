@@ -24,6 +24,13 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Merchant SDK records are currently stored as backend-owned plain values even
+// though the legacy column names still use the `encrypted_*` prefix. User/profile
+// records are different: those remain client-encrypted and should be treated as
+// opaque blobs on the backend.
+const readMerchantStoredValue = (value) => value || null;
+const sha256Hex = (value) => crypto.createHash('sha256').update(value).digest('hex');
+
 
 app.get('/', (req, res) => {
     res.send('AleoZKPay Backend is running');
@@ -209,7 +216,7 @@ app.post('/api/merchants/register', async (req, res) => {
         const secretKey = 'sk_test_' + crypto.randomBytes(24).toString('hex');
 
         // Salted hash for O(1) lookup
-        const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
+        const secretKeyHash = sha256Hex(secretKey);
 
         // Note: With the removal of server-side encryption, developer API metadata is stored natively
         // Developers manage their own privacy by keeping their secret keys secure.
@@ -245,7 +252,7 @@ app.post('/api/sdk/onboard/validate', async (req, res) => {
         return res.status(401).json({ error: 'Missing or invalid Authorization header.' });
     }
     const secretKey = authHeader.split(' ')[1];
-    const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
+    const secretKeyHash = sha256Hex(secretKey);
 
     const { data: merchant, error: merchantError } = await supabase
         .from('merchants')
@@ -257,7 +264,7 @@ app.post('/api/sdk/onboard/validate', async (req, res) => {
         return res.status(401).json({ error: 'Invalid API key.' });
     }
 
-    const merchantAddress = decrypt(merchant.encrypted_aleo_address);
+    const merchantAddress = readMerchantStoredValue(merchant.encrypted_aleo_address);
 
     const { merchant_address } = req.body;
     if (merchant_address && merchant_address !== merchantAddress) {
@@ -278,7 +285,7 @@ app.post('/api/dps/relayer/create-invoice', async (req, res) => {
         return res.status(401).json({ error: 'Missing or invalid Authorization header.' });
     }
     const secretKey = authHeader.split(' ')[1];
-    const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
+    const secretKeyHash = sha256Hex(secretKey);
 
     const { data: merchant, error: merchantError } = await supabase
         .from('merchants')
@@ -298,12 +305,19 @@ app.post('/api/dps/relayer/create-invoice', async (req, res) => {
     
     let funcName = 'create_invoice';
     let amountStr = `${amountMicro}u64`;
-    let tokenTypeNum = 0;
     
-    if (uppercaseCurrency === 'USDCX') { funcName = 'create_invoice_usdcx'; amountStr = `${amountMicro}u128`; tokenTypeNum = 1; }
-    else if (uppercaseCurrency === 'USAD') { funcName = 'create_invoice_usad'; amountStr = `${amountMicro}u128`; tokenTypeNum = 2; }
+    if (uppercaseCurrency === 'USDCX') {
+        funcName = 'create_invoice_usdcx';
+        amountStr = `${amountMicro}u128`;
+    } else if (uppercaseCurrency === 'USAD') {
+        funcName = 'create_invoice_usad';
+        amountStr = `${amountMicro}u128`;
+    } else if (uppercaseCurrency === 'ANY') {
+        funcName = 'create_invoice_any';
+        amountStr = `${amountMicro}u128`;
+    }
 
-    const merchantPubKey = decrypt(merchant.encrypted_aleo_address);
+    const merchantPubKey = readMerchantStoredValue(merchant.encrypted_aleo_address);
     if (!merchantPubKey) return res.status(500).json({ error: "Merchant public key missing" });
 
     // String to Field for memo
@@ -334,7 +348,7 @@ app.post('/api/dps/relayer/create-invoice', async (req, res) => {
         pm.setAccount(relayerAccount);
 
         const auth = await pm.buildAuthorization({
-            programName: "zk_pay_proofs_privacy_v20.aleo",
+            programName: "zk_pay_proofs_privacy_v22.aleo",
             functionName: funcName,
             inputs: inputs,
             fee: 0.1
@@ -375,7 +389,7 @@ app.post('/api/checkout/sessions', async (req, res) => {
         return res.status(401).json({ error: 'Missing or invalid Authorization header. Expected: Bearer <secret_key>' });
     }
     const secretKey = authHeader.split(' ')[1];
-    const secretKeyHash = crypto.createHash('sha256').update(secretKey).digest('hex');
+    const secretKeyHash = sha256Hex(secretKey);
 
     // Fetch merchant from DB
     const { data: merchant, error: merchantError } = await supabase
@@ -468,11 +482,14 @@ app.post('/api/checkout/sessions', async (req, res) => {
 
         // 5. Also insert into the main `invoices` table for dashboard visibility
         const tokenTypeNum = finalCurrency === 'ANY' ? 3 : (finalCurrency === 'USDCX' ? 1 : (finalCurrency === 'USAD' ? 2 : 0));
+        const merchantAddress = readMerchantStoredValue(merchant.encrypted_aleo_address);
+        const merchantAddressHash = merchantAddress ? sha256Hex(merchantAddress) : null;
         
         const { error: invTableError } = await supabase.from('invoices').upsert({
             invoice_hash: finalInvoiceHash,
-            merchant_address: merchant.encrypted_aleo_address,
-            designated_address: merchant.encrypted_aleo_address,
+            merchant_address: merchantAddress,
+            merchant_address_hash: merchantAddressHash,
+            designated_address: merchantAddress,
             is_burner: false,
             token_type: tokenTypeNum,
             invoice_type: finalInvoiceType,
@@ -541,8 +558,8 @@ app.get('/api/checkout/sessions/:id', async (req, res) => {
             invoice_hash: intent.invoice_hash,
             salt: intent.salt,
             invoice_type: intent.invoice_type,
-            success_url: intent.success_url ? decrypt(intent.success_url) : null,
-            cancel_url: intent.cancel_url ? decrypt(intent.cancel_url) : null,
+            success_url: intent.success_url || null,
+            cancel_url: intent.cancel_url || null,
             merchant_name: intent.merchants ? intent.merchants.name : 'Unknown Merchant',
             merchant_address: intent.merchants ? intent.merchants.encrypted_aleo_address : null
         };
@@ -756,8 +773,8 @@ app.patch('/api/invoices/:hash', async (req, res) => {
                             // 2. Dispatch Webhook
                             if (intent.merchants && intent.merchants.encrypted_webhook_url) {
                                 try {
-                                    const secretKey = decrypt(intent.merchants.encrypted_secret_key);
-                                    const webhookUrl = decrypt(intent.merchants.encrypted_webhook_url);
+                                    const secretKey = readMerchantStoredValue(intent.merchants.encrypted_secret_key);
+                                    const webhookUrl = readMerchantStoredValue(intent.merchants.encrypted_webhook_url);
 
                                     const payload = {
                                         id: intent.id,

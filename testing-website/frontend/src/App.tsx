@@ -248,6 +248,19 @@ export default function App() {
   const tokens = searchParams.get('tokens');
   const [verifyStatus, setVerifyStatus] = useState<any>(null);
 
+  const subscriptionInvoiceRoutes: Record<string, string> = {
+    CREDITS: 'basic-credits',
+    USDCX: 'basic-usdcx',
+    USAD: 'basic-usad',
+  };
+
+  const donationInvoiceRoutes: Record<string, string> = {
+    ANY: 'support-any',
+    CREDITS: 'support-credits',
+    USDCX: 'support-usdcx',
+    USAD: 'support-usad',
+  };
+
   useEffect(() => {
     const storedCredits = Number(window.localStorage.getItem('demo_total_credits') || '0');
     setTotalCredits(Number.isFinite(storedCredits) ? storedCredits : 0);
@@ -322,7 +335,7 @@ export default function App() {
     window.localStorage.setItem('demo_processed_sessions', JSON.stringify([...processedSessions, sessionId]));
   }, [sessionId, tokens, type, verifyStatus]);
 
-  const handleCheckout = async (endpoint: string, payload: any) => {
+  const handleCheckout = async (endpoint: string, payload: any = {}) => {
     try {
       setLoading(true);
       const res = await fetch(`http://localhost:4000/api/${endpoint}`, {
@@ -337,7 +350,7 @@ export default function App() {
         addToast(data.error || 'Failed to initiate checkout', 'error');
       }
     } catch (err) {
-      addToast('Network error. Is the backend running?', 'error');
+      addToast('Network error. Is the backend running?','error');
     } finally {
       setLoading(false);
     }
@@ -428,9 +441,9 @@ export default function App() {
 
           <div style={styles.grid3Col} className="main-grid">
             {[
-              { id: 'CREDITS', price: 10 },
-              { id: 'USDCX', price: 10, featured: true },
-              { id: 'USAD', price: 10 },
+              { id: 'CREDITS', price: 1 },
+              { id: 'USDCX', price: 1, featured: true },
+              { id: 'USAD', price: 1 },
             ].map((plan, i) => (
               <div key={plan.id} className={`plan-card fade-up delay-${i+1}`} style={{
                 ...styles.card,
@@ -452,7 +465,7 @@ export default function App() {
                 <button
                   className="btn-primary"
                   disabled={loading}
-                  onClick={() => handleCheckout('checkout/subscription', { plan: 1, currency: plan.id, price: plan.price })}
+                  onClick={() => handleCheckout(subscriptionInvoiceRoutes[plan.id])}
                   style={styles.primaryBtn}
                 >
                   {loading ? <><Spinner /> Processing</> : 'Subscribe'}
@@ -595,7 +608,7 @@ export default function App() {
               <button
                 className="btn-primary"
                 disabled={loading}
-                onClick={() => handleCheckout('checkout/donation', { currency: donationCurrency })}
+                onClick={() => handleCheckout(donationInvoiceRoutes[donationCurrency])}
                 style={{...styles.primaryBtn, marginTop: 'auto'}}
               >
                 {loading ? <><Spinner /> Processing</> : 'Create Session'}
