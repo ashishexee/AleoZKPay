@@ -15,10 +15,10 @@ export default {
                 'void-main': '#000000', // Pure black
                 'void-lighter': '#0a0a0a', // Almost black
 
-                // Monochrome Accents (formerly Neon)
-                'neon-primary': '#ffffff', // White (Primary Action/Highlight)
-                'neon-secondary': '#a3a3a3', // Neutral 400 (Secondary)
-                'neon-accent': '#525252', // Neutral 600 (Tertiary/Depth)
+                // Deep Space Accents (formerly Monochrome/Neon)
+                'neon-primary': '#8b5cf6', // Vivid Purple (Primary Action/Highlight)
+                'neon-secondary': '#3b82f6', // Bright Blue (Secondary)
+                'neon-accent': '#06b6d4', // Cyan (Tertiary/Depth)
 
                 // Glass States
                 'glass-border': 'rgba(255, 255, 255, 0.15)',
@@ -55,12 +55,12 @@ export default {
                     '100%': { transform: 'translateX(100%)' },
                 },
                 glow: {
-                    '0%': { boxShadow: '0 0 5px rgba(255, 255, 255, 0.1), 0 0 10px rgba(255, 255, 255, 0.05)' },
-                    '100%': { boxShadow: '0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px rgba(255, 255, 255, 0.2)' },
+                    '0%': { boxShadow: '0 0 5px rgba(139, 92, 246, 0.1), 0 0 10px rgba(139, 92, 246, 0.05)' },
+                    '100%': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.4), 0 0 40px rgba(139, 92, 246, 0.2)' },
                 }
             },
             boxShadow: {
-                'neon': '0 0 5px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.3)', // White glow
+                'neon': '0 0 5px rgba(139, 92, 246, 0.5), 0 0 20px rgba(139, 92, 246, 0.3)', // Purple glow
                 'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
                 'glass-hover': '0 8px 32px 0 rgba(0, 0, 0, 0.7)',
             }

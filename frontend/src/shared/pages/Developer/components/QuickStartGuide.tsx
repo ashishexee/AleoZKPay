@@ -72,7 +72,7 @@ const nullpay = new NullPay({
                 <div className="space-y-4 mb-8">
                     <div className="p-5 bg-white/[0.02] border border-white/[0.06] rounded-xl">
                         <h4 className="text-white font-bold mb-2">1. Automatic Generation (Recommended)</h4>
-                        <p className="text-gray-400 text-sm">Run our interactive CLI wizard: <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">npx @nullpay/cli sdk onboard</code>. It handles generating salts, submitting to the Aleo relayer, resolving the invoice hashes on the network, and writing the final <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code> file for you.</p>
+                        <p className="text-gray-400 text-sm">Run our interactive CLI wizard: <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">npx @nullpay/cli@1.0.1 sdk onboard</code>. It handles generating salts, submitting to the Aleo relayer, resolving the invoice hashes on the network, and writing the final <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code> file for you.</p>
                     </div>
                     <div className="p-5 bg-white/[0.02] border border-white/[0.06] rounded-xl">
                         <h4 className="text-white font-bold mb-2">2. Manual Fallback</h4>

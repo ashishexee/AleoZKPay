@@ -35,6 +35,19 @@ export const SdkMethodsGuide: React.FC = () => {
 });`}
                 />
 
+                <DeveloperCodeBlock
+                    title="nullpay.invoices (Local manifest helpers)"
+                    code={`// Read the entire nullpay.json manifest into memory
+const allInvoices = nullpay.invoices.getAll();
+
+// Get a specific invoice by its name or index
+const proPlan = nullpay.invoices.getByName('pro-plan');
+const firstInvoice = nullpay.invoices.getByIndex(0);
+
+// Filter your pre-generated invoices
+const donationInvoices = nullpay.invoices.getByType('donation');`}
+                />
+
                 <div className="bg-black/40 rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04] px-4 mt-10">
                     <PropRow name="amount" type="number" desc="Amount in whole tokens. Intrinsically auto-resolved if utilizing nullpay_invoice_name." />
                     <PropRow name="currency" type="'CREDITS' | 'USDCX' | 'USAD' | 'ANY'" desc="Token type. Intrinsically auto-resolved if utilizing nullpay_invoice_name." />

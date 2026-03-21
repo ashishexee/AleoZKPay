@@ -174,12 +174,12 @@ export const DeveloperPortal = () => {
 
                     <motion.div variants={fadeInUp} className="mt-8 mb-4 flex flex-col gap-4 items-center">
                         <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl hover:border-white/20 transition-all group max-w-fit cursor-pointer" onClick={() => {
-                            navigator.clipboard.writeText('npm install @nullpay/node');
+                            navigator.clipboard.writeText('npm install @nullpay/node@1.0.1');
                             setCommandCopied(true);
                             setTimeout(() => setCommandCopied(false), 2000);
                         }}>
                             <Terminal className="w-3.5 h-3.5 text-gray-500 group-hover:text-neon-primary transition-colors" />
-                            <code className="text-sm font-mono text-gray-300">npm install @nullpay/node</code>
+                            <code className="text-sm font-mono text-gray-300">npm install @nullpay/node@1.0.1</code>
                             <div className="flex items-center gap-1.5 ml-4 border-l border-white/10 pl-4">
                                 {commandCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-gray-500 group-hover:text-white transition-colors" />}
                                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
@@ -190,12 +190,12 @@ export const DeveloperPortal = () => {
 
                         <div className="flex flex-col items-center gap-2.5">
                             <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl hover:border-white/20 transition-all group max-w-fit cursor-pointer" onClick={() => {
-                                navigator.clipboard.writeText('npx @nullpay/cli sdk onboard');
+                                navigator.clipboard.writeText('npx @nullpay/cli@1.0.1 sdk onboard');
                                 setCliCommandCopied(true);
                                 setTimeout(() => setCliCommandCopied(false), 2000);
                             }}>
                                 <Command className="w-3.5 h-3.5 text-gray-500 group-hover:text-neon-accent transition-colors" />
-                                <code className="text-sm font-mono text-gray-300">npx @nullpay/cli sdk onboard</code>
+                                <code className="text-sm font-mono text-gray-300">npx @nullpay/cli@1.0.1 sdk onboard</code>
                                 <div className="flex items-center gap-1.5 ml-4 border-l border-white/10 pl-4">
                                     {cliCommandCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-gray-500 group-hover:text-white transition-colors" />}
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">

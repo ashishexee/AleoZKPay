@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Shield, Zap, Lock, Globe, Server, Eye, EyeOff, FileText, Layers, Coins, KeyRound } from 'lucide-react';
+import { ArrowRight, Shield, Zap, Lock, Globe, Eye, EyeOff, FileText, Layers, Coins, KeyRound } from 'lucide-react';
 import DottedGlobe from './components/DottedGlobe';
 import { RedditMarquee } from './components/RedditMarquee';
 import { FlashlightEffect } from './components/FlashlightEffect';
@@ -47,27 +47,23 @@ const Home = () => {
                                         variants={fadeInUp}
                                         className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.05] relative z-10"
                                     >
-                                        Pay Privately.<br />
-                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-300 to-gray-600">
-                                            Nullify the{' '}
-                                        </span>
-                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/60 to-white/10">
-                                            Trace.
-                                        </span>
+                                        <span className="text-white">Pay Privately.</span><br />
+                                        <span className="text-white">Nullify</span>{' '}
+                                        <span className="text-white/40">the Trace.</span>
                                     </motion.h1>
 
-                                    {/* Curved gradient line — upside-down smile, behind the text */}
-                                    <svg viewBox="0 0 500 50" fill="none" xmlns="http://www.w3.org/2000/svg"
-                                        className="absolute bottom-[-20px] left-0 w-[90%] h-auto z-0 pointer-events-none"
+                                    {/* Curved gradient line — sleek underline */}
+                                    <svg viewBox="0 0 500 30" fill="none" xmlns="http://www.w3.org/2000/svg"
+                                        className="absolute bottom-[-15px] left-0 w-[85%] h-auto z-0 pointer-events-none opacity-50"
                                     >
                                         <defs>
                                             <linearGradient id="curve-grad" x1="0" y1="0" x2="500" y2="0" gradientUnits="userSpaceOnUse">
-                                                <stop offset="0%" stopColor="white" stopOpacity="0.7" />
-                                                <stop offset="50%" stopColor="white" stopOpacity="0.25" />
-                                                <stop offset="100%" stopColor="white" stopOpacity="0" />
+                                                <stop offset="0%" stopColor="#8b5cf6" />
+                                                <stop offset="50%" stopColor="#3b82f6" />
+                                                <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
                                             </linearGradient>
                                         </defs>
-                                        <path d="M 0 40 Q 250 0 500 40" stroke="url(#curve-grad)" strokeWidth="3" strokeLinecap="round" />
+                                        <path d="M 0 10 Q 250 25 500 10" stroke="url(#curve-grad)" strokeWidth="2" strokeLinecap="round" />
                                     </svg>
                                 </div>
 
@@ -75,8 +71,7 @@ const Home = () => {
                                     variants={fadeInUp}
                                     className="text-lg md:text-xl text-gray-400 max-w-lg font-light leading-relaxed"
                                 >
-                                    NullPay is a decentralized payment protocol on Aleo that empowers users with absolute financial privacy.
-                                    Create, send, and settle invoices without ever exposing your wallet balance or transaction history to the public.
+                                    A decentralized privacy protocol on Aleo. Create and settle invoices without ever exposing your wallet balance or transaction history to the public.
                                 </motion.p>
 
                                 <motion.div
@@ -105,9 +100,9 @@ const Home = () => {
                             className="max-w-5xl mx-auto"
                         >
                             <div className="text-center mb-10">
-                                <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">The Problem</span>
-                                <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mt-4">Public Ledgers Expose You</h2>
-                                <p className="text-gray-400 text-lg mt-4 max-w-2xl mx-auto">Every transaction on a public blockchain reveals your wallet balance, transaction history, and financial habits to anyone you interact with.</p>
+                                <span className="text-[11px] uppercase tracking-[0.25em] text-red-400 font-bold px-4 py-1.5 rounded-full bg-red-500/5 border border-red-500/20">The Problem</span>
+                                <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mt-8">Public Ledgers <span className="text-red-400/90">Expose You</span></h2>
+                                <p className="text-gray-500 text-lg mt-4 max-w-2xl mx-auto font-light">Every transaction reveals your wallet balance, history, and habits.</p>
                             </div>
 
                             <RedditMarquee />
@@ -128,9 +123,9 @@ const Home = () => {
                             className="max-w-7xl mx-auto"
                         >
                             <motion.div variants={fadeInUp} className="text-center mb-16">
-                                <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">The Solution</span>
-                                <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mt-4">What is NullPay?</h2>
-                                <p className="text-gray-400 text-lg mt-4 max-w-3xl mx-auto leading-relaxed">
+                                <span className="text-[11px] uppercase tracking-[0.25em] text-neon-secondary font-bold px-3 py-1 rounded-full bg-neon-secondary/10 border border-neon-secondary/20">The Solution</span>
+                                <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mt-4">What is <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-secondary">NullPay?</span></h2>
+                                <p className="text-gray-400 text-lg mt-4 max-w-3xl mx-auto leading-relaxed font-light">
                                     NullPay is a decentralized invoice and payment protocol that breaks the link between sender and receiver.
                                     Create invoices, collect payments, and settle transactions — all without revealing who paid whom, or how much.
                                 </p>
@@ -169,19 +164,37 @@ const Home = () => {
                                         title: "Encrypted Metadata",
                                         desc: "Off-chain data is encrypted with AES-256. We don't store amounts or memos. Even if our database were compromised, your financial data stays safe.",
                                     },
-                                ].map((feature, i) => (
-                                    <motion.div
-                                        key={i}
-                                        variants={scaleIn}
-                                        className="p-7 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-sm hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-500 group"
-                                    >
-                                        <div className="w-11 h-11 rounded-xl bg-white/[0.06] flex items-center justify-center mb-5 border border-white/[0.08] group-hover:border-white/20 group-hover:bg-white/[0.1] transition-all duration-300">
-                                            <feature.icon className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
-                                        </div>
-                                        <h3 className="text-lg font-bold mb-2.5 text-white group-hover:text-white transition-colors">{feature.title}</h3>
-                                        <p className="text-gray-500 text-sm leading-relaxed group-hover:text-gray-400 transition-colors">{feature.desc}</p>
-                                    </motion.div>
-                                ))}
+                                ].map((feature, i) => {
+                                    const colors = [
+                                        { bg: 'bg-neon-primary/10', border: 'border-neon-primary/20', icon: 'text-neon-primary' },
+                                        { bg: 'bg-neon-secondary/10', border: 'border-neon-secondary/20', icon: 'text-neon-secondary' },
+                                        { bg: 'bg-neon-accent/10', border: 'border-neon-accent/20', icon: 'text-neon-accent' },
+                                    ];
+                                    const color = colors[i % colors.length];
+
+                                    return (
+                                        <motion.div
+                                            key={i}
+                                            variants={scaleIn}
+                                            className="p-7 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-sm hover:bg-white/[0.05] hover:border-white/[0.12] transition-all duration-500 group relative overflow-hidden"
+                                        >
+                                            <div className={`absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-${color.icon.replace('text-', '')}/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+                                            <div className={`w-11 h-11 rounded-xl ${color.bg} flex items-center justify-center mb-5 border ${color.border} group-hover:scale-110 transition-transform duration-300`}>
+                                                <feature.icon className={`w-5 h-5 ${color.icon}`} />
+                                            </div>
+                                            <h3 className="text-lg font-bold mb-2.5 text-white group-hover:text-white transition-colors">{feature.title}</h3>
+                                            <p className="text-gray-500 text-sm leading-relaxed group-hover:text-gray-400 transition-colors" dangerouslySetInnerHTML={{ 
+                                                __html: feature.desc
+                                                    .replace('BHP256 cryptography', '<span class="text-neon-primary/80 font-medium">BHP256 cryptography</span>')
+                                                    .replace("Aleo's private transfer", '<span class="text-neon-secondary/80 font-medium">Aleo\'s private transfer</span>')
+                                                    .replace('PayerReceipt and MerchantReceipt', '<span class="text-neon-accent/80 font-medium">PayerReceipt and MerchantReceipt</span>')
+                                                    .replace('USDCx', '<span class="text-neon-secondary/80 font-medium">USDCx</span>')
+                                                    .replace('Multi-Pay', '<span class="text-neon-primary/80 font-medium">Multi-Pay</span>')
+                                                    .replace('AES-256', '<span class="text-neon-accent/80 font-medium">AES-256</span>')
+                                            }} />
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
                         </motion.div>
                     </section>
@@ -233,16 +246,16 @@ const Home = () => {
                                     </p>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
-                                        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] transition-colors group">
-                                            <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                                <Shield className="w-5 h-5 text-gray-400" />
+                                        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-neon-secondary/5 hover:border-neon-secondary/30 transition-colors group">
+                                            <div className="w-10 h-10 rounded-lg bg-neon-secondary/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-neon-secondary/20 transition-transform">
+                                                <Shield className="w-5 h-5 text-neon-accent" />
                                             </div>
                                             <h4 className="font-bold text-white mb-2">Shield Wallet Beta</h4>
                                             <p className="text-xs text-gray-500 leading-relaxed">Integrated directly with Shield Wallet for secure key management and private transactions.</p>
                                         </div>
-                                        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] transition-colors group">
-                                            <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                                <Globe className="w-5 h-5 text-gray-400" />
+                                        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-neon-primary/5 hover:border-neon-primary/30 transition-colors group">
+                                            <div className="w-10 h-10 rounded-lg bg-neon-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-neon-primary/20 transition-transform">
+                                                <Globe className="w-5 h-5 text-neon-secondary" />
                                             </div>
                                             <h4 className="font-bold text-white mb-2">Private QR Scan</h4>
                                             <p className="text-xs text-gray-500 leading-relaxed">Instantly scan invoice QR codes and settle payments privately at point-of-sale terminals.</p>
@@ -304,10 +317,10 @@ const Home = () => {
                                     <motion.div key={i} variants={fadeInUp} className="relative">
                                         <div className="flex flex-col items-center text-center p-8 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-sm hover:bg-white/[0.04] hover:border-white/[0.1] transition-all duration-500 group h-full">
                                             {/* Step number */}
-                                            <div className="w-14 h-14 rounded-full bg-white/[0.06] border border-white/[0.1] flex items-center justify-center mb-6 group-hover:bg-white/[0.1] group-hover:border-white/20 transition-all duration-300 relative z-10">
-                                                <span className="text-lg font-bold text-gray-400 group-hover:text-white transition-colors">{step.step}</span>
+                                            <div className="w-14 h-14 rounded-full bg-neon-primary/10 border border-neon-primary/20 flex items-center justify-center mb-6 group-hover:bg-neon-primary/20 group-hover:border-neon-secondary/40 transition-all duration-300 relative z-10">
+                                                <span className="text-lg font-bold text-neon-secondary group-hover:text-neon-primary transition-colors">{step.step}</span>
                                             </div>
-                                            <step.icon className="w-6 h-6 text-gray-500 mb-4 group-hover:text-white transition-colors" />
+                                            <step.icon className="w-6 h-6 text-neon-accent mb-4 group-hover:text-neon-primary transition-colors" />
                                             <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
                                             <p className="text-gray-500 text-sm leading-relaxed group-hover:text-gray-400 transition-colors">{step.desc}</p>
                                         </div>
@@ -332,28 +345,25 @@ const Home = () => {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                                 {/* Left: Text */}
                                 <div className="space-y-6">
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08]">
-                                        <Server className="w-4 h-4 text-gray-400" />
-                                        <span className="text-[11px] font-semibold tracking-[0.2em] text-gray-400 uppercase">Architecture</span>
+                                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neon-primary/10 border border-neon-primary/20">
+                                        <Layers className="w-4 h-4 text-neon-primary" />
+                                        <span className="text-[11px] font-bold tracking-[0.2em] text-neon-primary uppercase">Architecture</span>
                                     </div>
-                                    <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                                        Powered by <span className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.35)]">Aleo</span>
+                                    <h2 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight">
+                                        Powered by <span className="text-neon-primary drop-shadow-[0_0_20px_rgba(139,92,246,0.3)]">Aleo</span>
                                     </h2>
                                     <p className="text-lg text-gray-300 font-light leading-relaxed">
                                         Aleo is a <strong className="text-white">Layer-1 blockchain</strong> purpose-built for zero-knowledge applications. Unlike Ethereum or Solana where privacy is an afterthought, Aleo makes ZK-proofs a native, first-class feature.
                                     </p>
                                     <div className="space-y-4 pt-2">
                                         {[
-                                            { label: "Off-Chain Execution", desc: "Smart contracts execute privately on the user's device. Only the cryptographic proof is submitted on-chain." },
-                                            { label: "Encrypted Records", desc: "Aleo uses encrypted records instead of public accounts. Only the record owner can decrypt and view their data." },
-                                            { label: "Leo Language", desc: "Programs are written in Leo — a Rust-inspired language designed for writing zero-knowledge applications safely." },
+                                            { label: "Off-Chain Execution", desc: "Smart contracts execute privately to generate proofs." },
+                                            { label: "Encrypted Records", desc: "Only the record owner can decrypt and view their data." },
                                         ].map((item, i) => (
-                                            <div key={i} className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors">
-                                                <div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center shrink-0 mt-0.5 border border-white/[0.08]">
-                                                    <Zap className="w-4 h-4 text-gray-400" />
-                                                </div>
+                                            <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors">
+                                                <div className="w-2 h-2 rounded-full bg-neon-primary shrink-0" />
                                                 <div>
-                                                    <h4 className="text-sm font-bold text-white mb-1">{item.label}</h4>
+                                                    <h4 className="text-sm font-bold text-white mb-0.5">{item.label}</h4>
                                                     <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
                                                 </div>
                                             </div>
@@ -365,22 +375,22 @@ const Home = () => {
                                 <div className="flex justify-center">
                                     <div className="relative w-full aspect-square max-w-sm">
                                         {/* Outer ring */}
-                                        <div className="absolute inset-0 border border-white/[0.08] rounded-full animate-[spin_25s_linear_infinite]">
-                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white/20 border border-white/30" />
+                                        <div className="absolute inset-0 border border-neon-primary/30 rounded-full animate-[spin_25s_linear_infinite]">
+                                            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-neon-secondary border border-neon-accent" />
                                         </div>
                                         {/* Middle ring */}
-                                        <div className="absolute inset-6 border border-white/[0.12] rounded-full animate-[spin_18s_linear_infinite_reverse] border-dashed">
-                                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white/30 border border-white/40" />
+                                        <div className="absolute inset-6 border border-neon-secondary/20 rounded-full animate-[spin_18s_linear_infinite_reverse] border-dashed">
+                                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2.5 h-2.5 rounded-full bg-neon-accent border border-neon-primary" />
                                         </div>
                                         {/* Inner ring */}
-                                        <div className="absolute inset-14 border border-white/[0.06] rounded-full animate-[spin_12s_linear_infinite]">
-                                            <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white/20" />
+                                        <div className="absolute inset-14 border border-neon-accent/30 rounded-full animate-[spin_12s_linear_infinite]">
+                                            <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-neon-primary" />
                                         </div>
                                         {/* Center */}
-                                        <div className="absolute inset-[72px] bg-gradient-to-tr from-white/[0.04] to-transparent rounded-full backdrop-blur-xl flex items-center justify-center border border-white/[0.08] shadow-[0_0_60px_rgba(255,255,255,0.05)]">
-                                            <div className="text-center">
-                                                <h3 className="text-2xl font-bold tracking-widest uppercase opacity-70">Zero</h3>
-                                                <h3 className="text-2xl font-bold tracking-widest uppercase opacity-70">Knowledge</h3>
+                                        <div className="absolute inset-[72px] bg-gradient-to-tr from-neon-primary/5 to-transparent rounded-full backdrop-blur-xl flex items-center justify-center border border-white/[0.08] shadow-[0_0_60px_rgba(139,92,246,0.1)] group">
+                                            <div className="flex flex-col items-center gap-1.5 pt-1">
+                                                <Zap className="w-7 h-7 text-neon-primary drop-shadow-[0_0_10px_rgba(139,92,246,0.5)]" />
+                                                <span className="text-[10px] font-black tracking-[0.25em] uppercase text-neon-primary/80">ZK Native</span>
                                             </div>
                                         </div>
                                     </div>
@@ -434,13 +444,13 @@ const Home = () => {
                                 </div>
 
                                 {/* NullPay */}
-                                <div className="p-8 rounded-2xl bg-white/[0.04] border border-white/[0.12] relative overflow-hidden group hover:border-white/20 transition-all duration-500">
+                                <div className="p-8 rounded-2xl bg-neon-primary/5 border border-neon-primary/20 relative overflow-hidden group hover:border-neon-primary/50 transition-all duration-500 hover:shadow-neon">
                                     <div className="absolute top-4 right-4">
-                                        <EyeOff className="w-6 h-6 text-white/40 group-hover:text-white/60 transition-colors" />
+                                        <EyeOff className="w-6 h-6 text-neon-primary/40 group-hover:text-neon-primary transition-colors" />
                                     </div>
-                                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-neon-primary/10 to-transparent pointer-events-none" />
                                     <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3 relative z-10">
-                                        <span className="w-8 h-8 rounded-lg bg-white/[0.08] border border-white/[0.15] flex items-center justify-center text-xs font-mono text-white">✓</span>
+                                        <span className="w-8 h-8 rounded-lg bg-neon-primary/20 border border-neon-primary/40 flex items-center justify-center text-xs font-mono text-neon-primary shadow-[0_0_10px_rgba(139,92,246,0.3)]">✓</span>
                                         NullPay Protocol
                                     </h3>
                                     <div className="space-y-4 relative z-10">
