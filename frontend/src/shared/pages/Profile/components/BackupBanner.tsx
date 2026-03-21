@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useBurnerActions } from './BurnerWallet/useBurnerActions';
+import ConfirmModal from '../../../components/ConfirmModal';
 
 export const BackupBanner: React.FC = () => {
     const a = useBurnerActions();
 
     if (a.hasOnChainRecord || a.fetchedFromChain || !a.address || a.burnerAddress) {
-        return null; // Already backed up, not connected, or using Burner Wallet backup instead
+        return null; 
     }
 
     return (
@@ -30,16 +31,23 @@ export const BackupBanner: React.FC = () => {
             </div>
             
             <button 
-                onClick={(e) => {
-                    if (window.confirm("This will save an encrypted backup of your password on the Aleo blockchain. A network fee will be applied. Continue?")) {
-                        a.handleBackupRecord(e);
-                    }
-                }}
+                onClick={() => { a.setShowBackupModal(true); }}
                 disabled={a.isBackingUp}
                 className="px-5 py-2 whitespace-nowrap bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-all text-sm shadow-[0_0_15px_rgba(59,130,246,0.3)] disabled:opacity-50"
             >
                 {a.isBackingUp ? 'Backing up...' : 'Backup Now'}
             </button>
+
+            <ConfirmModal
+                open={a.showBackupModal}
+                title="Backup Password On-Chain"
+                description={"This will save an encrypted backup of your password on the Aleo blockchain. A network fee will be applied. Continue?"}
+                confirmLabel="Backup"
+                cancelLabel="Cancel"
+                loading={a.isBackingUp}
+                onConfirm={() => { a.handleBackupRecord(); }}
+                onClose={() => a.setShowBackupModal(false)}
+            />
         </motion.div>
     );
 };

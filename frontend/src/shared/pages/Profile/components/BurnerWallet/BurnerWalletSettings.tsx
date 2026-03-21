@@ -1,6 +1,7 @@
 import React from 'react';
 import { GlassCard } from '../../../../components/ui/GlassCard';
 import { useBurnerActions } from './useBurnerActions';
+import ConfirmModal from '../../../../components/ConfirmModal';
 import { SweepModal } from './SweepModal';
 import type { BurnerWalletSettingsProps } from './types';
 
@@ -33,16 +34,25 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                         <p className="text-xs text-gray-400 mb-4 max-w-sm">
                             Generate one to enable enhanced privacy. Your key will be secured with a password only you know.
                         </p>
-                        <button
-                            onClick={(e) => { 
-                                if (window.confirm("Generating a new Burner Wallet will create a permanent private key. Continue?")) {
-                                    a.handleGenerateBurner(e); 
-                                }
-                            }}
-                            disabled={a.isGenerating}
-                            className="px-5 py-1.5 bg-gradient-to-r from-neon-primary to-neon-accent hover:opacity-90 text-black font-bold rounded-lg transition-all text-sm disabled:opacity-50">
-                            {a.isGenerating ? 'Generating...' : 'Generate Burner Wallet'}
-                        </button>
+                        <>
+                            <button
+                                onClick={() => a.setShowGenerateModal(true)}
+                                disabled={a.isGenerating}
+                                className="px-5 py-1.5 bg-gradient-to-r from-neon-primary to-neon-accent hover:opacity-90 text-black font-bold rounded-lg transition-all text-sm disabled:opacity-50">
+                                {a.isGenerating ? 'Generating...' : 'Generate Burner Wallet'}
+                            </button>
+
+                            <ConfirmModal
+                                open={a.showGenerateModal}
+                                title="Generate Burner Wallet"
+                                description={"Generating a new Burner Wallet will create a permanent private key. Continue?"}
+                                confirmLabel="Generate"
+                                cancelLabel="Cancel"
+                                loading={a.isGenerating}
+                                onConfirm={() => { a.handleGenerateBurner(); }}
+                                onClose={() => a.setShowGenerateModal(false)}
+                            />
+                        </>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -89,15 +99,24 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                                     </p>
                                     <div className="flex gap-2 shrink-0">
                                         {!(a.fetchedFromChain || a.hasBurnerOnChainRecord) && (
-                                            <button onClick={(e) => {
-                                                if (window.confirm("This will save an encrypted backup of your burner wallet on the Aleo blockchain. A network fee will be applied. Continue?")) {
-                                                    a.handleBackupRecord(e);
-                                                }
-                                            }}
-                                                disabled={a.isBackingUp}
-                                                className="px-4 py-1.5 bg-transparent border border-white/20 hover:bg-white/5 text-white font-bold rounded-lg transition-all text-xs disabled:opacity-50">
-                                                {a.isBackingUp ? 'Backing up...' : 'Backup as Record (Optional)'}
-                                            </button>
+                                            <>
+                                                <button onClick={() => a.setShowBackupModal(true)}
+                                                    disabled={a.isBackingUp}
+                                                    className="px-4 py-1.5 bg-transparent border border-white/20 hover:bg-white/5 text-white font-bold rounded-lg transition-all text-xs disabled:opacity-50">
+                                                    {a.isBackingUp ? 'Backing up...' : 'Backup as Record (Optional)'}
+                                                </button>
+
+                                                <ConfirmModal
+                                                    open={a.showBackupModal}
+                                                    title="Backup Burner Wallet"
+                                                    description={"This will save an encrypted backup of your burner wallet on the Aleo blockchain. A network fee will be applied. Continue?"}
+                                                    confirmLabel="Backup"
+                                                    cancelLabel="Cancel"
+                                                    loading={a.isBackingUp}
+                                                    onConfirm={() => { a.handleBackupRecord(); }}
+                                                    onClose={() => a.setShowBackupModal(false)}
+                                                />
+                                            </>
                                         )}
                                         <button onClick={a.openSweepModal}
                                             className="px-4 py-1.5 bg-blue-500/20 border border-blue-500/50 hover:bg-blue-500/30 text-blue-400 font-bold rounded-lg transition-all text-xs shadow-[0_0_10px_rgba(59,130,246,0.1)] hover:scale-105">

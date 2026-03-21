@@ -5,7 +5,7 @@
 NullPay is a decentralized invoice and payment system that leverages Aleo's zero-knowledge cryptography to enable private, verifiable transactions. Merchants can create invoices without revealing sensitive information on-chain, and payers can settle invoices while maintaining complete anonymity.
 
 **Live Application:** [https://nullpay.app/](https://nullpay.app/)  
-**Smart Contract:** [`zk_pay_proofs_privacy_v20.aleo`](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v20.aleo)  
+**Smart Contract:** [`zk_pay_proofs_privacy_v22.aleo`](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v22.aleo)  
 **NullPay Node SDK:** [`@nullpay/node`](https://www.npmjs.com/package/@nullpay/node)  
 **Vision:** [https://nullpay.app/vision](https://nullpay.app/vision)  
 **Documentation:** [https://nullpay.app/docs](https://nullpay.app/docs)  
@@ -104,7 +104,7 @@ The client-side application handles:
 - Burner wallet management (local encryption)
 
 ### Layer 2: Smart Contract (Leo)
-The on-chain protocol `zk_pay_proofs_privacy_v20.aleo` enforces:
+The on-chain protocol `zk_pay_proofs_privacy_v22.aleo` enforces:
 - Hash integrity verification (`assert_eq(computed_hash, stored_hash)`)
 - Invoice status management (0 = Open, 1 = Settled)
 - Multi-token support (Credits, USDCx, USAD)
@@ -182,7 +182,7 @@ cd ../backend && npm install
 
 **Frontend (`frontend/.env`):**
 ```env
-VITE_PROGRAM_ID=zk_pay_proofs_privacy_v20.aleo
+VITE_PROGRAM_ID=zk_pay_proofs_privacy_v22.aleo
 VITE_BACKEND_URL=https://nullpay.app/api
 ```
 
@@ -249,9 +249,9 @@ AleoZKPay/
 
 ## Smart Contract
 
-The core contract `zk_pay_proofs_privacy_v20.aleo` is deployed on Aleo Testnet.
+The core contract `zk_pay_proofs_privacy_v22.aleo` is deployed on Aleo Testnet.
 
-**Explorer Link:** [https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v20.aleo](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v20.aleo)
+**Explorer Link:** [https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v22.aleo](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v22.aleo)
 
 ### Key Transitions
 

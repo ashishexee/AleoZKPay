@@ -1,2 +1,4 @@
 .env
 node_modules
+# NullPay — contains sensitive salt values
+nullpay.json

@@ -12,90 +12,48 @@ app.use(express.json({
 }));
 
 const nullpay = new NullPay({
-    secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_b26bc0d7dfdc4e5411a13a6b2fa6fc420c491e6a5bcb6d64', // Connected to DB!
+    secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_a566d45098533b8c3d88e61a718800e7ad73b37f9814c309', // Connected to DB!
     baseURL: 'http://localhost:3000/api'
 })
 
 const PORT = 4000;
+const configuredInvoices = nullpay.invoices.getAll();
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
 
-app.post('/api/checkout/subscription', async (req, res) => {
-    try {
-        const { plan, currency, price } = req.body;
-        console.log(`[Merchant] Subscription ${plan} for ${price} ${currency}`);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
-        
-        const invoice_hash = '1115746144388697626639199193629687485898491210296849134687801972477586805400field';
-        const salt = '337031781705903168303998209154958292665field';
-        
-        const session = await nullpay.checkout.sessions.create({
-            amount: price,
-            currency: currency,
-            invoice_hash: invoice_hash,
-            salt: salt,
-            type: 'multipay',
-            success_url: `${frontendUrl}?session_id={CHECKOUT_SESSION_ID}&type=subscription`,
-            cancel_url: `${frontendUrl}?cancel=true`
-        });
-        res.json({ checkoutUrl: session.checkout_url });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
-    }
-});
+const buildSuccessType = (invoice) => {
+    if (invoice.type === 'donation') return 'donation';
+    if (invoice.type === 'multipay') return 'subscription';
+    return 'invoice';
+};
+
+for (const invoice of configuredInvoices) {
+    app.post(`/api/${invoice.name}`, async (req, res) => {
+        try {
+            console.log(`[Merchant] Fixed checkout using invoice "${invoice.name}"`);
+
+            const session = await nullpay.checkout.sessions.create({
+                nullpay_invoice_name: invoice.name,
+                success_url: `${frontendUrl}?session_id={CHECKOUT_SESSION_ID}&type=${buildSuccessType(invoice)}`,
+                cancel_url: `${frontendUrl}?cancel=true`
+            });
+
+            res.json({ checkoutUrl: session.checkout_url });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+}
 
 app.post('/api/checkout/variable', async (req, res) => {
     try {
         const { currency, price, tokens } = req.body;
         console.log(`[Merchant] Variable tokens: ${tokens} for ${price} ${currency}`);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
         
         const session = await nullpay.checkout.sessions.create({
             amount: price,
             currency: currency,
             success_url: `${frontendUrl}?session_id={CHECKOUT_SESSION_ID}&type=variable&tokens=${tokens}`,
-            cancel_url: `${frontendUrl}?cancel=true`
-        });
-        res.json({ checkoutUrl: session.checkout_url });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/api/checkout/donation', async (req, res) => {
-    try {
-        const { currency } = req.body;
-        console.log(`[Merchant] Donation checkout`);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
-        
-        const selectedCurrency = currency || 'ANY';
-        const donationProfiles = {
-            'ANY': {
-                invoice_hash: '7167194528543310640668211878990154455921306305510946765880923777746223215089field',
-                salt: '131409810070759530479978900745021806493field'
-            },
-            'CREDITS': {
-                invoice_hash: '2225746144388697626639199193629687485898491210296849134687801972477586805400field',
-                salt: '447031781705903168303998209154958292665field'
-            },
-            'USDCX': {
-                invoice_hash: '3335746144388697626639199193629687485898491210296849134687801972477586805400field',
-                salt: '557031781705903168303998209154958292665field'
-            },
-            'USAD': {
-                invoice_hash: '4445746144388697626639199193629687485898491210296849134687801972477586805400field',
-                salt: '667031781705903168303998209154958292665field'
-            }
-        };
-
-        const { invoice_hash, salt } = donationProfiles[selectedCurrency] || donationProfiles['ANY'];
-
-        const session = await nullpay.checkout.sessions.create({
-            type: 'donation',
-            currency: selectedCurrency,
-            invoice_hash: invoice_hash,
-            salt: salt,
-            success_url: `${frontendUrl}?session_id={CHECKOUT_SESSION_ID}&type=donation`,
             cancel_url: `${frontendUrl}?cancel=true`
         });
         res.json({ checkoutUrl: session.checkout_url });

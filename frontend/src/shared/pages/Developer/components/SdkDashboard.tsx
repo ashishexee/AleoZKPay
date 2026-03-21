@@ -17,6 +17,7 @@ import { InvoiceTable } from '../../Profile/components/InvoiceTable';
 import { VerifyModal } from '../../Profile/components/modals/VerifyModal';
 import { PaymentHistoryModal } from '../../Profile/components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from '../../Profile/components/modals/ReceiptHashesModal';
+import toast from 'react-hot-toast';
 
 type SdkDashboardInvoice = InvoiceRecord & {
     status: string | number;
@@ -492,7 +493,7 @@ export const SdkDashboard: React.FC = () => {
             }
         } catch (error: any) {
             console.error('SDK settlement failed', error);
-            alert(`Failed to settle invoice: ${error.message || 'Unknown error'}`);
+            toast.error(`Failed to settle invoice: ${error.message || 'Unknown error'}`);
         } finally {
             setSettling(null);
         }

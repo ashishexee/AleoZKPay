@@ -1,0 +1,29 @@
+{
+  "name": "@nullpay/cli",
+  "version": "1.0.1",
+  "description": "NullPay CLI — Developer onboarding and invoice management tools",
+  "main": "dist/cli.js",
+  "bin": {
+    "nullpay": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/cli.ts"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "inquirer": "^8.2.6",
+    "node-fetch": "^2.7.0",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^8.2.10",
+    "@types/node": "^20.0.0",
+    "@types/node-fetch": "^2.6.13",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

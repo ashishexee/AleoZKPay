@@ -4,8 +4,14 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { Terminal, Key, Globe, BookOpen, ArrowRight, CheckCircle, Lock, Zap, Shield, Copy, Check, Activity } from 'lucide-react';
+import { Terminal, Command, Key, Globe, BookOpen, ArrowRight, CheckCircle, Lock, Zap, Shield, Copy, Check, Activity } from 'lucide-react';
 import { SdkDashboard } from './components/SdkDashboard';
+import { MerchantConsole } from './components/MerchantConsole';
+import { QuickStartGuide } from './components/QuickStartGuide';
+import { HostedCheckoutGuide } from './components/HostedCheckoutGuide';
+import { SdkMethodsGuide } from './components/SdkMethodsGuide';
+import { WebhooksGuide } from './components/WebhooksGuide';
+import { SdkReference } from './components/SdkReference';
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -78,8 +84,9 @@ export const DeveloperPortal = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [secretKey, setSecretKey] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState('keys');
+    const [activeTab, setActiveTab] = useState('console');
     const [commandCopied, setCommandCopied] = useState(false);
+    const [cliCommandCopied, setCliCommandCopied] = useState(false);
     const [stats, setStats] = useState<any>(null);
     const [loadingStats, setLoadingStats] = useState(false);
 
@@ -121,13 +128,13 @@ export const DeveloperPortal = () => {
     };
 
     const tabs = [
-        { id: 'keys', label: 'API Keys', icon: BookOpen },
-        { id: 'sdk_dashboard', label: 'SDK Dashboard', icon: Activity },
-        { id: 'analytics', label: 'Legacy Analytics', icon: Activity },
-        { id: 'quickstart', label: 'Quick Start', icon: Zap },
-        { id: 'sdk', label: 'SDK Reference', icon: Terminal },
-        { id: 'sessions', label: 'Sessions API', icon: Key },
-        { id: 'webhooks', label: 'Webhooks', icon: Globe },
+        { id: 'console', label: 'Console', icon: Activity },
+        { id: 'guide', label: 'Quick Start', icon: Zap },
+        { id: 'cli', label: 'CLI Tools', icon: Command },
+        { id: 'hosted', label: 'Hosted Checkout', icon: Globe },
+        { id: 'methods', label: 'SDK Methods', icon: Terminal },
+        { id: 'delivery', label: 'Webhooks', icon: Shield },
+        { id: 'reference', label: 'SDK Reference', icon: BookOpen },
     ];
 
     return (
@@ -165,8 +172,8 @@ export const DeveloperPortal = () => {
                         Stripe-like simplicity. Aleo-grade privacy.
                     </motion.p>
 
-                    <motion.div variants={fadeInUp} className="mt-8 mb-4">
-                        <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl hover:border-white/20 transition-all group max-w-fit mx-auto cursor-pointer" onClick={() => {
+                    <motion.div variants={fadeInUp} className="mt-8 mb-4 flex flex-col gap-4 items-center">
+                        <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl hover:border-white/20 transition-all group max-w-fit cursor-pointer" onClick={() => {
                             navigator.clipboard.writeText('npm install @nullpay/node');
                             setCommandCopied(true);
                             setTimeout(() => setCommandCopied(false), 2000);
@@ -179,6 +186,24 @@ export const DeveloperPortal = () => {
                                     {commandCopied ? 'Copied!' : 'Copy'}
                                 </span>
                             </div>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-2.5">
+                            <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl hover:border-white/20 transition-all group max-w-fit cursor-pointer" onClick={() => {
+                                navigator.clipboard.writeText('npx @nullpay/cli sdk onboard');
+                                setCliCommandCopied(true);
+                                setTimeout(() => setCliCommandCopied(false), 2000);
+                            }}>
+                                <Command className="w-3.5 h-3.5 text-gray-500 group-hover:text-neon-accent transition-colors" />
+                                <code className="text-sm font-mono text-gray-300">npx @nullpay/cli sdk onboard</code>
+                                <div className="flex items-center gap-1.5 ml-4 border-l border-white/10 pl-4">
+                                    {cliCommandCopied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-gray-500 group-hover:text-white transition-colors" />}
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
+                                        {cliCommandCopied ? 'Copied!' : 'Copy'}
+                                    </span>
+                                </div>
+                            </div>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest opacity-60">Run this inside the root of your Node.js backend</span>
                         </div>
                     </motion.div>
 
@@ -217,6 +242,126 @@ export const DeveloperPortal = () => {
 
                 {/* ── Tab Content ───────────────────────────────────────── */}
                 <AnimatePresence mode="wait">
+                    {activeTab === 'console' && (
+                        <motion.div key="console" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <MerchantConsole
+                                publicKey={publicKey}
+                                name={name}
+                                setName={setName}
+                                webhookUrl={webhookUrl}
+                                setWebhookUrl={setWebhookUrl}
+                                loading={loading}
+                                error={error}
+                                secretKey={secretKey}
+                                setSecretKey={setSecretKey}
+                                handleRegister={handleRegister}
+                            />
+                        </motion.div>
+                    )}
+                    {activeTab === 'guide' && (
+                        <motion.div key="guide" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <QuickStartGuide />
+                        </motion.div>
+                    )}
+                    {activeTab === 'hosted' && (
+                        <motion.div key="hosted" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <HostedCheckoutGuide />
+                        </motion.div>
+                    )}
+                    {activeTab === 'cli' && (
+                        <motion.div key="cli" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <GlassCard className="p-8 md:p-10">
+                                <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">CLI tools & configuration</span>
+                                <h2 className="text-3xl font-bold text-white mt-3 mb-2">NullPay CLI & nullpay.json</h2>
+                                <p className="text-gray-400 text-sm leading-relaxed mb-10">
+                                    The <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">@nullpay/cli</code> provides an interactive terminal wizard to securely configure and deploy your multi-pay and donation invoices directly to the Aleo network.
+                                </p>
+
+                                <h3 className="text-lg font-bold text-white mb-4">1. Run the interactive wizard</h3>
+                                <p className="text-gray-500 text-sm mb-5 leading-relaxed">
+                                    Instead of creating invoices manually via code, generate them instantly by running the CLI from the root of your backend project.
+                                </p>
+                                <CodeBlock title="Run via npx" language="bash" code={`npx @nullpay/cli sdk onboard`} />
+
+                                <h3 className="text-lg font-bold text-white mb-4 mt-8">2. Review your nullpay.json</h3>
+                                <p className="text-gray-500 text-sm mb-5 leading-relaxed">
+                                    The CLI securely communicates with the Aleo testnet via the Relayer to deploy your invoices and returns a mapped <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">invoice_hash</code> and <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">salt</code> for each. 
+                                    These are saved in a <code className="text-white bg-white/5 px-1.5 py-0.5 rounded">nullpay.json</code> file in your project root, which is automatically gitignored.
+                                </p>
+                                <CodeBlock title="Example nullpay.json" language="json" code={`{
+  "merchant": "aleo1...",
+  "generated_at": "2026-03-21T10:00:00.000Z",
+  "invoices": [
+    {
+      "name": "pro-plan",
+      "type": "multipay",
+      "amount": 50,
+      "currency": "USDCX",
+      "hash": "...",
+      "salt": "..."
+    }
+  ]
+}`} />
+
+                                <h3 className="text-lg font-bold text-white mb-4 mt-8">3. Use invoices in your backend</h3>
+                                <p className="text-gray-500 text-sm mb-5 leading-relaxed">
+                                    The <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">@nullpay/node</code> SDK automatically reads the <code className="text-white bg-white/5 px-1.5 py-0.5 rounded">nullpay.json</code> file if it exists. 
+                                    This allows you to create checkout sessions by simply referencing your pre-generated invoices by name rather than hardcoding amounts, hashes, and salts in your code.
+                                </p>
+                                <CodeBlock title="Creating a checkout session" code={`import { NullPay } from '@nullpay/node';
+
+const nullpay = new NullPay({
+    secretKey: process.env.NULLPAY_SECRET_KEY!,
+});
+
+export async function createCheckout(req, res) {
+    // Pass the name you defined in the CLI wizard!
+    const session = await nullpay.checkout.sessions.create({
+        nullpay_invoice_name: 'pro-plan', // Uses hash, salt, amount, and currency from nullpay.json
+        success_url: 'https://yoursite.com/success?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url: 'https://yoursite.com/cart',
+    });
+
+    res.redirect(303, session.checkout_url);
+}`} />
+
+                                <div className="mt-8 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                                    <h4 className="text-white font-bold mb-2 flex items-center gap-2">
+                                        <Shield className="w-4 h-4 text-gray-400" />
+                                        Important Advice
+                                    </h4>
+                                    <div className="space-y-3 mt-4">
+                                        <div className="flex items-start gap-3 text-sm text-gray-400">
+                                            <span className="w-4 h-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-gray-600 font-bold shrink-0 mt-0.5">1</span>
+                                            Keep the nullpay.json file in the root of your backend project. Do not expose it to the frontend!
+                                        </div>
+                                        <div className="flex items-start gap-3 text-sm text-gray-400">
+                                            <span className="w-4 h-4 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-gray-600 font-bold shrink-0 mt-0.5">2</span>
+                                            Never check nullpay.json into source control, as the salts should remain private.
+                                        </div>
+                                    </div>
+                                </div>
+                            </GlassCard>
+                        </motion.div>
+                    )}
+                    {activeTab === 'methods' && (
+                        <motion.div key="methods" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <SdkMethodsGuide />
+                        </motion.div>
+                    )}
+                    {activeTab === 'delivery' && (
+                        <motion.div key="delivery" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <WebhooksGuide />
+                        </motion.div>
+                    )}
+                    {activeTab === 'reference' && (
+                        <motion.div key="reference" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            {/* Lazy import to avoid circularity */}
+                            <React.Suspense fallback={<div className="p-6 bg-white/5 rounded-xl">Loading...</div>}>
+                                <SdkReference />
+                            </React.Suspense>
+                        </motion.div>
+                    )}
                     {activeTab === 'sdk_dashboard' && (
                         <motion.div key="sdk_dashboard" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                             <SdkDashboard />
