@@ -151,6 +151,7 @@ export const BurnerWalletProvider: React.FC<{ children: React.ReactNode }> = ({ 
                             setDecryptedBurnerKey(decryptedKey);
                             setFetchedFromChain(true);
                             setBurnerAddress(fullBurnerMatch.burnerAddress);
+                            setDecryptedBurnerAddress(fullBurnerMatch.burnerAddress);
                             console.log("🔓 Burner Wallet restored! Address:", fullBurnerMatch.burnerAddress?.substring(0, 15));
                         } catch (e) {
                             console.warn("⚠️ Burner key decryption/validation failed:", e);

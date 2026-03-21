@@ -6,6 +6,7 @@ import { generateInvoicePdf } from '../../utils/generateInvoicePdf';
 import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt } from '../../utils/aleo-utils';
 import { VerifyModal } from '../Profile/components/modals/VerifyModal';
 import { hashAddress } from '../../utils/crypto';
+import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
 
 interface InvoiceData {
     invoice_hash: string;
@@ -190,7 +191,7 @@ const InvoiceDetailsPage: React.FC = () => {
     const { hash } = useParams<{ hash: string }>();
     const navigate = useNavigate();
     const { address, requestRecords, decrypt } = useWallet();
-
+    const { decryptedBurnerAddress } = useBurnerWallet();
     const [invoice, setInvoice]         = useState<InvoiceData | null>(null);
     const [loading, setLoading]         = useState(true);
     const [error, setError]             = useState<string | null>(null);
@@ -218,11 +219,26 @@ const InvoiceDetailsPage: React.FC = () => {
                 const data = await fetchInvoiceByHash(hash);
                 if (!data) { setError('Invoice not found.'); setLoading(false); return; }
                 setInvoice(data);
-                if (!address) {
+                if (!address && !decryptedBurnerAddress) {
                     setAuthStatus('no-wallet');
                 } else {
-                    const hashedAddress = await hashAddress(address);
-                    if (hashedAddress === data.merchant_address_hash || address.toLowerCase() === (data.merchant_address || '').toLowerCase()) {
+                    let isAuthorized = false;
+                    
+                    if (address) {
+                        const hashedAddress = await hashAddress(address);
+                        if (hashedAddress === data.merchant_address_hash || address.toLowerCase() === (data.merchant_address || '').toLowerCase()) {
+                            isAuthorized = true;
+                        }
+                    }
+                    
+                    if (!isAuthorized && decryptedBurnerAddress) {
+                        const hashedBurnerAddress = await hashAddress(decryptedBurnerAddress);
+                        if (hashedBurnerAddress === data.merchant_address_hash) {
+                            isAuthorized = true;
+                        }
+                    }
+
+                    if (isAuthorized) {
                         setAuthStatus('authorized');
                     } else {
                         setAuthStatus('unauthorized');
@@ -232,7 +248,7 @@ const InvoiceDetailsPage: React.FC = () => {
             finally { setLoading(false); }
         };
         load();
-    }, [hash, address]);
+    }, [hash, address, decryptedBurnerAddress]);
 
     // Auto-scan receipts for donation invoices as soon as everything is ready
     useEffect(() => {
