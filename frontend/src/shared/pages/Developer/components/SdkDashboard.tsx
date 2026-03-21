@@ -509,7 +509,7 @@ export const SdkDashboard: React.FC = () => {
         return (
             <GlassCard className="p-8 md:p-10 text-center">
                 <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">SDK Dashboard</span>
-                <h2 className="text-3xl font-bold text-white mt-3 mb-4">Connect Your Wallet</h2>
+                <h2 className="text-3xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-3 mb-4">Connect Your Wallet</h2>
                 <p className="text-gray-400 text-sm leading-relaxed mb-8">
                     Connect the same merchant wallet you use to create invoices. The dashboard loads your private SDK invoice records and receipts.
                 </p>
@@ -547,7 +547,7 @@ export const SdkDashboard: React.FC = () => {
 
             <GlassCard className="p-8 md:p-10">
                 <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">SDK Dashboard</span>
-                <h2 className="text-3xl font-bold text-white mt-3 mb-2">Tagged SDK Invoices</h2>
+                <h2 className="text-3xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-3 mb-2">Tagged SDK Invoices</h2>
                 <p className="text-gray-400 text-sm leading-relaxed">
                     This dashboard only includes invoices created with the SDK toggle enabled. Analytics and receipt checks are sourced from your private wallet records and filtered against those tagged invoice hashes.
                 </p>

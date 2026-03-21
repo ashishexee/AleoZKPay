@@ -42,7 +42,7 @@ export const MerchantConsole: React.FC<MerchantConsoleProps> = ({
             <div className="grid grid-cols-1 gap-8 items-start">
                 <GlassCard className="p-8">
                     <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">Merchant Access</span>
-                    <h2 className="text-2xl font-bold text-white mt-3 mb-2">API Key And Dashboard Setup</h2>
+                    <h2 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-3 mb-2">API Key And Dashboard Setup</h2>
                     <p className="text-gray-400 text-sm leading-relaxed mb-8">
                         Connect your merchant wallet, register your store, save the secret key once, then use the SDK dashboard below for tagged SDK invoices.
                     </p>

@@ -64,7 +64,7 @@ const Docs = () => {
             >
                 <motion.div variants={itemVariants} className="text-center mb-12 border-b border-white/10 pb-10 flex flex-col items-center">
                     <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-tight text-white">
-                        Technical <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">Documentation</span>
+                        Technical <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Documentation</span>
                     </h1>
                     <p className="text-gray-300 text-lg md:text-xl max-w-3xl leading-relaxed">
                         Complete technical specification of the NullPay zero-knowledge payment protocol.
@@ -98,7 +98,7 @@ const Docs = () => {
                             className="space-y-12"
                         >
                             <GlassCard className="p-10">
-                                <h2 className="text-3xl font-bold text-white mb-6">What is NullPay?</h2>
+                                <h2 className="text-3xl font-bold mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">What is NullPay?</h2>
                                 <p className="text-gray-400 mb-8 leading-relaxed">
                                     NullPay is a privacy-first payment protocol built on Aleo. It enables merchants to create invoices
                                     and receive payments without revealing sensitive transaction details on-chain. NullPay supports <strong className="text-white">Aleo Credits</strong>, <strong className="text-blue-400">USDCx</strong>, and <strong className="text-green-400">USAD</strong> (private stablecoins on Aleo).
@@ -171,7 +171,7 @@ const Docs = () => {
                             </GlassCard>
 
                             <GlassCard className="p-10">
-                                <h2 className="text-3xl font-bold text-white mb-6">How It Works</h2>
+                                <h2 className="text-3xl font-bold mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">How It Works</h2>
                                 <div className="space-y-8">
                                     <div className="relative pl-8 border-l-2 border-neon-primary/30">
                                         <div className="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-neon-primary border-4 border-black" />
@@ -223,7 +223,7 @@ const Docs = () => {
                             className="space-y-8"
                         >
                             <GlassCard className="p-8">
-                                <h2 className="text-2xl font-bold text-white mb-4">Smart Contract Specification</h2>
+                                <h2 className="text-2xl font-bold mb-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Smart Contract Specification</h2>
                                 <p className="text-gray-400 mb-6">
                                     The contract is deployed as <strong className="text-neon-primary">zk_pay_proofs_privacy_v11.aleo</strong>.
                                     It supports Standard (single-payment), Multi Pay (multi-payment), and Donation (open-ended amount) invoices for <strong className="text-white">Aleo Credits</strong>, <strong className="text-blue-400">USDCx</strong>, and <strong className="text-green-400">USAD</strong>. The <code className="text-neon-primary">create_invoice_any</code> transition supports any-token donation invoices (token_type: 3).

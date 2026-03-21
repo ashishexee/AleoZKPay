@@ -165,7 +165,7 @@ export const DeveloperPortal = () => {
                         variants={fadeInUp}
                         className="text-4xl md:text-5xl font-bold tracking-tighter text-white mb-6"
                     >
-                        Developers <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Page</span>
+                        Developers <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Page</span>
                     </motion.h1>
                     <motion.p variants={fadeInUp} className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
                         The complete SDK and API reference for integrating Zero-Knowledge private payments into any application.
@@ -272,7 +272,7 @@ export const DeveloperPortal = () => {
                         <motion.div key="cli" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                             <GlassCard className="p-8 md:p-10">
                                 <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">CLI tools & configuration</span>
-                                <h2 className="text-3xl font-bold text-white mt-3 mb-2">NullPay CLI & nullpay.json</h2>
+                                <h2 className="text-3xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-3 mb-2">NullPay CLI & nullpay.json</h2>
                                 <p className="text-gray-400 text-sm leading-relaxed mb-10">
                                     The <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">@nullpay/cli</code> provides an interactive terminal wizard to securely configure and deploy your multi-pay and donation invoices directly to the Aleo network.
                                 </p>
@@ -372,7 +372,7 @@ export async function createCheckout(req, res) {
                         <motion.div key="analytics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                             <GlassCard className="p-8 md:p-10">
                                 <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">SDK Analytics</span>
-                                <h2 className="text-3xl font-bold text-white mt-3 mb-2">Checkout Metrics</h2>
+                                <h2 className="text-3xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-3 mb-2">Checkout Metrics</h2>
                                 <p className="text-gray-400 text-sm leading-relaxed mb-10">
                                     Monitor your payment volume and conversion rates across all generated checkout sessions.
                                     Only sessions with <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">SETTLED</code> status are counted in volume.
@@ -445,7 +445,7 @@ export async function createCheckout(req, res) {
 
                             <GlassCard className="p-8 md:p-10">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-2xl font-bold text-white">Installation</h2>
+                                    <h2 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Installation</h2>
                                     <a
                                         href="https://www.npmjs.com/package/@nullpay/node"
                                         target="_blank"
@@ -462,7 +462,7 @@ export async function createCheckout(req, res) {
                                 </p>
                                 <CodeBlock title="Install SDK" language="bash" code={`npm install @nullpay/node`} />
 
-                                <h2 className="text-2xl font-bold text-white mt-10 mb-2">Initialize the Client</h2>
+                                <h2 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-10 mb-2">Initialize the Client</h2>
                                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">
                                     Instantiate once and reuse. Your <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">secretKey</code> starts with <code className="text-gray-300 bg-white/5 px-1.5 py-0.5 rounded">sk_</code>.
                                     Store it in an environment variable — never commit it to source control.
@@ -475,7 +475,7 @@ const nullpay = new NullPay({
 
 export default nullpay;`} />
 
-                                <h2 className="text-2xl font-bold text-white mt-10 mb-2">Create a Checkout Session</h2>
+                                <h2 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-10 mb-2">Create a Checkout Session</h2>
                                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">
                                     Call this from your server when a user initiates a purchase.
                                     The returned <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">session.checkout_url</code> is a unique, one-time payment page
@@ -497,7 +497,7 @@ export async function createCheckout(req, res) {
     res.redirect(303, session.checkout_url);
 }`} />
 
-                                <h2 className="text-2xl font-bold text-white mt-10 mb-2">Verify the Payment on Success</h2>
+                                <h2 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-10 mb-2">Verify the Payment on Success</h2>
                                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">
                                     On your <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">success_url</code>, retrieve the session using the
                                     <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded mx-1">session_id</code> query parameter.
@@ -531,7 +531,7 @@ export async function handleSuccess(req, res) {
                         <motion.div key="sdk" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                             <GlassCard className="p-8 md:p-10">
                                 <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">SDK Reference</span>
-                                <h2 className="text-3xl font-bold text-white mt-3 mb-2">NullPay Node SDK</h2>
+                                <h2 className="text-3xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-3 mb-2">NullPay Node SDK</h2>
                                 <p className="text-gray-400 text-sm leading-relaxed mb-10">
                                     Complete reference for all methods in the <code className="text-neon-primary">@nullpay/node</code> package.
                                 </p>

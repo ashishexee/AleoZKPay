@@ -610,7 +610,7 @@ const Profile: React.FC = () => {
                 {/* HEADER */}
                 <motion.div variants={itemVariants} className="flex flex-col items-center justify-center text-center mb-12">
                     <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-tight text-white">
-                        Merchant <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent">Dashboard</span>
+                        Merchant <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Dashboard</span>
                     </h1>
                     <p className="text-gray-400 text-sm leading-relaxed max-w-xs mb-6">
                         Manage your invoices and settlements.

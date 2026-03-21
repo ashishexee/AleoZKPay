@@ -18,7 +18,7 @@ export const SdkMethodsGuide: React.FC = () => {
         <div className="space-y-8">
             <GlassCard className="p-8 md:p-10">
                 <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">SDK Methods</span>
-                <h2 className="text-3xl font-bold text-white mt-3 mb-2">What The Node SDK Exposes</h2>
+                <h2 className="text-3xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-3 mb-2">What The Node SDK Exposes</h2>
                 <p className="text-gray-400 text-sm leading-relaxed mb-8">
                     The current SDK is intentionally small: create sessions, retrieve sessions, and verify signed webhooks. That keeps the merchant integration simple and server-first.
                 </p>

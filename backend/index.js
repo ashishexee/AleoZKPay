@@ -23,11 +23,6 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
-
-// Merchant SDK records are currently stored as backend-owned plain values even
-// though the legacy column names still use the `encrypted_*` prefix. User/profile
-// records are different: those remain client-encrypted and should be treated as
-// opaque blobs on the backend.
 const readMerchantStoredValue = (value) => value || null;
 const sha256Hex = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
@@ -192,11 +187,6 @@ app.get('/api/invoice/:hash', async (req, res) => {
         // console.error('Error fetching invoice:', error);
         return res.status(404).json({ error: 'Invoice not found' });
     }
-
-    // Critical Fix for Burner Wallet Shared Links
-    // The payer needs to see and pay the Burner (Designated) Address, NOT the Main Address!
-    // At this point both are encrypted strings, so we copy the encrypted designated address.
-    // The payer MUST be provided the plaintext address in the URL query params in this new system.
     if (data.is_burner && data.designated_address) {
         data.merchant_address = data.designated_address;
     }

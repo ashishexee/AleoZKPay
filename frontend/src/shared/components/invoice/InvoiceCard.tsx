@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-
+import { motion, AnimatePresence } from 'framer-motion';
+import { createClient } from '@supabase/supabase-js';
 import { InvoiceData } from '../../types/invoice';
 import { GlassCard } from '../ui/GlassCard';
 import { Button } from '../ui/Button';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 interface InvoiceCardProps {
     invoiceData: InvoiceData;
@@ -16,9 +20,39 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
     resetInvoice
 }) => {
 
-    const [copied, setCopied] = React.useState(false);
-    const [copiedHash, setCopiedHash] = React.useState(false);
-    const [copiedSalt, setCopiedSalt] = React.useState(false);
+    const [copied, setCopied] = useState(false);
+    const [copiedHash, setCopiedHash] = useState(false);
+    const [copiedSalt, setCopiedSalt] = useState(false);
+    const [isPaid, setIsPaid] = useState(false);
+
+    useEffect(() => {
+        if (invoiceData.type === 2 || invoiceData.type === 3) return;
+        
+        if (!supabaseUrl || !supabaseKey) return;
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const channel = supabase.channel(`invoice_card_listener_${invoiceData.hash}`)
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'invoices' },
+                (payload) => {
+                    const newRecord = payload.new;
+                    if (newRecord.invoice_hash === invoiceData.hash) {
+                        let newTxIds = [];
+                        try { newTxIds = Array.isArray(newRecord.payment_tx_ids) ? newRecord.payment_tx_ids : JSON.parse(newRecord.payment_tx_ids || '[]'); } catch (e) { }
+
+                        if (newRecord.status === 'SETTLED' || newTxIds.length > 0) {
+                            setIsPaid(true);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [invoiceData.hash, invoiceData.type]);
 
     const handleCopy = () => {
         navigator.clipboard.writeText(invoiceData.link);
@@ -29,19 +63,87 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
     return (
         <GlassCard className="text-center p-8 bg-gradient-to-b from-glass-surface to-black/40">
             <h3 className="mb-6 text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-neon-primary to-neon-accent animate-pulse-glow">
-                Invoice Ready!
+                {isPaid ? 'Payment Received!' : 'Invoice Ready!'}
             </h3>
 
-            <div className="flex justify-center mb-8">
-                <div className="p-4 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                    <QRCodeSVG
-                        value={invoiceData.link}
-                        size={180}
-                        level="H"
-                        includeMargin={false}
-                    />
-                </div>
-            </div>
+            <AnimatePresence mode="wait">
+                {isPaid ? (
+                    <motion.div
+                        key="success"
+                        initial={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
+                        animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                        exit={{ opacity: 0, scale: 0.8, filter: "blur(10px)" }}
+                        transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
+                        className="flex flex-col items-center justify-center p-8 bg-black/40 rounded-xl border border-white/10 mb-8 min-h-[250px]"
+                    >
+                        <motion.svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 50 50"
+                            className="w-24 h-24 mb-4"
+                        >
+                            <motion.circle
+                                cx="25"
+                                cy="25"
+                                r="20"
+                                stroke="#ffffff"
+                                strokeWidth="3"
+                                fill="none"
+                                initial={{ pathLength: 0, opacity: 0 }}
+                                animate={{ pathLength: 1, opacity: 1 }}
+                                transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+                            />
+                            <motion.path
+                                d="M15 25 L22 32 L35 15"
+                                stroke="#ffffff"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                fill="none"
+                                initial={{ pathLength: 0 }}
+                                animate={{ pathLength: 1 }}
+                                transition={{ duration: 0.5, delay: 0.6, type: "spring", bounce: 0.5 }}
+                            />
+                        </motion.svg>
+                        <motion.p
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 0.9, type: "spring" }}
+                            className="text-white font-bold text-lg"
+                        >
+                            Standard Invoice Settled
+                        </motion.p>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="qr"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
+                        transition={{ duration: 0.4 }}
+                        className="flex flex-col items-center justify-center mb-8 min-h-[250px]"
+                    >
+                        <div className="p-4 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] mb-4">
+                            <QRCodeSVG
+                                value={invoiceData.link}
+                                size={180}
+                                level="H"
+                                includeMargin={false}
+                            />
+                        </div>
+                        {(!invoiceData.type || invoiceData.type === 1) && (
+                            <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.5 }}
+                                className="flex items-center gap-2 mt-2"
+                            >
+                                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                                <span className="text-sm font-medium text-gray-400 tracking-wide">Waiting for payment...</span>
+                            </motion.div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {/* ... other code ... */}
             <div className="mb-8">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payment Link</label>
