@@ -19,9 +19,22 @@ import { WalletBalances } from './components/WalletBalances';
 
 const Profile: React.FC = () => {
     const { address, requestRecords, decrypt, executeTransaction } = useWallet();
-    const { decryptedBurnerKey } = useBurnerWallet();
+    const { decryptedBurnerKey, decryptedBurnerAddress } = useBurnerWallet();
     const publicKey = address;
-    const { transactions, loading: loadingTransactions, fetchTransactions } = useTransactions(publicKey || undefined);
+    const { transactions: mainTransactions, loading: loadingTransactions, fetchTransactions } = useTransactions(publicKey || undefined);
+    const [burnerDbTransactions, setBurnerDbTransactions] = useState<any[]>([]);
+
+    // Merge main + burner DB transactions so fetchBurnerData can find burner TX IDs
+    const transactions = useMemo(() => {
+        const merged = [...mainTransactions];
+        const existingHashes = new Set(mainTransactions.map(t => t.invoice_hash));
+        burnerDbTransactions.forEach(t => {
+            if (!existingHashes.has(t.invoice_hash)) {
+                merged.push(t);
+            }
+        });
+        return merged;
+    }, [mainTransactions, burnerDbTransactions]);
     const [settling, setSettling] = useState<string | null>(null);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [verifyInput, setVerifyInput] = useState('');
@@ -76,6 +89,26 @@ const Profile: React.FC = () => {
         }
     }, [publicKey]);
 
+    // Fetch burner invoices from DB separately (they have a different merchant_address_hash)
+    useEffect(() => {
+        console.log("🔥 [BurnerDB] Effect fired. decryptedBurnerAddress:", !!decryptedBurnerAddress, decryptedBurnerAddress?.slice(0, 15));
+        const fetchBurnerDbInvoices = async () => {
+            if (!decryptedBurnerAddress) {
+                setBurnerDbTransactions([]);
+                return;
+            }
+            try {
+                const { fetchInvoicesByMerchant: fetchByMerchant } = await import('../../services/api');
+                const data = await fetchByMerchant(decryptedBurnerAddress);
+                console.log(`🔥 [BurnerDB] Fetched ${data.length} burner invoices from DB`);
+                setBurnerDbTransactions(data);
+            } catch (e) {
+                console.error('Failed to fetch burner DB invoices', e);
+            }
+        };
+        fetchBurnerDbInvoices();
+    }, [decryptedBurnerAddress]);
+
     useEffect(() => {
         const fetchBurnerData = async () => {
             console.log("🔥 [fetchBurnerData] Effect fired. decryptedBurnerKey:", !!decryptedBurnerKey, "transactions.length:", transactions.length);
@@ -87,7 +120,7 @@ const Profile: React.FC = () => {
                 return;
             }
             setLoadingBurner(true);
-            
+
             const burnerTxIds = new Set<string>();
             console.log("🔥 Burner Transactions from DB:", transactions.filter(t => t.is_burner).length);
             transactions.forEach(tx => {
@@ -251,7 +284,7 @@ const Profile: React.FC = () => {
         // MAIN WALLET INVOICES
         createdInvoices.forEach(record => {
             if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
-            
+
             const dbTx = dbMap.get(record.invoiceHash);
 
             merged.set(record.invoiceHash, {
@@ -277,7 +310,7 @@ const Profile: React.FC = () => {
         // BURNER WALLET INVOICES
         burnerCreatedInvoices.forEach(record => {
             if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
-            
+
             const dbTx = dbMap.get(record.invoiceHash);
 
             merged.set(record.invoiceHash, {
@@ -415,7 +448,7 @@ const Profile: React.FC = () => {
 
     const uniqueMainReceipts = Array.from(new Map(merchantReceipts.map(r => [r.receiptHash, r])).values())
         .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash);
-        
+
     const uniqueBurnerReceipts = Array.from(new Map(burnerMerchantReceipts.map(r => [r.receiptHash, r])).values())
         .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash);
 
