@@ -38,7 +38,7 @@ const normalizeHash = (hash?: string | null) => (hash || '').replace(/field$/, '
 
 const SdkStatCard = ({ label, value, tone = 'white' }: { label: string; value: string | number; tone?: 'white' | 'yellow' | 'green' | 'blue' }) => {
     const toneClass = {
-        white: 'text-white',
+        white: 'text-gradient-gold drop-shadow-gold',
         yellow: 'text-yellow-400',
         green: 'text-green-400',
         blue: 'text-cyan-300',

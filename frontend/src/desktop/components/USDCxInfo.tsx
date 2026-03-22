@@ -13,12 +13,12 @@ export const USDCxInfo: React.FC = () => {
     return (
         <section className="relative z-10 pt-12 pb-20 overflow-hidden">
             {/* BACKGROUND GLOW */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-neon-primary/5 rounded-full blur-[150px] pointer-events-none -z-10" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-orange-500/5 rounded-full blur-[150px] pointer-events-none -z-10" />
 
             <div className="max-w-7xl mx-auto px-6">
                 
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-12 text-center tracking-tight">
-                    Supported <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">Stablecoins</span>
+                    Supported <span className="text-gradient-gold drop-shadow-gold">Stablecoins</span>
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
@@ -28,11 +28,18 @@ export const USDCxInfo: React.FC = () => {
                         whileInView="visible"
                         viewport={{ once: true }}
                         variants={fadeInUp}
-                        className="text-center bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-neon-primary/30 transition-colors"
+                        className="text-center bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-orange-500/30 transition-colors group"
                     >
 
                         <h3 className="text-3xl font-bold text-white mb-4 tracking-tight">
-                            USDCx
+                            <span className="relative">
+                                <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-gold" aria-hidden="true">
+                                    USDCx
+                                </span>
+                                <span className="group-hover:opacity-0 transition-opacity duration-500">
+                                    USDCx
+                                </span>
+                            </span>
                         </h3>
                         <p className="text-lg text-gray-400 mb-8 min-h-[80px]">
                             Control what you share on your terms. USDCx is a wrapped representation of USDC on Aleo, bringing optional privacy to stablecoin transactions.
@@ -41,7 +48,7 @@ export const USDCxInfo: React.FC = () => {
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Button
                                 variant="ghost"
-                                className="h-12 px-6 text-sm text-neon-primary hover:text-neon-accent hover:bg-neon-primary/10 border border-neon-primary/20 w-full sm:w-auto"
+                                className="h-12 px-6 text-sm text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 border border-orange-500/20 w-full sm:w-auto"
                                 onClick={() => window.open('https://usdcx.aleo.dev/', '_blank')}
                             >
                                 Mint USDCx on Aleo
@@ -62,17 +69,24 @@ export const USDCxInfo: React.FC = () => {
                         </div>
                     </motion.div>
 
-                    {/* USAD SECTION */}
+                    {/*  SECTION */}
                     <motion.div
                         initial="hidden"
                         whileInView="visible"
                         viewport={{ once: true }}
                         variants={fadeInUp}
-                        className="text-center bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-white/30 transition-colors"
+                        className="text-center bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-orange-500/30 transition-colors group"
                     >
 
                         <h3 className="text-3xl font-bold text-white mb-4 tracking-tight">
-                            USAD
+                            <span className="relative">
+                                <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-gold" aria-hidden="true">
+                                    USAD
+                                </span>
+                                <span className="group-hover:opacity-0 transition-opacity duration-500">
+                                    USAD
+                                </span>
+                            </span>
                         </h3>
                         <p className="text-lg text-gray-400 mb-8 min-h-[80px]">
                             A programmable stablecoin designed for Aleo. Enjoy high-speed, private network infrastructure while maintaining peg stability.
@@ -81,7 +95,7 @@ export const USDCxInfo: React.FC = () => {
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Button
                                 variant="ghost"
-                                className="h-12 px-6 text-sm text-white hover:text-white hover:bg-white/10 border border-white/20 w-full sm:w-auto"
+                                className="h-12 px-6 text-sm text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 border border-orange-500/20 w-full sm:w-auto"
                                 onClick={() => window.open('https://usad.aleo.dev/', '_blank')}
                             >
                                 Mint USAD on Aleo

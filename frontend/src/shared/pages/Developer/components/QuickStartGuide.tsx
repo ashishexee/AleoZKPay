@@ -63,7 +63,7 @@ const nullpay = new NullPay({
             </GlassCard>
 
             <GlassCard className="p-8 md:p-10">
-                <h3 className="text-2xl font-bold text-white mb-3">Using nullpay.json (Pre-Generated Invoices)</h3>
+                <h3 className="text-2xl font-bold text-gradient-gold drop-shadow-gold mb-3">Using nullpay.json (Pre-Generated Invoices)</h3>
                 <p className="text-gray-400 text-sm leading-relaxed mb-6">
                     For multi-pay or donation-style flows, the best practice is to pre-generate your invoices and store them in a <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code> file at the root of your backend project.
                     The <code className="text-neon-primary bg-white/5 py-0.5 px-1.5 rounded">@nullpay/node</code> SDK automatically reads this file! 
@@ -71,11 +71,11 @@ const nullpay = new NullPay({
                 </p>
                 <div className="space-y-4 mb-8">
                     <div className="p-5 bg-white/[0.02] border border-white/[0.06] rounded-xl">
-                        <h4 className="text-white font-bold mb-2">1. Automatic Generation (Recommended)</h4>
+                        <h4 className="text-gradient-gold drop-shadow-gold font-bold mb-2">1. Automatic Generation (Recommended)</h4>
                         <p className="text-gray-400 text-sm">Run our interactive CLI wizard: <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">npx @nullpay/cli@1.0.1 sdk onboard</code>. It handles generating salts, submitting to the Aleo relayer, resolving the invoice hashes on the network, and writing the final <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code> file for you.</p>
                     </div>
                     <div className="p-5 bg-white/[0.02] border border-white/[0.06] rounded-xl">
-                        <h4 className="text-white font-bold mb-2">2. Manual Fallback</h4>
+                        <h4 className="text-gradient-gold drop-shadow-gold font-bold mb-2">2. Manual Fallback</h4>
                         <p className="text-gray-400 text-sm">If you don't want to use the CLI, you can manually interact with the NullPay smart contract, generate your own hashes and salts, and create a <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code> file matching the schema yourself.</p>
                     </div>
                 </div>

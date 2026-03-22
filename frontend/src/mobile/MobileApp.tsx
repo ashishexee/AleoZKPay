@@ -6,6 +6,7 @@ import PaymentPage from './pages/Payment';
 import Profile from '../shared/pages/Profile';
 import CheckoutPage from '../shared/pages/Checkout';
 import InvoiceDetails from '../shared/pages/InvoiceDetails';
+import GiftCardsPage from '../shared/pages/GiftCards';
 import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 
 const MobileAnimatedRoutes = () => {
@@ -17,6 +18,7 @@ const MobileAnimatedRoutes = () => {
                 <Route path="/" element={<Navigate to="/create" replace />} />
                 <Route path="/create" element={<ProtectedRoute><CreateInvoice /></ProtectedRoute>} />
                 <Route path="/pay" element={<PaymentPage />} />
+                <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/checkout/:id" element={<CheckoutPage />} />
                 <Route path="/invoice/:hash" element={<InvoiceDetails />} />

@@ -12,8 +12,6 @@ const Privacy: React.FC = () => {
             animate="animate"
             exit="exit"
         >
-
-
             <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 w-screen h-[800px] z-0 pointer-events-none flex justify-center overflow-hidden">
                 <img
                     src="/assets/aleo_globe.png"
@@ -34,7 +32,7 @@ const Privacy: React.FC = () => {
                     className="flex flex-col items-center justify-center text-center mb-16"
                 >
                     <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-tight text-white">
-                        Privacy by <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary to-neon-accent animate-pulse-glow">Design</span>
+                        Privacy by <span className="text-gradient-gold drop-shadow-gold">Design</span>
                     </h1>
                     <p className="text-gray-300 text-xl leading-relaxed max-w-2xl mb-8">
                         NullPay leverages Zero-Knowledge Proofs (ZKP) to ensure your financial data remains confidential.
@@ -50,13 +48,20 @@ const Privacy: React.FC = () => {
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <span className="text-8xl font-bold font-mono">01</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-neon-primary/20 flex items-center justify-center text-neon-primary">
+                        <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3 transition-colors duration-500">
+                            <span className="w-8 h-8 rounded-lg bg-white/10 group-hover:bg-orange-500/20 flex items-center justify-center text-white/70 group-hover:text-orange-400 transition-all duration-500 border border-white/5 group-hover:border-orange-500/30">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                                 </svg>
                             </span>
-                            The Hidden Ledger
+                            <span className="relative">
+                                <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-gold" aria-hidden="true">
+                                    The Hidden Ledger
+                                </span>
+                                <span className="group-hover:opacity-0 transition-opacity duration-500">
+                                    The Hidden Ledger
+                                </span>
+                            </span>
                         </h2>
                         <p className="text-gray-400 mb-6 leading-relaxed">
                             <span className="text-neon-accent font-semibold">Legacy vs v5:</span> Previously, we had the mapping <code className="bg-white/10 px-1 rounded text-red-400">payment_secret : field {'=>'} amount</code>.
@@ -78,10 +83,10 @@ const Privacy: React.FC = () => {
 
                                 <div className="flex items-center justify-between">
                                     <div className="flex flex-col">
-                                        <span className="text-neon-primary">record: {'{'} receipt_hash {'}'}</span>
+                                        <span className="text-orange-400">record: {'{'} receipt_hash {'}'}</span>
                                         <span className="text-[10px] text-gray-500">Encrypted on-chain storage</span>
                                     </div>
-                                    <span className="px-2 py-1 bg-neon-primary/10 text-neon-primary rounded-md border border-neon-primary/20 text-[10px] animate-pulse-glow">NEW STANDARD</span>
+                                    <span className="px-2 py-1 bg-orange-500/10 text-orange-400 rounded-md border border-orange-500/20 text-[10px] animate-pulse-glow">NEW STANDARD</span>
                                 </div>
                             </div>
                         </div>
@@ -95,13 +100,20 @@ const Privacy: React.FC = () => {
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <span className="text-8xl font-bold font-mono">02</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center text-red-400">
+                        <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3 transition-colors duration-500">
+                            <span className="w-8 h-8 rounded-lg bg-white/10 group-hover:bg-orange-500/20 flex items-center justify-center text-white/70 group-hover:text-orange-400 transition-all duration-500 border border-white/5 group-hover:border-orange-500/30">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                 </svg>
                             </span>
-                            Blind Database
+                            <span className="relative">
+                                <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-gold" aria-hidden="true">
+                                    Blind Database
+                                </span>
+                                <span className="group-hover:opacity-0 transition-opacity duration-500">
+                                    Blind Database
+                                </span>
+                            </span>
                         </h2>
                         <p className="text-gray-400 mb-6 leading-relaxed">
                             Our database is mathematically blind. We explicitly <strong>do not store</strong> the Amount or Memo fields.
@@ -113,10 +125,10 @@ const Privacy: React.FC = () => {
                                 <div className="font-mono text-sm text-gray-400 line-through">Amount</div>
                                 <div className="font-mono text-sm text-gray-400 line-through">Memo</div>
                             </div>
-                            <div className="bg-green-500/10 p-4 rounded-xl border border-green-500/20">
-                                <div className="text-green-400 text-xs uppercase tracking-widest mb-1">Encrypted</div>
+                            <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/20">
+                                <div className="text-orange-400 text-xs uppercase tracking-widest mb-1">Encrypted</div>
                                 <div className="font-mono text-sm text-white">Merchant Addr</div>
-                                <div className="font-mono text-xs text-green-300 mt-1 truncate">U2FsdGVkX19...</div>
+                                <div className="font-mono text-xs text-orange-300 mt-1 truncate">U2FsdGVkX19...</div>
                             </div>
                         </div>
 
@@ -129,13 +141,20 @@ const Privacy: React.FC = () => {
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <span className="text-8xl font-bold font-mono">03</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400">
+                        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3 transition-colors duration-500">
+                            <span className="w-8 h-8 rounded-lg bg-white/10 group-hover:bg-orange-500/20 flex items-center justify-center text-white/70 group-hover:text-orange-400 transition-all duration-500 border border-white/5 group-hover:border-orange-500/30">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                             </span>
-                            Dual-Record Settlement
+                            <span className="relative">
+                                <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-gold" aria-hidden="true">
+                                    Dual-Record Settlement
+                                </span>
+                                <span className="group-hover:opacity-0 transition-opacity duration-500">
+                                    Dual-Record Settlement
+                                </span>
+                            </span>
                         </h2>
 
                         <p className="text-gray-400 mb-8 leading-relaxed max-w-3xl">
@@ -245,13 +264,18 @@ const Privacy: React.FC = () => {
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <span className="text-8xl font-bold font-mono">04</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center text-pink-400">
+                        <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3 transition-colors duration-500">
+                            <span className="w-8 h-8 rounded-lg bg-white/10 group-hover:bg-orange-500/20 flex items-center justify-center text-white/70 group-hover:text-orange-400 transition-all duration-500 border border-white/5 group-hover:border-orange-500/30">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                 </svg>
                             </span>
-                            The Payment Secret
+                            <span className="relative">
+                                <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-gold" aria-hidden="true">
+                                    The Payment Secret
+                                </span>
+                                The Payment Secret
+                            </span>
                         </h2>
                         <p className="text-gray-400 mb-6 leading-relaxed">
                             Every transaction is protected by a client-generated <code className="text-pink-400">payment_secret</code>.
@@ -276,13 +300,18 @@ const Privacy: React.FC = () => {
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <span className="text-8xl font-bold font-mono">05</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400">
+                        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3 transition-colors duration-500">
+                            <span className="w-8 h-8 rounded-lg bg-white/10 group-hover:bg-orange-500/20 flex items-center justify-center text-white/70 group-hover:text-orange-400 transition-all duration-500 border border-white/5 group-hover:border-orange-500/30">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
                             </span>
-                            Private Transfers
+                            <span className="relative">
+                                <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-gold" aria-hidden="true">
+                                    Private Transfers
+                                </span>
+                                Private Transfers
+                            </span>
                         </h2>
 
                         <div className="space-y-4">
@@ -328,13 +357,18 @@ const Privacy: React.FC = () => {
                         <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                             <span className="text-8xl font-bold font-mono">06</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400">
+                        <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3 transition-colors duration-500">
+                            <span className="w-8 h-8 rounded-lg bg-white/10 group-hover:bg-orange-500/20 flex items-center justify-center text-white/70 group-hover:text-orange-400 transition-all duration-500 border border-white/5 group-hover:border-orange-500/30">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </span>
-                            Tamper-Proof Integrity
+                            <span className="relative">
+                                <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-gold" aria-hidden="true">
+                                    Tamper-Proof Integrity
+                                </span>
+                                Tamper-Proof Integrity
+                            </span>
                         </h2>
                         <p className="text-gray-400 mb-4 leading-relaxed">
                             <strong>No frauds, pure math.</strong> We employ <span className="text-neon-primary font-mono bg-neon-primary/10 px-1 rounded">BHP 256</span> hashing to cryptographically seal every invoice.

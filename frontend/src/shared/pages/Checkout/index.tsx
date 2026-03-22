@@ -13,6 +13,7 @@ export const CheckoutPage = () => {
     const [customConvertAmount, setCustomConvertAmount] = useState<string>('');
     const {
         pay,
+        payWithGiftCard,
         status: paymentStatus,
         txId,
         loading: paymentLoading,
@@ -56,6 +57,7 @@ export const CheckoutPage = () => {
                 txId={txId}
                 success={success}
                 onPay={handlePay}
+                onPayWithGiftCard={payWithGiftCard}
             />
 
             {/* CONVERSION MODAL */}

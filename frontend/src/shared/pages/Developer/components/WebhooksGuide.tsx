@@ -51,7 +51,7 @@ app.post('/api/webhook', (req, res) => {
                 />
 
                 <div className="mt-8 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                    <h4 className="text-white font-bold mb-3">Fulfillment Rules</h4>
+                    <h4 className="text-white font-bold mb-3 text-gradient-gold drop-shadow-gold">Fulfillment Rules</h4>
                     <div className="space-y-3 text-sm text-gray-400">
                         <p>Always verify the signature from the raw body before trusting the event.</p>
                         <p>Still retrieve the session server-side before irreversible fulfillment if you want an extra confirmation step.</p>

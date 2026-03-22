@@ -18,7 +18,7 @@ export const DeveloperStepCard = ({
                 <Icon className="w-4 h-4 text-gray-300" />
             </div>
         </div>
-        <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
+        <h3 className="text-lg font-bold text-gradient-gold drop-shadow-gold mb-2">{title}</h3>
         <p className="text-sm leading-relaxed text-gray-400">{desc}</p>
     </div>
 );

@@ -548,7 +548,7 @@ const Home = () => {
                                                 <span className="font-mono-syne text-[10px] uppercase tracking-[0.3em] text-white/35 font-semibold">How It Works</span>
                                                 <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-[-0.03em] mt-5">
                                                     Three Steps{' '}
-                                    <span className="shimmer-text">to Privacy</span>
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">to Privacy</span>
                                 </h2>
                                 <p className="text-white/35 text-base mt-4 max-w-xl mx-auto font-light leading-relaxed">
                                     From invoice creation to private settlement — the entire flow is designed around zero-knowledge.
@@ -711,8 +711,8 @@ const Home = () => {
                             <motion.div variants={fadeInUp} className="text-center mb-16">
                                                 <span className="font-mono-syne text-[10px] uppercase tracking-[0.3em] text-white/35 font-semibold">Why NullPay</span>
                                                 <h2 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-[-0.03em] mt-5">
-                                                    Privacy is Not{' '}
-                                    <span className="text-stroke">Optional</span>
+                                                    Privacy is{' '}
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Not Optional</span>
                                 </h2>
                                 <p className="text-white/35 text-base mt-4 max-w-xl mx-auto font-light">
                                     See how NullPay fundamentally differs from traditional blockchain payments.
