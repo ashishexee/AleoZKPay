@@ -54,7 +54,7 @@ const ProfileQRPage: React.FC = () => {
         };
         fetchBurner();
     }, [decryptedBurnerKey, burnerHash]);
-    
+
     const itemVariants = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0 }
@@ -71,10 +71,10 @@ const ProfileQRPage: React.FC = () => {
                 <img src="/assets/aleo_globe.png" alt="Aleo Globe" className="w-full h-full object-cover opacity-50 mix-blend-screen mask-image-gradient-b" style={{ maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)', WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)' }} />
             </div>
 
-                <motion.div initial="hidden" animate="visible" variants={itemVariants} className="w-full max-w-2xl mx-auto mt-16 relative z-10 mb-12">
-                    <ProfileQR initialMainReceipts={mainReceipts} initialBurnerReceipts={burnerReceipts} />
-                </motion.div>
-            
+            <motion.div initial="hidden" animate="visible" variants={itemVariants} className="w-full max-w-2xl mx-auto mt-16 relative z-10 mb-12">
+                <ProfileQR initialMainReceipts={mainReceipts} initialBurnerReceipts={burnerReceipts} />
+            </motion.div>
+
         </div>
     );
 };

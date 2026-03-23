@@ -9,7 +9,6 @@ import { Button } from '../../../shared/components/ui/Button';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { Input } from '../../../shared/components/ui/Input';
 import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
-import { FloatingGiftCard } from '../../../shared/pages/GiftCards/components/FloatingGiftCard';
 
 const PaymentPage = () => {
     const {
@@ -348,17 +347,15 @@ const PaymentPage = () => {
                                 <div className="flex bg-black/40 p-1 rounded-xl mb-4 border border-white/5">
                                     <button
                                         onClick={() => setPaymentMethod('wallet')}
-                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
-                                            paymentMethod === 'wallet' ? 'bg-white/10 text-white shadow-md' : 'text-gray-500 hover:text-white/80'
-                                        }`}
+                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${paymentMethod === 'wallet' ? 'bg-white/10 text-white shadow-md' : 'text-gray-500 hover:text-white/80'
+                                            }`}
                                     >
                                         Wallet
                                     </button>
                                     <button
                                         onClick={() => setPaymentMethod('giftcard')}
-                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
-                                            paymentMethod === 'giftcard' ? 'bg-white/10 text-neon-primary shadow-md' : 'text-gray-500 hover:text-white/80'
-                                        }`}
+                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${paymentMethod === 'giftcard' ? 'bg-white/10 text-neon-primary shadow-md' : 'text-gray-500 hover:text-white/80'
+                                            }`}
                                     >
                                         Gift Card
                                     </button>

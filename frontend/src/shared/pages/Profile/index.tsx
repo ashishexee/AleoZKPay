@@ -290,7 +290,7 @@ const Profile: React.FC = () => {
         createdInvoices.forEach(record => {
             if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
             if (sdkHashSet.has(record.invoiceHash)) return; // Filter explicitly SDK invoices from the Main Dashboard!
-            
+
             const dbTx = dbMap.get(record.invoiceHash);
 
             merged.set(record.invoiceHash, {
@@ -317,7 +317,7 @@ const Profile: React.FC = () => {
         burnerCreatedInvoices.forEach(record => {
             if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
             if (sdkHashSet.has(record.invoiceHash)) return; // Filter explicitly SDK invoices from the Main Dashboard!
-            
+
             const dbTx = dbMap.get(record.invoiceHash);
 
             merged.set(record.invoiceHash, {
@@ -455,7 +455,7 @@ const Profile: React.FC = () => {
 
     const uniqueMainReceipts = Array.from(new Map(merchantReceipts.map(r => [r.receiptHash, r])).values())
         .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash && !sdkHashSet.has(r.invoiceHash));
-        
+
     const uniqueBurnerReceipts = Array.from(new Map(burnerMerchantReceipts.map(r => [r.receiptHash, r])).values())
         .filter(r => r.invoiceHash !== profileMainHash && r.invoiceHash !== profileBurnerHash && !sdkHashSet.has(r.invoiceHash));
 
@@ -546,7 +546,7 @@ const Profile: React.FC = () => {
             }
         } catch (e: any) {
             console.error("Settlement failed", e);
-                toast.error("Failed to settle invoice: " + (e.message || "Unknown error"));
+            toast.error("Failed to settle invoice: " + (e.message || "Unknown error"));
         } finally {
             setSettling(null);
         }

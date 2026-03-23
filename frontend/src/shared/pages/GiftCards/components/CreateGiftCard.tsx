@@ -204,14 +204,15 @@ export const CreateGiftCard: React.FC = () => {
                         </div>
 
                         {/* Amount inputs */}
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {(['ALEO', 'USDCx', 'USAD'] as const).map((token) => (
                                 <div
                                     key={token}
-                                    className="flex items-center border border-white/[0.08] rounded-xl bg-white/[0.03] overflow-hidden transition-all focus-within:border-white/20"
+                                    className="relative flex items-center bg-white/[0.02] rounded-2xl overflow-hidden group h-14"
                                 >
-                                    <span className="px-4 py-3.5 text-xs font-semibold text-white/30 uppercase tracking-widest border-r border-white/[0.08] w-20 text-center shrink-0">
-                                        {token}
+                                    <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent group-focus-within:via-orange-500/50 transition-all duration-500" />
+                                    <span className="pl-5 text-xs font-semibold text-white/30 uppercase tracking-[0.2em] w-24 shrink-0 transition-colors group-focus-within:text-white/50">
+                                        {token === 'ALEO' ? 'Credits' : token}
                                     </span>
                                     <input
                                         type="number"
@@ -219,7 +220,7 @@ export const CreateGiftCard: React.FC = () => {
                                         min="0"
                                         value={amounts[token]}
                                         onChange={(e) => setAmounts({ ...amounts, [token]: e.target.value })}
-                                        className="flex-1 bg-transparent py-3.5 px-4 text-right text-base text-white placeholder-white/15 focus:outline-none font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        className="flex-1 h-full bg-transparent px-5 text-right text-lg text-white font-light focus:outline-none placeholder-white/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -227,16 +228,17 @@ export const CreateGiftCard: React.FC = () => {
                         </div>
 
                         {/* Footer */}
-                        <div className="flex items-center justify-between pt-2">
-                            <p className="text-xs text-white/25">
-                                Executes <span className="font-mono text-white/40">transfer_private</span>
+                        <div className="flex items-center justify-between pt-4">
+                            <p className="text-[10px] uppercase tracking-widest text-white/20">
+                                Powered by <span className="font-semibold text-white/40">Aleo Zk</span>
                             </p>
                             <button
                                 type="submit"
-                                disabled={isGenerating || !address}
-                                className="px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-orange-500 to-orange-400 text-white rounded-lg hover:from-orange-400 hover:to-orange-300 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(249,115,22,0.25)]"
+                                disabled={isGenerating || !address || (!amounts.ALEO && !amounts.USDCx && !amounts.USAD)}
+                                className="px-6 py-4 text-sm font-semibold bg-white text-black rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] shrink-0 group relative overflow-hidden"
                             >
-                                {isGenerating ? 'Minting...' : 'Mint Card'}
+                                <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <span className="relative z-10">{isGenerating ? 'Minting...' : 'Mint Card'}</span>
                             </button>
                         </div>
                         {!address && (

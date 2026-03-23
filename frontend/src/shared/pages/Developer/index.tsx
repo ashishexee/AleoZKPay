@@ -149,6 +149,19 @@ export const DeveloperPortal = () => {
                 <div className="absolute bottom-[-10%] right-[10%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
             </div>
 
+            {/* Aleo Globe */}
+            <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 w-screen h-[800px] z-0 pointer-events-none flex justify-center overflow-hidden">
+                <img
+                    src="/assets/aleo_globe.png"
+                    alt="Aleo Globe"
+                    className="w-full h-full object-cover opacity-50 mix-blend-screen mask-image-gradient-b"
+                    style={{
+                        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)',
+                        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)'
+                    }}
+                />
+            </div>
+
             <div className="relative z-10 w-full max-w-7xl mx-auto pt-8 pb-24 px-6">
 
                 {/* ── Hero ─────────────────────────────────────────────── */}
@@ -229,8 +242,8 @@ export const DeveloperPortal = () => {
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === tab.id
-                                        ? 'bg-white text-black shadow-lg'
-                                        : 'text-gray-400 hover:text-white hover:bg-white/[0.05]'
+                                    ? 'bg-white text-black shadow-lg'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/[0.05]'
                                     }`}
                             >
                                 <tab.icon className="w-3.5 h-3.5" />
@@ -285,7 +298,7 @@ export const DeveloperPortal = () => {
 
                                 <h3 className="text-lg font-bold text-white mb-4 mt-8">2. Review your nullpay.json</h3>
                                 <p className="text-gray-500 text-sm mb-5 leading-relaxed">
-                                    The CLI securely communicates with the Aleo testnet via the Relayer to deploy your invoices and returns a mapped <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">invoice_hash</code> and <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">salt</code> for each. 
+                                    The CLI securely communicates with the Aleo testnet via the Relayer to deploy your invoices and returns a mapped <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">invoice_hash</code> and <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">salt</code> for each.
                                     These are saved in a <code className="text-white bg-white/5 px-1.5 py-0.5 rounded">nullpay.json</code> file in your project root, which is automatically gitignored.
                                 </p>
                                 <CodeBlock title="Example nullpay.json" language="json" code={`{
@@ -305,7 +318,7 @@ export const DeveloperPortal = () => {
 
                                 <h3 className="text-lg font-bold text-white mb-4 mt-8">3. Use invoices in your backend</h3>
                                 <p className="text-gray-500 text-sm mb-5 leading-relaxed">
-                                    The <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">@nullpay/node</code> SDK automatically reads the <code className="text-white bg-white/5 px-1.5 py-0.5 rounded">nullpay.json</code> file if it exists. 
+                                    The <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">@nullpay/node</code> SDK automatically reads the <code className="text-white bg-white/5 px-1.5 py-0.5 rounded">nullpay.json</code> file if it exists.
                                     This allows you to create checkout sessions by simply referencing your pre-generated invoices by name rather than hardcoding amounts, hashes, and salts in your code.
                                 </p>
                                 <CodeBlock title="Creating a checkout session" code={`import { NullPay } from '@nullpay/node';
@@ -377,7 +390,7 @@ export async function createCheckout(req, res) {
                                     Monitor your payment volume and conversion rates across all generated checkout sessions.
                                     Only sessions with <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">SETTLED</code> status are counted in volume.
                                 </p>
-                                
+
                                 {!publicKey ? (
                                     <div className="text-center p-8 bg-white/[0.02] rounded-2xl border border-white/[0.06]">
                                         <p className="text-gray-400 mb-4">Connect your wallet to view analytics.</p>

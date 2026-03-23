@@ -37,19 +37,26 @@ export const RedeemGiftCard: React.FC = () => {
             return;
         }
 
+        // ── Reset all stale state BEFORE the async fetch ─────────────────────
+        setBalances({ ALEO: -1, USDCx: -1, USAD: -1 });
+        setIsRevealed(false);
+        setLogs([]);
+        setTxId(null);
+        setSweepAmount('');
+        // ─────────────────────────────────────────────────────────────────────
+
         try {
             const hex = giftCode.replace('gift-', '');
             const pkStr = fromHex(hex);
-            
+
             // Validate it's a real private key
             PrivateKey.from_string(pkStr);
             setPrivateKeyStr(pkStr);
-            setIsRevealed(false);
 
             setStep('SCANNING');
             const foundBalances = await fetchAllPrivateBalances(pkStr);
             setBalances(foundBalances);
-            
+
             // Auto-select the first token with a balance > 0
             if (foundBalances.ALEO > 0) setSweepToken('ALEO');
             else if (foundBalances.USDCx > 0) setSweepToken('USDCx');
@@ -181,7 +188,12 @@ export const RedeemGiftCard: React.FC = () => {
                             <input
                                 type="text"
                                 value={giftCode}
-                                onChange={(e) => setGiftCode(e.target.value)}
+                                onChange={(e) => {
+                                    setGiftCode(e.target.value);
+                                    // Clear any stale balances when the code changes
+                                    setBalances({ ALEO: -1, USDCx: -1, USAD: -1 });
+                                    setIsRevealed(false);
+                                }}
                                 className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl py-3.5 px-4 text-sm text-white font-mono placeholder-white/20 focus:outline-none focus:border-white/20 transition-all"
                                 placeholder="gift-..."
                                 spellCheck={false}
@@ -234,52 +246,74 @@ export const RedeemGiftCard: React.FC = () => {
                                     animate={{ opacity: 1, y: 0 }}
                                     className="space-y-4"
                                 >
-                                    {/* Token balances */}
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {(['ALEO', 'USDCx', 'USAD'] as const).map(token => {
-                                            const bal = balances[token];
-                                            const isSelected = sweepToken === token;
-                                            return (
-                                                <button
-                                                    key={token}
-                                                    type="button"
-                                                    disabled={bal <= 0}
-                                                    onClick={() => {
-                                                        if (bal > 0) {
-                                                            setSweepToken(token);
-                                                            setSweepAmount(String(bal));
-                                                        }
-                                                    }}
-                                                    className={`p-3 rounded-xl border text-left transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                                                        isSelected
-                                                            ? 'bg-white/[0.07] border-white/20'
-                                                            : 'bg-white/[0.02] border-white/[0.07] hover:border-white/15'
-                                                    }`}
-                                                >
-                                                    <p className="text-[9px] text-white/30 uppercase tracking-widest mb-1">{token}</p>
-                                                    <p className={`text-base font-semibold font-mono ${bal > 0 ? 'text-white' : 'text-white/20'}`}>
-                                                        {bal > 0 ? bal.toFixed(2) : '0.00'}
-                                                    </p>
-                                                </button>
-                                            );
-                                        })}
+                                    {/* Token balances - Ultra Minimalist Design */}
+                                    <div className="flex flex-col gap-3 py-2">
+                                        <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-semibold px-2">Available Assets</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                            {([
+                                                { key: 'ALEO', label: 'Credits', activeBg: 'bg-white/[0.08] shadow-[0_4px_20px_rgba(255,255,255,0.05)]' },
+                                                { key: 'USDCx', label: 'USDCx', activeBg: 'bg-white/[0.08] shadow-[0_4px_20px_rgba(255,255,255,0.05)]' },
+                                                { key: 'USAD', label: 'USAD', activeBg: 'bg-white/[0.08] shadow-[0_4px_20px_rgba(255,255,255,0.05)]' },
+                                            ] as const).map(({ key, label, activeBg }) => {
+                                                const bal = balances[key as 'ALEO' | 'USDCx' | 'USAD'];
+                                                const isSelected = sweepToken === (key as 'ALEO' | 'USDCx' | 'USAD');
+                                                const hasBalance = bal > 0;
+                                                return (
+                                                    <button
+                                                        key={key}
+                                                        type="button"
+                                                        disabled={!hasBalance}
+                                                        onClick={() => {
+                                                            if (hasBalance) {
+                                                                setSweepToken(key as 'ALEO' | 'USDCx' | 'USAD');
+                                                                setSweepAmount(String(bal));
+                                                            }
+                                                        }}
+                                                        className={`relative overflow-hidden flex flex-col items-center justify-center p-5 rounded-2xl transition-all duration-300 group disabled:opacity-40 disabled:cursor-not-allowed ${
+                                                            isSelected
+                                                                ? `border border-white/20 ${activeBg}`
+                                                                : 'border border-transparent bg-white/[0.02] hover:bg-white/[0.04]'
+                                                        }`}
+                                                    >
+                                                        {isSelected && (
+                                                            <div className="absolute top-0 w-12 h-[2px] bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+                                                        )}
+                                                        <p className={`text-xs uppercase tracking-[0.15em] mb-2 transition-colors ${isSelected ? 'text-white/60' : 'text-white/30'}`}>
+                                                            {label}
+                                                        </p>
+                                                        <div className="flex items-baseline gap-1">
+                                                            <p className={`text-2xl font-light font-sans tracking-tight transition-colors ${
+                                                                hasBalance ? (isSelected ? 'text-white' : 'text-white/80') : 'text-white/20'
+                                                            }`}>
+                                                                {hasBalance ? bal.toFixed(2) : '0.00'}
+                                                            </p>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
 
                                     {/* Withdraw row */}
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="number"
-                                            value={sweepAmount}
-                                            onChange={(e) => setSweepAmount(e.target.value)}
-                                            className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-white/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            placeholder={`Max: ${balances[sweepToken].toFixed(2)}`}
-                                        />
+                                    <div className="flex gap-3 pt-2">
+                                        <div className="relative flex-1 bg-white/[0.02] rounded-xl overflow-hidden group">
+                                            <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent group-focus-within:via-orange-500/50 transition-all duration-500" />
+                                            <input
+                                                type="number"
+                                                value={sweepAmount}
+                                                onChange={(e) => setSweepAmount(e.target.value)}
+                                                className="w-full h-full bg-transparent px-5 py-4 text-lg text-white font-light focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder-white/10"
+                                                placeholder={`Max: ${balances[sweepToken].toFixed(2)}`}
+                                            />
+                                        </div>
                                         <button
                                             onClick={handleSweep}
                                             disabled={!address || !sweepAmount}
-                                            className="px-5 py-3 text-sm font-semibold bg-gradient-to-r from-orange-500 to-orange-400 text-white rounded-xl hover:from-orange-400 hover:to-orange-300 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
+                                            className="px-6 py-4 text-sm font-semibold bg-white text-black rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] shrink-0 group relative overflow-hidden"
                                         >
-                                            Withdraw <ArrowRight className="w-4 h-4" />
+                                            <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <span className="relative z-10">Withdraw</span>
+                                            <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
                                         </button>
                                     </div>
                                     {!address && (
@@ -290,7 +324,12 @@ export const RedeemGiftCard: React.FC = () => {
                         </AnimatePresence>
 
                         <button
-                            onClick={() => setStep('INPUT')}
+                            onClick={() => {
+                                setStep('INPUT');
+                                // Clear balances so re-scanning always fetches fresh data
+                                setBalances({ ALEO: -1, USDCx: -1, USAD: -1 });
+                                setIsRevealed(false);
+                            }}
                             className="w-full text-xs text-white/25 hover:text-white/50 pt-2 transition-colors"
                         >Cancel</button>
                     </motion.div>
