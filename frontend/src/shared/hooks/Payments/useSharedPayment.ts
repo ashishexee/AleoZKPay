@@ -5,6 +5,10 @@ import { TransactionOptions } from '@provablehq/aleo-types';
 import { getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
 import type { PaymentStep, InvoiceState } from './types';
 import { createClient } from '@supabase/supabase-js';
+import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
+import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
+
+const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -260,8 +264,6 @@ export const useSharedPayment = () => {
 
 
     const pollTransaction = async (initialTxId: string) => {
-        if (!wallet || !wallet.adapter) return;
-
         let isPending = true;
         let attempts = 0;
         let onChainId = initialTxId;
@@ -270,14 +272,29 @@ export const useSharedPayment = () => {
             attempts++;
             await new Promise(r => setTimeout(r, 1000));
             try {
-                const statusRes = await wallet.adapter.transactionStatus(initialTxId);
-                const statusStr = typeof statusRes === 'string'
-                    ? (statusRes as string).toLowerCase()
-                    : (statusRes as any)?.status?.toLowerCase();
+                let statusStr = '';
+                if (wallet && wallet.adapter) {
+                    try {
+                        const statusRes = await wallet.adapter.transactionStatus(initialTxId);
+                        statusStr = typeof statusRes === 'string'
+                            ? (statusRes as string).toLowerCase()
+                            : (statusRes as any)?.status?.toLowerCase();
+                        if ((statusRes as any)?.transactionId) {
+                            onChainId = (statusRes as any).transactionId;
+                        }
+                    } catch (e) { }
+                }
 
-                if ((statusRes as any)?.transactionId) {
-                    onChainId = (statusRes as any).transactionId;
-                    console.log("Payment On-Chain ID found:", onChainId);
+                if (!statusStr) {
+                    try {
+                        const res = await fetch(`https://api.explorer.provable.com/v1/testnet/transaction/${initialTxId}`);
+                        if (res.ok) {
+                            statusStr = 'completed';
+                        }
+                    } catch (e) {}
+                }
+
+                if (onChainId) {
                     setTxId(onChainId);
                 }
 
@@ -433,6 +450,130 @@ export const useSharedPayment = () => {
         }
     };
 
+    const payWithGiftCard = async (giftCode: string, selectedTokenOverride?: number) => {
+        if (!invoice) return;
+        if (!giftCode.startsWith('gift-')) {
+            setError('Invalid Gift Card format.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+            setStatus('Authenticating Gift Card...');
+
+            const hex = giftCode.replace('gift-', '');
+            const pkStr = fromHex(hex);
+            PrivateKey.from_string(pkStr); // Validate format
+
+            const isDonationType = invoice.invoiceType === 2 || invoice.amount === 0;
+            const parsedDonation = Number(donationAmount) || 0;
+            const finalAmount = (isDonationType && parsedDonation > 0) ? parsedDonation : invoice.amount;
+            if (finalAmount <= 0) throw new Error("Amount must be greater than zero.");
+
+            const activeTokenType = selectedTokenOverride !== undefined ? selectedTokenOverride : invoice.tokenType;
+
+            let tokenProgram = 'credits.aleo';
+            let tokenName = 'ALEO';
+            let amountMicro = Math.round(finalAmount * 1_000_000);
+            let typeSuffix = 'u64';
+            let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
+
+            if (activeTokenType === 1) {
+                tokenProgram = 'test_usdcx_stablecoin.aleo';
+                typeSuffix = 'u128';
+                funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+                tokenName = 'USDCx';
+            } else if (activeTokenType === 2) {
+                tokenProgram = 'test_usad_stablecoin.aleo';
+                typeSuffix = 'u128';
+                funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
+                tokenName = 'USAD';
+            }
+
+            setStatus('Scanning Gift Card balance...');
+            const host = 'https://api.explorer.provable.com/v1';
+            const networkClient = new AleoNetworkClient(host);
+            const keyProvider = new AleoKeyProvider();
+            keyProvider.useCache(true);
+
+            const scannerSession = await getScannerSession(pkStr);
+            const recordProvider = new NetworkRecordProvider(scannerSession.account, networkClient);
+            const programManager = new ProgramManager(host, keyProvider, recordProvider);
+            programManager.setAccount(scannerSession.account);
+
+            let recordName = activeTokenType === 0 ? 'credits' : 'Token';
+            
+            const { scanProgramBalance } = await import('../../pages/Profile/components/BurnerWallet/scanner');
+            const totalMicros = await scanProgramBalance(scannerSession, tokenProgram, recordName);
+            if (totalMicros < amountMicro) {
+                throw new Error(`Insufficient balance! Your card has ${totalMicros / 1_000_000} ${tokenName}, but you need ${finalAmount} ${tokenName}.`);
+            }
+            
+            const payRecordStr = await findSpendableRecord(scannerSession, tokenProgram, recordName, amountMicro, activeTokenType === 0);
+
+            if (!payRecordStr) throw new Error(`Insufficient Gift Card balance. Must have a single record large enough.`);
+
+            setStatus('Generating ZK Proofs locally...');
+            let proofsInput = undefined;
+            if (activeTokenType !== 0) {
+                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
+                await getFreezeListRoot();
+                await getFreezeListCount();
+                const firstIndex = await getFreezeListIndex(0);
+                const { Address } = await import('@provablehq/wasm');
+                let index0FieldStr = undefined;
+                if (firstIndex) {
+                    try { index0FieldStr = Address.from_string(firstIndex).toGroup().toXCoordinate().toString(); } catch { }
+                }
+                const proof = await generateFreezeListProof(1, index0FieldStr);
+                proofsInput = `[${proof}, ${proof}]`;
+            }
+
+            if (!invoice.merchant) throw new Error("Merchant address is missing from invoice details.");
+
+            const inputs = [
+                payRecordStr,
+                invoice.merchant,
+                `${amountMicro}${typeSuffix}`,
+                invoice.salt || '',
+                paymentSecret || '',
+                invoice.hash || ''
+            ];
+
+            if (proofsInput) inputs.push(proofsInput);
+
+            const authorization = await programManager.buildAuthorization({
+                programName: programId || PROGRAM_ID,
+                functionName: funcName,
+                inputs
+            });
+
+            setStatus('Submitting payment via DPS Relayer...');
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ execution_authorization_string: authorization.toString(), programName: programId || PROGRAM_ID }),
+            });
+            const response = await sponsorRes.json();
+            if (!sponsorRes.ok) throw new Error(response?.error || response?.message || 'Payment sponsorship failed.');
+
+            const transactionId = response.transaction?.id || response.transactionId || '';
+            setTxId(transactionId);
+            setStatus(`Transaction Broadcasted! Waiting for network...`);
+
+            // Start polling for this success
+            pollTransaction(transactionId);
+
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "An error occurred during Gift Card payment.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleConnect = async () => {
         if (!publicKey) return;
         setStep('PAY');
@@ -469,5 +610,6 @@ export const useSharedPayment = () => {
         pollTransaction,
         convertPublicToPrivate,
         handleConnect,
+        payWithGiftCard,
     };
 };

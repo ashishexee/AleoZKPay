@@ -11,6 +11,7 @@ export interface InvoiceData {
     salt: string;
     hash: string;
     link: string;
+    type?: number;
 }
 
 export interface CreateInvoiceState {

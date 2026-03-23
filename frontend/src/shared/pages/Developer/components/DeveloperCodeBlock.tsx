@@ -21,7 +21,7 @@ export const DeveloperCodeBlock = ({
     return (
         <div className="mt-4 group">
             <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.04] border border-white/10 rounded-t-xl border-b-0">
-                <span className="font-mono text-xs text-cyan-300 font-bold uppercase tracking-wider">{title}</span>
+                <span className="font-mono text-xs text-gradient-gold drop-shadow-gold font-bold uppercase tracking-wider">{title}</span>
                 <div className="flex items-center gap-3">
                     <span className="text-[10px] text-gray-600 font-mono uppercase">{language}</span>
                     <button onClick={handleCopy} className="text-gray-500 hover:text-white transition-colors">

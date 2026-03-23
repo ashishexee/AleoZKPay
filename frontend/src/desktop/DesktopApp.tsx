@@ -15,6 +15,7 @@ import { ChangelogOverlay } from './components/ChangelogOverlay';
 import CheckoutPage from '../shared/pages/Checkout';
 import InvoiceDetails from '../shared/pages/InvoiceDetails';
 import DeveloperPortal from '../shared/pages/Developer';
+import GiftCardsPage from '../shared/pages/GiftCards';
 import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 
 const DesktopAnimatedRoutes = () => {
@@ -27,6 +28,7 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/create" element={<ProtectedRoute><CreateInvoice /></ProtectedRoute>} />
                 <Route path="/pay" element={<PaymentPage />} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
                 <Route path="/profile-qr" element={<ProtectedRoute><ProfileQRPage /></ProtectedRoute>} />
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/docs" element={<Docs />} />

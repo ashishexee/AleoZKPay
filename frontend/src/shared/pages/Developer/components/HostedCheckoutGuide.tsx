@@ -9,7 +9,7 @@ export const HostedCheckoutGuide: React.FC = () => {
         <div className="space-y-8">
             <GlassCard className="p-8 md:p-10">
                 <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">Hosted Checkout</span>
-                <h2 className="text-3xl font-bold text-white mt-3 mb-2">What NullPay Checkout Actually Does</h2>
+                <h2 className="text-3xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-3 mb-2">What NullPay Checkout Actually Does</h2>
                 <p className="text-gray-400 text-sm leading-relaxed mb-8">
                     The hosted checkout route in this app loads the checkout session, reads the invoice details, lets the payer choose or convert private balance, executes the Aleo payment, then updates both the invoice and checkout session before redirecting to your `success_url`.
                 </p>

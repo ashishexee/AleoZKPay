@@ -4,6 +4,7 @@ import { usePayment } from '../../../shared/hooks/usePayment';
 import type { PaymentStep } from '../../../shared/hooks/usePayment';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
+import { FloatingGiftCard } from '../../../shared/pages/GiftCards/components/FloatingGiftCard';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
@@ -22,6 +23,8 @@ const MobilePaymentPage = () => {
     const [customConvertAmount, setCustomConvertAmount] = useState<string>('');
     const [showConvertModal, setShowConvertModal] = useState(false);
     const [selectedToken, setSelectedToken] = useState<number>(0);
+    const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'giftcard'>('wallet');
+    const [giftCode, setGiftCode] = useState<string>('');
 
     const {
         step,
@@ -32,6 +35,7 @@ const MobilePaymentPage = () => {
         txId,
         handleConnect,
         payInvoice,
+        payWithGiftCard,
         convertPublicToPrivate,
         programId,
         paymentSecret,
@@ -50,6 +54,11 @@ const MobilePaymentPage = () => {
         } else {
             await payInvoice(invoice?.tokenType === 3 ? selectedToken : undefined);
         }
+    };
+
+    const handleGiftCardPay = async () => {
+        if (!giftCode) return;
+        await payWithGiftCard(giftCode, invoice?.tokenType === 3 ? selectedToken : undefined);
     };
 
     const confirmConversion = async () => {
@@ -417,40 +426,95 @@ const MobilePaymentPage = () => {
                                     </Button>
                                 )}
                             </div>
-                        ) : step === 'CONNECT' ? (
-                            <div className="flex flex-col gap-3">
-                                <div className="wallet-adapter-wrapper w-full [&>button]:!w-full [&>button]:!justify-center [&>button]:!h-12 [&>button]:!rounded-xl [&>button]:!font-bold [&>button]:!bg-neon-primary [&>button]:!text-black hover:[&>button]:!bg-neon-accent [&>button]:!transition-colors">
-                                    <WalletMultiButton className="!w-full !justify-center" />
-                                </div>
-                                {address && (
-                                    <Button variant="secondary" onClick={handleConnect}>
-                                        Continue with Connected Wallet
-                                    </Button>
-                                )}
-                            </div>
-                        ) : step === 'VERIFY' ? (
-                            <Button variant="primary" onClick={handleConnect} className="w-full">
-                                Verify Hash & Records
-                            </Button>
                         ) : (
-                            <Button
-                                variant="primary"
-                                onClick={handlePay}
-                                disabled={isProcess}
-                                className="w-full"
-                                glow
-                            >
-                                {isProcess ? (
-                                    <span className="flex items-center gap-2">
-                                        <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                        Processing...
-                                    </span>
-                                ) : step === 'CONVERT' ? (
-                                    'Convert Public to Private'
+                            <>
+                                <div className="flex bg-black/40 p-1 rounded-xl mb-4 border border-white/5">
+                                    <button
+                                        onClick={() => setPaymentMethod('wallet')}
+                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
+                                            paymentMethod === 'wallet' ? 'bg-white/10 text-white shadow-md' : 'text-gray-500 hover:text-white/80'
+                                        }`}
+                                    >
+                                        Wallet
+                                    </button>
+                                    <button
+                                        onClick={() => setPaymentMethod('giftcard')}
+                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
+                                            paymentMethod === 'giftcard' ? 'bg-white/10 text-neon-primary shadow-md' : 'text-gray-500 hover:text-white/80'
+                                        }`}
+                                    >
+                                        Gift Card
+                                    </button>
+                                </div>
+
+                                {paymentMethod === 'giftcard' ? (
+                                    <div className="space-y-4 animate-fade-in">
+                                        <div>
+                                            <input
+                                                type="text"
+                                                value={giftCode}
+                                                onChange={(e) => setGiftCode(e.target.value)}
+                                                placeholder="Paste gift-... code here"
+                                                className="w-full bg-black/40 border border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-sm font-mono text-neon-primary p-4 transition-colors tracking-widest text-center shadow-inner"
+                                            />
+                                        </div>
+                                        <Button
+                                            variant="primary"
+                                            onClick={handleGiftCardPay}
+                                            disabled={isProcess || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
+                                            className="w-full text-lg h-14"
+                                            glow
+                                        >
+                                            {isProcess ? (
+                                                <span className="flex items-center gap-2">
+                                                    <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                                    Processing...
+                                                </span>
+                                            ) : (
+                                                `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`
+                                            )}
+                                        </Button>
+                                    </div>
                                 ) : (
-                                    `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`
+                                    <>
+                                        {step === 'CONNECT' ? (
+                                            <div className="flex flex-col gap-3">
+                                                <div className="wallet-adapter-wrapper w-full [&>button]:!w-full [&>button]:!justify-center [&>button]:!h-12 [&>button]:!rounded-xl [&>button]:!font-bold [&>button]:!bg-neon-primary [&>button]:!text-black hover:[&>button]:!bg-neon-accent [&>button]:!transition-colors">
+                                                    <WalletMultiButton className="!w-full !justify-center" />
+                                                </div>
+                                                {address && (
+                                                    <Button variant="secondary" onClick={handleConnect}>
+                                                        Continue with Connected Wallet
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ) : step === 'VERIFY' ? (
+                                            <Button variant="primary" onClick={handleConnect} className="w-full">
+                                                Verify Hash & Records
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                variant="primary"
+                                                onClick={handlePay}
+                                                disabled={isProcess || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
+                                                className="w-full"
+                                                glow
+                                            >
+                                                {isProcess ? (
+                                                    <span className="flex items-center gap-2">
+                                                        <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                                        Processing...
+                                                    </span>
+                                                ) : step === 'CONVERT' ? (
+                                                    'Convert Public to Private'
+                                                ) : (
+                                                    `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`
+                                                )}
+                                            </Button>
+                                        )}
+                                    </>
                                 )}
-                            </Button>
+                            </>
                         )}
                     </div>
                 </GlassCard>

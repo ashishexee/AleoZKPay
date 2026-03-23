@@ -15,10 +15,10 @@ export default {
                 'void-main': '#000000', // Pure black
                 'void-lighter': '#0a0a0a', // Almost black
 
-                // Monochrome Accents (formerly Neon)
-                'neon-primary': '#ffffff', // White (Primary Action/Highlight)
-                'neon-secondary': '#a3a3a3', // Neutral 400 (Secondary)
-                'neon-accent': '#525252', // Neutral 600 (Tertiary/Depth)
+                // Deep Space Accents (Strict Monochrome)
+                'neon-primary': '#ffffff', // Pure White
+                'neon-secondary': '#a1a1aa', // Gray-400
+                'neon-accent': '#ffffff',    // White accent
 
                 // Glass States
                 'glass-border': 'rgba(255, 255, 255, 0.15)',
@@ -27,9 +27,11 @@ export default {
                 'glass-highlight': 'rgba(255, 255, 255, 0.1)',
 
                 // Status - Minimalist/Monochrome
-                success: '#ffffff', // Use white + icons for success
-                error: '#ffffff',   // Use white + icons for error (or very subtle red if needed, but sticking to mono)
-                warning: '#ffffff',
+                // Status - Neon Themed
+                success: '#ffffff', // White
+                error: '#ef4444',   // Vivid Red
+                warning: '#f59e0b', // Amber
+                primary: '#ffffff', // Alias for white action
             },
             fontFamily: {
                 sans: ['Space Grotesk', 'sans-serif'],
@@ -56,11 +58,12 @@ export default {
                 },
                 glow: {
                     '0%': { boxShadow: '0 0 5px rgba(255, 255, 255, 0.1), 0 0 10px rgba(255, 255, 255, 0.05)' },
-                    '100%': { boxShadow: '0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px rgba(255, 255, 255, 0.2)' },
+                    '100%': { boxShadow: '0 0 20px rgba(255, 255, 255, 0.2), 0 0 40px rgba(255, 255, 255, 0.1)' },
                 }
             },
             boxShadow: {
-                'neon': '0 0 5px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.3)', // White glow
+                'neon': '0 0 5px rgba(255, 255, 255, 0.3), 0 0 20px rgba(255, 255, 255, 0.15)', // White glow
+                'orange-glow': '0 0 10px rgba(249, 115, 22, 0.3), 0 0 30px rgba(249, 115, 22, 0.1)', // Orange glow
                 'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.5)',
                 'glass-hover': '0 8px 32px 0 rgba(0, 0, 0, 0.7)',
             }

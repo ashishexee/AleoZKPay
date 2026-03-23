@@ -30,7 +30,10 @@ const CodeBlock = ({ title, code, language = 'javascript' }: { title?: string; c
 
 const DocSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="mb-8">
-        <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-3"><BookOpen className="w-5 h-5 text-neon-primary" />{title}</h3>
+        <h2 className="text-2xl font-bold text-gradient-gold drop-shadow-gold mb-4 flex items-center gap-3">
+            <BookOpen className="w-6 h-6 text-orange-400/80" />
+            {title}
+        </h2>
         <div className="text-gray-400 text-sm leading-relaxed">{children}</div>
     </div>
 );

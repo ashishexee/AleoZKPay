@@ -113,7 +113,7 @@ const Vision = () => {
                 <motion.div variants={fadeInUp} className="text-center mb-20">
                     <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter text-white leading-tight">
                         The Future of <br className="hidden md:block" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-primary via-white to-purple-400">Private Payments</span>
+                        <span className="text-gradient-gold drop-shadow-gold">Private Payments</span>
                     </h1>
                     <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
                         NullPay isn't just a tool; it's a vision for a world where financial privacy is the default, not an option.
@@ -147,8 +147,15 @@ const Vision = () => {
                                     {section.icon}
                                 </div>
 
-                                <h3 className="text-2xl font-bold text-white mb-4 tracking-tight group-hover:text-neon-primary transition-colors">
-                                    {section.title}
+                                <h3 className="text-2xl font-bold text-white mb-4 tracking-tight transition-colors duration-500">
+                                    <span className="relative">
+                                        <span className="absolute inset-0 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500 drop-shadow-gold" aria-hidden="true">
+                                            {section.title}
+                                        </span>
+                                        <span className="group-hover:opacity-0 transition-opacity duration-500">
+                                            {section.title}
+                                        </span>
+                                    </span>
                                 </h3>
 
                                 <p className="text-gray-400 leading-relaxed text-sm md:text-base">
@@ -161,7 +168,7 @@ const Vision = () => {
 
                 {/* CALL TO ACTION */}
                 <motion.div variants={fadeInUp} className="mt-24 text-center">
-                    <div className="inline-block p-[1px] rounded-full bg-gradient-to-r from-neon-primary/50 to-purple-500/50">
+                    <div className="inline-block p-[1px] rounded-full bg-gradient-to-r from-orange-400/50 to-orange-600/50">
                         <div className="bg-black/80 backdrop-blur-xl rounded-full px-8 py-3">
                             <span className="text-gray-300 font-mono text-sm tracking-widest uppercase">
                                 Building the Private Economy on Aleo

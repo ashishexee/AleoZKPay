@@ -1,9 +1,6 @@
 import { Account, encryptRegistrationRequest, RecordCiphertext } from '@provablehq/sdk';
 import type { PrivateBalances, ScannerSession } from './types';
 
-// ─────────────────────────────────────────────
-// Scanner session: auth, pubkey, registration
-// ─────────────────────────────────────────────
 export async function getScannerSession(decryptedBurnerKey: string): Promise<ScannerSession> {
     const scannerBase = import.meta.env.VITE_API_URL.replace('/api', '/api/scanner/testnet');
     const provableBaseProxy = import.meta.env.VITE_API_URL.replace('/api', '/api/proxy/provable');
@@ -44,7 +41,11 @@ export async function getScannerSession(decryptedBurnerKey: string): Promise<Sca
 
     // Register the burner wallet's view key with the scanner
     const account = new Account({ privateKey: decryptedBurnerKey });
-    const pubkeyRes = await fetch(`${scannerBase}/pubkey`, { method: 'GET', headers: scannerHeaders });
+    const pubkeyRes = await fetch(`${scannerBase}/pubkey`, { 
+        method: 'GET', 
+        headers: scannerHeaders,
+        cache: 'no-store'
+    });
     if (!pubkeyRes.ok) throw new Error(`Scanner auth failed: ${pubkeyRes.status}`);
     const pubkey = await pubkeyRes.json();
 
@@ -59,9 +60,7 @@ export async function getScannerSession(decryptedBurnerKey: string): Promise<Sca
     return { scannerBase, scannerHeaders, scannerUuid, account };
 }
 
-// ─────────────────────────────────────────────
-// Scan one program and sum the token balance
-// ─────────────────────────────────────────────
+
 export async function scanProgramBalance(
     session: ScannerSession,
     programFilter: string,
@@ -122,10 +121,10 @@ export async function scanProgramBalance(
         console.log(`[BalanceScan] TOTAL for ${programFilter}: ${total} micros (= ${total / 1_000_000})`);
         console.groupEnd();
         return total;
-    } catch (e) {
+    } catch (e: any) {
         console.warn(`[BalanceScan] Error scanning ${programFilter}:`, e);
         console.groupEnd();
-        return 0;
+        throw new Error(`Failed to scan balance: ${e.message}`);
     }
 }
 
@@ -145,9 +144,7 @@ export async function fetchAllPrivateBalances(decryptedBurnerKey: string): Promi
     };
 }
 
-// ─────────────────────────────────────────────
-// Find a single record to spend during sweep
-// ─────────────────────────────────────────────
+
 export async function findSpendableRecord(
     session: ScannerSession,
     programFilter: string,

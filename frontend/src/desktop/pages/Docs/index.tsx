@@ -64,7 +64,7 @@ const Docs = () => {
             >
                 <motion.div variants={itemVariants} className="text-center mb-12 border-b border-white/10 pb-10 flex flex-col items-center">
                     <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-tight text-white">
-                        Technical <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">Documentation</span>
+                        Technical <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Documentation</span>
                     </h1>
                     <p className="text-gray-300 text-lg md:text-xl max-w-3xl leading-relaxed">
                         Complete technical specification of the NullPay zero-knowledge payment protocol.
@@ -98,7 +98,7 @@ const Docs = () => {
                             className="space-y-12"
                         >
                             <GlassCard className="p-10">
-                                <h2 className="text-3xl font-bold text-white mb-6">What is NullPay?</h2>
+                                <h2 className="text-3xl font-bold mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">What is NullPay?</h2>
                                 <p className="text-gray-400 mb-8 leading-relaxed">
                                     NullPay is a privacy-first payment protocol built on Aleo. It enables merchants to create invoices
                                     and receive payments without revealing sensitive transaction details on-chain. NullPay supports <strong className="text-white">Aleo Credits</strong>, <strong className="text-blue-400">USDCx</strong>, and <strong className="text-green-400">USAD</strong> (private stablecoins on Aleo).
@@ -158,7 +158,7 @@ const Docs = () => {
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
                                         <h4 className="text-white font-bold mb-2">Node.js SDK</h4>
                                         <p className="text-sm text-gray-400">
-                                            <code className="text-neon-primary">npm install @nullpay/node</code> — Official Node.js SDK for merchants to programmatically create checkout sessions and verify webhook signatures.
+                                            <code className="text-neon-primary">npm install @nullpay/node@1.0.1</code> — Official Node.js SDK for merchants to programmatically create checkout sessions and verify webhook signatures.
                                         </p>
                                     </div>
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
@@ -171,7 +171,7 @@ const Docs = () => {
                             </GlassCard>
 
                             <GlassCard className="p-10">
-                                <h2 className="text-3xl font-bold text-white mb-6">How It Works</h2>
+                                <h2 className="text-3xl font-bold mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">How It Works</h2>
                                 <div className="space-y-8">
                                     <div className="relative pl-8 border-l-2 border-neon-primary/30">
                                         <div className="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-neon-primary border-4 border-black" />
@@ -223,7 +223,7 @@ const Docs = () => {
                             className="space-y-8"
                         >
                             <GlassCard className="p-8">
-                                <h2 className="text-2xl font-bold text-white mb-4">Smart Contract Specification</h2>
+                                <h2 className="text-2xl font-bold mb-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Smart Contract Specification</h2>
                                 <p className="text-gray-400 mb-6">
                                     The contract is deployed as <strong className="text-neon-primary">zk_pay_proofs_privacy_v11.aleo</strong>.
                                     It supports Standard (single-payment), Multi Pay (multi-payment), and Donation (open-ended amount) invoices for <strong className="text-white">Aleo Credits</strong>, <strong className="text-blue-400">USDCx</strong>, and <strong className="text-green-400">USAD</strong>. The <code className="text-neon-primary">create_invoice_any</code> transition supports any-token donation invoices (token_type: 3).
@@ -1059,7 +1059,7 @@ function decrypt(text) {
                             <GlassCard className="p-8">
                                 <div className="flex items-center gap-3 mb-6">
                                     <h2 className="text-2xl font-bold text-white">NullPay Node SDK</h2>
-                                    <span className="px-3 py-1 bg-neon-primary/10 border border-neon-primary/30 rounded-full text-[10px] font-bold text-neon-primary uppercase tracking-widest">v1.0.0 Beta</span>
+                                    <span className="px-3 py-1 bg-neon-primary/10 border border-neon-primary/30 rounded-full text-[10px] font-bold text-neon-primary uppercase tracking-widest">v1.0.1 Beta</span>
                                 </div>
                                 <p className="text-gray-400 mb-6">
                                     The official <code className="text-neon-primary">@nullpay/node</code> SDK lets any Node.js backend integrate NullPay's privacy-preserving checkout in minutes. It handles session creation, status polling, and cryptographic webhook verification.
@@ -1069,7 +1069,7 @@ function decrypt(text) {
                                 <CodeBlock
                                     title="Install via npm"
                                     language="bash"
-                                    code={`npm install @nullpay/node`}
+                                    code={`npm install @nullpay/node@1.0.1`}
                                 />
 
                                 <h3 className="text-xl font-bold text-white mb-4 mt-8">Quick Start</h3>
@@ -1205,7 +1205,7 @@ app.post('/webhook/nullpay', express.raw({ type: 'application/json' }), (req, re
                                     <div className="ml-14 space-y-4">
                                         <div className="text-xs text-gray-500">
                                             <strong>Step A:</strong> Install the package.
-                                            <code className="block mt-2 p-3 bg-black/40 rounded-lg text-neon-primary">npm install @nullpay/node</code>
+                                            <code className="block mt-2 p-3 bg-black/40 rounded-lg text-neon-primary">npm install @nullpay/node@1.0.1</code>
                                         </div>
                                         <div className="text-xs text-gray-500">
                                             <strong>Step B:</strong> Set your environment variables. <code>NULLPAY_SECRET_KEY</code> can be found in your profile settings.
