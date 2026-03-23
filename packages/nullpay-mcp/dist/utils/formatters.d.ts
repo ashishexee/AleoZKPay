@@ -1,0 +1,14 @@
+import { Currency, InvoiceRecord, InvoiceType } from '../types';
+export declare function normalizeCurrency(value?: string): Currency;
+export declare function normalizePaymentCurrency(value?: string): Exclude<Currency, 'ANY'> | undefined;
+export declare function normalizeInvoiceType(value?: string): InvoiceType;
+export declare function tokenTypeLabel(tokenType?: number | null): string;
+export declare function invoiceTypeLabel(invoiceType?: number | null): string;
+export declare function currencyToTokenType(currency?: Currency | null): number;
+export declare function linkTokenToCurrency(token?: string | null): Currency | undefined;
+export declare function linkTypeToInvoiceType(type?: string | null): InvoiceType;
+export declare function parseAmount(value?: string | number | null): number | undefined;
+export declare function shouldMarkInvoiceSettled(invoiceType?: number | null): boolean;
+export declare function formatInvoiceSummary(invoice: InvoiceRecord): string;
+export declare function getAmountSource(invoice: InvoiceRecord): 'record' | 'database' | 'missing';
+export declare function buildAmountLookupHint(invoice: InvoiceRecord, hasInvoiceLookupKey: boolean): string;

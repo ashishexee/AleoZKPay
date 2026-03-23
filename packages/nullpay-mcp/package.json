@@ -1,0 +1,24 @@
+{
+  "name": "@nullpay/mcp",
+  "version": "0.1.0",
+  "description": "NullPay MCP server for conversational invoice and payment flows",
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts"
+  },
+  "dependencies": {
+    "@provablehq/sdk": "^0.9.18",
+    "@provablehq/wasm": "^0.9.18"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

@@ -26,6 +26,94 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const readMerchantStoredValue = (value) => value || null;
 const sha256Hex = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
+function getProvableCredentials() {
+    const apiKey = process.env.PROVABLE_API_KEY;
+    const consumerId = process.env.PROVABLE_CONSUMER_ID || process.env.PROVABLE_CONSUMER_KEY;
+    return { apiKey, consumerId };
+}
+
+async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, salt, memo, invoice_type }) {
+    const uppercaseCurrency = (currency || 'CREDITS').toUpperCase();
+    const isDonation = invoice_type === 2;
+    const amountVal = amount ? Number(amount) : 0;
+    const amountMicro = isDonation ? 0n : BigInt(Math.round(amountVal * 1000000));
+
+    let funcName = 'create_invoice';
+    let amountStr = `${amountMicro}u64`;
+
+    if (uppercaseCurrency === 'USDCX') {
+        funcName = 'create_invoice_usdcx';
+        amountStr = `${amountMicro}u128`;
+    } else if (uppercaseCurrency === 'USAD') {
+        funcName = 'create_invoice_usad';
+        amountStr = `${amountMicro}u128`;
+    } else if (uppercaseCurrency === 'ANY') {
+        funcName = 'create_invoice_any';
+        amountStr = `${amountMicro}u128`;
+    }
+
+    if (!merchantPubKey) {
+        throw new Error('Merchant public key missing');
+    }
+
+    let memoField = '0field';
+    if (memo) {
+        const encoder = new TextEncoder();
+        const bytes = encoder.encode(memo);
+        let hex = '0x';
+        for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
+        memoField = `${BigInt(hex).toString()}field`;
+    }
+
+    const typeStr = `${invoice_type !== undefined ? invoice_type : 0}u8`;
+    const inputs = [merchantPubKey, amountStr, salt, memoField, '0u32', typeStr, '0u8'];
+
+    const relayerPrivateKeyStr = process.env.RELAYER_PRIVATE_KEY;
+    if (!relayerPrivateKeyStr) throw new Error('RELAYER_PRIVATE_KEY missing');
+
+    const sdk = await import('@provablehq/sdk');
+    const host = 'https://api.explorer.provable.com/v1';
+    const networkClient = new sdk.AleoNetworkClient(host);
+    const relayerAccount = new sdk.Account({ privateKey: relayerPrivateKeyStr });
+
+    const keyProvider = new sdk.AleoKeyProvider();
+    keyProvider.useCache(true);
+    const pm = new sdk.ProgramManager(host, keyProvider, undefined);
+    pm.setAccount(relayerAccount);
+
+    const auth = await pm.buildAuthorization({
+        programName: 'zk_pay_proofs_privacy_v22.aleo',
+        functionName: funcName,
+        inputs: inputs,
+        fee: 0.1
+    });
+
+    const feeAuth = await pm.buildFeeAuthorization({
+        privateKey: relayerAccount.privateKey(),
+        deploymentOrExecutionId: auth.toExecutionId().toString(),
+        baseFeeCredits: 0.05,
+        priorityFeeCredits: 0
+    });
+
+    const { apiKey, consumerId } = getProvableCredentials();
+    if (!apiKey || !consumerId) throw new Error('Missing PROVABLE_API_KEY or PROVABLE_CONSUMER_ID/PROVABLE_CONSUMER_KEY');
+
+    const pReq = sdk.ProvingRequest.new(auth, feeAuth, true);
+    const dpsRes = await networkClient.submitProvingRequestSafe({
+        provingRequest: pReq,
+        dpsPrivacy: true,
+        apiKey,
+        consumerId,
+        url: 'https://api.provable.com/prove/testnet'
+    });
+
+    if (!dpsRes.ok) {
+        throw new Error(`DPS Rejected Request: ${dpsRes.error?.message || JSON.stringify(dpsRes.error)}`);
+    }
+
+    const { transaction, broadcast_result } = dpsRes.data;
+    return { txId: transaction?.id || broadcast_result?.id };
+}
 
 app.get('/', (req, res) => {
     res.send('AleoZKPay Backend is running');
@@ -288,87 +376,54 @@ app.post('/api/dps/relayer/create-invoice', async (req, res) => {
     const { amount, currency, salt, memo, invoice_type } = req.body;
     if (!salt) return res.status(400).json({ error: 'Salt is required.' });
 
-    const uppercaseCurrency = (currency || 'CREDITS').toUpperCase();
-    const isDonation = invoice_type === 2;
-    const amountVal = amount ? Number(amount) : 0;
-    const amountMicro = isDonation ? 0n : BigInt(Math.round(amountVal * 1000000));
-    
-    let funcName = 'create_invoice';
-    let amountStr = `${amountMicro}u64`;
-    
-    if (uppercaseCurrency === 'USDCX') {
-        funcName = 'create_invoice_usdcx';
-        amountStr = `${amountMicro}u128`;
-    } else if (uppercaseCurrency === 'USAD') {
-        funcName = 'create_invoice_usad';
-        amountStr = `${amountMicro}u128`;
-    } else if (uppercaseCurrency === 'ANY') {
-        funcName = 'create_invoice_any';
-        amountStr = `${amountMicro}u128`;
-    }
-
     const merchantPubKey = readMerchantStoredValue(merchant.encrypted_aleo_address);
-    if (!merchantPubKey) return res.status(500).json({ error: "Merchant public key missing" });
-
-    // String to Field for memo
-    let memoField = '0field';
-    if (memo) {
-        const encoder = new TextEncoder();
-        const bytes = encoder.encode(memo);
-        let hex = '0x';
-        for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
-        memoField = `${BigInt(hex).toString()}field`;
-    }
-
-    const typeStr = `${invoice_type !== undefined ? invoice_type : 0}u8`; // 0=Standard, 1=Multipay, 2=Donation
-    const inputs = [merchantPubKey, amountStr, salt, memoField, "0u32", typeStr, "0u8"];
 
     try {
-        const relayerPrivateKeyStr = process.env.RELAYER_PRIVATE_KEY;
-        if (!relayerPrivateKeyStr) throw new Error("RELAYER_PRIVATE_KEY missing");
-
-        const sdk = await import('@provablehq/sdk');
-        const host = "https://api.explorer.provable.com/v1";
-        const networkClient = new sdk.AleoNetworkClient(host);
-        const relayerAccount = new sdk.Account({ privateKey: relayerPrivateKeyStr });
-        
-        const keyProvider = new sdk.AleoKeyProvider();
-        keyProvider.useCache(true);
-        const pm = new sdk.ProgramManager(host, keyProvider, undefined);
-        pm.setAccount(relayerAccount);
-
-        const auth = await pm.buildAuthorization({
-            programName: "zk_pay_proofs_privacy_v22.aleo",
-            functionName: funcName,
-            inputs: inputs,
-            fee: 0.1
+        const { txId } = await submitRelayedInvoiceCreation({
+            merchantPubKey,
+            amount,
+            currency,
+            salt,
+            memo,
+            invoice_type
         });
-
-        const feeAuth = await pm.buildFeeAuthorization({
-            privateKey: relayerAccount.privateKey(),
-            deploymentOrExecutionId: auth.toExecutionId().toString(),
-            baseFeeCredits: 0.05,
-            priorityFeeCredits: 0
-        });
-
-        const pReq = sdk.ProvingRequest.new(auth, feeAuth, true);
-        const dpsRes = await networkClient.submitProvingRequestSafe({
-            provingRequest: pReq,
-            dpsPrivacy: true,
-            apiKey: process.env.PROVABLE_API_KEY,
-            consumerId: process.env.PROVABLE_CONSUMER_ID,
-            url: "https://api.provable.com/prove/testnet"
-        });
-
-        if (!dpsRes.ok) throw new Error(`DPS Rejected Request: ${dpsRes.error?.message || JSON.stringify(dpsRes.error)}`);
-
-        const { transaction, broadcast_result } = dpsRes.data;
-        const txId = transaction?.id || broadcast_result?.id;
-
         res.json({ success: true, tx_id: txId, salt: salt });
     } catch (err) {
-        console.error("Relayer execution via DPS failed:", err);
+        console.error('Relayer execution via DPS failed:', err);
         res.status(500).json({ error: err.message || 'Failed to dispatch relayer tx' });
+    }
+});
+
+app.post('/api/mcp/relay/create-invoice', async (req, res) => {
+    const sharedSecret = process.env.NULLPAY_MCP_SHARED_SECRET;
+    if (!sharedSecret) {
+        return res.status(500).json({ error: 'NULLPAY_MCP_SHARED_SECRET is not configured.' });
+    }
+
+    const providedSecret = req.headers['x-nullpay-mcp-secret'];
+    if (!providedSecret || providedSecret !== sharedSecret) {
+        return res.status(401).json({ error: 'Invalid MCP shared secret.' });
+    }
+
+    const { merchant_address, amount, currency, salt, memo, invoice_type } = req.body;
+    if (!merchant_address || !salt) {
+        return res.status(400).json({ error: 'merchant_address and salt are required.' });
+    }
+
+    try {
+        const { txId } = await submitRelayedInvoiceCreation({
+            merchantPubKey: merchant_address,
+            amount,
+            currency,
+            salt,
+            memo,
+            invoice_type
+        });
+
+        res.json({ success: true, tx_id: txId, salt });
+    } catch (err) {
+        console.error('MCP relayer execution failed:', err);
+        res.status(500).json({ error: err.message || 'Failed to dispatch MCP relayer tx' });
     }
 });
 
@@ -691,16 +746,38 @@ app.patch('/api/invoices/:hash', async (req, res) => {
         const updates = {
             updated_at: new Date().toISOString()
         };
-
-        if (payment_tx_ids) updates.payment_tx_ids = payment_tx_ids;
         if (block_settled) updates.block_settled = block_settled;
         // payer_address handling removed
 
-        if (payment_tx_ids) {
-            const currentIds = current.payment_tx_ids || [];
-            if (!currentIds.includes(payment_tx_ids)) {
-                updates.payment_tx_ids = [...currentIds, payment_tx_ids];
+        const normalizeTxIds = (value) => {
+            const source = Array.isArray(value) ? value : (value ? [value] : []);
+            const flattened = [];
+            for (const item of source) {
+                if (!item) continue;
+                if (Array.isArray(item)) {
+                    flattened.push(...normalizeTxIds(item));
+                    continue;
+                }
+                if (typeof item === 'string') {
+                    const trimmed = item.trim();
+                    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                        try {
+                            flattened.push(...normalizeTxIds(JSON.parse(trimmed)));
+                            continue;
+                        } catch {}
+                    }
+                    flattened.push(trimmed);
+                    continue;
+                }
+                flattened.push(String(item));
             }
+            return Array.from(new Set(flattened.filter(Boolean)));
+        };
+
+        if (payment_tx_ids) {
+            const currentIds = normalizeTxIds(current.payment_tx_ids);
+            const incomingIds = normalizeTxIds(payment_tx_ids);
+            updates.payment_tx_ids = Array.from(new Set([...currentIds, ...incomingIds]));
         }
 
         if (status) updates.status = status;
@@ -717,7 +794,9 @@ app.patch('/api/invoices/:hash', async (req, res) => {
         // Return data as-is — merchant_address is encrypted on the client side
         // The frontend will decrypt it using the user's password
 
-        const hasNewPayment = payment_tx_ids && (!current.payment_tx_ids || !current.payment_tx_ids.includes(payment_tx_ids));
+        const incomingIds = normalizeTxIds(payment_tx_ids);
+        const currentIds = normalizeTxIds(current.payment_tx_ids);
+        const hasNewPayment = incomingIds.some(id => !currentIds.includes(id));
         console.log(`   - Has New Payment?`, hasNewPayment);
 
         // LOGIC FIX: If there is a payment ID in the request, it IS a new payment event.
@@ -771,7 +850,7 @@ app.patch('/api/invoices/:hash', async (req, res) => {
                                         amount: intent.amount,
                                         token_type: intent.token_type,
                                         status: intent.status,
-                                        tx_id: payment_tx_ids || null,
+                                        tx_id: incomingIds[0] || null,
                                         timestamp: new Date().toISOString()
                                     };
 
@@ -930,8 +1009,7 @@ const PROVABLE_PROVER_BASE = 'https://api.provable.com/prove/testnet';
 
 let _dpsProxyCookie = null;
 app.post('/api/dps/jwt', async (req, res) => {
-    const apiKey = process.env.PROVABLE_API_KEY;
-    const consumerId = process.env.PROVABLE_CONSUMER_ID;
+    const { apiKey, consumerId } = getProvableCredentials();
     if (!apiKey || !consumerId) return res.status(500).json({ error: 'Provable credentials not configured.' });
     try {
         const r = await fetch(`https://api.provable.com/jwts/${consumerId}`, {
@@ -945,8 +1023,7 @@ app.post('/api/dps/jwt', async (req, res) => {
     }
 });
 app.get('/api/dps/pubkey', async (req, res) => {
-    const apiKey = process.env.PROVABLE_API_KEY;
-    const consumerId = process.env.PROVABLE_CONSUMER_ID;
+    const { apiKey, consumerId } = getProvableCredentials();
     if (!apiKey || !consumerId) return res.status(500).json({ error: 'Provable credentials not configured.' });
     try {
         // Step 1: Issue JWT session — auth token comes back as Set-Cookie, not in body
@@ -1055,11 +1132,10 @@ app.post('/api/dps/sponsor-sweep', async (req, res) => {
             priorityFeeCredits: 0
         });
         console.log('[DPS] 3. Building ProvingRequest for Remote DPS...');
-        const apiKey = process.env.PROVABLE_API_KEY;
-        const consumerId = process.env.PROVABLE_CONSUMER_ID;
+        const { apiKey, consumerId } = getProvableCredentials();
 
         if (!apiKey || !consumerId) {
-            throw new Error("Missing PROVABLE_API_KEY or PROVABLE_CONSUMER_ID in backend .env");
+            throw new Error("Missing PROVABLE_API_KEY or PROVABLE_CONSUMER_ID/PROVABLE_CONSUMER_KEY in backend .env");
         }
 
         const pReq = sdk.ProvingRequest.new(executionAuth, feeAuth, true);
@@ -1102,4 +1178,9 @@ app.post('/api/dps/sponsor-sweep', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
+
+
+
+
+
 
