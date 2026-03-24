@@ -60,5 +60,7 @@ export const usePayment = () => {
         receiptSearchFailed: shared.receiptSearchFailed,
         donationAmount: shared.donationAmount,
         setDonationAmount: shared.setDonationAmount,
+        giftCardRedeemOption: shared.giftCardRedeemOption,
+        redeemGiftCardBalance: shared.redeemGiftCardBalance,
     };
 };

@@ -2,12 +2,22 @@ import { useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { PROGRAM_ID, generateSalt } from '../../../utils/aleo-utils';
+import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 import { CheckoutSession } from '../types';
 import { getScannerSession, findSpendableRecord } from '../../Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 
 // Convert Hex back to String
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+
+interface GiftCardRedeemOption {
+    giftCode: string;
+    availableAmount: number;
+    redeemMicros: number;
+    tokenProgram: string;
+    tokenLabel: string;
+    isCredits: boolean;
+}
 
 export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const { address: publicKey, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
@@ -17,6 +27,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [step, setStep] = useState<'PAY' | 'CONVERT'>('PAY');
+    const [giftCardRedeemOption, setGiftCardRedeemOption] = useState<GiftCardRedeemOption | null>(null);
 
     const getBalance = (record: any, tokenType: string): number => {
         try {
@@ -167,7 +178,10 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 privateFee: false
             };
 
-            const result = await executeTransaction(transaction);
+            const result = await executeWithShieldRetry(
+                () => executeTransaction(transaction),
+                { onRetry: () => setStatus('Shield Wallet gave no response. Retrying payment request...') }
+            );
 
             if (result && result.transactionId) {
                 setTxId(result.transactionId);
@@ -295,7 +309,10 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 privateFee: false
             };
 
-            const result = await executeTransaction(transaction);
+            const result = await executeWithShieldRetry(
+                () => executeTransaction(transaction),
+                { onRetry: () => setStatus('Shield Wallet gave no response. Retrying conversion request...') }
+            );
 
             if (result && result.transactionId) {
                 setTxId(result.transactionId);
@@ -343,6 +360,94 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         }
     };
 
+    const redeemGiftCardBalance = async () => {
+        if (!session || !giftCardRedeemOption) return;
+        if (!publicKey) {
+            setError('Connect your wallet first so we can redeem the gift card balance to it.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+            setStatus(`Redeeming ${giftCardRedeemOption.availableAmount.toFixed(2)} ${giftCardRedeemOption.tokenLabel} to your wallet...`);
+
+            const hex = giftCardRedeemOption.giftCode.replace('gift-', '');
+            const pkStr = fromHex(hex);
+            PrivateKey.from_string(pkStr);
+
+            const host = 'https://api.explorer.provable.com/v1';
+            const networkClient = new AleoNetworkClient(host);
+            const keyProvider = new AleoKeyProvider();
+            keyProvider.useCache(true);
+
+            const scannerSession = await getScannerSession(pkStr);
+            const recordProvider = new NetworkRecordProvider(scannerSession.account, networkClient);
+            const programManager = new ProgramManager(host, keyProvider, recordProvider);
+            programManager.setAccount(scannerSession.account);
+
+            const recordName = giftCardRedeemOption.isCredits ? 'credits' : 'Token';
+            const redeemRecordStr = await findSpendableRecord(
+                scannerSession,
+                giftCardRedeemOption.tokenProgram,
+                recordName,
+                giftCardRedeemOption.redeemMicros,
+                giftCardRedeemOption.isCredits
+            );
+
+            if (!redeemRecordStr) {
+                throw new Error('This gift card balance is split across multiple records. Please redeem it from the Gift Cards page or try a smaller amount.');
+            }
+
+            const amountFormatted = `${giftCardRedeemOption.redeemMicros}${giftCardRedeemOption.isCredits ? 'u64' : 'u128'}`;
+            const functionName = 'transfer_private';
+            let inputs: string[];
+
+            if (giftCardRedeemOption.isCredits) {
+                inputs = [redeemRecordStr, publicKey, amountFormatted];
+            } else {
+                const { getFreezeListIndex, generateFreezeListProof } = await import('../../../utils/aleo-utils');
+                const { Address } = await import('@provablehq/wasm');
+                const firstIndex = await getFreezeListIndex(0);
+                let index0FieldStr = undefined;
+                if (firstIndex) {
+                    try { index0FieldStr = Address.from_string(firstIndex).toGroup().toXCoordinate().toString(); } catch { }
+                }
+                const proof = await generateFreezeListProof(1, index0FieldStr);
+                const proofsInput = `[${proof}, ${proof}]`;
+                inputs = [publicKey, amountFormatted, redeemRecordStr, proofsInput];
+            }
+
+            const authorization = await programManager.buildAuthorization({
+                programName: giftCardRedeemOption.tokenProgram,
+                functionName,
+                inputs
+            });
+
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    execution_authorization_string: authorization.toString(),
+                    programName: giftCardRedeemOption.tokenProgram
+                }),
+            });
+            const response = await sponsorRes.json();
+            if (!sponsorRes.ok) throw new Error(response?.error || response?.message || 'Redeem sponsorship failed.');
+
+            const transactionId = response.transaction?.id || response.transactionId || '';
+            setTxId(transactionId);
+            setGiftCardRedeemOption(null);
+            setStatus('Redeem submitted! NullPay covered the gas fee. Once it settles, switch to Wallet and pay the invoice.');
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || 'Failed to redeem gift card balance.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const payWithGiftCard = async (giftCode: string, donationAmount?: number, selectedTokenOverride?: string) => {
         if (!session) return;
         if (!giftCode.startsWith('gift-')) {
@@ -353,6 +458,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         try {
             setLoading(true);
             setError(null);
+            setGiftCardRedeemOption(null);
             setStatus('Authenticating Gift Card...');
 
             const hex = giftCode.replace('gift-', '');
@@ -392,6 +498,22 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             programManager.setAccount(scannerSession.account);
 
             let recordName = actualTokenType === 'CREDITS' ? 'credits' : 'Token';
+            const { scanProgramBalance } = await import('../../Profile/components/BurnerWallet/scanner');
+            const totalMicros = await scanProgramBalance(scannerSession, tokenProgram, recordName);
+            if (totalMicros < amountMicro) {
+                if (!isDonationType && totalMicros > 0) {
+                    setGiftCardRedeemOption({
+                        giftCode,
+                        availableAmount: totalMicros / 1_000_000,
+                        redeemMicros: totalMicros,
+                        tokenProgram,
+                        tokenLabel: actualTokenType,
+                        isCredits: actualTokenType === 'CREDITS'
+                    });
+                    throw new Error(`This gift card has ${totalMicros / 1_000_000} ${actualTokenType}. Redeem it to your wallet first, then pay the invoice from Wallet. NullPay covers the redeem gas fee.`);
+                }
+                throw new Error(`Insufficient Gift Card balance for ${actualTokenType}.`);
+            }
             const payRecordStr = await findSpendableRecord(scannerSession, tokenProgram, recordName, amountMicro, actualTokenType === 'CREDITS');
 
             if (!payRecordStr) throw new Error(`Insufficient Gift Card balance for ${actualTokenType}. Note: The card must have a single record large enough to cover the payment.`);
@@ -490,6 +612,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         success,
         step,
         setStep,
-        publicKey
+        publicKey,
+        giftCardRedeemOption,
+        redeemGiftCardBalance
     };
 };

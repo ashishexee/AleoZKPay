@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from '../utils/aleo-utils';
+import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { InvoiceData, InvoiceItem } from '../types/invoice';
 import { useBurnerWallet } from './BurnerWalletProvider';
 import { encryptWithPassword, hashAddress } from '../utils/crypto';
@@ -139,7 +140,10 @@ export const useCreateInvoice = () => {
             };
 
             let txId = '';
-            const result = await executeTransaction(transaction);
+            const result = await executeWithShieldRetry(
+                () => executeTransaction(transaction),
+                { onRetry: () => setStatus('Shield Wallet gave no response. Retrying invoice creation request...') }
+            );
             if (result && result.transactionId) {
                 txId = result.transactionId;
             }

@@ -88,6 +88,8 @@ async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, 
         fee: 0.1
     });
 
+    // NullPay's relayer wallet signs the fee authorization here, so invoice creation
+    // can be submitted on behalf of the merchant without the merchant paying setup gas.
     const feeAuth = await pm.buildFeeAuthorization({
         privateKey: relayerAccount.privateKey(),
         deploymentOrExecutionId: auth.toExecutionId().toString(),
@@ -356,6 +358,8 @@ app.post('/api/sdk/onboard/validate', async (req, res) => {
     });
 });
 
+// Relayed invoice creation endpoint used by the CLI and Node SDK fallback flow.
+// The relayer wallet broadcasts the invoice-creation transaction and covers the fee path.
 app.post('/api/dps/relayer/create-invoice', async (req, res) => {
     console.log(`[SDK] POST /api/dps/relayer/create-invoice - Merchant Key Hash check...`);
     const authHeader = req.headers.authorization;
@@ -394,6 +398,8 @@ app.post('/api/dps/relayer/create-invoice', async (req, res) => {
     }
 });
 
+// MCP-facing version of relayed invoice creation. This uses the same relayer wallet model
+// so merchants can pre-generate invoice mappings without holding extra setup gas.
 app.post('/api/mcp/relay/create-invoice', async (req, res) => {
     const sharedSecret = process.env.NULLPAY_MCP_SHARED_SECRET;
     if (!sharedSecret) {
@@ -1083,7 +1089,9 @@ app.post('/api/dps/prove', async (req, res) => {
     }
 });
 
-// 4) POST /api/dps/sponsor-sweep — Backend pays gas fee for burner wallet execution
+// 4) POST /api/dps/sponsor-sweep — Backend-sponsored execution endpoint.
+// Used for burner sweeps, gift-card redeems, and direct gift-card payment flows where
+// the user still authorizes the action but NullPay's relayer covers the fee authorization.
 app.post('/api/dps/sponsor-sweep', async (req, res) => {
     const { execution_authorization_string } = req.body;
     if (!execution_authorization_string) {
@@ -1123,6 +1131,8 @@ app.post('/api/dps/sponsor-sweep', async (req, res) => {
 
         console.log(`[DPS] 2. Building fee authorization with Relayer wallet (${feeCredits} ALEO)...`);
 
+        // The relayer wallet pays the network fee here while the user-provided execution authorization
+        // remains unchanged, which keeps the flow sponsored rather than custodial.
         // buildFeeAuthorization expects: { privateKey, deploymentOrExecutionId, baseFeeCredits, priorityFeeCredits, feeRecord }
         const executionId = executionAuth.toExecutionId().toString();
         const feeAuth = await programManager.buildFeeAuthorization({

@@ -21,7 +21,9 @@ export const CheckoutPage = () => {
         success,
         step,
         publicKey,
-        convertPublicToPrivate
+        convertPublicToPrivate,
+        giftCardRedeemOption,
+        redeemGiftCardBalance
     } = useCheckoutPayment(session);
 
     // Call payment monitor. If the session isn't processing anymore, we have a real hash
@@ -58,6 +60,8 @@ export const CheckoutPage = () => {
                 success={success}
                 onPay={handlePay}
                 onPayWithGiftCard={payWithGiftCard}
+                giftCardRedeemOption={giftCardRedeemOption}
+                onRedeemGiftCardBalance={redeemGiftCardBalance}
             />
 
             {/* CONVERSION MODAL */}

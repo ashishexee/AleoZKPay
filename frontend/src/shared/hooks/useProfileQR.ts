@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../utils/aleo-utils';
+import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { useBurnerWallet } from './BurnerWalletProvider';
 import { updateUserProfile, getUserProfile, createInvoice, fetchInvoiceByHash } from '../services/api';
 import { encryptWithPassword, hashAddress } from '../utils/crypto';
@@ -76,7 +77,10 @@ export const useProfileQR = () => {
             privateFee: false
         };
 
-        const result = await executeTransaction(transaction);
+        const result = await executeWithShieldRetry(
+            () => executeTransaction(transaction),
+            { onRetry: () => setStatus('Shield Wallet gave no response. Retrying profile QR invoice request...') }
+        );
         let finalTxId: string = result?.transactionId || '';
         if (!finalTxId) throw new Error("Failed to get transaction ID");
 

@@ -1,5 +1,6 @@
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { PROGRAM_ID } from '../../utils/aleo-utils';
+import { executeWithShieldRetry } from '../../utils/shieldRetry';
 import type { InvoiceState } from './types';
 
 interface USADPaymentDeps {
@@ -179,7 +180,10 @@ export const createUSADPayment = (deps: USADPaymentDeps) => {
                 privateFee: false
             };
 
-            const result = await executeTransaction(transaction);
+            const result = await executeWithShieldRetry<any>(
+                () => executeTransaction(transaction),
+                { onRetry: () => setStatus('Shield Wallet gave no response. Retrying payment request...') }
+            );
 
             if (result && result.transactionId) {
                 setTxId(result.transactionId);

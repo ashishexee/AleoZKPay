@@ -9,6 +9,7 @@ import { Button } from '../../../shared/components/ui/Button';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { Input } from '../../../shared/components/ui/Input';
 import { GiftCodeInput } from '../../../shared/components/ui/GiftCodeInput';
+import { GiftCardRedeemPrompt } from '../../../shared/components/ui/GiftCardRedeemPrompt';
 import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 
 const PaymentPage = () => {
@@ -28,7 +29,9 @@ const PaymentPage = () => {
         receiptHash,
         receiptSearchFailed,
         donationAmount,
-        setDonationAmount
+        setDonationAmount,
+        giftCardRedeemOption,
+        redeemGiftCardBalance
     } = usePayment();
 
     const [copiedHash, setCopiedHash] = useState(false); // Added copiedHash state
@@ -369,6 +372,15 @@ const PaymentPage = () => {
                                             onChange={setGiftCode}
                                             disabled={isProcess}
                                         />
+                                        {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (
+                                            <GiftCardRedeemPrompt
+                                                availableAmount={giftCardRedeemOption.availableAmount}
+                                                tokenLabel={giftCardRedeemOption.tokenLabel}
+                                                walletConnected={Boolean(address)}
+                                                loading={isProcess}
+                                                onRedeem={redeemGiftCardBalance}
+                                            />
+                                        )}
                                         <Button
                                             variant="primary"
                                             onClick={handleGiftCardPay}

@@ -18,6 +18,7 @@ import { VerifyModal } from '../../Profile/components/modals/VerifyModal';
 import { PaymentHistoryModal } from '../../Profile/components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from '../../Profile/components/modals/ReceiptHashesModal';
 import toast from 'react-hot-toast';
+import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 
 type SdkDashboardInvoice = InvoiceRecord & {
     status: string | number;
@@ -482,8 +483,12 @@ export const SdkDashboard: React.FC = () => {
                 privateFee: false
             };
 
-            const result = await executeTransaction(transaction);
+            const result = await executeWithShieldRetry(
+                () => executeTransaction(transaction),
+                { onRetry: () => toast.loading('Shield Wallet gave no response. Retrying settlement...', { id: 'shield-sdk-settle-retry' }) }
+            );
             if (result && result.transactionId) {
+                toast.dismiss('shield-sdk-settle-retry');
                 await updateInvoiceStatus(invoice.invoiceHash, { status: 'SETTLED' });
                 setTimeout(() => {
                     fetchSdkTransactions();
@@ -492,6 +497,7 @@ export const SdkDashboard: React.FC = () => {
                 }, 2000);
             }
         } catch (error: any) {
+            toast.dismiss('shield-sdk-settle-retry');
             console.error('SDK settlement failed', error);
             toast.error(`Failed to settle invoice: ${error.message || 'Unknown error'}`);
         } finally {

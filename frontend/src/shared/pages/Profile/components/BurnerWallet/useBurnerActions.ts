@@ -5,6 +5,7 @@ import { AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvid
 import { useBurnerWallet } from '../../../../hooks/BurnerWalletProvider';
 import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '../../../../utils/crypto';
 import { PROGRAM_ID } from '../../../../utils/aleo-utils';
+import { executeWithShieldRetry } from '../../../../utils/shieldRetry';
 import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from './scanner';
 import type { PrivateBalances, SweepCurrency } from './types';
 
@@ -172,7 +173,10 @@ export function useBurnerActions() {
                 functionName = 'backup_burner_wallet';
             }
 
-            const result = await executeTransaction({ program: PROGRAM_ID, function: functionName, inputs, fee: 500_000, privateFee: false });
+            const result = await executeWithShieldRetry(
+                () => executeTransaction({ program: PROGRAM_ID, function: functionName, inputs, fee: 500_000, privateFee: false }),
+                { onRetry: () => setError('Shield Wallet gave no response. Retrying backup request...') }
+            );
             let txId = '';
             if (result && (result as any).transactionId) {
                 txId = (result as any).transactionId;

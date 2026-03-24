@@ -6,7 +6,7 @@ import { GlassCard } from '../../../components/ui/GlassCard';
 import { Button } from '../../../components/ui/Button';
 import { Shimmer } from '../../../components/ui/Shimmer';
 import { CheckoutSession } from '../types';
-import { FloatingGiftCard } from '../../GiftCards/components/FloatingGiftCard';
+import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPrompt';
 
 interface CheckoutUIProps {
     session: CheckoutSession | null;
@@ -19,6 +19,8 @@ interface CheckoutUIProps {
     success: boolean;
     onPay: (donationAmount?: number, selectedToken?: string) => void;
     onPayWithGiftCard: (giftCode: string, donationAmount?: number, selectedToken?: string) => void;
+    giftCardRedeemOption?: { giftCode: string; availableAmount: number; tokenLabel: string } | null;
+    onRedeemGiftCardBalance: () => void;
 }
 
 export const CheckoutUI: React.FC<CheckoutUIProps> = ({
@@ -30,7 +32,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     paymentLoading,
     success,
     onPay,
-    onPayWithGiftCard
+    onPayWithGiftCard,
+    giftCardRedeemOption,
+    onRedeemGiftCardBalance
 }) => {
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
@@ -287,7 +291,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                 </div>
 
                                 {paymentMethod === 'giftcard' && (
-                                    <div className="mb-4 animate-fade-in">
+                                    <div className="mb-4 animate-fade-in space-y-4">
                                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Gift Card Code</label>
                                         <input
                                             type="text"
@@ -296,6 +300,15 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             placeholder="gift-..."
                                             className="w-full bg-black/40 border border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors tracking-widest text-center shadow-inner"
                                         />
+                                        {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (
+                                            <GiftCardRedeemPrompt
+                                                availableAmount={giftCardRedeemOption.availableAmount}
+                                                tokenLabel={giftCardRedeemOption.tokenLabel}
+                                                walletConnected={Boolean(publicKey)}
+                                                loading={paymentLoading}
+                                                onRedeem={onRedeemGiftCardBalance}
+                                            />
+                                        )}
                                     </div>
                                 )}
 

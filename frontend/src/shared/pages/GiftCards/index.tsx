@@ -51,6 +51,14 @@ export const GiftCardsPage: React.FC = () => {
                 <p className="text-gray-400 text-sm leading-relaxed max-w-sm mb-6">
                     Create zero-knowledge private gift cards or redeem one straight to your wallet — all on-chain.
                 </p>
+                <div className="max-w-xl rounded-2xl border border-orange-400/20 bg-orange-500/10 px-5 py-4 text-left">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-orange-300 mb-2">
+                        Sponsored By NullPay
+                    </p>
+                    <p className="text-sm text-white/80 leading-relaxed">
+                        Redeeming a gift card and paying directly from a gift card use NullPay&apos;s relayer sponsorship flow. Proofs stay local, while NullPay can cover the network fee for supported redeem and gift-card checkout actions.
+                    </p>
+                </div>
             </motion.div>
 
             {/* Tab bar */}

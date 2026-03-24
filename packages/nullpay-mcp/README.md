@@ -37,6 +37,11 @@ For relayed invoice creation and sponsored execution, the backend also needs:
 
 - `RELAYER_PRIVATE_KEY`
 
+These relayer-backed capabilities are part of the product story:
+
+- Invoice creation can be relayed by NullPay on behalf of the merchant, so the relayer wallet submits that setup transaction and covers the network fee.
+- Sponsored execution powers backend-assisted record operations where the user still authorizes the action, but NullPay covers the fee path.
+
 ## Notes
 
 - Burner wallet private keys remain encrypted at rest in the existing `users` table.

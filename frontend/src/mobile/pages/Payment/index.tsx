@@ -8,6 +8,7 @@ import { GlassCard } from '../../../shared/components/ui/GlassCard';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
 import { GiftCodeInput } from '../../../shared/components/ui/GiftCodeInput';
+import { GiftCardRedeemPrompt } from '../../../shared/components/ui/GiftCardRedeemPrompt';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 import { Scanner } from '@yudiel/react-qr-scanner';
@@ -42,7 +43,9 @@ const MobilePaymentPage = () => {
         receiptHash,
         receiptSearchFailed,
         donationAmount,
-        setDonationAmount
+        setDonationAmount,
+        giftCardRedeemOption,
+        redeemGiftCardBalance
     } = usePayment();
 
     const { address } = useWallet();
@@ -454,6 +457,15 @@ const MobilePaymentPage = () => {
                                             onChange={setGiftCode}
                                             disabled={isProcess}
                                         />
+                                        {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (
+                                            <GiftCardRedeemPrompt
+                                                availableAmount={giftCardRedeemOption.availableAmount}
+                                                tokenLabel={giftCardRedeemOption.tokenLabel}
+                                                walletConnected={Boolean(address)}
+                                                loading={isProcess}
+                                                onRedeem={redeemGiftCardBalance}
+                                            />
+                                        )}
                                         <Button
                                             variant="primary"
                                             onClick={handleGiftCardPay}

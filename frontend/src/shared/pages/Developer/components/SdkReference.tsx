@@ -71,12 +71,19 @@ console.log(session.checkout_url);`;
 
             <DocSection title="CLI: `nullpay sdk onboard`">
                 <p className="mb-3">Interactive wizard that authenticates with your NullPay secret key, generates salts, submits invoices to the relayer, polls for invoice hash resolution, and writes `nullpay.json`.</p>
+                <div className="mb-4 rounded-xl border border-orange-400/20 bg-orange-500/10 px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-orange-300 mb-1">Relayed By NullPay</p>
+                    <p className="text-sm text-white/80 leading-relaxed">
+                        The CLI and Node SDK fallback flow can ask the NullPay relayer to create invoice mappings on-chain for you. The relayer wallet submits that invoice-creation transaction and covers the network fee for that setup step.
+                    </p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 bg-white/[0.02] border border-white/[0.04] rounded-lg">
                         <div className="text-xs text-gray-400 mb-2">Key behaviors</div>
                         <ul className="text-sm text-gray-300 list-disc pl-5 space-y-1">
                             <li>Generates salts with crypto.randomBytes(16) bigint + 'field'</li>
                             <li>Submits invoice to relayer: <code className="text-neon-primary">/dps/relayer/create-invoice</code></li>
+                            <li>NullPay relayer signs and pays the invoice-creation network fee</li>
                             <li>Polls Provable mapping to resolve invoice hash</li>
                         </ul>
                     </div>
@@ -89,6 +96,9 @@ console.log(session.checkout_url);`;
 
             <DocSection title="Node SDK: @nullpay/node">
                 <p className="mb-3">Lightweight server-side client to create checkout sessions, retrieve sessions, and verify webhook signatures.</p>
+                <p className="mb-3">
+                    If you create a checkout session without an existing <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">invoice_hash</code> or <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">salt</code>, the SDK can fall back to the same relayed invoice-creation path and let NullPay handle that setup transaction for you.
+                </p>
                 <CodeBlock title="Initialize client" code={nodeInit} language="ts" />
                 <CodeBlock title="Create session (lookup by nullpay.json name)" code={createSession} language="ts" />
             </DocSection>

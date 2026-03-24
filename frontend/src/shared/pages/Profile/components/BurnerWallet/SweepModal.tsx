@@ -55,6 +55,14 @@ export const SweepModal: React.FC<SweepModalProps> = ({
                 <p className="text-xs text-gray-500 mb-4 leading-relaxed">
                     ZK proofs generated via Aleo's Delegated Proving Service. Your private key never leaves the browser.
                 </p>
+                <div className="mb-4 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-left">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-300 mb-1">
+                        Sponsored By NullPay
+                    </p>
+                    <p className="text-xs leading-relaxed text-white/75">
+                        The sweep is still authorized from your browser, but NullPay&apos;s relayer can sponsor the execution fee so you do not need extra gas just to move burner funds out.
+                    </p>
+                </div>
 
                 {/* Private Balance Cards */}
                 <div className="mb-4">

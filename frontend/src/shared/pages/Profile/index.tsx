@@ -10,6 +10,7 @@ import { InvoiceTable } from './components/InvoiceTable';
 import { PaidInvoicesTable } from './components/PaidInvoicesTable';
 import { VerifyModal } from './components/modals/VerifyModal';
 import toast from 'react-hot-toast';
+import { executeWithShieldRetry } from '../../utils/shieldRetry';
 import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from './components/modals/ReceiptHashesModal';
 import { BurnerWalletSettings } from './components/BurnerWalletSettings';
@@ -527,9 +528,13 @@ const Profile: React.FC = () => {
                 privateFee: false
             };
 
-            const result = await executeTransaction(transaction);
+            const result = await executeWithShieldRetry(
+                () => executeTransaction(transaction),
+                { onRetry: () => toast.loading('Shield Wallet gave no response. Retrying settlement...', { id: 'shield-settle-retry' }) }
+            );
 
             if (result && result.transactionId) {
+                toast.dismiss('shield-settle-retry');
                 // Optimistically update DB status
                 try {
                     const { updateInvoiceStatus } = await import('../../services/api');
@@ -545,6 +550,7 @@ const Profile: React.FC = () => {
                 }, 2000);
             }
         } catch (e: any) {
+            toast.dismiss('shield-settle-retry');
             console.error("Settlement failed", e);
             toast.error("Failed to settle invoice: " + (e.message || "Unknown error"));
         } finally {

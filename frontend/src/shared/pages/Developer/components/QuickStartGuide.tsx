@@ -19,6 +19,14 @@ export const QuickStartGuide: React.FC = () => {
                 <p className="text-gray-400 text-sm leading-relaxed mb-8">
                     This is the same flow the demo merchant backend uses: your server creates the checkout session, the buyer is redirected to NullPay hosted checkout, and your backend verifies settlement afterwards.
                 </p>
+                <div className="mb-8 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-5 py-4 text-left">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-orange-300 mb-2">
+                        Relayer Highlight
+                    </p>
+                    <p className="text-sm text-white/80 leading-relaxed">
+                        NullPay also has a relayer-backed setup path for invoices. In the CLI and Node SDK fallback flow, NullPay submits the invoice-creation transaction on behalf of the merchant and covers that network fee from the relayer wallet.
+                    </p>
+                </div>
 
                 <DeveloperCodeBlock
                     title="1. Install And Initialize"
@@ -72,7 +80,7 @@ const nullpay = new NullPay({
                 <div className="space-y-4 mb-8">
                     <div className="p-5 bg-white/[0.02] border border-white/[0.06] rounded-xl">
                         <h4 className="text-gradient-gold drop-shadow-gold font-bold mb-2">1. Automatic Generation (Recommended)</h4>
-                        <p className="text-gray-400 text-sm">Run our interactive CLI wizard: <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">npx @nullpay/cli@1.0.1 sdk onboard</code>. It handles generating salts, submitting to the Aleo relayer, resolving the invoice hashes on the network, and writing the final <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code> file for you.</p>
+                        <p className="text-gray-400 text-sm">Run our interactive CLI wizard: <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">npx @nullpay/cli@1.0.1 sdk onboard</code>. It handles generating salts, submitting to the Aleo relayer, resolving the invoice hashes on the network, and writing the final <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code> file for you. That invoice-creation step is relayed by NullPay, so the merchant does not need to manually broadcast the setup transaction.</p>
                     </div>
                     <div className="p-5 bg-white/[0.02] border border-white/[0.06] rounded-xl">
                         <h4 className="text-gradient-gold drop-shadow-gold font-bold mb-2">2. Manual Fallback</h4>

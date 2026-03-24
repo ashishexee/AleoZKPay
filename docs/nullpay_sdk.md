@@ -13,6 +13,7 @@ NullPay provides:
 - A developer CLI (`@nullpay/cli`) to interactively create invoices and produce a local `nullpay.json` for your project.
 - A lightweight Node SDK (`@nullpay/node`) to read `nullpay.json`, create checkout sessions, retrieve sessions, and verify webhook events.
 - A runtime relayer/backend that maps Aleo salts to invoice hashes and powers checkout flows.
+- A relayer-sponsored setup path so invoice creation can be submitted by NullPay on the merchant's behalf.
 
 Use-case summary:
 - Run `nullpay sdk onboard` (CLI) while authenticated with your NullPay secret key to create invoices on Aleo and produce `nullpay.json`.
@@ -73,6 +74,11 @@ What it does (high level):
   - Polls the Aleo mapping endpoint (Provable mapping API) to resolve the resulting invoice hash for the salt.
 - Writes a `nullpay.json` file containing merchant, generated_at, and the generated invoice objects (including salts and hashes).
 
+Relayer highlight:
+- The invoice-creation step is relayed by NullPay.
+- NullPay's relayer wallet submits the on-chain invoice-creation transaction on behalf of the merchant.
+- The network fee for that setup step is covered by the relayer wallet instead of the merchant manually broadcasting it.
+
 Implementation notes & helpful functions:
 - `generateSalt()` — uses `crypto.randomBytes(16)` and converts to a bigint string plus `field` suffix.
 - `validateMerchant(secretKey, merchantAddress)` — POST to `${BACKEND_URL}/sdk/onboard/validate` with `Authorization: Bearer ${secretKey}`.
@@ -126,6 +132,7 @@ Checkout sessions (remote API integration):
   - Behavior notes (important):
     - If `nullpay_invoice_name` or `nullpay_invoice_index` is provided, the SDK will resolve the invoice from the local `nullpay.json` and merge its `hash`, `salt`, `amount`, and `currency` into the request unless overridden explicitly.
     - If `invoice_hash` or `salt` are missing, the SDK will pre-generate a `salt`, call the relayer endpoint (`/dps/relayer/create-invoice`) on the configured `baseURL` using your `secretKey`, then poll the Provable mapping endpoint to resolve the invoice hash. This enables serverless usage where invoices can be pre-generated via the relayer automatically.
+    - In that fallback flow, the invoice-creation transaction is submitted by NullPay's relayer wallet on behalf of the merchant, and the relayer covers the associated network fee for that setup action.
     - The method validates non-donation invoices require an `amount > 0`.
     - Errors from the API or relayer are thrown with informative messages (`NullPay Relayer Pre-gen Error`, `NullPay API Error`, or timeouts for mapping resolution).
 
@@ -174,6 +181,12 @@ Location: [testing-website/backend/nullpay.json](testing-website/backend/nullpay
 - This file is an example `nullpay.json` used by the SDK testing site. It demonstrates multiple invoice types (multipay and donation) across tokens and shows the expected `hash` and `salt` fields.
 
 If you run the CLI locally in the testing site, the generated `nullpay.json` will follow the same structure.
+
+## Sponsored Flows Worth Highlighting
+
+- CLI onboarding uses the relayer-backed invoice-creation endpoint, so NullPay can submit that setup transaction on behalf of the merchant.
+- The Node SDK fallback path uses the same relayer flow when `invoice_hash` or `salt` is not supplied.
+- Burner-wallet sweeps, gift-card redeems, and direct gift-card payment flows use the backend-sponsored execution endpoint (`/dps/sponsor-sweep`) so NullPay can cover the execution fee for those supported actions.
 
 ---
 
