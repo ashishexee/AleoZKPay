@@ -181,8 +181,7 @@ export const DeveloperPortal = () => {
                         Developers <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Page</span>
                     </motion.h1>
                     <motion.p variants={fadeInUp} className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-                        The complete SDK and API reference for integrating Zero-Knowledge private payments into any application.
-                        Stripe-like simplicity. Aleo-grade privacy.
+                        Complete SDK and API reference for private ZK payments.
                     </motion.p>
 
                     <motion.div variants={fadeInUp} className="mt-8 mb-4 flex flex-col gap-4 items-center">

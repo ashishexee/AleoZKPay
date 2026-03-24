@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { motion, useSpring, useTransform } from 'framer-motion';
+import { motion, useSpring, useTransform, Variants } from 'framer-motion';
 
 interface FloatingGiftCardProps {
     amounts?: { ALEO: string | number; USDCx: string | number; USAD: string | number };
@@ -58,7 +58,7 @@ export const FloatingGiftCard: React.FC<FloatingGiftCardProps> = ({
         : [];
 
     /* ── idle float animation ── */
-    const idleVariants = {
+    const idleVariants: Variants = {
         float: {
             y: [0, -6, 0],
             rotateZ: [0, 0.4, -0.4, 0],

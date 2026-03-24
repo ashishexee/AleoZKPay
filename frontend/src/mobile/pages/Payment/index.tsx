@@ -4,10 +4,10 @@ import { usePayment } from '../../../shared/hooks/usePayment';
 import type { PaymentStep } from '../../../shared/hooks/usePayment';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
-import { FloatingGiftCard } from '../../../shared/pages/GiftCards/components/FloatingGiftCard';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
 import { Button } from '../../../shared/components/ui/Button';
 import { Input } from '../../../shared/components/ui/Input';
+import { GiftCodeInput } from '../../../shared/components/ui/GiftCodeInput';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 import { Scanner } from '@yudiel/react-qr-scanner';
@@ -449,15 +449,11 @@ const MobilePaymentPage = () => {
 
                                 {paymentMethod === 'giftcard' ? (
                                     <div className="space-y-4 animate-fade-in">
-                                        <div>
-                                            <input
-                                                type="text"
-                                                value={giftCode}
-                                                onChange={(e) => setGiftCode(e.target.value)}
-                                                placeholder="Paste gift-... code here"
-                                                className="w-full bg-black/40 border border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-sm font-mono text-neon-primary p-4 transition-colors tracking-widest text-center shadow-inner"
-                                            />
-                                        </div>
+                                        <GiftCodeInput
+                                            value={giftCode}
+                                            onChange={setGiftCode}
+                                            disabled={isProcess}
+                                        />
                                         <Button
                                             variant="primary"
                                             onClick={handleGiftCardPay}

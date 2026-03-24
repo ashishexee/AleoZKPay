@@ -67,7 +67,7 @@ const Docs = () => {
                         Technical <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Documentation</span>
                     </h1>
                     <p className="text-gray-300 text-lg md:text-xl max-w-3xl leading-relaxed">
-                        Complete technical specification of the NullPay zero-knowledge payment protocol.
+                        Technical specification of the NullPay ZK payment protocol.
                     </p>
                 </motion.div>
 
