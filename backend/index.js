@@ -802,15 +802,6 @@ app.post('/api/dps/relayer/create-invoice', async (req, res) => {
 // MCP-facing version of relayed invoice creation. This uses the same relayer wallet model
 // so merchants can pre-generate invoice mappings without holding extra setup gas.
 app.post('/api/mcp/relay/create-invoice', async (req, res) => {
-    const sharedSecret = process.env.NULLPAY_MCP_SHARED_SECRET;
-    if (!sharedSecret) {
-        return res.status(500).json({ error: 'NULLPAY_MCP_SHARED_SECRET is not configured.' });
-    }
-
-    const providedSecret = req.headers['x-nullpay-mcp-secret'];
-    if (!providedSecret || providedSecret !== sharedSecret) {
-        return res.status(401).json({ error: 'Invalid MCP shared secret.' });
-    }
 
     const { merchant_address, amount, currency, salt, memo, invoice_type } = req.body;
     if (!merchant_address || !salt) {
@@ -1597,6 +1588,7 @@ app.post('/api/dps/sponsor-sweep', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
+
 
 
 

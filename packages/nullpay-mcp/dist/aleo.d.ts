@@ -53,8 +53,24 @@ export declare function createInvoiceDbRecord(args: {
     }[] | null;
     for_sdk: boolean;
 };
+export interface ParsedBurnerBackupRecord {
+    owner: string;
+    burnerAddress: string;
+    passwordPart: string;
+    pkParts: string[];
+    plaintext: string;
+}
+export interface RecoveredOnChainWalletBackup {
+    password: string;
+    burnerAddress?: string;
+    encryptedBurnerKey?: string;
+    source: 'password_only' | 'full_burner';
+}
 export declare function parseOwnedInvoiceRecord(plaintext: string): ParsedOwnedInvoiceRecord | null;
+export declare function parseBurnerBackupRecord(plaintext: string): ParsedBurnerBackupRecord | null;
 export declare function fetchOwnedInvoiceRecords(privateKey: string): Promise<ParsedOwnedInvoiceRecord[]>;
+export declare function fetchOwnedBurnerBackupRecords(privateKey: string): Promise<ParsedBurnerBackupRecord[]>;
+export declare function recoverOnChainWalletBackup(privateKey: string, ownerAddress: string): Promise<RecoveredOnChainWalletBackup | null>;
 export declare function fetchOwnedInvoiceRecordByHash(privateKey: string, invoiceHash: string): Promise<ParsedOwnedInvoiceRecord | null>;
 export declare function enrichInvoiceWithRecordAmount(invoice: InvoiceRecord, privateKey?: string | null): Promise<InvoiceRecord>;
 export declare function createSponsoredPaymentAuthorization(args: {

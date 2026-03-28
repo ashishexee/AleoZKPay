@@ -1,23 +1,11 @@
 import { InvoiceRecord, UserProfile } from './types';
 
 function mapBackendError(path: string, text: string): string {
-    if (path === '/mcp/relay/create-invoice') {
-        if (text.includes('NULLPAY_MCP_SHARED_SECRET is not configured')) {
-            return 'Invoice creation is blocked because NULLPAY_MCP_SHARED_SECRET is missing on the backend. Set the same NULLPAY_MCP_SHARED_SECRET value in both the backend env and the MCP server env, then restart both processes.';
-        }
-        if (text.includes('Invalid MCP shared secret')) {
-            return 'Invoice creation is blocked because the MCP shared secret does not match. Set the same NULLPAY_MCP_SHARED_SECRET value in both the backend env and the MCP server env, then restart both processes.';
-        }
-    }
-
     return text;
 }
 
 export class NullPayBackendClient {
-    constructor(
-        private readonly baseUrl: string,
-        private readonly mcpSecret?: string
-    ) {}
+    constructor(private readonly baseUrl: string) {}
 
     private buildUrl(path: string): string {
         return `${this.baseUrl.replace(/\/+$/, '')}${path}`;
@@ -98,10 +86,7 @@ export class NullPayBackendClient {
     }): Promise<{ success: boolean; tx_id: string; salt: string }> {
         return await this.request<{ success: boolean; tx_id: string; salt: string }>('/mcp/relay/create-invoice', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(this.mcpSecret ? { 'x-nullpay-mcp-secret': this.mcpSecret } : {})
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
     }
