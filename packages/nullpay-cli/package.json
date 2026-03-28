@@ -1,6 +1,6 @@
 {
   "name": "@nullpay/cli",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "NullPay CLI — Developer onboarding and invoice management tools",
   "main": "dist/cli.js",
   "bin": {

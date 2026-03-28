@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     Bot,
-    Boxes,
-    CreditCard,
     FileCode2,
     Gift,
     Radio,
@@ -170,169 +168,71 @@ export const ChangelogOverlay: React.FC = () => {
                         <div className="p-8 pt-6 overflow-y-auto custom-scrollbar space-y-6 relative z-10 pr-6">
                             <SectionCard
                                 index={0}
-                                eyebrow="MCP Server"
-                                badge="New Package"
-                                accentClass="bg-orange-400/10 border-orange-300/20 text-orange-200"
-                                icon={<Bot className="w-5 h-5" />}
-                                glowClass="bg-orange-400/35"
-                                title="NullPay MCP brings invoice creation, payment, and wallet workflows into AI-native tooling"
+                                eyebrow="Encryption"
+                                badge="Security"
+                                accentClass="bg-emerald-400/10 border-emerald-300/20 text-emerald-200"
+                                icon={<ShieldCheck className="w-5 h-5" />}
+                                glowClass="bg-emerald-400/35"
+                                title="100% User-Controlled Password Encryption"
                             >
                                 <p>
-                                    We now ship an installable MCP server package at <span className={codeClass}>@nullpay/mcp</span>.
-                                    Its purpose is simple: let an AI client create invoices, inspect merchant flows, and execute
-                                    supported payment actions without the developer building a custom bridge around NullPay first.
+                                    All sensitive data, including burner wallets, is now encrypted entirely client-side using a <b>password provided by you</b>. 
                                 </p>
-                                <p>
-                                    Installation is intentionally lightweight. The package can be added with{' '}
-                                    <span className={codeClass}>npm install @nullpay/mcp</span>, then mounted inside an MCP client
-                                    with a small config that points to the backend URL and the shared secret used for backend auth.
-                                    The server is built for stdio transport, so it fits naturally into desktop agent environments.
-                                </p>
-                                <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 mt-1">
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-cyan-300 mb-2 font-bold">
-                                        Why It Is Useful
-                                    </p>
-                                    <ul className="text-xs text-gray-400 space-y-1.5">
-                                        <li>- AI agents can create standard, multi-pay, and donation invoices through NullPay without manual dashboard clicks.</li>
-                                        <li>- The MCP server keeps sensitive key handling on the server side instead of leaking raw wallet material back into model output.</li>
-                                        <li>- It reuses the existing backend, relayer, and DPS sponsorship stack, so conversational flows inherit the same production payment rails.</li>
-                                        <li>- It supports the same merchant-oriented flows the app already exposes: invoice creation, wallet login context, record-backed lookup, and sponsored execution.</li>
-                                    </ul>
-                                </div>
-                                <p>
-                                    The practical use cases are broad: internal merchant copilots, support tooling, command-center
-                                    style payment ops, conversational invoice setup, and developer assistants that can bridge from
-                                    "create this invoice for me" directly into a live NullPay object instead of returning instructions only.
-                                </p>
+                                <ul className="text-xs text-gray-400 space-y-1.5 mt-2">
+                                    <li>- Uses PBKDF2 key derivation and AES-GCM encryption.</li>
+                                    <li>- The resulting encrypted payload is safely backed up on-chain as a private record.</li>
+                                    <li>- NullPay never sees your raw keys or password.</li>
+                                </ul>
                             </SectionCard>
 
                             <SectionCard
                                 index={1}
-                                eyebrow="SDK + CLI"
-                                badge="Expanded"
-                                accentClass="bg-white/[0.05] border-white/10 text-white/85"
-                                icon={<FileCode2 className="w-5 h-5" />}
-                                glowClass="bg-white/20"
-                                title="The Node SDK, CLI onboarding flow, and nullpay.json manifest now cover much more of the merchant lifecycle"
+                                eyebrow="AI & Tooling"
+                                badge="New Package"
+                                accentClass="bg-orange-400/10 border-orange-300/20 text-orange-200"
+                                icon={<Bot className="w-5 h-5" />}
+                                glowClass="bg-orange-400/35"
+                                title="NullPay MCP Server & Context-Aware NullBot"
                             >
                                 <p>
-                                    The server-side SDK at <span className={codeClass}>@nullpay/node</span> is no longer just a thin checkout
-                                    wrapper. It now loads local invoice manifests, resolves invoice shortcuts by name or index,
-                                    creates hosted checkout sessions, retrieves session status, and verifies webhook signatures with
-                                    HMAC-SHA256 helpers.
+                                    We shipped the <span className={codeClass}>@nullpay/mcp</span> server, allowing AI clients to natively create invoices, inspect flows, and execute payments. 
                                 </p>
                                 <p>
-                                    The biggest structural improvement is <span className={codeClass}>nullpay.json</span>. This file stores
-                                    merchant address context plus pre-generated invoice entries containing the invoice name, type,
-                                    amount, currency, hash, and salt. That means a backend can create checkout sessions by saying
-                                    "use invoice X" instead of manually hardcoding cryptographic invoice identifiers in application code.
-                                </p>
-                                <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 mt-1">
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-orange-300 mb-2 font-bold">
-                                        What The SDK Improvements Enable
-                                    </p>
-                                    <ul className="text-xs text-gray-400 space-y-1.5">
-                                        <li>- Automatic nullpay.json discovery with optional projectRoot and configPath overrides for deterministic serverless usage.</li>
-                                        <li>- Invoice shorthand through <span className={codeClass}>nullpay_invoice_name</span> or index-based lookup.</li>
-                                        <li>- Fallback invoice pre-generation if hash and salt are not already supplied.</li>
-                                        <li>- Session creation for standard, multi-pay, and donation checkout flows.</li>
-                                        <li>- Webhook verification and event parsing as first-class SDK helpers.</li>
-                                    </ul>
-                                </div>
-                                <p>
-                                    The CLI command <span className={codeClass}>npx @nullpay/cli@1.0.1 sdk onboard</span> complements this by
-                                    generating salts, submitting invoices to the relayer, polling the on-chain mapping resolution,
-                                    and finally writing the <span className={codeClass}>nullpay.json</span> file into the project.
-                                </p>
-                                <p>
-                                    Invoice flexibility is broader now too. Donations can be configured for <span className={codeClass}>ANY</span>,
-                                    which means the same donation invoice can accept Credits, USDCx, or USAD. Multipay and donation
-                                    flows fit naturally into the manifest model, and standard invoices keep their own hosted session
-                                    route for merchant checkouts. On top of that, variable amount support exists where it matters:
-                                    donation sessions can remain open-ended, and standard invoice line-item flows still preserve a
-                                    one-time settlement model for commerce use cases.
+                                    Meanwhile, the in-app <b>NullBot</b> now possesses route-specific context. On the dashboard, it acts as a live merchant copilot with access to your real-time balances and invoice metrics.
                                 </p>
                             </SectionCard>
 
                             <SectionCard
                                 index={2}
-                                eyebrow="Delegated Proving"
-                                badge="Infrastructure"
-                                accentClass="bg-orange-400/10 border-orange-300/20 text-orange-200"
-                                icon={<ShieldCheck className="w-5 h-5" />}
+                                eyebrow="SDK + CLI"
+                                badge="Expanded"
+                                accentClass="bg-white/[0.05] border-white/10 text-white/85"
+                                icon={<FileCode2 className="w-5 h-5" />}
                                 glowClass="bg-white/20"
-                                title="Delegated proving, record scanning, and fee sponsorship reduce wallet dependency without making the system custodial"
+                                title="Powerful Invoice Manifests via nullpay.json"
                             >
                                 <p>
-                                    NullPay now leans much harder into Provable infrastructure. The repo includes a backend DPS path,
-                                    a backend-sponsored execution endpoint, and a record-scanner-based flow used by gift cards,
-                                    burner sweeps, and sponsored payment execution. This is important because it reduces the need
-                                    to rely on Shield Wallet for every proof-heavy interaction.
+                                    The <span className={codeClass}>@nullpay/node</span> SDK now handles local <span className={codeClass}>nullpay.json</span> manifests, making it easy to create hosted checkout sessions without hardcoding cryptographic IDs.
                                 </p>
                                 <p>
-                                    The model is: the user still authorizes the action or supplies the execution authorization, but
-                                    NullPay can relay the proving and fee path. The backend endpoint{' '}
-                                    <span className={codeClass}>/api/dps/sponsor-sweep</span> takes a user-built execution authorization,
-                                    attaches relayer fee sponsorship on the backend, and submits the secure payload to the Provable
-                                    DPS path. That means the action remains user-authorized while the fee can be covered by NullPay.
-                                </p>
-                                <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 mt-1">
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-purple-300 mb-2 font-bold">
-                                        Why This Matters
-                                    </p>
-                                    <ul className="text-xs text-gray-400 space-y-1.5">
-                                        <li>- Users can complete selected execution flows even when they do not want to depend on direct wallet broadcast for the final fee path.</li>
-                                        <li>- Proof generation stays local where appropriate, while the backend can sponsor supported executions.</li>
-                                        <li>- Record scanning via Provable endpoints helps locate balances and spendable records for private assets without manual wallet browsing.</li>
-                                        <li>- The relayer fee authorization keeps the flow sponsored, not custodial: the relayer pays fees, but the user-supplied execution authorization stays intact.</li>
-                                    </ul>
-                                </div>
-                                <p>
-                                    This same stack is reused across multiple product surfaces. The SDK fallback setup path uses the
-                                    relayer for invoice creation. Burner sweeps use sponsored execution. Gift-card redeem and direct
-                                    gift-card checkout use scanner plus DPS. The result is a more durable "NullPay execution layer"
-                                    instead of a single wallet-dependent frontend path.
+                                    The new <span className={codeClass}>@nullpay/cli</span> automates onboarding by generating salts, submitting invoices to the relayer, and writing the final manifest into your project.
                                 </p>
                             </SectionCard>
 
                             <SectionCard
                                 index={3}
-                                eyebrow="NullBot"
-                                badge="Integrated"
-                                accentClass="bg-white/[0.05] border-white/10 text-white/85"
+                                eyebrow="Infrastructure"
+                                badge="Delegated"
+                                accentClass="bg-purple-400/10 border-purple-300/20 text-purple-200"
                                 icon={<Sparkles className="w-5 h-5" />}
-                                glowClass="bg-orange-400/25"
-                                title="NullBot now lives inside the dashboard, developer portal, and docs, each with route-specific context"
+                                glowClass="bg-purple-400/25"
+                                title="Delegated Proving & Fee Sponsorship"
                             >
                                 <p>
-                                    NullBot is no longer a generic floating assistant bolted onto one screen. It is now integrated
-                                    into multiple surfaces with different context payloads and different product jobs.
+                                    We introduced a backend-sponsored execution endpoint (<span className={codeClass}>/api/dps/sponsor-sweep</span>) to significantly reduce direct wallet dependency. 
                                 </p>
                                 <p>
-                                    On the dashboard page, the assistant receives a structured merchant context object including
-                                    balances, invoice summaries, main and burner wallet stats, merchant receipts, payer receipts,
-                                    and invoice metadata. That turns it into a real merchant copilot that can answer questions
-                                    about live operating data instead of only reciting product docs.
-                                </p>
-                                <p>
-                                    On the developer and docs pages, NullBot is mounted through the shared docs assistant component
-                                    and switches modes between <span className={codeClass}>docs</span> and{' '}
-                                    <span className={codeClass}>developer</span>. In those modes it can guide SDK installation,
-                                    webhook handling, checkout session behavior, and developer portal questions with route-aware context.
-                                </p>
-                                <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 mt-1">
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-300 mb-2 font-bold">
-                                        NullBot Surface Breakdown
-                                    </p>
-                                    <ul className="text-xs text-gray-400 space-y-1.5">
-                                        <li>- Dashboard: live merchant assistant for invoices, balances, receipts, and settlement visibility.</li>
-                                        <li>- Developer page: integration copilot for secret keys, session creation, webhooks, and SDK onboarding.</li>
-                                        <li>- Docs page: documentation assistant for APIs, contract explanations, supported tokens, and flow walkthroughs.</li>
-                                    </ul>
-                                </div>
-                                <p>
-                                    The key point is that the assistant is not one static prompt. Each placement is wired to a different
-                                    data layer, which makes the product feel more like a guided operating environment than a static app.
+                                    Users authorize the actions locally, but NullPay handles the proving and relays the fees. This powers frictionless gift card redemptions and burner sweeps while remaining strictly non-custodial.
                                 </p>
                             </SectionCard>
 
@@ -340,132 +240,35 @@ export const ChangelogOverlay: React.FC = () => {
                                 index={4}
                                 eyebrow="Gift Cards"
                                 badge="Full Flow"
-                                accentClass="bg-orange-400/10 border-orange-300/20 text-orange-200"
+                                accentClass="bg-pink-400/10 border-pink-300/20 text-pink-200"
                                 icon={<Gift className="w-5 h-5" />}
-                                glowClass="bg-orange-400/25"
-                                title="Gift cards now cover creation, balance scanning, redemption, and invoice payment paths"
+                                glowClass="bg-pink-400/25"
+                                title="A Complete Private Value-Transfer Ecosystem"
                             >
                                 <p>
-                                    Gift cards are no longer just a novelty asset. They form a complete private value-transfer flow.
-                                    A card can be created with Credits, USDCx, or USAD, encoded into a generated gift code, scanned
-                                    later for balances, redeemed into a connected wallet, or used directly to pay an invoice.
+                                    Gift cards are now fully integrated. You can create them using Credits, USDCx, or USAD, scan them to reveal balances, and redeem them directly to your wallet.
                                 </p>
                                 <p>
-                                    Creation works by generating a fresh private key locally, deriving a new address from it, and
-                                    funding that address with one or more private asset transfers. The final gift code is a hex-encoded
-                                    wrapper around the generated private key material, prefixed with <span className={codeClass}>gift-</span>.
-                                </p>
-                                <p>
-                                    Redemption uses the scanner flow to discover the card's private balances, lets the user choose a
-                                    token and amount, builds a local authorization for <span className={codeClass}>transfer_private</span>,
-                                    then submits through the sponsored backend execution path so NullPay can cover the fee on supported
-                                    redeem actions.
-                                </p>
-                                <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 mt-1">
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-pink-300 mb-2 font-bold">
-                                        Gift Card Payment Modes
-                                    </p>
-                                    <ul className="text-xs text-gray-400 space-y-1.5">
-                                        <li>- Create a card by funding a newly generated private address with one or more supported tokens.</li>
-                                        <li>- Scan the card later and reveal its balances through the scratch-style redeem interface.</li>
-                                        <li>- Redeem the value into your own connected wallet if you want to convert the gift card into spendable private funds under your account.</li>
-                                        <li>- Pay an invoice directly from the gift card by scanning records, building local proofs, and sending the execution through the sponsored DPS route.</li>
-                                    </ul>
-                                </div>
-                                <p>
-                                    There is even a graceful partial-balance path for non-donation invoice payments. If a gift card
-                                    has some value but not enough to cover the invoice in one record, the checkout flow prompts the
-                                    user to redeem the available balance to wallet first, then continue from the regular wallet path.
-                                    That makes gift cards usable both as a closed-value product and as a bridge into normal NullPay payments.
+                                    You can even pay standard or donation invoices <b>directly</b> using a loaded gift card, utilizing the sponsored DPS route for a seamless checkout.
                                 </p>
                             </SectionCard>
 
                             <SectionCard
                                 index={5}
-                                eyebrow="Hosted Checkout"
+                                eyebrow="Checkout"
                                 badge="Realtime"
-                                accentClass="bg-white/[0.05] border-white/10 text-white/85"
+                                accentClass="bg-cyan-400/10 border-cyan-300/20 text-cyan-200"
                                 icon={<Radio className="w-5 h-5" />}
-                                glowClass="bg-white/20"
-                                title="Standard hosted invoices now surface live payment status without any extra merchant-side wiring"
+                                glowClass="bg-cyan-400/20"
+                                title="Zero-Config Realtime Hosted Checkout"
                             >
                                 <p>
-                                    For standard invoice checkout, live status is now part of the default hosted session lifecycle.
-                                    Once a merchant creates a checkout session, the NullPay checkout page loads that session, listens
-                                    for payment-intent updates, and automatically transitions into settled state when the payment lands.
+                                    Standard hosted invoices now surface live payment statuses immediately. 
                                 </p>
                                 <p>
-                                    The implementation uses two layers together: Supabase realtime updates on the{' '}
-                                    <span className={codeClass}>payment_intents</span> table and a polling fallback to the checkout session API.
-                                    This means merchants do not need to build an extra websocket server or custom status monitor just to
-                                    know when a standard hosted invoice has been paid.
-                                </p>
-                                <div className="rounded-xl border border-white/[0.06] bg-black/30 p-4 mt-1">
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-yellow-300 mb-2 font-bold">
-                                        What Happens Automatically
-                                    </p>
-                                    <ul className="text-xs text-gray-400 space-y-1.5">
-                                        <li>- The server creates the checkout session and returns a checkout_url.</li>
-                                        <li>- The hosted checkout page loads the session, invoice details, and allowed payment path.</li>
-                                        <li>- On successful standard payment, the frontend updates both the invoice record and checkout session state.</li>
-                                        <li>- Realtime listeners and polling fallback detect settlement and trigger the success redirect automatically.</li>
-                                        <li>- The merchant backend can then verify the final session status or webhook delivery without building a separate live monitor.</li>
-                                    </ul>
-                                </div>
-                                <p>
-                                    The important nuance is that this "live status by default" is strongest in the standard hosted
-                                    checkout path, where one session maps cleanly to one commerce settlement outcome. That keeps the
-                                    merchant experience simple: create the session, send the user to checkout, and NullPay handles the
-                                    payment-state feedback loop end to end.
+                                    By combining Supabase realtime listeners with aggressive polling fallbacks, the checkout session auto-settles the moment a payment lands on-chain—no custom websocket servers required on your backend.
                                 </p>
                             </SectionCard>
-
-                            <motion.div
-                                custom={6}
-                                variants={itemVariants}
-                                initial="hidden"
-                                animate="visible"
-                                className="rounded-[1.7rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] p-6"
-                            >
-                                <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-2xl border border-white/10 bg-white/[0.04] text-white flex items-center justify-center">
-                                        <Boxes className="w-5 h-5" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 mb-2">At A Glance</p>
-                                        <h3 className="text-xl font-bold text-white mb-4">What this release changes for merchants and developers</h3>
-                                        <div className="grid md:grid-cols-3 gap-3">
-                                            <div className="rounded-2xl border border-orange-300/15 bg-orange-400/8 p-4">
-                                                <div className="flex items-center gap-2 text-orange-200 mb-2">
-                                                    <Bot className="w-4 h-4" />
-                                                    <span className="text-sm font-semibold">AI-ready</span>
-                                                </div>
-                                                <p className="text-xs leading-6 text-white/65">
-                                                    MCP and NullBot make NullPay easier to operate through natural-language workflows.
-                                                </p>
-                                            </div>
-                                            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                                                <div className="flex items-center gap-2 text-white/80 mb-2">
-                                                    <CreditCard className="w-4 h-4" />
-                                                    <span className="text-sm font-semibold">Payment depth</span>
-                                                </div>
-                                                <p className="text-xs leading-6 text-white/65">
-                                                    Gift cards, sponsored execution, and flexible invoice manifests expand how value moves through NullPay.
-                                                </p>
-                                            </div>
-                                            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                                                <div className="flex items-center gap-2 text-white/80 mb-2">
-                                                    <Radio className="w-4 h-4" />
-                                                    <span className="text-sm font-semibold">Better UX</span>
-                                                </div>
-                                                <p className="text-xs leading-6 text-white/65">
-                                                    Realtime checkout settlement and richer platform tooling reduce friction for both merchants and payers.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
                         </div>
 
                         <div className="px-8 py-5 shrink-0 bg-[#060606]/80 flex items-center justify-between backdrop-blur-md relative z-10 gap-4">

@@ -119,6 +119,13 @@ function formatCurrencyLabel(currency) {
         return 'CREDITS + USDCX + USAD';
     return currency;
 }
+function resolveOutputPath(input) {
+    const trimmed = input.trim();
+    if (!trimmed) {
+        return path.resolve(process.cwd(), 'nullpay.json');
+    }
+    return path.resolve(process.cwd(), trimmed);
+}
 async function validateMerchant(secretKey, merchantAddress) {
     const res = await fetch(`${BACKEND_URL}/sdk/onboard/validate`, {
         method: 'POST',
@@ -478,13 +485,23 @@ async function onboard() {
         line(`  ${C.rose('X')}  ${C.white('No invoices confirmed. Exiting.')}`);
         process.exit(1);
     }
-    const projectRoot = process.cwd();
-    const outputPath = path.join(projectRoot, 'nullpay.json');
+    blank();
+    const defaultOutputPath = path.resolve(process.cwd(), 'nullpay.json');
+    const { outputPathInput } = await inquirer_1.default.prompt([{
+            type: 'input',
+            name: 'outputPathInput',
+            message: C.slate('Write nullpay.json to'),
+            prefix: C.brand('  >'),
+            default: defaultOutputPath,
+            validate: (v) => v.trim().length ? true : C.rose('Path cannot be empty'),
+        }]);
+    const outputPath = resolveOutputPath(outputPathInput);
     const output = {
         merchant: resolvedAddress,
         generated_at: new Date().toISOString(),
         invoices: generatedInvoices,
     };
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
     blank();
     blank();

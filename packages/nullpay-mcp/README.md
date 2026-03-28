@@ -37,7 +37,7 @@ Bundled by NullPay inside the package:
 ## Installation
 
 ```bash
-npm install @nullpay/mcp
+npm install @nullpay/mcp@latest
 ```
 >>>>>>> d9f1e889642be9d505997c05254a668cd19b13de
 

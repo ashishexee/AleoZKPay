@@ -159,7 +159,7 @@ const Docs = () => {
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
                                         <h4 className="text-white font-bold mb-2">Node.js SDK</h4>
                                         <p className="text-sm text-gray-400">
-                                            <code className="text-neon-primary">npm install @nullpay/node@1.0.1</code> — Official Node.js SDK for merchants to programmatically create checkout sessions and verify webhook signatures.
+                                            <code className="text-neon-primary">npm install @nullpay/node@latest</code> — Official Node.js SDK for merchants to programmatically create checkout sessions and verify webhook signatures.
                                         </p>
                                     </div>
                                     <div className="bg-black/40 p-6 rounded-xl border border-white/5">
@@ -1070,7 +1070,7 @@ function decrypt(text) {
                                 <CodeBlock
                                     title="Install via npm"
                                     language="bash"
-                                    code={`npm install @nullpay/node@1.0.1`}
+                                    code={`npm install @nullpay/node@latest`}
                                 />
 
                                 <h3 className="text-xl font-bold text-white mb-4 mt-8">Quick Start</h3>
@@ -1216,7 +1216,7 @@ app.post('/webhook/nullpay', express.raw({ type: 'application/json' }), (req, re
                                     <div className="ml-14 space-y-4">
                                         <div className="text-xs text-gray-500">
                                             <strong>Step A:</strong> Install the package.
-                                            <code className="block mt-2 p-3 bg-black/40 rounded-lg text-neon-primary">npm install @nullpay/node@1.0.1</code>
+                                            <code className="block mt-2 p-3 bg-black/40 rounded-lg text-neon-primary">npm install @nullpay/node@latest</code>
                                         </div>
                                         <div className="text-xs text-gray-500">
                                             <strong>Step B:</strong> Set your environment variables. <code>NULLPAY_SECRET_KEY</code> can be found in your profile settings.
