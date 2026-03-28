@@ -4,7 +4,8 @@ import { dynamicImport } from './esm';
 import { getProvableConfig } from './env';
 
 export const PROGRAM_ID = 'zk_pay_proofs_privacy_v22.aleo';
-const FREEZELIST_PROGRAM_ID = 'test_usdcx_freezelist.aleo';
+const USDCX_FREEZELIST_PROGRAM_ID = 'test_usdcx_freezelist.aleo';
+const USAD_FREEZELIST_PROGRAM_ID = 'test_usad_freezelist.aleo';
 const EXPLORER_BASE = 'https://api.explorer.provable.com/v1';
 const MAPPING_BASE = 'https://api.provable.com/v2/testnet/program';
 const SCANNER_BASE = 'https://api.provable.com/scanner/testnet';
@@ -642,46 +643,62 @@ async function findSpendableRecord(
     return null;
 }
 
-async function getFreezeListIndex(index: number): Promise<string | null> {
+function getFreezeListProgramId(tokenProgram: string): string | null {
+    if (tokenProgram === 'test_usdcx_stablecoin.aleo') {
+        return USDCX_FREEZELIST_PROGRAM_ID;
+    }
+    if (tokenProgram === 'test_usad_stablecoin.aleo') {
+        return USAD_FREEZELIST_PROGRAM_ID;
+    }
+    return null;
+}
+
+async function getFreezeListIndex(programId: string, index: number): Promise<string | null> {
     const { AleoNetworkClient } = await dynamicImport<any>('@provablehq/sdk');
     const client = new AleoNetworkClient(EXPLORER_BASE);
-    const value = await client.getProgramMappingValue(FREEZELIST_PROGRAM_ID, 'freeze_list_index', `${index}u32`);
+    const value = await client.getProgramMappingValue(programId, 'freeze_list_index', `${index}u32`);
     return value ? value.replace(/"/g, '') : null;
 }
 
-async function generateFreezeListProof(targetIndex = 1, occupiedLeafValue?: string): Promise<string> {
-    const { Field, Poseidon4 } = await dynamicImport<any>('@provablehq/wasm');
-    const hasher = new Poseidon4();
-    const emptyHashes: string[] = [];
-    let currentEmpty = '0field';
-
-    for (let level = 0; level < 16; level += 1) {
-        emptyHashes.push(currentEmpty);
-        const field = Field.fromString(currentEmpty);
-        currentEmpty = hasher.hash([field, field]).toString();
+async function getFreezeListCount(programId: string): Promise<number> {
+    const response = await fetch(`${MAPPING_BASE}/${programId}/mapping/freeze_list_last_index/true`);
+    if (!response.ok) {
+        return 0;
     }
 
-    let currentHash = '0field';
-    let currentIndex = targetIndex;
-    const proofSiblings: string[] = [];
+    const value = await response.json();
+    if (!value) {
+        return 0;
+    }
 
-    for (let level = 0; level < 16; level += 1) {
-        const isLeft = currentIndex % 2 === 0;
-        const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
-        let siblingHash = emptyHashes[level];
+    const parsed = Number.parseInt(String(value).replace(/u32|["']/g, ''), 10);
+    return Number.isFinite(parsed) ? parsed + 1 : 0;
+}
 
-        if (level === 0 && siblingIndex === 0 && occupiedLeafValue) {
-            siblingHash = occupiedLeafValue;
+async function generateFreezeListProof(ownerAddress: string, tokenProgram: string): Promise<string> {
+    const freezeListProgramId = getFreezeListProgramId(tokenProgram);
+    if (!freezeListProgramId) {
+        throw new Error(`Unsupported freeze list program for ${tokenProgram}`);
+    }
+
+    const { SealanceMerkleTree } = await dynamicImport<any>('@provablehq/sdk');
+    const count = Math.max(1, await getFreezeListCount(freezeListProgramId));
+    const addresses: string[] = [];
+
+    for (let index = 0; index < count; index += 1) {
+        const address = await getFreezeListIndex(freezeListProgramId, index);
+        if (address) {
+            addresses.push(address);
         }
-
-        proofSiblings.push(siblingHash);
-        const left = Field.fromString(isLeft ? currentHash : siblingHash);
-        const right = Field.fromString(isLeft ? siblingHash : currentHash);
-        currentHash = hasher.hash([left, right]).toString();
-        currentIndex = Math.floor(currentIndex / 2);
     }
 
-    return `[${proofSiblings.join(', ')}]`;
+    const sealance = new SealanceMerkleTree();
+    const leaves = sealance.generateLeaves(addresses, 16);
+    const tree = sealance.buildTree(leaves);
+    const [leftIdx, rightIdx] = sealance.getLeafIndices(tree, ownerAddress);
+    const proofLeft = sealance.getSiblingPath(tree, leftIdx, 16);
+    const proofRight = sealance.getSiblingPath(tree, rightIdx, 16);
+    return sealance.formatMerkleProof([proofLeft, proofRight]);
 }
 
 export async function createSponsoredPaymentAuthorization(args: {
@@ -716,14 +733,12 @@ export async function createSponsoredPaymentAuthorization(args: {
 
     let proofsInput: string | undefined;
     if (paymentMode.tokenProgram !== 'credits.aleo') {
-        const firstIndex = await getFreezeListIndex(0);
-        let index0Field: string | undefined;
-        if (firstIndex) {
-            const { Address } = await dynamicImport<any>('@provablehq/wasm');
-            index0Field = Address.from_string(firstIndex).toGroup().toXCoordinate().toString();
+        const ownerMatch = record.match(/owner\s*:\s*([a-z0-9]+)/i);
+        const ownerAddress = ownerMatch?.[1];
+        if (!ownerAddress || !ownerAddress.startsWith('aleo')) {
+            throw new Error(`Failed to read token record owner for ${paymentMode.tokenProgram}.`);
         }
-        const proof = await generateFreezeListProof(1, index0Field);
-        proofsInput = `[${proof}, ${proof}]`;
+        proofsInput = await generateFreezeListProof(ownerAddress, paymentMode.tokenProgram);
     }
 
     const { AleoKeyProvider, AleoNetworkClient, NetworkRecordProvider, ProgramManager } = await dynamicImport<any>('@provablehq/sdk');
@@ -756,6 +771,10 @@ export async function createSponsoredPaymentAuthorization(args: {
 
     return { authorization: authorization.toString() };
 }
+
+
+
+
 
 
 

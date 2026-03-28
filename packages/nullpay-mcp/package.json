@@ -1,34 +1,34 @@
 {
-    "name":  "@nullpay/mcp",
-    "version":  "1.0.1",
-    "description":  "NullPay MCP server and Claude setup wizard for conversational payment flows",
-    "type":  "commonjs",
-    "main":  "dist/server.js",
-    "types":  "dist/server.d.ts",
-    "bin":  {
-                "nullpay-mcp":  "./dist/cli.js"
-            },
-    "files":  [
-                  "dist",
-                  "README.md"
-              ],
-    "scripts":  {
-                    "build":  "tsc -p tsconfig.json",
-                    "start":  "node dist/cli.js server",
-                    "dev":  "ts-node src/cli.ts server",
-                    "setup":  "ts-node src/cli.ts setup",
-                    "prepublishOnly":  "npm run build"
-                },
-    "publishConfig":  {
-                          "access":  "public"
-                      },
-    "dependencies":  {
-                         "@provablehq/sdk":  "^0.9.18",
-                         "@provablehq/wasm":  "^0.9.18"
-                     },
-    "devDependencies":  {
-                            "@types/node":  "^25.4.0",
-                            "ts-node":  "^10.9.2",
-                            "typescript":  "^5.9.3"
-                        }
+    "name": "@nullpay/mcp",
+    "version": "1.0.6",
+    "description": "NullPay MCP server and Claude setup wizard for conversational payment flows",
+    "type": "commonjs",
+    "main": "dist/server.js",
+    "types": "dist/server.d.ts",
+    "bin": {
+        "nullpay-mcp": "./dist/cli.js"
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "start": "node dist/cli.js server",
+        "dev": "ts-node src/cli.ts server",
+        "setup": "ts-node src/cli.ts setup",
+        "prepublishOnly": "npm run build"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@provablehq/sdk": "^0.9.18",
+        "@provablehq/wasm": "^0.9.18"
+    },
+    "devDependencies": {
+        "@types/node": "^25.4.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.9.3"
+    }
 }

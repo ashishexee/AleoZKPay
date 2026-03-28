@@ -4,11 +4,12 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { Terminal, Command, Key, Globe, BookOpen, ArrowRight, CheckCircle, Lock, Zap, Shield, Copy, Check, Activity } from 'lucide-react';
+import { Terminal, Command, Key, Globe, BookOpen, ArrowRight, CheckCircle, Lock, Zap, Shield, Copy, Check, Activity, Bot } from 'lucide-react';
 import { SdkDashboard } from './components/SdkDashboard';
 import { MerchantConsole } from './components/MerchantConsole';
 import { QuickStartGuide } from './components/QuickStartGuide';
 import { HostedCheckoutGuide } from './components/HostedCheckoutGuide';
+import { MpcGuide } from './components/MpcGuide';
 import { SdkMethodsGuide } from './components/SdkMethodsGuide';
 import { WebhooksGuide } from './components/WebhooksGuide';
 import { SdkReference } from './components/SdkReference';
@@ -88,6 +89,7 @@ export const DeveloperPortal = () => {
     const [activeTab, setActiveTab] = useState('console');
     const [commandCopied, setCommandCopied] = useState(false);
     const [cliCommandCopied, setCliCommandCopied] = useState(false);
+    const [mcpCommandCopied, setMcpCommandCopied] = useState(false);
     const [stats, setStats] = useState<any>(null);
     const [loadingStats, setLoadingStats] = useState(false);
 
@@ -132,6 +134,7 @@ export const DeveloperPortal = () => {
         { id: 'console', label: 'Console', icon: Activity },
         { id: 'guide', label: 'Quick Start', icon: Zap },
         { id: 'cli', label: 'CLI Tools', icon: Command },
+        { id: 'mcp', label: 'MCP Server', icon: Bot },
         { id: 'hosted', label: 'Hosted Checkout', icon: Globe },
         { id: 'methods', label: 'SDK Methods', icon: Terminal },
         { id: 'delivery', label: 'Webhooks', icon: Shield },
@@ -186,23 +189,23 @@ export const DeveloperPortal = () => {
                     </motion.p>
 
                     <motion.div variants={fadeInUp} className="mt-8 mb-4 flex flex-col gap-4 items-center">
-                        <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.1] rounded-2xl hover:border-orange-500/30 hover:bg-white/[0.05] hover:shadow-[0_0_20px_rgba(249,115,22,0.05)] transition-all group max-w-fit cursor-pointer relative overflow-hidden" onClick={() => {
-                            navigator.clipboard.writeText('npm install @nullpay/node@latest');
-                            setCommandCopied(true);
-                            setTimeout(() => setCommandCopied(false), 2000);
-                        }}>
-                            <div className="absolute inset-0 bg-gradient-to-r from-orange-400/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <Terminal className="w-4 h-4 text-gray-500 group-hover:text-orange-400 transition-colors" />
-                            <code className="text-sm font-mono text-orange-300 font-medium">npm install @nullpay/node@latest</code>
-                            <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
-                                {commandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
-                                    {commandCopied ? 'Copied!' : 'Copy'}
-                                </span>
+                        <div className="flex flex-wrap justify-center gap-3">
+                            <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.1] rounded-2xl hover:border-orange-500/30 hover:bg-white/[0.05] hover:shadow-[0_0_20px_rgba(249,115,22,0.05)] transition-all group max-w-fit cursor-pointer relative overflow-hidden" onClick={() => {
+                                navigator.clipboard.writeText('npm install @nullpay/node@latest');
+                                setCommandCopied(true);
+                                setTimeout(() => setCommandCopied(false), 2000);
+                            }}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-orange-400/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <Terminal className="w-4 h-4 text-gray-500 group-hover:text-orange-400 transition-colors" />
+                                <code className="text-sm font-mono text-orange-300 font-medium">npm install @nullpay/node@latest</code>
+                                <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
+                                    {commandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
+                                        {commandCopied ? 'Copied!' : 'Copy'}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="flex flex-col items-center gap-2.5">
                             <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.1] rounded-2xl hover:border-orange-500/30 hover:bg-white/[0.05] hover:shadow-[0_0_20px_rgba(249,115,22,0.05)] transition-all group max-w-fit cursor-pointer relative overflow-hidden" onClick={() => {
                                 navigator.clipboard.writeText('npx @nullpay/cli@latest sdk onboard');
                                 setCliCommandCopied(true);
@@ -218,8 +221,24 @@ export const DeveloperPortal = () => {
                                     </span>
                                 </div>
                             </div>
-                            <span className="text-[10px] text-orange-500/70 font-black uppercase tracking-[0.2em]">Run this inside the root of your Node.js backend</span>
+
+                            <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.1] rounded-2xl hover:border-orange-500/30 hover:bg-white/[0.05] hover:shadow-[0_0_20px_rgba(249,115,22,0.05)] transition-all group max-w-fit cursor-pointer relative overflow-hidden" onClick={() => {
+                                navigator.clipboard.writeText('npx -y @nullpay/mcp');
+                                setMcpCommandCopied(true);
+                                setTimeout(() => setMcpCommandCopied(false), 2000);
+                            }}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-orange-400/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <Bot className="w-4 h-4 text-gray-500 group-hover:text-orange-400 transition-colors" />
+                                <code className="text-sm font-mono text-orange-300 font-medium">npx -y @nullpay/mcp</code>
+                                <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
+                                    {mcpCommandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
+                                        {mcpCommandCopied ? 'Copied!' : 'Copy'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
+                        <span className="text-[10px] text-orange-500/70 font-black uppercase tracking-[0.2em] text-center">Run the SDK and CLI commands inside the root of your Node.js backend. Run the MCP command from any terminal on the user machine.</span>
                     </motion.div>
 
                     <motion.div variants={fadeInUp} className="flex flex-wrap justify-center gap-6 mt-6">
@@ -238,12 +257,13 @@ export const DeveloperPortal = () => {
 
                 {/* ── Sticky Tab Nav ────────────────────────────────────── */}
                 <div className="sticky top-24 z-50 mb-12">
-                    <div className="flex flex-wrap gap-2 bg-black/60 backdrop-blur-2xl p-2 rounded-2xl border border-white/[0.06] max-w-fit">
+                    <div className="overflow-x-auto scrollbar-thin">
+                        <div className="flex flex-nowrap gap-2 bg-black/60 backdrop-blur-2xl p-2 rounded-2xl border border-white/[0.06] w-max min-w-full">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === tab.id
+                                className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 whitespace-nowrap ${activeTab === tab.id
                                     ? 'bg-white text-black shadow-lg'
                                     : 'text-gray-400 hover:text-white hover:bg-white/[0.05]'
                                     }`}
@@ -252,6 +272,7 @@ export const DeveloperPortal = () => {
                                 {tab.label}
                             </button>
                         ))}
+                        </div>
                     </div>
                 </div>
 
@@ -355,6 +376,11 @@ export async function createCheckout(req, res) {
                                     </p>
                                 </div>
                             </GlassCard>
+                        </motion.div>
+                    )}
+                    {activeTab === 'mcp' && (
+                        <motion.div key="mcp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                            <MpcGuide />
                         </motion.div>
                     )}
                     {activeTab === 'methods' && (
