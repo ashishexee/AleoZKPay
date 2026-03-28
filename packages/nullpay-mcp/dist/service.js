@@ -235,18 +235,27 @@ class NullPayMcpService {
         let recoveredEncryptedBurnerKey = null;
         let usedRecoveredPassword = false;
         let restoredBurnerFromChain = false;
-        const attemptRecovery = async () => {
-            if (!mainPrivateKey) {
-                return false;
+        let chainBackupLoaded = false;
+        const loadChainBackup = async () => {
+            if (chainBackupLoaded || !mainPrivateKey) {
+                return null;
             }
+            chainBackupLoaded = true;
             const recovered = await (0, aleo_1.recoverOnChainWalletBackup)(mainPrivateKey, address);
+            if (!recovered) {
+                return null;
+            }
+            recoveredBackupSource = recovered.source;
+            recoveredBurnerAddress = recovered.burnerAddress || null;
+            recoveredEncryptedBurnerKey = recovered.encryptedBurnerKey || null;
+            return recovered;
+        };
+        const attemptRecovery = async () => {
+            const recovered = await loadChainBackup();
             if (!recovered?.password) {
                 return false;
             }
             password = recovered.password;
-            recoveredBackupSource = recovered.source;
-            recoveredBurnerAddress = recovered.burnerAddress || null;
-            recoveredEncryptedBurnerKey = recovered.encryptedBurnerKey || null;
             usedRecoveredPassword = true;
             return true;
         };
@@ -302,6 +311,9 @@ class NullPayMcpService {
                 burnerAddress = null;
             }
         }
+        if (!encryptedBurnerKey || !burnerAddress || !encryptedBurnerAddress) {
+            await loadChainBackup();
+        }
         if ((!encryptedBurnerAddress || !encryptedBurnerKey || !burnerAddress) && recoveredBurnerAddress && recoveredEncryptedBurnerKey) {
             burnerAddress = recoveredBurnerAddress;
             encryptedBurnerAddress = await (0, crypto_1.encryptWithPassword)(recoveredBurnerAddress, password);
@@ -316,11 +328,13 @@ class NullPayMcpService {
             encryptedBurnerAddress = await (0, crypto_1.encryptWithPassword)(nextBurnerAddress, password);
             encryptedBurnerKey = await (0, crypto_1.encryptWithPassword)(burnerPrivateKey.to_string(), password);
         }
+        const persistedBurnerAddress = args.create_burner_wallet ? encryptedBurnerAddress : (existingProfile?.burner_address || null);
+        const persistedBurnerKey = args.create_burner_wallet ? encryptedBurnerKey : (existingProfile?.encrypted_burner_key || null);
         await this.backend.upsertUserProfile({
             address_hash: addressHash,
             main_address: encryptedMainAddress,
-            burner_address: encryptedBurnerAddress,
-            encrypted_burner_key: encryptedBurnerKey,
+            burner_address: persistedBurnerAddress,
+            encrypted_burner_key: persistedBurnerKey,
         });
         const preferredWallet = (args.wallet_preference || (mainPrivateKey ? 'main' : (encryptedBurnerKey ? 'burner' : 'main')));
         if (preferredWallet === 'burner' && !encryptedBurnerKey) {
@@ -351,7 +365,7 @@ class NullPayMcpService {
             lines.push('Recovered your NullPay password from on-chain backup records using the main wallet private key (' + (recoveredBackupSource === 'full_burner' ? 'full burner backup' : 'password backup') + ').');
         }
         if (restoredBurnerFromChain) {
-            lines.push('Recovered your backed-up burner wallet from on-chain records and restored it into the MCP session.');
+            lines.push('Recovered your backed-up burner wallet from on-chain records for this session only. It was not written back to the backend profile.');
         }
         if (mainPrivateKey) {
             lines.push('Main wallet private key is available for record-backed amount lookup and main-wallet payments. Active wallet is set to main by default, and you can switch to burner anytime by logging in again with wallet_preference set to burner. Invoice lookup will prefer the main wallet records even when you pay from burner.');

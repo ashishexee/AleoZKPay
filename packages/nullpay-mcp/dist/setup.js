@@ -33,7 +33,7 @@ function buildServerEntry(answers) {
     const env = {
         NULLPAY_MAIN_ADDRESS: answers.address,
         NULLPAY_MAIN_PRIVATE_KEY: answers.privateKey,
-        NULLPAY_MAIN_PASSWORD: answers.password,
+        ...(answers.password ? { NULLPAY_MAIN_PASSWORD: answers.password } : {}),
     };
     if (process.platform === 'win32') {
         return {
@@ -79,7 +79,7 @@ function writeMcpConfig(configPath, serverName, entry) {
 }
 async function askChoice(rl) {
     process_1.stdout.write('Where do you want to install NullPay MCP?\n');
-    process_1.stdout.write('1. Claude Code\n');
+    process_1.stdout.write('1. Claude Code (beta version)\n');
     process_1.stdout.write('2. Claude Desktop\n');
     process_1.stdout.write('3. Cancel\n');
     while (true) {
@@ -102,11 +102,14 @@ async function askRequired(rl, label) {
         process_1.stdout.write(`${label} is required.\n`);
     }
 }
+async function askOptional(rl, label) {
+    return (await rl.question(`${label}: `)).trim();
+}
 async function collectAnswers(rl) {
     process_1.stdout.write('\nNullPay will configure Claude automatically. You only need to provide your wallet credentials here.\n\n');
     const address = await askRequired(rl, 'Main wallet address');
     const privateKey = await askRequired(rl, 'Main wallet private key');
-    const password = await askRequired(rl, 'NullPay password');
+    const password = await askOptional(rl, 'NullPay password (optional if you have it backed up in your records)');
     return {
         address,
         privateKey,

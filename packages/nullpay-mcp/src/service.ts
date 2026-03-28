@@ -246,20 +246,32 @@ export class NullPayMcpService {
         let usedRecoveredPassword = false;
         let restoredBurnerFromChain = false;
 
-        const attemptRecovery = async (): Promise<boolean> => {
-            if (!mainPrivateKey) {
-                return false;
+        let chainBackupLoaded = false;
+
+        const loadChainBackup = async () => {
+            if (chainBackupLoaded || !mainPrivateKey) {
+                return null;
             }
 
+            chainBackupLoaded = true;
             const recovered = await recoverOnChainWalletBackup(mainPrivateKey, address);
+            if (!recovered) {
+                return null;
+            }
+
+            recoveredBackupSource = recovered.source;
+            recoveredBurnerAddress = recovered.burnerAddress || null;
+            recoveredEncryptedBurnerKey = recovered.encryptedBurnerKey || null;
+            return recovered;
+        };
+
+        const attemptRecovery = async (): Promise<boolean> => {
+            const recovered = await loadChainBackup();
             if (!recovered?.password) {
                 return false;
             }
 
             password = recovered.password;
-            recoveredBackupSource = recovered.source;
-            recoveredBurnerAddress = recovered.burnerAddress || null;
-            recoveredEncryptedBurnerKey = recovered.encryptedBurnerKey || null;
             usedRecoveredPassword = true;
             return true;
         };
@@ -319,6 +331,10 @@ export class NullPayMcpService {
             }
         }
 
+        if (!encryptedBurnerKey || !burnerAddress || !encryptedBurnerAddress) {
+            await loadChainBackup();
+        }
+
         if ((!encryptedBurnerAddress || !encryptedBurnerKey || !burnerAddress) && recoveredBurnerAddress && recoveredEncryptedBurnerKey) {
             burnerAddress = recoveredBurnerAddress;
             encryptedBurnerAddress = await encryptWithPassword(recoveredBurnerAddress, password);
@@ -335,11 +351,14 @@ export class NullPayMcpService {
             encryptedBurnerKey = await encryptWithPassword(burnerPrivateKey.to_string(), password);
         }
 
+        const persistedBurnerAddress = args.create_burner_wallet ? encryptedBurnerAddress : (existingProfile?.burner_address || null);
+        const persistedBurnerKey = args.create_burner_wallet ? encryptedBurnerKey : (existingProfile?.encrypted_burner_key || null);
+
         await this.backend.upsertUserProfile({
             address_hash: addressHash,
             main_address: encryptedMainAddress,
-            burner_address: encryptedBurnerAddress,
-            encrypted_burner_key: encryptedBurnerKey,
+            burner_address: persistedBurnerAddress,
+            encrypted_burner_key: persistedBurnerKey,
         });
 
         const preferredWallet = (args.wallet_preference || (mainPrivateKey ? 'main' : (encryptedBurnerKey ? 'burner' : 'main'))) as WalletPreference;
@@ -375,7 +394,7 @@ export class NullPayMcpService {
         }
 
         if (restoredBurnerFromChain) {
-            lines.push('Recovered your backed-up burner wallet from on-chain records and restored it into the MCP session.');
+            lines.push('Recovered your backed-up burner wallet from on-chain records for this session only. It was not written back to the backend profile.');
         }
 
         if (mainPrivateKey) {
@@ -748,5 +767,6 @@ export class NullPayMcpService {
         return await this.enrichInvoiceIfPossible(invoice, walletPrivateKey);
     }
 }
+
 
 
