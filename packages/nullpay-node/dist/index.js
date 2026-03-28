@@ -42,9 +42,8 @@ const node_fetch_1 = __importDefault(require("node-fetch"));
 const crypto_1 = __importDefault(require("crypto"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-function loadNullPayConfig(projectRoot) {
-    const root = projectRoot || process.cwd();
-    const filePath = path.join(root, 'nullpay.json');
+function loadNullPayConfig(projectRoot, configPath) {
+    const filePath = configPath || path.join(projectRoot || process.cwd(), 'nullpay.json');
     if (!fs.existsSync(filePath))
         return null;
     try {
@@ -65,9 +64,11 @@ class NullPay {
              * Returns all invoices from nullpay.json, or throws if the file is missing.
              */
             getAll: () => {
-                const config = loadNullPayConfig();
-                if (!config)
-                    throw new Error('nullpay.json not found. Run "nullpay sdk onboard" first.');
+                const config = loadNullPayConfig(this.projectRoot, this.configPath);
+                if (!config) {
+                    const resolvedPath = this.configPath || path.join(this.projectRoot || process.cwd(), 'nullpay.json');
+                    throw new Error(`nullpay.json not found at ${resolvedPath}. Run "nullpay sdk onboard" first or pass projectRoot/configPath to the SDK.`);
+                }
                 return config.invoices;
             },
             /**
@@ -257,6 +258,8 @@ class NullPay {
         }
         this.secretKey = config.secretKey;
         this.baseURL = config.baseURL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+        this.projectRoot = config.projectRoot;
+        this.configPath = config.configPath;
     }
 }
 exports.NullPay = NullPay;
