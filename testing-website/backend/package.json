@@ -14,7 +14,7 @@
   "type": "commonjs",
   "dependencies": {
     "@nullpay/cli": "^1.0.1",
-    "@nullpay/node": "^1.0.0",
+    "@nullpay/node": "^1.0.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1"

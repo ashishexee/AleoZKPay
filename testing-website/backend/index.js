@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { NullPay } = require('../../packages/nullpay-node');
+const { NullPay } = require('@nullpay/node');
 
 const app = express();
 app.use(cors());
