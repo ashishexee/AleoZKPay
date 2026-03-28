@@ -13,12 +13,16 @@ exports.invoiceTypeToNumber = invoiceTypeToNumber;
 exports.buildPaymentLink = buildPaymentLink;
 exports.createInvoiceDbRecord = createInvoiceDbRecord;
 exports.parseOwnedInvoiceRecord = parseOwnedInvoiceRecord;
+exports.parseBurnerBackupRecord = parseBurnerBackupRecord;
 exports.fetchOwnedInvoiceRecords = fetchOwnedInvoiceRecords;
+exports.fetchOwnedBurnerBackupRecords = fetchOwnedBurnerBackupRecords;
+exports.recoverOnChainWalletBackup = recoverOnChainWalletBackup;
 exports.fetchOwnedInvoiceRecordByHash = fetchOwnedInvoiceRecordByHash;
 exports.enrichInvoiceWithRecordAmount = enrichInvoiceWithRecordAmount;
 exports.createSponsoredPaymentAuthorization = createSponsoredPaymentAuthorization;
 const crypto_1 = __importDefault(require("crypto"));
 const esm_1 = require("./esm");
+const env_1 = require("./env");
 exports.PROGRAM_ID = 'zk_pay_proofs_privacy_v22.aleo';
 const FREEZELIST_PROGRAM_ID = 'test_usdcx_freezelist.aleo';
 const EXPLORER_BASE = 'https://api.explorer.provable.com/v1';
@@ -50,6 +54,30 @@ function fieldToString(fieldVal) {
     catch {
         return '';
     }
+}
+function fieldChunksToString(chunks) {
+    let result = '';
+    for (const chunk of chunks) {
+        if (!chunk || chunk === '0field' || chunk === '0') {
+            continue;
+        }
+        const numeric = chunk.replace('field', '').replace('u128', '').replace('u64', '');
+        let value;
+        try {
+            value = BigInt(numeric);
+        }
+        catch {
+            continue;
+        }
+        let hex = value.toString(16);
+        if (hex.length % 2 !== 0) {
+            hex = '0' + hex;
+        }
+        for (let i = 0; i < hex.length; i += 2) {
+            result += String.fromCharCode(Number.parseInt(hex.slice(i, i + 2), 16));
+        }
+    }
+    return result;
 }
 function parseNumericValue(value) {
     if (!value) {
@@ -206,12 +234,8 @@ function resolvePaymentMode(invoice, fallbackAmount, fallbackCurrency) {
         amountSuffix: 'u64',
     };
 }
-function getProvableConsumerId() {
-    return process.env.PROVABLE_CONSUMER_ID || process.env.PROVABLE_CONSUMER_KEY;
-}
 async function getScannerSession(privateKey) {
-    const provableApiKey = process.env.PROVABLE_API_KEY;
-    const consumerId = getProvableConsumerId();
+    const { apiKey: provableApiKey, consumerId } = (0, env_1.getProvableConfig)();
     if (!provableApiKey || !consumerId) {
         throw new Error('PROVABLE_API_KEY and PROVABLE_CONSUMER_ID/PROVABLE_CONSUMER_KEY are required for record fetching and payment automation.');
     }
@@ -308,6 +332,41 @@ function parseOwnedInvoiceRecord(plaintext) {
         return null;
     }
 }
+function parseBurnerBackupRecord(plaintext) {
+    try {
+        const getVal = (key) => {
+            const regex = new RegExp(`(?:${key}|"${key}"):\\s*([\\w\\d\\.]+)`);
+            const match = plaintext.match(regex);
+            if (match && match[1]) {
+                return match[1].replace('.private', '').replace('.public', '');
+            }
+            return null;
+        };
+        const owner = getVal('owner');
+        const burnerAddress = getVal('burner_address');
+        const passwordPart = getVal('password_part');
+        if (!burnerAddress || !passwordPart) {
+            return null;
+        }
+        const pkParts = [];
+        for (let i = 1; i <= 10; i += 1) {
+            const part = getVal(`pk_part_${i}`);
+            if (part && part !== '0field' && part !== '0') {
+                pkParts.push(part);
+            }
+        }
+        return {
+            owner: owner || '',
+            burnerAddress,
+            passwordPart,
+            pkParts,
+            plaintext,
+        };
+    }
+    catch {
+        return null;
+    }
+}
 async function fetchOwnedInvoiceRecords(privateKey) {
     const session = await getScannerSession(privateKey);
     const records = await fetchOwnedProgramRecords(session, exports.PROGRAM_ID);
@@ -327,6 +386,67 @@ async function fetchOwnedInvoiceRecords(privateKey) {
         }
     }
     return parsed;
+}
+async function fetchOwnedBurnerBackupRecords(privateKey) {
+    const session = await getScannerSession(privateKey);
+    const records = await fetchOwnedProgramRecords(session, exports.PROGRAM_ID);
+    const parsed = [];
+    for (const record of records) {
+        let plaintext = record.record_plaintext || record.plaintext || '';
+        if (!plaintext && record.record_ciphertext) {
+            const { RecordCiphertext } = await (0, esm_1.dynamicImport)('@provablehq/sdk');
+            const ciphertext = RecordCiphertext.fromString(record.record_ciphertext);
+            plaintext = ciphertext.decrypt(session.account.viewKey()).toString();
+        }
+        if (!plaintext)
+            continue;
+        const burnerRecord = parseBurnerBackupRecord(plaintext);
+        if (burnerRecord) {
+            parsed.push(burnerRecord);
+        }
+    }
+    return parsed;
+}
+async function recoverOnChainWalletBackup(privateKey, ownerAddress) {
+    const records = await fetchOwnedBurnerBackupRecords(privateKey);
+    let passwordOnlyMatch = null;
+    let fullBurnerMatch = null;
+    for (const record of records) {
+        const ownerMatches = record.owner === ownerAddress;
+        const passwordOnlyMatches = record.burnerAddress === ownerAddress;
+        if (!ownerMatches && !passwordOnlyMatches) {
+            continue;
+        }
+        const encryptedPayload = fieldChunksToString(record.pkParts);
+        const hasRealPayload = Boolean(encryptedPayload && !encryptedPayload.startsWith('0'));
+        if (hasRealPayload) {
+            fullBurnerMatch = record;
+        }
+        else if (!passwordOnlyMatch) {
+            passwordOnlyMatch = record;
+        }
+    }
+    const bestMatch = fullBurnerMatch || passwordOnlyMatch;
+    if (!bestMatch) {
+        return null;
+    }
+    const password = fieldChunksToString([bestMatch.passwordPart]);
+    if (!password) {
+        return null;
+    }
+    if (fullBurnerMatch) {
+        const encryptedBurnerKey = fieldChunksToString(fullBurnerMatch.pkParts);
+        return {
+            password,
+            burnerAddress: fullBurnerMatch.burnerAddress,
+            encryptedBurnerKey: encryptedBurnerKey || undefined,
+            source: 'full_burner',
+        };
+    }
+    return {
+        password,
+        source: 'password_only',
+    };
 }
 async function fetchOwnedInvoiceRecordByHash(privateKey, invoiceHash) {
     const normalized = normalizeInvoiceHash(invoiceHash);

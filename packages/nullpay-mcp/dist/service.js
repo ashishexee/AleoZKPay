@@ -142,7 +142,7 @@ class NullPayMcpService {
         return [
             {
                 name: 'login',
-                description: 'Login to NullPay, validate password, create burner wallet, or switch active wallet. If NULLPAY_MAIN_ADDRESS and NULLPAY_MAIN_PASSWORD are configured, call this tool with empty arguments and do not ask the user to share secrets in chat. The MCP server can also read NULLPAY_MAIN_PRIVATE_KEY from env without exposing it to the model.',
+                description: 'Login to NullPay, validate password, create burner wallet, recover a backed-up password or burner wallet from on-chain records, or switch active wallet. If NULLPAY_MAIN_ADDRESS and NULLPAY_MAIN_PASSWORD are configured, call this tool with empty arguments and do not ask the user to share secrets in chat. The MCP server can also read NULLPAY_MAIN_PRIVATE_KEY from env without exposing it to the model.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -222,21 +222,70 @@ class NullPayMcpService {
     async login(args) {
         const envMain = getMainWalletEnv();
         const address = (args.address || envMain.address || '').trim();
-        const password = args.password || envMain.password || '';
+        let password = args.password || envMain.password || '';
         const mainPrivateKey = args.main_private_key || envMain.privateKey || null;
-        if (!address || !password) {
-            throw new Error('Address and password are required. You can pass them directly or set NULLPAY_MAIN_ADDRESS and NULLPAY_MAIN_PASSWORD in env.');
+        if (!address) {
+            throw new Error('Address is required. You can pass it directly or set NULLPAY_MAIN_ADDRESS in env.');
         }
         const addressHash = (0, crypto_1.hashAddress)(address);
         const existingProfile = await this.backend.getUserProfile(addressHash);
         let encryptedMainAddress = existingProfile?.main_address || null;
+        let recoveredBackupSource = null;
+        let recoveredBurnerAddress = null;
+        let recoveredEncryptedBurnerKey = null;
+        let usedRecoveredPassword = false;
+        let restoredBurnerFromChain = false;
+        const attemptRecovery = async () => {
+            if (!mainPrivateKey) {
+                return false;
+            }
+            const recovered = await (0, aleo_1.recoverOnChainWalletBackup)(mainPrivateKey, address);
+            if (!recovered?.password) {
+                return false;
+            }
+            password = recovered.password;
+            recoveredBackupSource = recovered.source;
+            recoveredBurnerAddress = recovered.burnerAddress || null;
+            recoveredEncryptedBurnerKey = recovered.encryptedBurnerKey || null;
+            usedRecoveredPassword = true;
+            return true;
+        };
         if (encryptedMainAddress) {
-            const decrypted = await (0, crypto_1.decryptWithPassword)(encryptedMainAddress, password);
+            if (!password) {
+                const recovered = await attemptRecovery();
+                if (!recovered) {
+                    throw new Error('Password is required for this NullPay account. Set NULLPAY_MAIN_PASSWORD, pass password directly, or provide NULLPAY_MAIN_PRIVATE_KEY so the MCP can recover a backed-up password from on-chain records.');
+                }
+            }
+            let decrypted;
+            try {
+                decrypted = await (0, crypto_1.decryptWithPassword)(encryptedMainAddress, password);
+            }
+            catch {
+                const recovered = await attemptRecovery();
+                if (!recovered) {
+                    throw new Error('Password is incorrect for this NullPay account, and no recoverable on-chain password backup was found for the provided main private key.');
+                }
+                decrypted = await (0, crypto_1.decryptWithPassword)(encryptedMainAddress, password);
+            }
             if (decrypted !== address) {
-                throw new Error('Password is incorrect for this NullPay account.');
+                const recovered = await attemptRecovery();
+                if (!recovered) {
+                    throw new Error('Password is incorrect for this NullPay account.');
+                }
+                const recoveredAddress = await (0, crypto_1.decryptWithPassword)(encryptedMainAddress, password);
+                if (recoveredAddress !== address) {
+                    throw new Error('Recovered password does not match the provided address.');
+                }
             }
         }
         else {
+            if (!password) {
+                const recovered = await attemptRecovery();
+                if (!recovered) {
+                    throw new Error('Password is required to create a new NullPay account unless the MCP can recover it from on-chain backup records using NULLPAY_MAIN_PRIVATE_KEY.');
+                }
+            }
             encryptedMainAddress = await (0, crypto_1.encryptWithPassword)(address, password);
         }
         if (!encryptedMainAddress) {
@@ -246,7 +295,18 @@ class NullPayMcpService {
         let encryptedBurnerKey = existingProfile?.encrypted_burner_key || null;
         let burnerAddress = null;
         if (encryptedBurnerAddress) {
-            burnerAddress = await (0, crypto_1.decryptWithPassword)(encryptedBurnerAddress, password);
+            try {
+                burnerAddress = await (0, crypto_1.decryptWithPassword)(encryptedBurnerAddress, password);
+            }
+            catch {
+                burnerAddress = null;
+            }
+        }
+        if ((!encryptedBurnerAddress || !encryptedBurnerKey || !burnerAddress) && recoveredBurnerAddress && recoveredEncryptedBurnerKey) {
+            burnerAddress = recoveredBurnerAddress;
+            encryptedBurnerAddress = await (0, crypto_1.encryptWithPassword)(recoveredBurnerAddress, password);
+            encryptedBurnerKey = recoveredEncryptedBurnerKey;
+            restoredBurnerFromChain = true;
         }
         if (args.create_burner_wallet && !encryptedBurnerKey) {
             const { PrivateKey } = await (0, esm_1.dynamicImport)('@provablehq/sdk');
@@ -282,11 +342,17 @@ class NullPayMcpService {
         });
         const usedEnvCredentials = Boolean(envMain.address && envMain.password && !args.address && !args.password);
         const lines = [
-            usedEnvCredentials ? 'Used main-wallet address and password from MCP env.' : `Logged in as ${address}.`,
+            usedEnvCredentials ? 'Used main-wallet address and password from MCP env.' : 'Logged in as ' + address + '.',
             encryptedBurnerKey
-                ? `Active wallet: ${preferredWallet}. Burner wallet is available${burnerAddress ? ` at ${burnerAddress}` : ''}.`
+                ? 'Active wallet: ' + preferredWallet + '. Burner wallet is available' + (burnerAddress ? ' at ' + burnerAddress : '') + '.'
                 : 'Active wallet: main. No burner wallet is stored yet.',
         ];
+        if (usedRecoveredPassword) {
+            lines.push('Recovered your NullPay password from on-chain backup records using the main wallet private key (' + (recoveredBackupSource === 'full_burner' ? 'full burner backup' : 'password backup') + ').');
+        }
+        if (restoredBurnerFromChain) {
+            lines.push('Recovered your backed-up burner wallet from on-chain records and restored it into the MCP session.');
+        }
         if (mainPrivateKey) {
             lines.push('Main wallet private key is available for record-backed amount lookup and main-wallet payments. Active wallet is set to main by default, and you can switch to burner anytime by logging in again with wallet_preference set to burner. Invoice lookup will prefer the main wallet records even when you pay from burner.');
         }
@@ -306,6 +372,9 @@ class NullPayMcpService {
                 has_main_private_key: Boolean(mainPrivateKey),
                 main_private_key_from_env: Boolean(envMain.privateKey),
                 used_env_credentials: usedEnvCredentials,
+                used_recovered_password: usedRecoveredPassword,
+                recovery_source: recoveredBackupSource,
+                restored_burner_from_chain: restoredBurnerFromChain,
             },
         };
     }

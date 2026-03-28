@@ -1,6 +1,22 @@
 # NullPay MCP
 
-MCP server for conversational NullPay onboarding, invoice creation, invoice payment, and transaction lookup.
+NullPay MCP installs a local MCP server for Claude and lets users connect with only their wallet credentials.
+
+## Install
+
+```bash
+npx -y @nullpay/mcp
+```
+
+The setup wizard asks whether to install into Claude Code or Claude Desktop, then writes the required MCP config automatically on the user's machine.
+
+## User-provided env
+
+Users only need to provide:
+
+- `NULLPAY_MAIN_ADDRESS`
+- `NULLPAY_MAIN_PRIVATE_KEY`
+- `NULLPAY_MAIN_PASSWORD`
 
 ## Tools
 
@@ -11,13 +27,12 @@ MCP server for conversational NullPay onboarding, invoice creation, invoice paym
 
 ## Environment
 
-Required for backend and MCP connectivity:
+Bundled by NullPay inside the package:
 
-- `NULLPAY_BACKEND_URL`
-- `NULLPAY_PUBLIC_BASE_URL`
-- `NULLPAY_MCP_SHARED_SECRET`
-- `PROVABLE_API_KEY`
-- `PROVABLE_CONSUMER_ID` or `PROVABLE_CONSUMER_KEY`
+- production backend URL
+- public NullPay base URL
+- Provable API key
+- Provable consumer ID
 
 Optional main-wallet credentials for record-backed transaction lookup and automated main-wallet payments:
 
@@ -27,13 +42,13 @@ Optional main-wallet credentials for record-backed transaction lookup and automa
 
 `NULLPAY_MAIN_PVT_KEY` is also accepted as a legacy alias for the private key.
 
-When Claude launches the MCP server, it now also loads env values from these files if present:
+When Claude launches the MCP server, it also loads env values from these files if present:
 
 - `packages/nullpay-mcp/.env`
 - repo-root `.env`
 - `backend/.env`
 
-For relayed invoice creation and sponsored execution, the backend also needs:
+For relayed invoice creation and sponsored execution, the backend still needs:
 
 - `RELAYER_PRIVATE_KEY`
 

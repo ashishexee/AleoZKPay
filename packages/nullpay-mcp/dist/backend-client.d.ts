@@ -1,8 +1,7 @@
 import { InvoiceRecord, UserProfile } from './types';
 export declare class NullPayBackendClient {
     private readonly baseUrl;
-    private readonly mcpSecret?;
-    constructor(baseUrl: string, mcpSecret?: string | undefined);
+    constructor(baseUrl: string);
     private buildUrl;
     private request;
     getUserProfile(addressHash: string): Promise<UserProfile | null>;
