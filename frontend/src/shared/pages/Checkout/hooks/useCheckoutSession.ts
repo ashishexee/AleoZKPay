@@ -19,7 +19,7 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
 
         const fetchSession = async () => {
             try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                 const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
 
                 if (!response.ok) {
@@ -89,7 +89,7 @@ export const useCheckoutSession = (sessionId: string | undefined) => {
         // Fallback Polling Mechanism (in case Supabase Realtime requires DB config)
         const intervalId = setInterval(async () => {
             try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                 const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
                 if (response.ok) {
                     const data = await response.json();

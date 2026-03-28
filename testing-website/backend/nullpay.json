@@ -1,0 +1,69 @@
+{
+  "merchant": "aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0",
+  "generated_at": "2026-03-21T09:10:24.522Z",
+  "invoices": [
+    {
+      "name": "basic-credits",
+      "type": "multipay",
+      "amount": 1,
+      "currency": "CREDITS",
+      "label": "",
+      "hash": "7664021527903595739811029883865543677819737978165886360264156266024976498623field",
+      "salt": "52614331032015718501938126549627548436field"
+    },
+    {
+      "name": "basic-usdcx",
+      "type": "multipay",
+      "amount": 1,
+      "currency": "USDCX",
+      "label": "",
+      "hash": "172487944975353648367817000692546933725872947260115217528616500920474419194field",
+      "salt": "189135607550214029684113079727128581168field"
+    },
+    {
+      "name": "basic-usad",
+      "type": "multipay",
+      "amount": 1,
+      "currency": "USAD",
+      "label": "",
+      "hash": "7359104541872534487816737817438034042523131751252774215607308468009702863104field",
+      "salt": "151128218175297042267338577146859040222field"
+    },
+    {
+      "name": "support-credits",
+      "type": "donation",
+      "amount": null,
+      "currency": "CREDITS",
+      "label": "rbfrf",
+      "hash": "7208500895850932194458740596507608915968939145754280360135811092707099008953field",
+      "salt": "96136673549378005530323218002257920088field"
+    },
+    {
+      "name": "support-usdcx",
+      "type": "donation",
+      "amount": null,
+      "currency": "USDCX",
+      "label": "eehv",
+      "hash": "2590914730766963507394992595272982383497114662287240351169436936540193162761field",
+      "salt": "257595820779141311030044177787402661899field"
+    },
+    {
+      "name": "support-usad",
+      "type": "donation",
+      "amount": null,
+      "currency": "USAD",
+      "label": "dfbg",
+      "hash": "4121829454522004339493880196275856472657325915065122859210963993913754488335field",
+      "salt": "212284897081015724148454908028771401608field"
+    },
+    {
+      "name": "support-any",
+      "type": "donation",
+      "amount": null,
+      "currency": "ANY",
+      "label": "dsfbh",
+      "hash": "3890137687796658966791726479363108149438945720273892520625084409687425161623field",
+      "salt": "64965075528395375647972437556920314428field"
+    }
+  ]
+}

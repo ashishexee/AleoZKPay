@@ -1,4 +1,4 @@
-# NullPay MCP
+# @nullpay/mcp
 
 NullPay MCP installs a local MCP server for Claude and lets users connect with only their wallet credentials.
 
@@ -18,43 +18,65 @@ Users only need to provide:
 - `NULLPAY_MAIN_PRIVATE_KEY`
 - `NULLPAY_MAIN_PASSWORD`
 
-## Tools
+This server allows AI agents to interact with the NullPay protocol, enabling them to create invoices, track payments, and manage merchant flows directly through chat.
 
-- `login`
-- `create_invoice`
-- `pay_invoice`
-- `get_transaction_info`
+## Features
 
-## Environment
+- **Tool-based Interaction**: Exposes tools for creating NullPay invoices.
+- **Privacy First**: Built on top of the Aleo blockchain with Zero-Knowledge Proofs.
+- **Stdio Transport**: Compatible with MCP clients like Claude Desktop.
 
+<<<<<<< HEAD
 Bundled by NullPay inside the package:
 
 - production backend URL
 - public NullPay base URL
 - Provable API key
 - Provable consumer ID
+=======
+## Installation
 
-Optional main-wallet credentials for record-backed transaction lookup and automated main-wallet payments:
+```bash
+npm install @nullpay/mcp
+```
+>>>>>>> d9f1e889642be9d505997c05254a668cd19b13de
 
-- `NULLPAY_MAIN_ADDRESS`
-- `NULLPAY_MAIN_PASSWORD`
-- `NULLPAY_MAIN_PRIVATE_KEY`
+## Usage
 
-`NULLPAY_MAIN_PVT_KEY` is also accepted as a legacy alias for the private key.
+### As an MCP Server
 
+Add the following to your MCP client configuration (e.g., `claude_desktop_config.json`):
+
+<<<<<<< HEAD
 When Claude launches the MCP server, it also loads env values from these files if present:
+=======
+```json
+{
+  "mcpServers": {
+    "nullpay": {
+      "command": "npx",
+      "args": ["-y", "@nullpay/mcp"],
+      "env": {
+        "NULLPAY_BACKEND_URL": "https://your-api.com/api",
+        "NULLPAY_MCP_SHARED_SECRET": "your-secret"
+      }
+    }
+  }
+}
+```
+>>>>>>> d9f1e889642be9d505997c05254a668cd19b13de
 
-- `packages/nullpay-mcp/.env`
-- repo-root `.env`
-- `backend/.env`
+## Configuration
 
+<<<<<<< HEAD
 For relayed invoice creation and sponsored execution, the backend still needs:
+=======
+The server requires the following environment variables:
+>>>>>>> d9f1e889642be9d505997c05254a668cd19b13de
 
-- `RELAYER_PRIVATE_KEY`
+- `NULLPAY_BACKEND_URL`: The base URL of your NullPay backend instance.
+- `NULLPAY_MCP_SHARED_SECRET`: A shared secret to authenticate with the backend.
 
-## Notes
+## License
 
-- Burner wallet private keys remain encrypted at rest in the existing `users` table.
-- The MCP server decrypts burner keys only in memory during payment execution.
-- If `NULLPAY_MAIN_PRIVATE_KEY` is available, the MCP server can fetch invoice amounts from main-wallet records and pay invoices from the main wallet without exposing that key to the model.
-- If the main private key is not available, the MCP server still allows login and invoice creation, and it prompts the user to add the env var for record-backed amount lookup and automated main-wallet payments.
+MIT

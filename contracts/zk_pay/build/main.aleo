@@ -56,20 +56,6 @@ struct InvoiceData:
     token_type as u8;
     wallet_type as u8;
 
-struct MerkleProof:
-    siblings as [field; 16u32];
-    leaf_index as u32;
-
-struct WalletEcdsaSigner:
-    wallet_id as address;
-    ecdsa_signer as [u8; 20u32];
-
-struct AdminOp:
-    op as u8;
-    threshold as u8;
-    aleo_signer as address;
-    ecdsa_signer as [u8; 20u32];
-
 mapping invoices:
     key as field.public;
     value as InvoiceData.public;
@@ -357,7 +343,7 @@ function pay_invoice_usdcx:
     input r3 as field.private;
     input r4 as field.private;
     input r5 as field.public;
-    input r6 as [MerkleProof; 2u32].private;
+    input r6 as [test_usdcx_stablecoin.aleo/MerkleProof; 2u32].private;
     call test_usdcx_stablecoin.aleo/transfer_private r1 r2 r0 r6 into r7 r8 r9 r10;
     cast r1 into r11 as field;
     cast r2 into r12 as field;
@@ -414,7 +400,7 @@ function pay_invoice_usad:
     input r3 as field.private;
     input r4 as field.private;
     input r5 as field.public;
-    input r6 as [MerkleProof; 2u32].private;
+    input r6 as [test_usad_stablecoin.aleo/MerkleProof; 2u32].private;
     call test_usad_stablecoin.aleo/transfer_private r1 r2 r0 r6 into r7 r8 r9 r10;
     cast r1 into r11 as field;
     cast r2 into r12 as field;
@@ -471,7 +457,7 @@ function pay_donation_usdcx:
     input r3 as field.private;
     input r4 as field.private;
     input r5 as field.public;
-    input r6 as [MerkleProof; 2u32].private;
+    input r6 as [test_usdcx_stablecoin.aleo/MerkleProof; 2u32].private;
     call test_usdcx_stablecoin.aleo/transfer_private r1 r2 r0 r6 into r7 r8 r9 r10;
     cast r1 into r11 as field;
     hash.bhp256 r11 into r12 as field;
@@ -529,7 +515,7 @@ function pay_donation_usad:
     input r3 as field.private;
     input r4 as field.private;
     input r5 as field.public;
-    input r6 as [MerkleProof; 2u32].private;
+    input r6 as [test_usad_stablecoin.aleo/MerkleProof; 2u32].private;
     call test_usad_stablecoin.aleo/transfer_private r1 r2 r0 r6 into r7 r8 r9 r10;
     cast r1 into r11 as field;
     hash.bhp256 r11 into r12 as field;

@@ -15,7 +15,6 @@ export const GiftCardsPage: React.FC = () => {
 
     return (
         <div className="w-full max-w-2xl mx-auto px-4 pt-10 pb-20 relative min-h-screen">
-            {/* Background blobs */}
             <div className="fixed inset-0 pointer-events-none z-0 opacity-30">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
                 <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />
@@ -42,7 +41,7 @@ export const GiftCardsPage: React.FC = () => {
                 transition={{ duration: 0.5 }}
                 className="flex flex-col items-center justify-center text-center mb-12"
             >
-                <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-tight text-white">
+                <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-tight !text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                     Private{' '}
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">
                         Gift Cards
@@ -51,6 +50,14 @@ export const GiftCardsPage: React.FC = () => {
                 <p className="text-gray-400 text-sm leading-relaxed max-w-sm mb-6">
                     Create zero-knowledge private gift cards or redeem one straight to your wallet — all on-chain.
                 </p>
+                <div className="max-w-xl rounded-2xl border border-orange-400/20 bg-orange-500/10 px-5 py-4 text-left">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-orange-300 mb-2">
+                        Sponsored By NullPay
+                    </p>
+                    <p className="text-sm text-white/80 leading-relaxed">
+                        Redeeming a gift card and paying directly from a gift card use NullPay&apos;s relayer sponsorship flow. Proofs stay local, while NullPay can cover the network fee for supported redeem and gift-card checkout actions.
+                    </p>
+                </div>
             </motion.div>
 
             {/* Tab bar */}

@@ -6,6 +6,8 @@ import * as path from 'path';
 export interface NullPayConfig {
     secretKey: string;
     baseURL?: string;
+    projectRoot?: string;
+    configPath?: string;
 }
 
 // ── nullpay.json types ─────────────────────────────────────────────────────
@@ -27,9 +29,8 @@ export interface NullPayJson {
 }
 
 
-export function loadNullPayConfig(projectRoot?: string): NullPayJson | null {
-    const root = projectRoot || process.cwd();
-    const filePath = path.join(root, 'nullpay.json');
+export function loadNullPayConfig(projectRoot?: string, configPath?: string): NullPayJson | null {
+    const filePath = configPath || path.join(projectRoot || process.cwd(), 'nullpay.json');
     if (!fs.existsSync(filePath)) return null;
     try {
         const raw = fs.readFileSync(filePath, 'utf-8');
@@ -75,13 +76,17 @@ export interface WebhookEvent {
 export class NullPay {
     private secretKey: string;
     private baseURL: string;
+    private projectRoot?: string;
+    private configPath?: string;
 
     constructor(config: NullPayConfig) {
         if (!config.secretKey) {
             throw new Error("NullPay API Key is required.");
         }
         this.secretKey = config.secretKey;
-        this.baseURL = config.baseURL || 'https://null-pay-rs8i.vercel.app/api';
+        this.baseURL = config.baseURL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+        this.projectRoot = config.projectRoot;
+        this.configPath = config.configPath;
     }
 
     /**
@@ -92,8 +97,11 @@ export class NullPay {
          * Returns all invoices from nullpay.json, or throws if the file is missing.
          */
         getAll: (): NullPayInvoice[] => {
-            const config = loadNullPayConfig();
-            if (!config) throw new Error('nullpay.json not found. Run "nullpay sdk onboard" first.');
+            const config = loadNullPayConfig(this.projectRoot, this.configPath);
+            if (!config) {
+                const resolvedPath = this.configPath || path.join(this.projectRoot || process.cwd(), 'nullpay.json');
+                throw new Error(`nullpay.json not found at ${resolvedPath}. Run "nullpay sdk onboard" first or pass projectRoot/configPath to the SDK.`);
+            }
             return config.invoices;
         },
         /**

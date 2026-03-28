@@ -49,8 +49,8 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ merchantStats, loadingRe
             </GlassCard>
 
             <GlassCard className="p-6 flex flex-col justify-center group hover:border-white/20 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-neon-primary/10 rounded-bl-full -z-10 transition-transform group-hover:scale-110" />
-                <span className="text-[10px] font-bold text-neon-primary uppercase tracking-widest mb-3 block">Burner Volume</span>
+                <div className="absolute top-0 right-0 w-16 h-16 bg-orange-500/10 rounded-bl-full -z-10 transition-transform group-hover:scale-110" />
+                <span className="text-[10px] font-bold uppercase tracking-widest mb-3 block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500">Burner Volume</span>
                 {(loadingReceipts || loadingBurner) ? (
                     <Shimmer className="h-10 w-24 bg-white/5 rounded-md" />
                 ) : (

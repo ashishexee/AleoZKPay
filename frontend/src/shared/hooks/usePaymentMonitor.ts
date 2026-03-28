@@ -4,6 +4,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { createClient } from '@supabase/supabase-js';
 import { PROGRAM_ID, parseMerchantReceipt } from '../utils/aleo-utils';
 import { hashAddress } from '../utils/crypto';
+import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -47,6 +48,7 @@ function formatAmount(amountRaw: number | string | null | undefined, isMicro: bo
 
 export const usePaymentMonitor = () => {
     const { address: publicKey, requestRecords, decrypt } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
 
     const notifiedInvoices = useRef<Set<string>>(new Set());
     const lastSoundPlayed = useRef<Map<string, number>>(new Map());
@@ -96,6 +98,7 @@ export const usePaymentMonitor = () => {
                 }
             }
         } catch (error) {
+            handleWalletError(error);
             console.warn('Failed to fetch on-chain records:', error);
         }
         return null;

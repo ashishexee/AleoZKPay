@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getTokenLabel } from './tokens';
 
 interface InvoiceItem {
     name: string;
@@ -22,7 +23,6 @@ interface InvoicePdfData {
     donations?: { credits: number; usdcx: number; usad: number };
 }
 
-const TOKEN_LABELS: Record<number, string> = { 0: 'Credits', 1: 'USDCx', 2: 'USAD' };
 const TYPE_LABELS: Record<number, string> = { 0: 'Standard', 1: 'Multi-Pay', 2: 'Donation' };
 const WALLET_LABELS: Record<number, string> = { 0: 'Main Wallet', 1: 'Burner Wallet' };
 
@@ -134,7 +134,7 @@ export async function generateInvoicePdf(invoice: InvoicePdfData): Promise<void>
 
     // Row 2
     drawDetail(detailsLeft, labelY + lineH, 'Type', TYPE_LABELS[invoice.invoiceType] || 'Standard');
-    drawDetail(detailsRight, labelY + lineH, 'Token', TOKEN_LABELS[invoice.tokenType] || 'Credits');
+    drawDetail(detailsRight, labelY + lineH, 'Token', getTokenLabel(invoice.tokenType, invoice.invoiceType));
 
     // Row 3
     drawDetail(detailsLeft, labelY + lineH * 2, 'Wallet', WALLET_LABELS[invoice.walletType] || 'Main');
@@ -230,7 +230,7 @@ export async function generateInvoicePdf(invoice: InvoicePdfData): Promise<void>
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
         doc.setTextColor(...NEON);
-        const amountStr = `${invoice.amount} ${TOKEN_LABELS[invoice.tokenType] || 'Credits'}`;
+        const amountStr = `${invoice.amount} ${getTokenLabel(invoice.tokenType, invoice.invoiceType)}`;
         doc.text(amountStr, pageWidth - margin - 8, y + 15, { align: 'right' });
         y += 30;
     }

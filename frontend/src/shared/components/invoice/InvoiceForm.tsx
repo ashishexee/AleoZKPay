@@ -4,6 +4,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { InvoiceType } from '../../hooks/useCreateInvoice';
 import { InvoiceItem } from '../../types/invoice';
+import { getTokenLabel } from '../../utils/tokens';
 
 interface InvoiceFormProps {
     amount: number | '';
@@ -69,7 +70,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         <button
                             onClick={() => {
                                 setInvoiceType('standard');
-                                if (tokenType === 3) setTokenType(0);
                             }}
                             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
                                 ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
@@ -81,7 +81,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         <button
                             onClick={() => {
                                 setInvoiceType('multipay');
-                                if (tokenType === 3) setTokenType(0);
                             }}
                             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
                                 ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
@@ -237,7 +236,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
                 {invoiceType !== 'donation' && (
                     <Input
-                        label={`Amount (${tokenType === 0 ? 'Credits' : tokenType === 1 ? 'USDCx' : 'USAD'})`}
+                        label={`Amount (${getTokenLabel(tokenType, invoiceType === 'multipay' ? 1 : 0)})`}
                         type="number"
                         placeholder="0.00"
                         value={amount}

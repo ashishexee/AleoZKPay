@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
+import { DocsChatbot } from '../../../shared/components/DocsChatbot';
 
 import { pageVariants, staggerContainer, fadeInUp } from '../../../shared/utils/animations';
 
@@ -67,7 +68,7 @@ const Docs = () => {
                         Technical <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Documentation</span>
                     </h1>
                     <p className="text-gray-300 text-lg md:text-xl max-w-3xl leading-relaxed">
-                        Complete technical specification of the NullPay zero-knowledge payment protocol.
+                        Technical specification of the NullPay ZK payment protocol.
                     </p>
                 </motion.div>
 
@@ -1076,13 +1077,19 @@ function decrypt(text) {
                                 <CodeBlock
                                     title="Initialize the SDK"
                                     language="typescript"
-                                    code={`import { NullPay } from '@nullpay/node';
+                                    code={`import path from 'path';
+import { NullPay } from '@nullpay/node';
 
 const nullpay = new NullPay({
     secretKey: process.env.NULLPAY_SECRET_KEY,  // From your NullPay merchant dashboard
-    baseURL: 'https://null-pay-rs8i.vercel.app/api'  // Optional: defaults to production
+    baseURL: 'https://nullpay-backend-ib5q4.ondigitalocean.app/api',  // Optional: defaults to production
+    projectRoot: __dirname, // Recommended on Vercel/serverless
+    configPath: path.join(__dirname, 'nullpay.json')
 });`}
                                 />
+                                <p className="text-gray-500 text-xs mt-3 leading-relaxed">
+                                    If your backend uses <code className="text-neon-primary">nullpay.json</code> on Vercel or another serverless runtime, pass <code className="text-neon-primary">projectRoot</code> and <code className="text-neon-primary">configPath</code> so the SDK resolves the file from the exact backend folder instead of relying on <code className="text-neon-primary">process.cwd()</code>.
+                                </p>
 
                                 <h3 className="text-xl font-bold text-neon-accent mb-4 mt-8">Creating a Checkout Session</h3>
                                 <p className="text-gray-400 text-sm mb-4">
@@ -1125,7 +1132,11 @@ console.log(session.salt);`}
                                     code={`import express from 'express';
 import { NullPay } from '@nullpay/node';
 
-const nullpay = new NullPay({ secretKey: process.env.NULLPAY_SECRET_KEY });
+const nullpay = new NullPay({
+    secretKey: process.env.NULLPAY_SECRET_KEY,
+    projectRoot: __dirname,
+    configPath: path.join(__dirname, 'nullpay.json')
+});
 const app = express();
 
 // IMPORTANT: Use raw body parser for webhook signature verification
@@ -1264,6 +1275,7 @@ app.post('/webhook/nullpay', express.raw({ type: 'application/json' }), (req, re
                     )}
                 </div>
             </motion.div>
+            <DocsChatbot mode="docs" />
         </motion.div>
     );
 };

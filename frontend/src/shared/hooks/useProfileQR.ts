@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../utils/aleo-utils';
+import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { useBurnerWallet } from './BurnerWalletProvider';
 import { updateUserProfile, getUserProfile, createInvoice, fetchInvoiceByHash } from '../services/api';
 import { encryptWithPassword, hashAddress } from '../utils/crypto';
@@ -53,19 +54,18 @@ export const useProfileQR = () => {
         const salt = generateSalt();
         const merchantAddress = isBurner && burnerAddress ? burnerAddress : address;
         
-        // Donation type is 2 (open ended)
-        const typeInput = '2u8'; 
-        const amountInput = '0u128'; // create_invoice_any used for profile, accepting any token
+        const typeInput = '2u8';
+        const amountInput = '0u128';
         const functionName = 'create_invoice_any';
         
         const inputs = [
             merchantAddress,
             amountInput,
             salt,
-            '0field', // memo
-            '0u32', // expiry
+            '0field',
+            '0u32',
             typeInput,
-            isBurner ? '1u8' : '0u8' // walletType
+            isBurner ? '1u8' : '0u8'
         ];
 
         const transaction: TransactionOptions = {
@@ -76,73 +76,115 @@ export const useProfileQR = () => {
             privateFee: false
         };
 
-        const result = await executeTransaction(transaction);
+        const result = await executeWithShieldRetry(
+            () => executeTransaction(transaction),
+            { onRetry: () => setStatus('Shield Wallet gave no response. Retrying profile QR invoice request...') }
+        );
+
         let finalTxId: string = result?.transactionId || '';
         if (!finalTxId) throw new Error("Failed to get transaction ID");
 
         setStatus(`Waiting for ${isBurner ? 'Burner' : 'Main'} invoice confirmation...`);
 
-        // Polling
+        // PHASE 1: Poll transactionStatus for up to 4 minutes (2s interval × 120 attempts)
         let isPending = true;
         let attempts = 0;
         let hash: string | null = null;
-        
+
         while (isPending && attempts < 120) {
             attempts++;
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 2000));
             try {
                 const statusRes: any = await transactionStatus(finalTxId);
-                const currentStatus = typeof statusRes === 'string' ? statusRes.toLowerCase() : statusRes?.status?.toLowerCase();
-                
+                const currentStatus = typeof statusRes === 'string'
+                    ? statusRes.toLowerCase()
+                    : statusRes?.status?.toLowerCase();
+
                 if (statusRes?.transactionId) finalTxId = statusRes.transactionId;
+
+                // Try to extract hash from the status response itself
                 if (statusRes?.execution?.transitions?.[0]?.outputs?.[0]?.value) {
                     hash = statusRes.execution.transitions[0].outputs[0].value;
                 }
 
                 if (currentStatus === 'completed' || currentStatus === 'finalized' || currentStatus === 'accepted') {
                     isPending = false;
-                    
-                    if (!hash) {
-                        try { hash = await getInvoiceHashFromMapping(salt); } catch (e) { }
-                    }
-                    if (!hash) {
-                        try {
-                            const res = await fetch(`https://api.explorer.aleo.org/v1/testnet3/transaction/${finalTxId.replace(/['"]+/g, '').trim()}`);
-                            const data = await res.json();
-                            if (data?.execution?.transitions?.[0]?.outputs?.[0]?.value) {
-                                hash = data.execution.transitions[0].outputs[0].value;
-                            }
-                        } catch (e) { }
-                    }
-                    if (!hash) throw new Error("Could not retrieve Invoice Hash");
-
-                    const encryptedMerchant = await encryptWithPassword(address, appPassword);
-                    const merchantHash = await hashAddress(address);
-                    const encryptedDesignated = await encryptWithPassword(merchantAddress, appPassword);
-
-                    // Save to backend invoices table
-                    await createInvoice({
-                        invoice_hash: hash,
-                        merchant_address: encryptedMerchant,
-                        merchant_address_hash: merchantHash,
-                        designated_address: encryptedDesignated,
-                        status: 'PENDING',
-                        invoice_transaction_id: finalTxId,
-                        salt,
-                        invoice_type: 2, // Donation
-                        token_type: 3, // ANY
-                        is_burner: isBurner,
-                    });
-                    
-                    return { hash, salt };
-                } else if (currentStatus !== 'pending' && currentStatus !== 'processing' && currentStatus !== 'submitted') {
-                    throw new Error(`Transaction failed: ${currentStatus}`);
+                    break;
+                } else if (
+                    currentStatus &&
+                    currentStatus !== 'pending' &&
+                    currentStatus !== 'processing' &&
+                    currentStatus !== 'submitted'
+                ) {
+                    // Some unknown/terminal status — stop polling, try recovery below
+                    console.warn('[ProfileQR] Unexpected tx status, attempting recovery:', currentStatus);
+                    isPending = false;
+                    break;
                 }
             } catch (e: any) {
-               console.warn(e);
+                // Network/polling error — log and keep trying. Don't abort.
+                console.warn(`[ProfileQR] Status poll attempt ${attempts} failed:`, e?.message);
             }
         }
-        throw new Error("Timeout waiting for transaction confirmation");
+
+        // PHASE 2: Recover hash via all available methods regardless of how polling ended
+        if (!hash) {
+            try {
+                hash = await getInvoiceHashFromMapping(salt);
+                console.log('[ProfileQR] Hash recovered from on-chain mapping:', hash);
+            } catch (e) {
+                console.warn('[ProfileQR] Mapping lookup failed:', e);
+            }
+        }
+
+        if (!hash) {
+            try {
+                const cleanTxId = finalTxId.replace(/['"\s]+/g, '').trim();
+                const endpoints = [
+                    `https://api.explorer.aleo.org/v1/testnet/transaction/${cleanTxId}`,
+                    `https://api.explorer.aleo.org/v1/testnet3/transaction/${cleanTxId}`,
+                ];
+                for (const url of endpoints) {
+                    try {
+                        const res = await fetch(url);
+                        if (!res.ok) continue;
+                        const data = await res.json();
+                        const val = data?.execution?.transitions?.[0]?.outputs?.[0]?.value;
+                        if (val) {
+                            hash = val;
+                            console.log('[ProfileQR] Hash recovered from explorer API:', hash);
+                            break;
+                        }
+                    } catch (e) { /* try next endpoint */ }
+                }
+            } catch (e) {
+                console.warn('[ProfileQR] Explorer fetch failed:', e);
+            }
+        }
+
+        if (!hash) {
+            throw new Error("Could not retrieve Invoice Hash. Transaction may still be processing. Please try again in a moment.");
+        }
+
+        // PHASE 3: Save to backend
+        const encryptedMerchant = await encryptWithPassword(address, appPassword);
+        const merchantHash = await hashAddress(address);
+        const encryptedDesignated = await encryptWithPassword(merchantAddress, appPassword);
+
+        await createInvoice({
+            invoice_hash: hash,
+            merchant_address: encryptedMerchant,
+            merchant_address_hash: merchantHash,
+            designated_address: encryptedDesignated,
+            status: 'PENDING',
+            invoice_transaction_id: finalTxId,
+            salt,
+            invoice_type: 2,
+            token_type: 3,
+            is_burner: isBurner,
+        });
+
+        return { hash, salt };
     };
 
     const initializeQRs = async () => {
@@ -174,7 +216,6 @@ export const useProfileQR = () => {
             
             setStatus("Saving your Profile QR details...");
             
-            // Only update backend if something was newly generated
             if (!mainHash || (!burnerHash && burnerAddress)) {
                 if (!appPassword) throw new Error("Password missing for profile update");
                 const currentEncryptedMain = userProfileMainAddress || await encryptWithPassword(address, appPassword);

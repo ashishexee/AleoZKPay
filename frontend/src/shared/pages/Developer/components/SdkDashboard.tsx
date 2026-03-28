@@ -18,6 +18,8 @@ import { VerifyModal } from '../../Profile/components/modals/VerifyModal';
 import { PaymentHistoryModal } from '../../Profile/components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from '../../Profile/components/modals/ReceiptHashesModal';
 import toast from 'react-hot-toast';
+import { executeWithShieldRetry } from '../../../utils/shieldRetry';
+import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
 
 type SdkDashboardInvoice = InvoiceRecord & {
     status: string | number;
@@ -156,6 +158,7 @@ const SdkReceiptsTable = ({
 
 export const SdkDashboard: React.FC = () => {
     const { address: publicKey, requestRecords, decrypt, executeTransaction } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
     const [transactions, setTransactions] = useState<Invoice[]>([]);
     const [createdInvoices, setCreatedInvoices] = useState<InvoiceRecord[]>([]);
     const [merchantReceipts, setMerchantReceipts] = useState<MerchantReceipt[]>([]);
@@ -243,6 +246,7 @@ export const SdkDashboard: React.FC = () => {
 
             setCreatedInvoices(validInvoices.reverse());
         } catch (error) {
+            handleWalletError(error);
             console.error('Error fetching SDK created invoices', error);
             setCreatedInvoices([]);
         } finally {
@@ -286,6 +290,7 @@ export const SdkDashboard: React.FC = () => {
 
             setMerchantReceipts(validReceipts.reverse());
         } catch (error) {
+            handleWalletError(error);
             console.error('Error fetching SDK merchant receipts', error);
             setMerchantReceipts([]);
         } finally {
@@ -458,6 +463,7 @@ export const SdkDashboard: React.FC = () => {
                 setVerifyStatus('NOT_FOUND');
             }
         } catch (error) {
+            handleWalletError(error);
             console.error('SDK receipt verification failed', error);
             setVerifyStatus('ERROR');
         }
@@ -482,8 +488,12 @@ export const SdkDashboard: React.FC = () => {
                 privateFee: false
             };
 
-            const result = await executeTransaction(transaction);
+            const result = await executeWithShieldRetry(
+                () => executeTransaction(transaction),
+                { onRetry: () => toast.loading('Shield Wallet gave no response. Retrying settlement...', { id: 'shield-sdk-settle-retry' }) }
+            );
             if (result && result.transactionId) {
+                toast.dismiss('shield-sdk-settle-retry');
                 await updateInvoiceStatus(invoice.invoiceHash, { status: 'SETTLED' });
                 setTimeout(() => {
                     fetchSdkTransactions();
@@ -492,6 +502,8 @@ export const SdkDashboard: React.FC = () => {
                 }, 2000);
             }
         } catch (error: any) {
+            toast.dismiss('shield-sdk-settle-retry');
+            handleWalletError(error);
             console.error('SDK settlement failed', error);
             toast.error(`Failed to settle invoice: ${error.message || 'Unknown error'}`);
         } finally {

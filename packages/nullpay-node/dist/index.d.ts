@@ -1,6 +1,8 @@
 export interface NullPayConfig {
     secretKey: string;
     baseURL?: string;
+    projectRoot?: string;
+    configPath?: string;
 }
 export interface NullPayInvoice {
     name: string;
@@ -16,7 +18,7 @@ export interface NullPayJson {
     generated_at: string;
     invoices: NullPayInvoice[];
 }
-export declare function loadNullPayConfig(projectRoot?: string): NullPayJson | null;
+export declare function loadNullPayConfig(projectRoot?: string, configPath?: string): NullPayJson | null;
 export interface CreateCheckoutSessionParams {
     amount?: number;
     currency?: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
@@ -48,6 +50,8 @@ export interface WebhookEvent {
 export declare class NullPay {
     private secretKey;
     private baseURL;
+    private projectRoot?;
+    private configPath?;
     constructor(config: NullPayConfig);
     /**
      * Helpers for reading and querying the local nullpay.json config.

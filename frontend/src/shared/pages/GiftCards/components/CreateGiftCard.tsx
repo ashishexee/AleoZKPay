@@ -5,11 +5,14 @@ import { PrivateKey } from '@provablehq/sdk';
 import { Copy, CheckCircle2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FloatingGiftCard } from './FloatingGiftCard';
+import { executeWithShieldRetry } from '../../../utils/shieldRetry';
+import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
 
 const toHex = (str: string) => Array.from(new TextEncoder().encode(str)).map(b => b.toString(16).padStart(2, '0')).join('');
 
 export const CreateGiftCard: React.FC = () => {
     const { address, executeTransaction, transactionStatus, requestRecords, decrypt } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
     const [amounts, setAmounts] = useState({ ALEO: '', USDCx: '', USAD: '' });
     const [isGenerating, setIsGenerating] = useState(false);
     const [step, setStep] = useState<'INPUT' | 'FUNDING' | 'SUCCESS'>('INPUT');
@@ -133,7 +136,10 @@ export const CreateGiftCard: React.FC = () => {
                     privateFee: false
                 };
 
-                const result = await executeTransaction(tx);
+                const result = await executeWithShieldRetry(
+                    () => executeTransaction(tx),
+                    { onRetry: () => setFundingStatus(`Shield Wallet gave no response. Retrying ${asset.symbol} funding request...`) }
+                );
                 if (!result || !result.transactionId) {
                     throw new Error(`Transaction failed for ${asset.symbol}`);
                 }
@@ -166,6 +172,7 @@ export const CreateGiftCard: React.FC = () => {
             toast.success('Gift Card created successfully!');
 
         } catch (error: any) {
+            handleWalletError(error);
             console.error(error);
             toast.error(error.message || 'Failed to generate gift card.');
             setStep('INPUT');

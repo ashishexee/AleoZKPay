@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
@@ -6,7 +6,8 @@ import { GlassCard } from '../../../components/ui/GlassCard';
 import { Button } from '../../../components/ui/Button';
 import { Shimmer } from '../../../components/ui/Shimmer';
 import { CheckoutSession } from '../types';
-import { FloatingGiftCard } from '../../GiftCards/components/FloatingGiftCard';
+import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPrompt';
+import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../utils/tokens';
 
 interface CheckoutUIProps {
     session: CheckoutSession | null;
@@ -19,6 +20,8 @@ interface CheckoutUIProps {
     success: boolean;
     onPay: (donationAmount?: number, selectedToken?: string) => void;
     onPayWithGiftCard: (giftCode: string, donationAmount?: number, selectedToken?: string) => void;
+    giftCardRedeemOption?: { giftCode: string; availableAmount: number; tokenLabel: string } | null;
+    onRedeemGiftCardBalance: () => void;
 }
 
 export const CheckoutUI: React.FC<CheckoutUIProps> = ({
@@ -30,7 +33,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     paymentLoading,
     success,
     onPay,
-    onPayWithGiftCard
+    onPayWithGiftCard,
+    giftCardRedeemOption,
+    onRedeemGiftCardBalance
 }) => {
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
@@ -41,7 +46,17 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     const [giftCode, setGiftCode] = useState<string>('');
 
     const isDonation = session?.amount === 0;
+    const allowedTokens = session
+        ? getAllowedTokensForInvoice(session.token_type === 'ANY' ? 3 : 0, session.invoice_type)
+        : ['CREDITS', 'USDCX', 'USAD'];
     const displayToken = session?.token_type === 'ANY' ? selectedPayerToken : session?.token_type;
+    const displayTokenLabel = displayToken ? getTokenLabel(getTokenTypeFromCode(displayToken as 'CREDITS' | 'USDCX' | 'USAD')) : 'Tokens';
+
+    useEffect(() => {
+        if (!session || session.token_type !== 'ANY') return;
+        const nextToken = allowedTokens[0] || 'CREDITS';
+        setSelectedPayerToken((current) => allowedTokens.includes(current as any) ? current : nextToken);
+    }, [session, allowedTokens.join(',')]);
 
     const paymentLink = typeof window !== 'undefined' && session ? (() => {
         const amtStr = isDonation && donationAmount ? `${Math.round(parseFloat(donationAmount) * 1_000_000)}` : `${Math.round(session.amount * 1_000_000)}`;
@@ -143,12 +158,12 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 placeholder="0.00"
                                                 className="w-full bg-black/40 border-2 border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-4xl font-black tracking-tighter text-white p-3 pr-16 text-right transition-colors"
                                             />
-                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500 uppercase">{displayToken === 'ANY' ? '' : displayToken}</span>
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500 uppercase">{displayToken === 'ANY' ? '' : displayTokenLabel}</span>
                                         </div>
                                     </div>
                                 ) : (
                                     <p className="text-4xl font-black text-white tracking-tighter mb-1">
-                                        {session.amount} <span className="text-sm font-medium text-gray-500">{displayToken}</span>
+                                        {session.amount} <span className="text-sm font-medium text-gray-500">{displayTokenLabel}</span>
                                     </p>
                                 )}
                                 
@@ -160,9 +175,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             onChange={(e) => setSelectedPayerToken(e.target.value)}
                                             className="w-full max-w-[200px] bg-black/40 border-2 border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-lg font-bold text-white p-3 transition-colors text-center"
                                         >
-                                            <option value="CREDITS">Aleo Credits</option>
-                                            <option value="USDCX">USDCx</option>
-                                            <option value="USAD">USAD</option>
+                                            {allowedTokens.map((token) => (
+                                                <option key={token} value={token}>{token === 'CREDITS' ? 'Aleo Credits' : token === 'USDCX' ? 'USDCx' : 'USAD'}</option>
+                                            ))}
                                         </select>
                                     </div>
                                 )}
@@ -171,13 +186,21 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                             {/* Invoice Details */}
                             <div className="pt-6 pb-6 border-b border-white/10">
                                 <div className="flex justify-center mb-6">
-                                    <div className="p-3 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                    <div className="relative p-3 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                                         <QRCodeSVG
                                             value={paymentLink}
                                             size={140}
                                             level="H"
                                             includeMargin={false}
                                         />
+                                        <div className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg bg-white p-1 shadow-[0_6px_18px_rgba(0,0,0,0.18)]">
+                                            <img
+                                                src="/assets/nullpay_logo.png"
+                                                alt="NullPay"
+                                                className="h-full w-full object-contain"
+                                                style={{ filter: 'brightness(0)' }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -287,7 +310,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                 </div>
 
                                 {paymentMethod === 'giftcard' && (
-                                    <div className="mb-4 animate-fade-in">
+                                    <div className="mb-4 animate-fade-in space-y-4">
                                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Gift Card Code</label>
                                         <input
                                             type="text"
@@ -296,6 +319,15 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             placeholder="gift-..."
                                             className="w-full bg-black/40 border border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors tracking-widest text-center shadow-inner"
                                         />
+                                        {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (
+                                            <GiftCardRedeemPrompt
+                                                availableAmount={giftCardRedeemOption.availableAmount}
+                                                tokenLabel={giftCardRedeemOption.tokenLabel}
+                                                walletConnected={Boolean(publicKey)}
+                                                loading={paymentLoading}
+                                                onRedeem={onRedeemGiftCardBalance}
+                                            />
+                                        )}
                                     </div>
                                 )}
 
@@ -317,7 +349,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 Processing on-chain...
                                             </span>
                                         ) : (
-                                            isDonation ? `Pay ${donationAmount || '0'} ${displayToken}` : `Pay ${session.amount} ${displayToken}`
+                                            isDonation ? `Pay ${donationAmount || '0'} ${displayTokenLabel}` : `Pay ${session.amount} ${displayTokenLabel}`
                                         )}
                                     </Button>
                                 )}

@@ -4,6 +4,7 @@ import StatusBadge from '../../../components/StatusBadge';
 import { LinkButton } from '../../../components/ui/LinkButton';
 import { CopyButton } from '../../../components/ui/CopyButton';
 import { generateInvoicePdf } from '../../../utils/generateInvoicePdf';
+import { getTokenLabel } from '../../../utils/tokens';
 
 interface InvoiceTableProps {
     invoices: any[];
@@ -106,6 +107,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
 
                             if (inv.tokenType === 1) paymentParams.append('token', 'usdcx');
                             if (inv.tokenType === 2) paymentParams.append('token', 'usad');
+                            if (inv.tokenType === 3) paymentParams.append('token', 'any');
                             if (inv.invoiceType === 1) paymentParams.append('type', 'multipay');
                             if (inv.invoiceType === 2) paymentParams.append('type', 'donation');
 
@@ -146,13 +148,13 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                                 {inv.donations?.usdcx > 0 && <span className="text-xs font-bold text-white">{inv.donations.usdcx} <span className="text-[10px] text-gray-500 uppercase">USDCx</span></span>}
                                                 {inv.donations?.usad > 0 && <span className="text-xs font-bold text-white">{inv.donations.usad} <span className="text-[10px] text-gray-500 uppercase">USAD</span></span>}
                                                 {(!inv.donations || (inv.donations.credits === 0 && inv.donations.usdcx === 0 && inv.donations.usad === 0)) && (
-                                                    <span className="font-bold text-gray-500">0 <span className="text-[10px] text-gray-600 uppercase">{inv.tokenType === 0 ? 'Credits' : inv.tokenType === 1 ? 'USDCx' : inv.tokenType === 2 ? 'USAD' : 'ANY'}</span></span>
+                                                    <span className="font-bold text-gray-500">0 <span className="text-[10px] text-gray-600 uppercase">{getTokenLabel(inv.tokenType, inv.invoiceType)}</span></span>
                                                 )}
                                             </div>
                                         ) : (
                                             <div className="flex flex-col items-center">
                                                 <span className="font-bold text-white">{inv.amount}</span>
-                                                <span className="text-[10px] text-gray-500 uppercase">{inv.tokenType === 0 ? 'Credits' : inv.tokenType === 1 ? 'USDCx' : 'USAD'}</span>
+                                                <span className="text-[10px] text-gray-500 uppercase">{getTokenLabel(inv.tokenType, inv.invoiceType)}</span>
                                             </div>
                                         )}
                                     </td>

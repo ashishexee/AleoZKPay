@@ -24,7 +24,7 @@ program test_usdcx_stablecoin.aleo {
         public recipient: address,
         public amount: u128,
         input_record: Token,
-        proofs: [MerkleProof; 2]
+        proofs: [test_usdcx_stablecoin.aleo/MerkleProof; 2]
     ) -> (ComplianceRecord, Token, Token) {
         // Mock body for interface
         return (

@@ -3,19 +3,32 @@ import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
+import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { useWalletErrorHandler } from '../Wallet/WalletErrorBoundary';
 import type { PaymentStep, InvoiceState } from './types';
 import { createClient } from '@supabase/supabase-js';
 import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
+import { getAllowedTokensForInvoice, getTokenTypeFromCode } from '../../utils/tokens';
 
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+interface GiftCardRedeemOption {
+    giftCode: string;
+    availableAmount: number;
+    redeemMicros: number;
+    tokenProgram: string;
+    tokenLabel: string;
+    isCredits: boolean;
+}
+
 export const useSharedPayment = () => {
     const [searchParams] = useSearchParams();
     const { address, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
     const publicKey = address;
     const [invoice, setInvoice] = useState<InvoiceState | null>(null);
     const [donationAmount, setDonationAmount] = useState<string>('');
@@ -29,6 +42,13 @@ export const useSharedPayment = () => {
     const [paymentSecret, setPaymentSecret] = useState<string | null>(null);
     const [receiptHash] = useState<string | null>(null);
     const [receiptSearchFailed, setReceiptSearchFailed] = useState(false);
+    const [giftCardRedeemOption, setGiftCardRedeemOption] = useState<GiftCardRedeemOption | null>(null);
+    const resolveActiveTokenType = (selectedTokenOverride?: number) => {
+        if (!invoice) return 0;
+        if (selectedTokenOverride !== undefined) return selectedTokenOverride;
+        const allowedTokens = getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType);
+        return getTokenTypeFromCode(allowedTokens[0]);
+    };
 
     useEffect(() => {
         const init = async () => {
@@ -39,7 +59,7 @@ export const useSharedPayment = () => {
 
             const memo = searchParams.get('memo') || '';
             const tokenParam = searchParams.get('token');
-            const tokenType = tokenParam === 'usdcx' ? 1 : tokenParam === 'usad' ? 2 : 0;
+            const tokenType = tokenParam === 'usdcx' ? 1 : tokenParam === 'usad' ? 2 : tokenParam === 'any' ? 3 : 0;
             const typeParam = searchParams.get('type');
             let initialType = typeParam === 'donation' ? 2 : (typeParam === 'multipay' ? 1 : 0);
             const sessionId = searchParams.get('session_id');
@@ -201,7 +221,7 @@ export const useSharedPayment = () => {
                         setStatus('Payment Successful! Redirecting...');
                         
                         try {
-                            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                             const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
                             if (response.ok) {
                                 const data = await response.json();
@@ -229,7 +249,7 @@ export const useSharedPayment = () => {
             .subscribe();
         const intervalId = setInterval(async () => {
             try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                 const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
                 if (response.ok) {
                     const data = await response.json();
@@ -329,7 +349,7 @@ export const useSharedPayment = () => {
                         if (invoice?.sessionId) {
                             try {
                                 console.log(`📢 [usePayment] Updating Checkout Session ${invoice.sessionId}`);
-                                const checkoutApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                                const checkoutApiUrl = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                                 await fetch(`${checkoutApiUrl}/checkout/sessions/${invoice.sessionId}`, {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
@@ -366,7 +386,7 @@ export const useSharedPayment = () => {
         try {
             setLoading(true);
 
-            const activeTokenType = selectedTokenOverride !== undefined ? selectedTokenOverride : invoice.tokenType;
+            const activeTokenType = resolveActiveTokenType(selectedTokenOverride);
 
             // Determine Program ID and type suffix based on token type
             let tokenProgramId = 'credits.aleo';
@@ -398,7 +418,10 @@ export const useSharedPayment = () => {
                 privateFee: false
             };
 
-            const result = await executeTransaction(transaction);
+            const result = await executeWithShieldRetry(
+                () => executeTransaction(transaction),
+                { onRetry: () => setStatus('Shield Wallet gave no response. Retrying conversion request...') }
+            );
 
             if (result && result.transactionId) {
                 setConversionTxId(result.transactionId);
@@ -450,6 +473,95 @@ export const useSharedPayment = () => {
         }
     };
 
+    const redeemGiftCardBalance = async () => {
+        if (!invoice || !giftCardRedeemOption) return;
+        if (!publicKey) {
+            setError('Connect your wallet first so we can redeem the gift card balance to it.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+            setStatus(`Redeeming ${giftCardRedeemOption.availableAmount.toFixed(2)} ${giftCardRedeemOption.tokenLabel} to your wallet...`);
+
+            const hex = giftCardRedeemOption.giftCode.replace('gift-', '');
+            const pkStr = fromHex(hex);
+            PrivateKey.from_string(pkStr);
+
+            const host = 'https://api.explorer.provable.com/v1';
+            const networkClient = new AleoNetworkClient(host);
+            const keyProvider = new AleoKeyProvider();
+            keyProvider.useCache(true);
+
+            const scannerSession = await getScannerSession(pkStr);
+            const recordProvider = new NetworkRecordProvider(scannerSession.account, networkClient);
+            const programManager = new ProgramManager(host, keyProvider, recordProvider);
+            programManager.setAccount(scannerSession.account);
+
+            const recordName = giftCardRedeemOption.isCredits ? 'credits' : 'Token';
+            const redeemRecordStr = await findSpendableRecord(
+                scannerSession,
+                giftCardRedeemOption.tokenProgram,
+                recordName,
+                giftCardRedeemOption.redeemMicros,
+                giftCardRedeemOption.isCredits
+            );
+
+            if (!redeemRecordStr) {
+                throw new Error('This gift card balance is split across multiple records. Please redeem it from the Gift Cards page or try a smaller amount.');
+            }
+
+            const amountFormatted = `${giftCardRedeemOption.redeemMicros}${giftCardRedeemOption.isCredits ? 'u64' : 'u128'}`;
+            const functionName = 'transfer_private';
+            let inputs: string[];
+
+            if (giftCardRedeemOption.isCredits) {
+                inputs = [redeemRecordStr, publicKey, amountFormatted];
+            } else {
+                const { getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
+                const { Address } = await import('@provablehq/wasm');
+                const firstIndex = await getFreezeListIndex(0);
+                let index0FieldStr = undefined;
+                if (firstIndex) {
+                    try { index0FieldStr = Address.from_string(firstIndex).toGroup().toXCoordinate().toString(); } catch { }
+                }
+                const proof = await generateFreezeListProof(1, index0FieldStr);
+                const proofsInput = `[${proof}, ${proof}]`;
+                inputs = [publicKey, amountFormatted, redeemRecordStr, proofsInput];
+            }
+
+            const authorization = await programManager.buildAuthorization({
+                programName: giftCardRedeemOption.tokenProgram,
+                functionName,
+                inputs
+            });
+
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+            const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    execution_authorization_string: authorization.toString(),
+                    programName: giftCardRedeemOption.tokenProgram
+                }),
+            });
+            const response = await sponsorRes.json();
+            if (!sponsorRes.ok) throw new Error(response?.error || response?.message || 'Redeem sponsorship failed.');
+
+            const transactionId = response.transaction?.id || response.transactionId || '';
+            setTxId(transactionId);
+            setGiftCardRedeemOption(null);
+            setStatus(`Redeem submitted! NullPay covered the gas fee. Once it settles, switch to Wallet and pay the invoice.`);
+        } catch (err: any) {
+            if (handleWalletError(err)) return;
+            console.error(err);
+            setError(err.message || 'Failed to redeem gift card balance.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const payWithGiftCard = async (giftCode: string, selectedTokenOverride?: number) => {
         if (!invoice) return;
         if (!giftCode.startsWith('gift-')) {
@@ -460,6 +572,7 @@ export const useSharedPayment = () => {
         try {
             setLoading(true);
             setError(null);
+            setGiftCardRedeemOption(null);
             setStatus('Authenticating Gift Card...');
 
             const hex = giftCode.replace('gift-', '');
@@ -471,10 +584,10 @@ export const useSharedPayment = () => {
             const finalAmount = (isDonationType && parsedDonation > 0) ? parsedDonation : invoice.amount;
             if (finalAmount <= 0) throw new Error("Amount must be greater than zero.");
 
-            const activeTokenType = selectedTokenOverride !== undefined ? selectedTokenOverride : invoice.tokenType;
+            const activeTokenType = resolveActiveTokenType(selectedTokenOverride);
 
             let tokenProgram = 'credits.aleo';
-            let tokenName = 'ALEO';
+            let tokenName = 'Credits';
             let amountMicro = Math.round(finalAmount * 1_000_000);
             let typeSuffix = 'u64';
             let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
@@ -507,6 +620,17 @@ export const useSharedPayment = () => {
             const { scanProgramBalance } = await import('../../pages/Profile/components/BurnerWallet/scanner');
             const totalMicros = await scanProgramBalance(scannerSession, tokenProgram, recordName);
             if (totalMicros < amountMicro) {
+                if (!isDonationType && totalMicros > 0) {
+                    setGiftCardRedeemOption({
+                        giftCode,
+                        availableAmount: totalMicros / 1_000_000,
+                        redeemMicros: totalMicros,
+                        tokenProgram,
+                        tokenLabel: tokenName,
+                        isCredits: activeTokenType === 0
+                    });
+                    throw new Error(`This gift card has ${totalMicros / 1_000_000} ${tokenName}. Redeem it to your wallet first, then pay the invoice from Wallet. NullPay covers the redeem gas fee.`);
+                }
                 throw new Error(`Insufficient balance! Your card has ${totalMicros / 1_000_000} ${tokenName}, but you need ${finalAmount} ${tokenName}.`);
             }
             
@@ -550,7 +674,7 @@ export const useSharedPayment = () => {
             });
 
             setStatus('Submitting payment via DPS Relayer...');
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
             const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -567,6 +691,7 @@ export const useSharedPayment = () => {
             pollTransaction(transactionId);
 
         } catch (err: any) {
+            if (handleWalletError(err)) return;
             console.error(err);
             setError(err.message || "An error occurred during Gift Card payment.");
         } finally {
@@ -600,6 +725,7 @@ export const useSharedPayment = () => {
         receiptHash,
         receiptSearchFailed,
         setReceiptSearchFailed,
+        giftCardRedeemOption,
         // Wallet
         publicKey,
         executeTransaction,
@@ -611,5 +737,6 @@ export const useSharedPayment = () => {
         convertPublicToPrivate,
         handleConnect,
         payWithGiftCard,
+        redeemGiftCardBalance,
     };
 };

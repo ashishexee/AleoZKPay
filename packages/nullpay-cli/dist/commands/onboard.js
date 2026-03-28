@@ -43,7 +43,7 @@ const chalk_1 = __importDefault(require("chalk"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const crypto = __importStar(require("crypto"));
-const BACKEND_URL = 'http://localhost:3000/api';
+const BACKEND_URL = process.env.NULLPAY_BACKEND_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
 const ALEO_PROGRAM = 'zk_pay_proofs_privacy_v22.aleo';
 const ALEO_MAP_BASE = `https://api.provable.com/v2/testnet/program/${ALEO_PROGRAM}/mapping/salt_to_invoice`;
 const W = 56;
@@ -171,19 +171,6 @@ async function pollForHash(salt, maxRetries = 60) {
         }
     }
     return null;
-}
-function updateGitignore(projectRoot) {
-    const filePath = path.join(projectRoot, '.gitignore');
-    const entry = 'nullpay.json';
-    const note = '# NullPay - contains sensitive salt values';
-    if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        if (!content.includes(entry)) {
-            fs.appendFileSync(filePath, `\n${note}\n${entry}\n`);
-        }
-        return;
-    }
-    fs.writeFileSync(filePath, `${note}\n${entry}\n`);
 }
 function renderInvoiceCard(inv, index) {
     const typeLabel = inv.type === 'multipay'
@@ -499,7 +486,6 @@ async function onboard() {
         invoices: generatedInvoices,
     };
     fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
-    updateGitignore(projectRoot);
     blank();
     blank();
     line(rule('='));
@@ -515,8 +501,6 @@ async function onboard() {
     kv('Output', outputPath, C.slate);
     kv('Merchant', resolvedAddress, C.brandDim);
     kv('Deployed', `${generatedInvoices.length} / ${allInvoices.length} invoices`, C.success.bold);
-    blank();
-    line(`  ${C.gold('!')}  ${C.slate('nullpay.json added to .gitignore - keep salts private')}`);
     blank();
     line(rule('-'));
     blank();

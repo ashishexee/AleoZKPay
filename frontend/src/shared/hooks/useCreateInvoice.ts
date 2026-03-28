@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from '../utils/aleo-utils';
+import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { InvoiceData, InvoiceItem } from '../types/invoice';
 import { useBurnerWallet } from './BurnerWalletProvider';
 import { encryptWithPassword, hashAddress } from '../utils/crypto';
@@ -29,6 +30,12 @@ export const useCreateInvoice = () => {
             setForSdk(false);
         }
     }, [walletType, forSdk]);
+
+    useEffect(() => {
+        if (invoiceType !== 'donation' && tokenType === 3) {
+            setTokenType(0);
+        }
+    }, [invoiceType, tokenType]);
 
     const addItem = useCallback(() => {
         setItems(prev => [...prev, { name: '', quantity: 1, unitPrice: 0, total: 0 }]);
@@ -94,6 +101,9 @@ export const useCreateInvoice = () => {
 
             const isDonation = invoiceType === 'donation';
             const amountMicro = isDonation ? 0 : Math.round(Number(amount) * 1_000_000);
+            if (!isDonation && tokenType === 3) {
+                throw new Error('Any-token invoices are donation-only.');
+            }
 
             let functionName = 'create_invoice';
             let amountInput = `${amountMicro}u64`;
@@ -139,7 +149,10 @@ export const useCreateInvoice = () => {
             };
 
             let txId = '';
-            const result = await executeTransaction(transaction);
+            const result = await executeWithShieldRetry(
+                () => executeTransaction(transaction),
+                { onRetry: () => setStatus('Shield Wallet gave no response. Retrying invoice creation request...') }
+            );
             if (result && result.transactionId) {
                 txId = result.transactionId;
             }

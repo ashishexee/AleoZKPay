@@ -48,9 +48,14 @@ export const SdkReference: React.FC = () => {
   ]
 }`;
 
-    const nodeInit = `import { NullPay } from '@nullpay/node';
+    const nodeInit = `import path from 'path';
+import { NullPay } from '@nullpay/node';
 
-const client = new NullPay({ secretKey: process.env.NULLPAY_SK });`;
+const client = new NullPay({
+  secretKey: process.env.NULLPAY_SK,
+  projectRoot: __dirname,
+  configPath: path.join(__dirname, 'nullpay.json')
+});`;
 
     const createSession = `const session = await client.checkout.sessions.create({
   nullpay_invoice_name: 'basic-usdcx',
@@ -63,32 +68,48 @@ console.log(session.checkout_url);`;
         <div className="space-y-6">
             <DocSection title="What is nullpay.json?">
                 <p className="mb-3">
-                    A developer manifest containing your merchant address and pre-generated invoices (amount, currency, hash + salt). Keep salts private and add this file to your <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">.gitignore</code>.<br /><br />
+                    A developer manifest containing your merchant address and pre-generated invoices (amount, currency, hash + salt).<br /><br />
                     The SDK uses <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">fs</code> under the hood to automatically look for this file in your project's root. If you don't use the CLI wizard to generate it, you can completely fallback to creating this file manually! Just replicate the schema below and input the hashes and salts you generated from your own smart contract interactions.
+                </p>
+                <p className="mb-3">
+                    <span className="text-gradient-gold drop-shadow-gold font-semibold">nullpay.json is optional</span>; use it for named pre-generated invoices, or skip it and create sessions directly with <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">amount</code>, <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">currency</code>, and <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">type</code>.
+                </p>
+                <p className="mb-3">
+                    On Vercel or similar serverless platforms, prefer passing <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">projectRoot</code> and <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">configPath</code> into the SDK constructor so <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">nullpay.json</code> lookup is deterministic.
                 </p>
                 <CodeBlock title="Schema / Example nullpay.json" code={nullpayExample} language="json" />
             </DocSection>
 
             <DocSection title="CLI: `nullpay sdk onboard`">
                 <p className="mb-3">Interactive wizard that authenticates with your NullPay secret key, generates salts, submits invoices to the relayer, polls for invoice hash resolution, and writes `nullpay.json`.</p>
+                <div className="mb-4 rounded-xl border border-orange-400/20 bg-orange-500/10 px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-orange-300 mb-1">Relayed By NullPay</p>
+                    <p className="text-sm text-white/80 leading-relaxed">
+                        The CLI and Node SDK fallback flow can ask the NullPay relayer to create invoice mappings on-chain for you. The relayer wallet submits that invoice-creation transaction and covers the network fee for that setup step.
+                    </p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 bg-white/[0.02] border border-white/[0.04] rounded-lg">
                         <div className="text-xs text-gray-400 mb-2">Key behaviors</div>
                         <ul className="text-sm text-gray-300 list-disc pl-5 space-y-1">
                             <li>Generates salts with crypto.randomBytes(16) bigint + 'field'</li>
                             <li>Submits invoice to relayer: <code className="text-neon-primary">/dps/relayer/create-invoice</code></li>
+                            <li>NullPay relayer signs and pays the invoice-creation network fee</li>
                             <li>Polls Provable mapping to resolve invoice hash</li>
                         </ul>
                     </div>
                     <div className="p-4 bg-white/[0.02] border border-white/[0.04] rounded-lg">
-                        <div className="text-xs text-gray-400 mb-2">Security</div>
-                        <p className="text-sm text-gray-300">`nullpay.json` contains salts (sensitive). The CLI will attempt to append it to `.gitignore` automatically.</p>
+                        <div className="text-xs text-gray-400 mb-2">Runtime note</div>
+                        <p className="text-sm text-gray-300">If you use serverless hosting, pass `projectRoot` and `configPath` so the SDK resolves `nullpay.json` from the exact backend folder.</p>
                     </div>
                 </div>
             </DocSection>
 
             <DocSection title="Node SDK: @nullpay/node">
                 <p className="mb-3">Lightweight server-side client to create checkout sessions, retrieve sessions, and verify webhook signatures.</p>
+                <p className="mb-3">
+                    If you create a checkout session without an existing <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">invoice_hash</code> or <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">salt</code>, the SDK can fall back to the same relayed invoice-creation path and let NullPay handle that setup transaction for you.
+                </p>
                 <CodeBlock title="Initialize client" code={nodeInit} language="ts" />
                 <CodeBlock title="Create session (lookup by nullpay.json name)" code={createSession} language="ts" />
             </DocSection>

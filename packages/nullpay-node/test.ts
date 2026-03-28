@@ -5,7 +5,7 @@ const main = async () => {
     // 1. Initialize SDK with secret key
     const nullpay = new NullPay({
         secretKey: 'merch_secure_test_key_xyz',
-        baseURL: 'http://localhost:3000/v1'
+        baseURL: process.env.NULLPAY_BASE_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api'
     });
 
     console.log("=== Testing Webhook Signature Verification ===");

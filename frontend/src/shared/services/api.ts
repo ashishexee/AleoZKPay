@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
 import { hashAddress } from '../utils/crypto';
 
 export interface Invoice {
@@ -174,4 +174,40 @@ export const clearBurnerData = async (address: string): Promise<void> => {
     if (!response.ok) {
         throw new Error('Failed to clear burner data');
     }
+};
+
+export const chatWithDashboardAssistant = async (
+    message: string,
+    context: Record<string, unknown>
+): Promise<string> => {
+    const response = await fetch(`${API_URL}/dashboard-assistant/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, context })
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to chat with dashboard assistant');
+    }
+
+    return payload.reply;
+};
+
+export const chatWithDeveloperAssistant = async (
+    message: string,
+    context: Record<string, unknown>
+): Promise<string> => {
+    const response = await fetch(`${API_URL}/developer-assistant/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, context })
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to chat with developer assistant');
+    }
+
+    return payload.reply;
 };

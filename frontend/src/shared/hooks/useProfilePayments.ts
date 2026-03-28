@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { MerchantReceipt, parseMerchantReceipt, fetchBurnerRecordsFromTx } from '../utils/aleo-utils';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useBurnerWallet } from './BurnerWalletProvider';
+import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -23,6 +24,7 @@ export const useProfilePayments = (
     initialBurnerReceipts: MerchantReceipt[]
 ) => {
     const { requestRecords, decrypt } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
     const { decryptedBurnerKey } = useBurnerWallet();
 
     const [livePayments, setLivePayments] = useState<ProfilePayment[]>([]);
@@ -108,6 +110,7 @@ export const useProfilePayments = (
                     }
                 }
             } catch (e) {
+                handleWalletError(e);
                 console.error("Failed to fetch new main receipt", e);
             }
         };
