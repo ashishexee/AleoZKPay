@@ -221,7 +221,7 @@ export const useSharedPayment = () => {
                         setStatus('Payment Successful! Redirecting...');
                         
                         try {
-                            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                             const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
                             if (response.ok) {
                                 const data = await response.json();
@@ -249,7 +249,7 @@ export const useSharedPayment = () => {
             .subscribe();
         const intervalId = setInterval(async () => {
             try {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                 const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
                 if (response.ok) {
                     const data = await response.json();
@@ -349,7 +349,7 @@ export const useSharedPayment = () => {
                         if (invoice?.sessionId) {
                             try {
                                 console.log(`📢 [usePayment] Updating Checkout Session ${invoice.sessionId}`);
-                                const checkoutApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                                const checkoutApiUrl = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                                 await fetch(`${checkoutApiUrl}/checkout/sessions/${invoice.sessionId}`, {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
@@ -537,7 +537,7 @@ export const useSharedPayment = () => {
                 inputs
             });
 
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
             const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -674,7 +674,7 @@ export const useSharedPayment = () => {
             });
 
             setStatus('Submitting payment via DPS Relayer...');
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
             const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

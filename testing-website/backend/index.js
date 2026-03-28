@@ -13,12 +13,12 @@ app.use(express.json({
 
 const nullpay = new NullPay({
     secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_a566d45098533b8c3d88e61a718800e7ad73b37f9814c309', // Connected to DB!
-    baseURL: 'http://localhost:3000/api'
+    baseURL: process.env.NULLPAY_BASE_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api'
 })
 
 const PORT = 4000;
 const configuredInvoices = nullpay.invoices.getAll();
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+const frontendUrl = process.env.FRONTEND_URL || 'https://testing-website-frontend.vercel.app/';
 
 const buildSuccessType = (invoice) => {
     if (invoice.type === 'donation') return 'donation';

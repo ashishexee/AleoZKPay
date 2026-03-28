@@ -94,7 +94,7 @@ export const DeveloperPortal = () => {
     React.useEffect(() => {
         if (activeTab === 'analytics' && publicKey) {
             setLoadingStats(true);
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
             fetch(`${apiUrl}/merchants/stats/${publicKey}`)
                 .then(res => res.json())
                 .then(data => {
@@ -112,7 +112,7 @@ export const DeveloperPortal = () => {
         try {
             setLoading(true);
             setError(null);
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
             const response = await fetch(`${apiUrl}/merchants/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -645,7 +645,7 @@ if (session.status === 'SETTLED') {
                                 </div>
 
                                 <h3 className="text-lg font-bold text-white mb-4">Raw HTTP API (without SDK)</h3>
-                                <CodeBlock title="POST /api/checkout/sessions" language="http" code={`POST https://null-pay-rs8i.vercel.app/api/checkout/sessions
+                                <CodeBlock title="POST /api/checkout/sessions" language="http" code={`POST https://nullpay-backend-ib5q4.ondigitalocean.app/api/checkout/sessions
 Authorization: Bearer sk_test_xxxxxxxxxxxxxxxx
 Content-Type: application/json
 
@@ -665,7 +665,7 @@ Content-Type: application/json
     "salt": "..."
 }`} />
 
-                                <CodeBlock title="GET /api/checkout/sessions/:id" language="http" code={`GET https://null-pay-rs8i.vercel.app/api/checkout/sessions/ses_a1b2c3d4
+                                <CodeBlock title="GET /api/checkout/sessions/:id" language="http" code={`GET https://nullpay-backend-ib5q4.ondigitalocean.app/api/checkout/sessions/ses_a1b2c3d4
 Authorization: Bearer sk_test_xxxxxxxxxxxxxxxx
 
 // Response 200 OK — payment settled

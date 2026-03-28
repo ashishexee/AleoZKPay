@@ -81,7 +81,7 @@ export class NullPay {
             throw new Error("NullPay API Key is required.");
         }
         this.secretKey = config.secretKey;
-        this.baseURL = config.baseURL || 'https://null-pay-rs8i.vercel.app/api';
+        this.baseURL = config.baseURL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
     }
 
     /**

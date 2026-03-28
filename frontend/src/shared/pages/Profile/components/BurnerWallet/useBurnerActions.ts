@@ -327,7 +327,7 @@ export function useBurnerActions() {
             const authorization = await programManager.buildAuthorization({ programName, functionName, inputs });
             addLog('✓ Authorization built! Requesting fee sponsorship from backend...');
 
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
             const sponsorRes = await fetch(`${apiUrl}/dps/sponsor-sweep`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

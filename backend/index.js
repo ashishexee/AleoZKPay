@@ -7,10 +7,10 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 3000;
-const FRONTEND_URL = 'http://localhost:5173';
+const FRONTEND_URL = 'https://nullpay.app/';
 
 app.use(cors({
-    origin: ['https://nullpay.app', 'http://localhost:5173'],
+    origin: ['https://nullpay.app', 'http://localhost:5173', 'https://testing-website-frontend.vercel.app'],
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true
 }));

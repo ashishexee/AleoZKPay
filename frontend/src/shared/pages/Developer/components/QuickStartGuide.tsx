@@ -34,7 +34,7 @@ export const QuickStartGuide: React.FC = () => {
 
 const nullpay = new NullPay({
   secretKey: process.env.NULLPAY_SECRET_KEY!,
-  baseURL: 'https://nullpay.app/api', // optional override for local dev
+  baseURL: 'https://nullpay-backend-ib5q4.ondigitalocean.app/api', // optional override
 });`}
                 />
 

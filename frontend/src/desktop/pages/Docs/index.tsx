@@ -1081,7 +1081,7 @@ function decrypt(text) {
 
 const nullpay = new NullPay({
     secretKey: process.env.NULLPAY_SECRET_KEY,  // From your NullPay merchant dashboard
-    baseURL: 'https://null-pay-rs8i.vercel.app/api'  // Optional: defaults to production
+    baseURL: 'https://nullpay-backend-ib5q4.ondigitalocean.app/api'  // Optional: defaults to production
 });`}
                                 />
 

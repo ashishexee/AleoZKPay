@@ -75,7 +75,7 @@ function shieldStdoutForMcp() {
 }
 loadEnvFiles();
 shieldStdoutForMcp();
-const backendBaseUrl = process.env.NULLPAY_BACKEND_URL || 'http://localhost:3000/api';
+const backendBaseUrl = process.env.NULLPAY_BACKEND_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
 const publicBaseUrl = process.env.NULLPAY_PUBLIC_BASE_URL || 'https://nullpay.app';
 const mcpSecret = process.env.NULLPAY_MCP_SHARED_SECRET;
 const backend = new backend_client_1.NullPayBackendClient(backendBaseUrl, mcpSecret);

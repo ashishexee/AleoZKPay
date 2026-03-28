@@ -227,7 +227,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                             setStatus('Payment Successful! Notifying Merchant...');
 
                             try {
-                                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                                const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                                 // Update the new standard invoice with the REAL on-chain payment TX ID.
                                 await fetch(`${API_URL}/invoices/${session.invoice_hash}`, {
                                     method: 'PATCH',
@@ -442,7 +442,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 inputs
             });
 
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
             const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -575,7 +575,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             });
 
             setStatus('Submitting payment via DPS Relayer...');
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
             const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

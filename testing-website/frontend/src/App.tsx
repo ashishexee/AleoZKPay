@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
+const TESTING_BACKEND_URL = import.meta.env.VITE_API_URL || 'https://testing-website-backend.vercel.app/api';
+
 // ─── GLOBAL STYLES ────────────────────────────────────────────────────────────
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap');
@@ -310,7 +312,7 @@ export default function App() {
   // Verification
   useEffect(() => {
     if (sessionId) {
-      fetch(`http://localhost:4000/api/verify-session?session_id=${sessionId}`)
+      fetch(`${TESTING_BACKEND_URL}/verify-session?session_id=${sessionId}`)
         .then(res => res.json())
         .then(data => setVerifyStatus(data))
         .catch(() => addToast('Verification failed', 'error'));
@@ -338,7 +340,7 @@ export default function App() {
   const handleCheckout = async (endpoint: string, payload: any = {}) => {
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:4000/api/${endpoint}`, {
+      const res = await fetch(`${TESTING_BACKEND_URL}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

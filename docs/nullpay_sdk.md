@@ -101,12 +101,12 @@ Exports & basic usage:
 ```ts
 import { NullPay } from '@nullpay/node';
 
-const client = new NullPay({ secretKey: 'sk_test_...', baseURL?: 'https://your.nullpay.backend/api' });
+const client = new NullPay({ secretKey: 'sk_test_...', baseURL?: 'https://nullpay-backend-ib5q4.ondigitalocean.app/api' });
 ```
 
 Constructor:
 - `secretKey` (required) — your NullPay API key (used for Authorization and HMAC verification).
-- `baseURL` (optional) — base URL of NullPay API; defaults to `https://null-pay-rs8i.vercel.app/api` in the implementation.
+- `baseURL` (optional) — base URL of NullPay API; defaults to `https://nullpay-backend-ib5q4.ondigitalocean.app/api` in the implementation.
 
 nullpay.json helpers
 - `loadNullPayConfig(projectRoot?)` — loads and parses `nullpay.json` in the project root or provided path.
