@@ -5,7 +5,6 @@ export default defineConfig({
     plugins: [react()],
     optimizeDeps: {
         exclude: ['@provablehq/wasm'],
-        include: ['core-js/proposals/json-parse-with-source'],
     },
     server: {
         headers: {

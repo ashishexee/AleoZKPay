@@ -6,7 +6,8 @@ NullPay is a decentralized invoice and payment system that leverages Aleo's zero
 
 **Live Application:** [https://nullpay.app/](https://nullpay.app/)  
 **Smart Contract:** [`zk_pay_proofs_privacy_v22.aleo`](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v22.aleo)  
-**NullPay Node SDK:** [`@nullpay/node`](https://www.npmjs.com/package/@nullpay/node)  
+**NullPay Node SDK:** [`@nullpay/node`](https://www.npmjs.com/package/@nullpay/node)
+**NullPay MCP Package:** [`@nullpay/mcp`](https://www.npmjs.com/package/@nullpay/mcp)  
 **Vision:** [https://nullpay.app/vision](https://nullpay.app/vision)  
 **Documentation:** [https://nullpay.app/docs](https://nullpay.app/docs)  
 **SDK Testing Website:** [https://testing-website-frontend.vercel.app/](https://testing-website-frontend.vercel.app/) (Test the full SDK flow here)  
