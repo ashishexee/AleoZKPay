@@ -4,6 +4,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { InvoiceType } from '../../hooks/useCreateInvoice';
 import { InvoiceItem } from '../../types/invoice';
+import { getTokenLabel } from '../../utils/tokens';
 
 interface InvoiceFormProps {
     amount: number | '';
@@ -69,7 +70,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         <button
                             onClick={() => {
                                 setInvoiceType('standard');
-                                if (tokenType === 3) setTokenType(0);
                             }}
                             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
                                 ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
@@ -81,7 +81,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         <button
                             onClick={() => {
                                 setInvoiceType('multipay');
-                                if (tokenType === 3) setTokenType(0);
                             }}
                             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
                                 ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
@@ -210,23 +209,24 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         >
                             USAD
                         </button>
-                        {invoiceType === 'donation' && (
-                            <button
-                                onClick={() => setTokenType(3)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 3
-                                    ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                    }`}
-                            >
-                                ANY
-                            </button>
-                        )}
+                        <button
+                            onClick={() => setTokenType(3)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 3
+                                ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                        >
+                            {invoiceType === 'donation' ? 'ANY' : 'USDCx/USAD'}
+                        </button>
                     </div>
                 </div>
 
                 <div className="text-xs text-gray-400 text-center -mt-2 mb-4 bg-white/5 p-3 rounded-lg border border-white/5">
                     {invoiceType === 'standard' && 'Single payment only. Invoice closes after payment.'}
                     {invoiceType === 'multipay' && 'Allows multiple payments. Ideal for campaigns.'}
+                    {invoiceType !== 'donation' && tokenType === 3 && (
+                        <span className="block mt-1 text-pink-300">This invoice accepts USDCx or USAD only.</span>
+                    )}
                     {invoiceType === 'donation' && (
                         <span>
                             <strong className="text-pink-400 block mb-1">Donation Mode</strong>
@@ -237,7 +237,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
                 {invoiceType !== 'donation' && (
                     <Input
-                        label={`Amount (${tokenType === 0 ? 'Credits' : tokenType === 1 ? 'USDCx' : 'USAD'})`}
+                        label={`Amount (${getTokenLabel(tokenType, invoiceType === 'multipay' ? 1 : 0)})`}
                         type="number"
                         placeholder="0.00"
                         value={amount}

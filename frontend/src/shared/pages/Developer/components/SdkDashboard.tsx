@@ -19,6 +19,7 @@ import { PaymentHistoryModal } from '../../Profile/components/modals/PaymentHist
 import { ReceiptHashesModal } from '../../Profile/components/modals/ReceiptHashesModal';
 import toast from 'react-hot-toast';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
+import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
 
 type SdkDashboardInvoice = InvoiceRecord & {
     status: string | number;
@@ -157,6 +158,7 @@ const SdkReceiptsTable = ({
 
 export const SdkDashboard: React.FC = () => {
     const { address: publicKey, requestRecords, decrypt, executeTransaction } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
     const [transactions, setTransactions] = useState<Invoice[]>([]);
     const [createdInvoices, setCreatedInvoices] = useState<InvoiceRecord[]>([]);
     const [merchantReceipts, setMerchantReceipts] = useState<MerchantReceipt[]>([]);
@@ -244,6 +246,7 @@ export const SdkDashboard: React.FC = () => {
 
             setCreatedInvoices(validInvoices.reverse());
         } catch (error) {
+            handleWalletError(error);
             console.error('Error fetching SDK created invoices', error);
             setCreatedInvoices([]);
         } finally {
@@ -287,6 +290,7 @@ export const SdkDashboard: React.FC = () => {
 
             setMerchantReceipts(validReceipts.reverse());
         } catch (error) {
+            handleWalletError(error);
             console.error('Error fetching SDK merchant receipts', error);
             setMerchantReceipts([]);
         } finally {
@@ -459,6 +463,7 @@ export const SdkDashboard: React.FC = () => {
                 setVerifyStatus('NOT_FOUND');
             }
         } catch (error) {
+            handleWalletError(error);
             console.error('SDK receipt verification failed', error);
             setVerifyStatus('ERROR');
         }
@@ -498,6 +503,7 @@ export const SdkDashboard: React.FC = () => {
             }
         } catch (error: any) {
             toast.dismiss('shield-sdk-settle-retry');
+            handleWalletError(error);
             console.error('SDK settlement failed', error);
             toast.error(`Failed to settle invoice: ${error.message || 'Unknown error'}`);
         } finally {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { pageVariants } from '../../../shared/utils/animations';
 import { usePayment, PaymentStep } from '../../../shared/hooks/usePayment';
@@ -11,6 +11,7 @@ import { Input } from '../../../shared/components/ui/Input';
 import { GiftCodeInput } from '../../../shared/components/ui/GiftCodeInput';
 import { GiftCardRedeemPrompt } from '../../../shared/components/ui/GiftCardRedeemPrompt';
 import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
+import { TokenCode, getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/tokens';
 
 const PaymentPage = () => {
     const {
@@ -42,6 +43,15 @@ const PaymentPage = () => {
     const [giftCode, setGiftCode] = useState<string>('');
     const { address } = useWallet();
     const isProcess = loading;
+    const allowedTokens: TokenCode[] = invoice
+        ? getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType, invoice.allowedTokens)
+        : ['CREDITS', 'USDCX', 'USAD'];
+
+    useEffect(() => {
+        if (!invoice || invoice.tokenType !== 3) return;
+        const nextToken = getTokenTypeFromCode(allowedTokens[0]);
+        setSelectedToken((current) => allowedTokens.some((token) => getTokenTypeFromCode(token) === current) ? current : nextToken);
+    }, [invoice?.hash, invoice?.tokenType, allowedTokens.join(',')]);
 
     const handlePay = async () => {
         if (step === 'CONVERT') {
@@ -70,7 +80,7 @@ const PaymentPage = () => {
 
     const isMultiPay = programId === PROGRAM_ID;
     const activeTokenType = invoice?.tokenType === 3 ? selectedToken : (invoice?.tokenType ?? 0);
-    const currencyLabel = activeTokenType === 1 ? 'USDCx' : activeTokenType === 2 ? 'USAD' : 'Credits';
+    const currencyLabel = getTokenLabel(activeTokenType);
 
     return (
         <motion.div
@@ -214,33 +224,27 @@ const PaymentPage = () => {
                             <div className="pt-4 border-t border-white/5">
                                 <span className="text-sm font-medium text-gray-400 uppercase tracking-widest block mb-2">Select Payment Token</span>
                                 <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
-                                    <button
-                                        onClick={() => setSelectedToken(0)}
-                                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${selectedToken === 0
+                                    {allowedTokens.map((token) => {
+                                        const tokenType = getTokenTypeFromCode(token);
+                                        const activeClass = tokenType === 0
                                             ? 'bg-white text-black shadow-lg'
-                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                            }`}
-                                    >
-                                        Credits
-                                    </button>
-                                    <button
-                                        onClick={() => setSelectedToken(1)}
-                                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${selectedToken === 1
-                                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                            }`}
-                                    >
-                                        USDCx
-                                    </button>
-                                    <button
-                                        onClick={() => setSelectedToken(2)}
-                                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${selectedToken === 2
-                                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                            }`}
-                                    >
-                                        USAD
-                                    </button>
+                                            : tokenType === 1
+                                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                                                : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20';
+
+                                        return (
+                                            <button
+                                                key={token}
+                                                onClick={() => setSelectedToken(tokenType)}
+                                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${selectedToken === tokenType
+                                                    ? activeClass
+                                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                                    }`}
+                                            >
+                                                {getTokenLabel(tokenType)}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

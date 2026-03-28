@@ -3,6 +3,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { getUserProfile } from '../services/api';
 import { PROGRAM_ID, parseBurnerBackupRecord } from '../utils/aleo-utils';
 import { fieldChunksToString, decryptWithPassword } from '../utils/crypto';
+import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
 
 interface BurnerWalletContextType {
     burnerAddress: string | null;
@@ -28,6 +29,7 @@ const BurnerWalletContext = createContext<BurnerWalletContextType | undefined>(u
 
 export const BurnerWalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { address, requestRecords, decrypt } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
     const [burnerAddress, setBurnerAddress] = useState<string | null>(null);
     const [encryptedBurnerKey, setEncryptedBurnerKey] = useState<string | null>(null);
     const [decryptedBurnerKey, setDecryptedBurnerKey] = useState<string | null>(null);
@@ -159,6 +161,7 @@ export const BurnerWalletProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     }
                 }
             } catch (e) {
+                handleWalletError(e);
                 console.error("Auto-unlock from chain failed", e);
             }
             setIsAutoUnlocking(false);

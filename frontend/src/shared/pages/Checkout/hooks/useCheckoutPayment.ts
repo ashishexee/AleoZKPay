@@ -4,8 +4,10 @@ import { TransactionOptions } from '@provablehq/aleo-types';
 import { PROGRAM_ID, generateSalt } from '../../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 import { CheckoutSession } from '../types';
+import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
 import { getScannerSession, findSpendableRecord } from '../../Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
+import { TokenCode, parseAllowedTokens } from '../../../utils/tokens';
 
 // Convert Hex back to String
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
@@ -19,8 +21,18 @@ interface GiftCardRedeemOption {
     isCredits: boolean;
 }
 
+const resolveCheckoutToken = (session: CheckoutSession, selectedTokenOverride?: string): TokenCode => {
+    const allowedTokens = parseAllowedTokens(session.allowed_tokens) || ['CREDITS', 'USDCX', 'USAD'];
+    const requestedToken = (selectedTokenOverride || allowedTokens[0]) as TokenCode;
+    if (!allowedTokens.includes(requestedToken)) {
+        throw new Error(`This checkout only accepts ${allowedTokens.join(', ')}.`);
+    }
+    return requestedToken;
+};
+
 export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const { address: publicKey, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
     const [status, setStatus] = useState<string>('');
     const [txId, setTxId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -66,7 +78,9 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 throw new Error("Amount must be greater than zero.");
             }
 
-            const actualTokenType = session.token_type === 'ANY' ? (selectedTokenOverride || 'CREDITS') : session.token_type;
+            const actualTokenType = session.token_type === 'ANY'
+                ? resolveCheckoutToken(session, selectedTokenOverride)
+                : session.token_type;
 
             // 1. Determine Token Program
             let tokenProgram = 'credits.aleo';
@@ -267,6 +281,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             }
 
         } catch (err: any) {
+            if (handleWalletError(err)) return;
             console.error(err);
             setError(err.message || "An error occurred during payment.");
         } finally {
@@ -284,7 +299,9 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             let typeSuffix = 'u64';
             let tokenName = 'Credits';
             
-            const actualTokenType = session.token_type === 'ANY' ? (selectedTokenOverride || 'CREDITS') : session.token_type;
+            const actualTokenType = session.token_type === 'ANY'
+                ? resolveCheckoutToken(session, selectedTokenOverride)
+                : session.token_type;
 
             if (actualTokenType === 'USDCX') {
                 tokenProgramId = 'test_usdcx_stablecoin.aleo';
@@ -353,6 +370,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 throw new Error("Failed to get Transaction ID from wallet.");
             }
         } catch (err: any) {
+            if (handleWalletError(err)) return;
             console.error(err);
             setError(err.message || 'Conversion failed');
         } finally {
@@ -469,7 +487,9 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             const finalAmount = (isDonationType && donationAmount && donationAmount > 0) ? donationAmount : session.amount;
             if (finalAmount <= 0) throw new Error("Amount must be greater than zero.");
 
-            const actualTokenType = session.token_type === 'ANY' ? (selectedTokenOverride || 'CREDITS') : session.token_type;
+            const actualTokenType = session.token_type === 'ANY'
+                ? resolveCheckoutToken(session, selectedTokenOverride)
+                : session.token_type;
 
             let tokenProgram = 'credits.aleo';
             let amountMicro = Math.round(finalAmount * 1_000_000);

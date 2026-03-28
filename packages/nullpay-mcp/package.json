@@ -1,6 +1,6 @@
 {
   "name": "@nullpay/mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "NullPay MCP server for conversational invoice and payment flows",
   "main": "dist/server.js",
   "types": "dist/server.d.ts",
@@ -12,10 +12,25 @@
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "dependencies": {
     "@provablehq/sdk": "^0.9.18",
     "@provablehq/wasm": "^0.9.18"
   },
+  "author": "geekofdhruv",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/geekofdhruv/NullPay.git",
+    "directory": "packages/nullpay-mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/geekofdhruv/NullPay/issues"
+  },
+  "homepage": "https://github.com/geekofdhruv/NullPay/tree/main/packages/nullpay-mcp#readme",
   "devDependencies": {
     "@types/node": "^25.4.0",
     "ts-node": "^10.9.2",

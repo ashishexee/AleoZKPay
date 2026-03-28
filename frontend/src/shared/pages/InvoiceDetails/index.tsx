@@ -7,6 +7,8 @@ import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt } from '../../utils/a
 import { VerifyModal } from '../Profile/components/modals/VerifyModal';
 import { hashAddress } from '../../utils/crypto';
 import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
+import { useWalletErrorHandler } from '../../hooks/Wallet/WalletErrorBoundary';
+import { getTokenLabel } from '../../utils/tokens';
 
 interface InvoiceData {
     invoice_hash: string;
@@ -26,11 +28,11 @@ interface InvoiceData {
     salt?: string;
     invoice_type?: number;
     token_type?: number;
+    allowed_tokens?: string[];
     invoice_items?: { name: string; quantity: number; unitPrice: number; total: number }[];
 }
 
 const EXPLORER = 'https://testnet.explorer.provable.com/transaction';
-const TOKEN_LABELS: Record<number, string> = { 0: 'Credits', 1: 'USDCx', 2: 'USAD' };
 const TYPE_INFO: Record<number, { label: string; color: string; bg: string; border: string }> = {
     0: { label: 'Standard',  color: '#e2e8f0', bg: 'rgba(226,232,240,0.1)',  border: 'rgba(226,232,240,0.2)' },
     1: { label: 'Multi-Pay', color: '#d8b4fe', bg: 'rgba(216,180,254,0.12)', border: 'rgba(216,180,254,0.25)' },
@@ -97,7 +99,7 @@ const TxChip: React.FC<{ txId: string; color?: 'blue' | 'green'; label?: string 
 /* ─── Stat Card ────────────────────────────────────────────────────────────── */
 const StatCard: React.FC<{ label: string; value: React.ReactNode; accent?: string; sub?: string }> = ({ label, value, accent = '#00f3ff', sub }) => (
     <div className="relative overflow-hidden rounded-2xl border p-5"
-        style={{ background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.16)', backdropFilter: 'blur(12px)' }}>
+        style={{ background: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(14px)', boxShadow: '0 16px 40px rgba(0,0,0,0.18)' }}>
         <div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}80, transparent)` }} />
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] mb-2.5" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</p>
         <div>{value}</div>
@@ -191,6 +193,7 @@ const InvoiceDetailsPage: React.FC = () => {
     const { hash } = useParams<{ hash: string }>();
     const navigate = useNavigate();
     const { address, requestRecords, decrypt } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
     const { decryptedBurnerAddress } = useBurnerWallet();
     const [invoice, setInvoice]         = useState<InvoiceData | null>(null);
     const [loading, setLoading]         = useState(true);
@@ -280,7 +283,7 @@ const InvoiceDetailsPage: React.FC = () => {
             }
             const seen = new Set<string>();
             setReceipts(found.filter(r => { if (seen.has(r.receiptHash)) return false; seen.add(r.receiptHash); return true; }));
-        } catch (e) { console.error(e); }
+        } catch (e) { handleWalletError(e); console.error(e); }
         finally { setScanningReceipts(false); setScanned(true); }
     };
 
@@ -315,7 +318,7 @@ const InvoiceDetailsPage: React.FC = () => {
                 setVerifiedRecord(foundRecord);
                 setVerifyStatus(rh !== ih ? 'MISMATCH' : 'FOUND');
             } else { setVerifyStatus('NOT_FOUND'); }
-        } catch { setVerifyStatus('ERROR'); }
+        } catch (e: any) { handleWalletError(e); setVerifyStatus('ERROR'); }
     };
 
     const handlePdf = async () => {
@@ -324,7 +327,7 @@ const InvoiceDetailsPage: React.FC = () => {
         try {
             await generateInvoicePdf({
                 invoiceHash: invoice.invoice_hash, amount: invoice.amount ?? 0,
-                tokenType: invoice.token_type ?? 0, invoiceType: invoice.invoice_type ?? 0,
+                tokenType: invoice.token_type ?? 0, allowedTokens: invoice.allowed_tokens, invoiceType: invoice.invoice_type ?? 0,
                 walletType: invoice.is_burner ? 1 : 0, status: invoice.status ?? 'PENDING',
                 memo: invoice.memo, creationTx: invoice.invoice_transaction_id,
                 paymentTxIds, items: invoice.invoice_items,
@@ -364,11 +367,10 @@ const InvoiceDetailsPage: React.FC = () => {
     if (!invoice) return null;
 
     const typeInfo   = TYPE_INFO[invoice.invoice_type ?? 0] || TYPE_INFO[0];
-    const tokenLabel = TOKEN_LABELS[invoice.token_type ?? 0] || 'Credits';
+    const tokenLabel = getTokenLabel(invoice.token_type ?? 0, invoice.invoice_type ?? 0, invoice.allowed_tokens);
     const isSettled  = invoice.status === 'SETTLED';
     const shortHash  = `${invoice.invoice_hash.slice(0, 16)}...${invoice.invoice_hash.slice(-12)}`;
     const verifyingInvoice = { invoiceHash: invoice.invoice_hash };
-
     return (
         <div className="min-h-screen" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             <style>{`
@@ -415,18 +417,6 @@ const InvoiceDetailsPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* Status pill */}
-                        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border"
-                            style={{
-                                background: isSettled ? 'rgba(74,222,128,0.12)' : 'rgba(250,204,21,0.12)',
-                                borderColor: isSettled ? 'rgba(74,222,128,0.35)' : 'rgba(250,204,21,0.35)',
-                                color: isSettled ? '#4ade80' : '#facc15',
-                            }}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${!isSettled ? 'pulse-dot' : ''}`}
-                                style={{ background: isSettled ? '#4ade80' : '#facc15', boxShadow: `0 0 6px ${isSettled ? '#4ade80' : '#facc15'}` }} />
-                            <span className="text-[11px] font-bold uppercase tracking-wider">{isSettled ? 'Settled' : 'Pending'}</span>
-                        </div>
-
                         {/* Share */}
                         <button onClick={handleCopyLink}
                             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all"
@@ -484,10 +474,16 @@ const InvoiceDetailsPage: React.FC = () => {
                 <div className="absolute inset-x-0 bottom-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,243,255,0.8), transparent)' }} />
 
                 <div className="max-w-screen-2xl mx-auto px-6 lg:px-10 py-12 lg:py-16">
-                    <div className="flex flex-col xl:flex-row xl:items-end gap-10 xl:gap-16">
+                    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr)_380px] gap-6 items-stretch">
 
                         {/* Amount + meta */}
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 rounded-[28px] border p-7 lg:p-8 relative overflow-hidden"
+                            style={{ background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(16px)', boxShadow: '0 24px 80px rgba(0,0,0,0.28)' }}>
+                            <div className="absolute -right-20 -top-20 w-64 h-64 pointer-events-none rounded-full"
+                                style={{ background: 'radial-gradient(circle, rgba(0,243,255,0.14) 0%, rgba(0,243,255,0) 70%)' }} />
+                            <div className="absolute -left-16 bottom-0 w-56 h-56 pointer-events-none rounded-full"
+                                style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.1) 0%, rgba(168,85,247,0) 72%)' }} />
+                            <div className="relative">
                             {/* Badges */}
                             <div className="flex flex-wrap items-center gap-2 mb-7">
                                 <span className="px-3.5 py-1 rounded-full border text-[11px] font-bold uppercase tracking-wider"
@@ -512,7 +508,7 @@ const InvoiceDetailsPage: React.FC = () => {
                             {/* Amount */}
                             <div className="mb-7">
                                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] mb-3" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                                    {invoice.invoice_type === 2 ? 'Donations Received' : 'Total Amount'}
+                                    {invoice.invoice_type === 2 ? 'Donation Summary' : 'Invoice Total'}
                                 </p>
                                 {invoice.invoice_type === 2 ? (() => {
                                     // Show shimmer while scanning
@@ -590,18 +586,22 @@ const InvoiceDetailsPage: React.FC = () => {
                             </div>
 
                             {invoice.memo && (
-                                <div className="mt-5 inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border"
+                                <div className="mt-5 flex items-start gap-2.5 px-4 py-3.5 rounded-2xl border"
                                     style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.12)' }}>
-                                    <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                                     </svg>
-                                    <span className="text-sm italic" style={{ color: 'rgba(255,255,255,0.6)' }}>"{invoice.memo}"</span>
+                                    <div>
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Memo</p>
+                                        <span className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.72)' }}>{invoice.memo}</span>
+                                    </div>
                                 </div>
                             )}
+                            </div>
                         </div>
 
                         {/* Quick-stats grid */}
-                        <div className="xl:w-[400px] grid grid-cols-2 gap-3">
+                        <div className="xl:w-[380px] grid grid-cols-2 gap-3 content-start">
                             <StatCard label="Status" accent={isSettled ? '#4ade80' : '#facc15'}
                                 value={
                                     <div className="flex items-center gap-2">
@@ -639,10 +639,10 @@ const InvoiceDetailsPage: React.FC = () => {
 
             {/* ── CONTENT GRID ───────────────────────────────────────────────── */}
             <div className="max-w-screen-2xl mx-auto px-6 lg:px-10 py-8">
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.55fr)_360px] gap-6">
 
                     {/* LEFT */}
-                    <div className="xl:col-span-2 space-y-5">
+                    <div className="space-y-5">
 
                         {/* TRANSACTIONS */}
                         <Section delay={0.05}>
@@ -743,7 +743,7 @@ const InvoiceDetailsPage: React.FC = () => {
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                                                     <span className="font-black text-sm text-white">{(r.amount / 1_000_000)}</span>
-                                                    <span className="text-[10px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.35)' }}>{TOKEN_LABELS[r.tokenType]}</span>
+                                                    <span className="text-[10px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.35)' }}>{getTokenLabel(r.tokenType)}</span>
                                                 </div>
                                             </motion.div>
                                         ))}
@@ -809,7 +809,7 @@ const InvoiceDetailsPage: React.FC = () => {
                     </div>
 
                     {/* RIGHT sidebar */}
-                    <div className="space-y-5">
+                    <div className="space-y-5 xl:sticky xl:top-24 self-start">
 
                         {/* ADDRESSES */}
                         <Section delay={0.12}>
@@ -817,6 +817,9 @@ const InvoiceDetailsPage: React.FC = () => {
                                 <SectionTitle accent="#00f3ff" title="Addresses & Hashes"
                                     icon={<svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>}
                                 />
+                                <p className="text-sm leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                                    Private identifiers, routing fields, and wallet addresses tied to this invoice.
+                                </p>
                                 <AddressRow label="Invoice Hash" addr={invoice.invoice_hash} accent="#00f3ff" />
                                 {invoice.salt && <AddressRow label="Salt" addr={invoice.salt} accent="rgba(255,255,255,0.5)" />}
                                 {invoice.merchant_address && <AddressRow label="Merchant" addr={invoice.merchant_address} accent="#93c5fd" />}
@@ -825,80 +828,6 @@ const InvoiceDetailsPage: React.FC = () => {
                                 )}
                                 {invoice.payer_address && <AddressRow label="Payer" addr={invoice.payer_address} accent="#86efac" />}
                             </Card>
-                        </Section>
-
-                        {/* METADATA */}
-                        <Section delay={0.17}>
-                            <Card accent="#c084fc">
-                                <SectionTitle accent="#c084fc" title="Metadata"
-                                    icon={<svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
-                                />
-                                <div>
-                                    {[
-                                        { label: 'Status', value:
-                                            <span className="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border"
-                                                style={{ background: isSettled ? 'rgba(74,222,128,0.14)' : 'rgba(250,204,21,0.14)', borderColor: isSettled ? 'rgba(74,222,128,0.4)' : 'rgba(250,204,21,0.4)', color: isSettled ? '#4ade80' : '#facc15' }}>
-                                                {invoice.status ?? 'PENDING'}
-                                            </span>
-                                        },
-                                        { label: 'Token', value: <span className="text-sm font-black text-white">{tokenLabel}</span> },
-                                        { label: 'Type', value:
-                                            <span className="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border"
-                                                style={{ background: typeInfo.bg, borderColor: typeInfo.border, color: typeInfo.color }}>
-                                                {typeInfo.label}
-                                            </span>
-                                        },
-                                        { label: 'Wallet', value: invoice.is_burner
-                                            ? <span className="flex items-center gap-1.5 text-sm font-bold" style={{ color: '#00f3ff' }}>
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /></svg>
-                                                Burner Wallet
-                                              </span>
-                                            : <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>Main Wallet</span>
-                                        },
-                                        ...(invoice.created_at ? [{ label: 'Created', value: <span className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.6)' }}>{new Date(invoice.created_at).toLocaleString()}</span> }] : []),
-                                        ...(invoice.updated_at ? [{ label: 'Updated', value: <span className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.6)' }}>{new Date(invoice.updated_at).toLocaleString()}</span> }] : []),
-                                    ].map(({ label, value }, i, arr) => (
-                                        <div key={label} className="flex items-center justify-between py-3.5"
-                                            style={{ borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-                                            <span className="text-[11px] font-bold uppercase tracking-[0.1em]" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</span>
-                                            {value}
-                                        </div>
-                                    ))}
-                                </div>
-                            </Card>
-                        </Section>
-
-                        {/* PDF EXPORT */}
-                        <Section delay={0.22}>
-                            <div className="relative overflow-hidden rounded-2xl border p-6"
-                                style={{ background: 'rgba(0,243,255,0.06)', borderColor: 'rgba(0,243,255,0.45)', backdropFilter: 'blur(16px)' }}>
-                                <div className="absolute inset-x-0 top-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,243,255,0.7), transparent)' }} />
-                                <div className="absolute right-0 top-0 w-40 h-40 pointer-events-none" style={{ background: 'radial-gradient(circle at 100% 0%, rgba(0,243,255,0.1) 0%, transparent 70%)' }} />
-                                <div className="relative">
-                                    <div className="flex items-center gap-3 mb-5">
-                                        <div className="w-9 h-9 rounded-xl flex items-center justify-center border flex-shrink-0"
-                                            style={{ background: 'rgba(0,243,255,0.15)', borderColor: 'rgba(0,243,255,0.4)' }}>
-                                            <svg className="w-5 h-5" style={{ color: '#00f3ff' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-black text-white">Export as PDF</p>
-                                            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>Formatted receipt for your records</p>
-                                        </div>
-                                    </div>
-                                    <button onClick={handlePdf} disabled={pdfLoading}
-                                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-[11px] font-black uppercase tracking-wider transition-all disabled:opacity-50"
-                                        style={{ background: 'rgba(0,243,255,0.15)', borderColor: 'rgba(0,243,255,0.4)', color: '#00f3ff', boxShadow: '0 0 24px rgba(0,243,255,0.15)' }}
-                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,243,255,0.28)'; e.currentTarget.style.boxShadow = '0 0 36px rgba(0,243,255,0.28)'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,243,255,0.15)'; e.currentTarget.style.boxShadow = '0 0 24px rgba(0,243,255,0.15)'; }}
-                                    >
-                                        {pdfLoading
-                                            ? <><div className="w-3.5 h-3.5 rounded-full border animate-spin" style={{ borderColor: 'rgba(0,243,255,0.2)', borderTopColor: '#00f3ff' }} />Generating...</>
-                                            : <><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>Download PDF</>}
-                                    </button>
-                                </div>
-                            </div>
                         </Section>
                     </div>
                 </div>

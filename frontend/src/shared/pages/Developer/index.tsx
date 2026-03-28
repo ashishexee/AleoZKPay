@@ -12,6 +12,7 @@ import { HostedCheckoutGuide } from './components/HostedCheckoutGuide';
 import { SdkMethodsGuide } from './components/SdkMethodsGuide';
 import { WebhooksGuide } from './components/WebhooksGuide';
 import { SdkReference } from './components/SdkReference';
+import { DocsChatbot } from '../../components/DocsChatbot';
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -898,6 +899,7 @@ const nullpay = new NullPay({
                     )}
                 </AnimatePresence>
             </div>
+            <DocsChatbot mode="developer" />
         </motion.div>
     );
 };

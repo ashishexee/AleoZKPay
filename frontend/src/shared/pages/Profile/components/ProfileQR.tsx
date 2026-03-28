@@ -61,7 +61,9 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
                     </div>
                 </div>
                 <div>
-                    <h3 className="text-2xl font-bold text-white mb-4 tracking-wide">Initializing Profile QR</h3>
+                    <h3 className="text-2xl font-bold mb-4 tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+                        Initializing Profile QR
+                    </h3>
                     <div className="flex items-center justify-center h-10">
                         <p className="text-neon-primary text-sm font-mono animate-pulse bg-neon-primary/10 px-4 py-2 rounded-lg border border-neon-primary/20 shadow-[0_0_15px_rgba(0,243,255,0.1)]">
                             {status || 'Please wait...'}
@@ -81,7 +83,9 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
                     </svg>
                 </div>
                 <div className="flex flex-col items-center justify-center w-full">
-                    <h3 className="text-2xl font-bold text-white mb-4 text-center">Create Your Universal QR</h3>
+                    <h3 className="text-2xl font-bold mb-4 text-center text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+                        Create Your Universal QR
+                    </h3>
                     <p className="text-gray-400 max-w-sm text-sm text-center leading-relaxed">
                         This is a one-time setup. Generate your permanent QR code for daily, real-world payments, just like UPI.
                         Enable your Burner Wallet for maximum privacy.
@@ -179,10 +183,10 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
 
             {/* LIVE FEED SUB-SECTION */}
             <div className="w-full mt-12 pt-8 border-t border-white/10 relative z-10 flex flex-col items-center">
-                <h4 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <h4 className="text-lg font-bold mb-6 flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_10px_rgba(249,115,22,0.2)]">
                     <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
                     </span>
                     Live Tip Feed
                 </h4>

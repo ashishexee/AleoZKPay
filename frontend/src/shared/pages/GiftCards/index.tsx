@@ -42,7 +42,7 @@ export const GiftCardsPage: React.FC = () => {
                 transition={{ duration: 0.5 }}
                 className="flex flex-col items-center justify-center text-center mb-12"
             >
-                <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-tight text-white">
+                <h1 className="text-4xl md:text-5xl font-bold mb-6 tracking-tighter leading-tight !text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                     Private{' '}
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">
                         Gift Cards

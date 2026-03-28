@@ -25,11 +25,189 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 const readMerchantStoredValue = (value) => value || null;
 const sha256Hex = (value) => crypto.createHash('sha256').update(value).digest('hex');
+const TOKEN_CODES = ['CREDITS', 'USDCX', 'USAD'];
+
+function normalizeAllowedTokens(value) {
+    if (!value) return null;
+    const rawValues = Array.isArray(value) ? value : String(value).split(',');
+    const normalized = Array.from(new Set(
+        rawValues
+            .map((item) => String(item || '').trim().toUpperCase())
+            .filter((item) => TOKEN_CODES.includes(item))
+    ));
+    return normalized.length > 0 ? normalized : null;
+}
+
+function getDefaultAllowedTokens(tokenType, invoiceType) {
+    if (tokenType === 3) {
+        return invoiceType === 2 ? ['CREDITS', 'USDCX', 'USAD'] : ['USDCX', 'USAD'];
+    }
+    if (tokenType === 1) return ['USDCX'];
+    if (tokenType === 2) return ['USAD'];
+    return ['CREDITS'];
+}
+
+function getAllowedTokensFromCurrency(currency, invoiceType, explicitAllowedTokens) {
+    const normalized = normalizeAllowedTokens(explicitAllowedTokens);
+    if (normalized) return normalized;
+    if (currency === 'ANY') {
+        return invoiceType === 2 ? ['CREDITS', 'USDCX', 'USAD'] : ['CREDITS', 'USDCX', 'USAD'];
+    }
+    if (currency === 'USDCX') return ['USDCX'];
+    if (currency === 'USAD') return ['USAD'];
+    return ['CREDITS'];
+}
 
 function getProvableCredentials() {
     const apiKey = process.env.PROVABLE_API_KEY;
     const consumerId = process.env.PROVABLE_CONSUMER_ID || process.env.PROVABLE_CONSUMER_KEY;
     return { apiKey, consumerId };
+}
+
+async function generateDashboardAssistantReply(message, context) {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    const model = process.env.GOOGLE_GEMINI_MODEL || 'gemini-2.5-flash';
+
+    if (!apiKey) {
+        throw new Error('GOOGLE_API_KEY is not configured on the backend.');
+    }
+
+    const systemInstruction = [
+        'You are NullBot, the NullPay Dashboard Assistant.',
+        'Answer only from the provided dashboard context. Do not invent details.',
+        'Format your responses using clean Markdown. Use **bold** for emphasis, bullet lists for multiple items, and tables if useful.',
+        'IMPORTANT: NEVER WRAP your entire response in a ```markdown code block. Output raw markdown text directly.',
+        'When returning hashes (invoice or receipt), wrap them in `code blocks` to make them easy to read.',
+        'Keep replies professional, concise, and structured.',
+    ].join(' ');
+
+    const prompt = [
+        'Dashboard context:',
+        JSON.stringify(context, null, 2),
+        '',
+        'User request:',
+        message,
+    ].join('\n');
+
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                systemInstruction: {
+                    parts: [{ text: systemInstruction }]
+                },
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [{ text: prompt }]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.2,
+                    maxOutputTokens: 900
+                }
+            })
+        }
+    );
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+        const message =
+            payload?.error?.message ||
+            payload?.error?.status ||
+            'Gemini request failed.';
+        throw new Error(message);
+    }
+
+    const text = payload?.candidates
+        ?.flatMap(candidate => candidate?.content?.parts || [])
+        ?.map(part => part?.text || '')
+        ?.join('\n')
+        ?.trim();
+
+    if (!text) {
+        throw new Error('Gemini returned an empty response.');
+    }
+
+    return text;
+}
+
+async function generateDeveloperAssistantReply(message, context) {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    const model = process.env.GOOGLE_GEMINI_MODEL || 'gemini-2.5-flash';
+
+    if (!apiKey) {
+        throw new Error('GOOGLE_API_KEY is not configured on the backend.');
+    }
+
+    const isDocsMode = context.mode === 'docs';
+    const systemInstruction = [
+        `You are NullBot, the NullPay ${isDocsMode ? 'Documentation' : 'Developer Portal'} Assistant.`,
+        isDocsMode
+            ? 'Your primary focus is helping developers navigate the NullPay technical docs, explaining APIs, SDKs, and Smart Contracts conceptually.'
+            : 'Your primary focus is helping developers integrate NullPay in their applications, configuring Webhooks, setting up Secret Keys, and backend implementation.',
+        'Use the provided context to answer questions. Do not invent details not present in the context or your general knowledge of the system.',
+        'Format your responses using clean Markdown. Use **bold** for emphasis, bullet lists for multiple items.',
+        'IMPORTANT: NEVER WRAP your entire response in a ```markdown code block. Output raw markdown text directly.',
+        'Provide code snippets using standard markdown code blocks when appropriate.',
+        'Keep replies professional, concise, and structured. Assume the user is a developer integrating NullPay.'
+    ].join(' ');
+
+    const prompt = [
+        'Documentation Context:',
+        JSON.stringify(context, null, 2),
+        '',
+        'Developer Question:',
+        message,
+    ].join('\n');
+
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                systemInstruction: {
+                    parts: [{ text: systemInstruction }]
+                },
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [{ text: prompt }]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.2,
+                    maxOutputTokens: 1200
+                }
+            })
+        }
+    );
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+        const message =
+            payload?.error?.message ||
+            payload?.error?.status ||
+            'Gemini request failed.';
+        throw new Error(message);
+    }
+
+    const text = payload?.candidates
+        ?.flatMap(candidate => candidate?.content?.parts || [])
+        ?.map(part => part?.text || '')
+        ?.join('\n')
+        ?.trim();
+
+    if (!text) {
+        throw new Error('Gemini returned an empty response.');
+    }
+
+    return text;
 }
 
 async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, salt, memo, invoice_type }) {
@@ -119,6 +297,46 @@ async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, 
 
 app.get('/', (req, res) => {
     res.send('AleoZKPay Backend is running');
+});
+
+app.post('/api/dashboard-assistant/chat', async (req, res) => {
+    const { message, context } = req.body || {};
+
+    if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'message is required.' });
+    }
+
+    if (!context || typeof context !== 'object') {
+        return res.status(400).json({ error: 'context is required.' });
+    }
+
+    try {
+        const reply = await generateDashboardAssistantReply(message.trim(), context);
+        return res.json({ reply });
+    } catch (error) {
+        console.error('Dashboard assistant error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to generate dashboard assistant reply.' });
+    }
+});
+
+app.post('/api/developer-assistant/chat', async (req, res) => {
+    const { message, context } = req.body || {};
+
+    if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'message is required.' });
+    }
+
+    if (!context || typeof context !== 'object') {
+        return res.status(400).json({ error: 'context is required.' });
+    }
+
+    try {
+        const reply = await generateDeveloperAssistantReply(message.trim(), context);
+        return res.json({ reply });
+    } catch (error) {
+        console.error('Developer assistant error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to generate developer assistant reply.' });
+    }
 });
 
 // Proxy for Record Scanner to bypass CORS
@@ -454,7 +672,7 @@ app.post('/api/checkout/sessions', async (req, res) => {
     }
 
     // 2. Validate Request Body
-    const { amount, currency, success_url, cancel_url, invoice_hash, salt: providedSalt, invoice_type, type } = req.body;
+    const { amount, currency, success_url, cancel_url, invoice_hash, salt: providedSalt, invoice_type, type, allowed_tokens } = req.body;
     
     // Map SDK string 'type' to backend integer 'invoice_type'
     let finalInvoiceType = invoice_type !== undefined ? invoice_type : 0;
@@ -481,23 +699,37 @@ app.post('/api/checkout/sessions', async (req, res) => {
     let finalInvoiceHash = invoice_hash;
     let initialStatus = 'PROCESSING'; // Default to Relayer flow
     let finalCurrency = uppercaseCurrency;
+    let finalAllowedTokens = getAllowedTokensFromCurrency(uppercaseCurrency, finalInvoiceType, allowed_tokens);
 
     if (invoice_hash && providedSalt) {
         initialStatus = 'OPEN'; // Merchant already provided the ZK parameters
         const typeName = finalInvoiceType === 1 ? 'Multi-Pay' : (finalInvoiceType === 2 ? 'Donation' : 'Standard');
         console.log(`[Checkout] Using pre-generated ${typeName} hash: ${invoice_hash}`);
 
-        // If currency wasn't explicitly provided, fetch it from the invoice
-        if (!currency) {
+        const shouldReadInvoiceMeta = !currency || !normalizeAllowedTokens(allowed_tokens);
+        if (shouldReadInvoiceMeta) {
             const { data: invoice } = await supabase
                 .from('invoices')
-                .select('token_type')
+                .select('token_type, invoice_type, allowed_tokens')
                 .eq('invoice_hash', invoice_hash)
                 .single();
 
             if (invoice) {
-                finalCurrency = invoice.token_type === 1 ? 'USDCX' : invoice.token_type === 2 ? 'USAD' : 'CREDITS';
-                console.log(`[Checkout] Derived currency from invoice: ${finalCurrency}`);
+                if (!currency) {
+                    finalCurrency = invoice.token_type === 3
+                        ? 'ANY'
+                        : invoice.token_type === 1
+                            ? 'USDCX'
+                            : invoice.token_type === 2
+                                ? 'USAD'
+                                : 'CREDITS';
+                    console.log(`[Checkout] Derived currency from invoice: ${finalCurrency}`);
+                }
+
+                if (!normalizeAllowedTokens(allowed_tokens)) {
+                    finalAllowedTokens = normalizeAllowedTokens(invoice.allowed_tokens)
+                        || getDefaultAllowedTokens(invoice.token_type, invoice.invoice_type);
+                }
             }
         }
     } else {
@@ -544,6 +776,7 @@ app.post('/api/checkout/sessions', async (req, res) => {
             is_burner: false,
             token_type: tokenTypeNum,
             invoice_type: finalInvoiceType,
+            allowed_tokens: finalAllowedTokens,
             salt: finalSalt,
             status: 'PENDING',
             for_sdk: true,
@@ -600,11 +833,26 @@ app.get('/api/checkout/sessions/:id', async (req, res) => {
             intent.merchants.aleo_address = intent.merchants.encrypted_aleo_address;
         }
 
+        let allowedTokens = null;
+        if (intent.invoice_hash) {
+            const { data: invoiceMeta } = await supabase
+                .from('invoices')
+                .select('token_type, invoice_type, allowed_tokens')
+                .eq('invoice_hash', intent.invoice_hash)
+                .maybeSingle();
+
+            if (invoiceMeta) {
+                allowedTokens = normalizeAllowedTokens(invoiceMeta.allowed_tokens)
+                    || getDefaultAllowedTokens(invoiceMeta.token_type, invoiceMeta.invoice_type);
+            }
+        }
+
         // Return safe data for the frontend (do NOT return secret_key or webhook URLs)
         const sessionData = {
             id: intent.id,
             amount: intent.amount,
             token_type: intent.token_type,
+            allowed_tokens: allowedTokens,
             status: intent.status,
             invoice_hash: intent.invoice_hash,
             salt: intent.salt,
@@ -698,7 +946,7 @@ app.patch('/api/checkout/sessions/:id', async (req, res) => {
 });
 
 app.post('/api/invoices', async (req, res) => {
-    const { invoice_hash, merchant_address, designated_address, merchant_address_hash, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk } = req.body;
+    const { invoice_hash, merchant_address, designated_address, merchant_address_hash, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk, allowed_tokens } = req.body;
 
     if (!invoice_hash || !merchant_address) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -719,6 +967,7 @@ app.post('/api/invoices', async (req, res) => {
                 salt: salt || null,  // Store salt for payment link generation
                 invoice_type: invoice_type !== undefined ? invoice_type : 0,  // 0 = Standard, 1 = Fundraising
                 token_type: token_type !== undefined ? token_type : 0,  // 0 = Credits, 1 = USDCx
+                allowed_tokens: normalizeAllowedTokens(allowed_tokens),
                 for_sdk: for_sdk === true,
                 invoice_items: invoice_items || null,  // Line items for standard invoices
                 created_at: new Date().toISOString(),

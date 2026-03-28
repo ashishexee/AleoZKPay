@@ -2,6 +2,7 @@ import { useSharedPayment } from './useSharedPayment';
 import { createCreditsPayment } from './useCreditsPayment';
 import { createUSDCxPayment } from './useUSDCxPayment';
 import { createUSADPayment } from './useUSADPayment';
+import { getAllowedTokensForInvoice, getTokenTypeFromCode } from '../../utils/tokens';
 
 export type { PaymentStep } from './types';
 
@@ -31,7 +32,13 @@ export const usePayment = () => {
 
     const payInvoice = async (selectedTokenOverride?: number) => {
         if (!shared.invoice) return;
-        const activeTokenType = selectedTokenOverride !== undefined ? selectedTokenOverride : shared.invoice.tokenType;
+        const activeTokenType = selectedTokenOverride !== undefined
+            ? selectedTokenOverride
+            : shared.invoice.tokenType === 3
+                ? getTokenTypeFromCode(
+                    getAllowedTokensForInvoice(shared.invoice.tokenType, shared.invoice.invoiceType, shared.invoice.allowedTokens)[0]
+                )
+                : shared.invoice.tokenType;
         if (activeTokenType === 1) {
             await payInvoiceUSDCx();
         } else if (activeTokenType === 2) {

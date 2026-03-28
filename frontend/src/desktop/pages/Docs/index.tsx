@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
+import { DocsChatbot } from '../../../shared/components/DocsChatbot';
 
 import { pageVariants, staggerContainer, fadeInUp } from '../../../shared/utils/animations';
 
@@ -1264,6 +1265,7 @@ app.post('/webhook/nullpay', express.raw({ type: 'application/json' }), (req, re
                     )}
                 </div>
             </motion.div>
+            <DocsChatbot mode="docs" />
         </motion.div>
     );
 };

@@ -6,6 +6,7 @@ import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { InvoiceData, InvoiceItem } from '../types/invoice';
 import { useBurnerWallet } from './BurnerWalletProvider';
 import { encryptWithPassword, hashAddress } from '../utils/crypto';
+import { ANY_ALLOWED_TOKENS, STABLE_ALLOWED_TOKENS } from '../utils/tokens';
 
 export type InvoiceType = 'standard' | 'multipay' | 'donation';
 
@@ -95,6 +96,13 @@ export const useCreateInvoice = () => {
 
             const isDonation = invoiceType === 'donation';
             const amountMicro = isDonation ? 0 : Math.round(Number(amount) * 1_000_000);
+            const allowedTokens = tokenType === 3
+                ? (isDonation ? ANY_ALLOWED_TOKENS : STABLE_ALLOWED_TOKENS)
+                : tokenType === 1
+                    ? ['USDCX']
+                    : tokenType === 2
+                        ? ['USAD']
+                        : ['CREDITS'];
 
             let functionName = 'create_invoice';
             let amountInput = `${amountMicro}u64`;
@@ -247,6 +255,7 @@ export const useCreateInvoice = () => {
                                         salt: salt,
                                         invoice_type: dbInvoiceType,
                                         token_type: tokenType,
+                                        allowed_tokens: allowedTokens,
                                         is_burner: walletType === 1 && !forSdk,
                                         for_sdk: forSdk,
                                         invoice_items: showItems && items.length > 0 ? items : undefined,
@@ -269,6 +278,7 @@ export const useCreateInvoice = () => {
                                 if (tokenType === 1) params.append('token', 'usdcx');
                                 if (tokenType === 2) params.append('token', 'usad');
                                 if (tokenType === 3) params.append('token', 'any');
+                                if (tokenType === 3) params.append('allowed', allowedTokens.join(',').toLowerCase());
 
                                 const link = `${window.location.origin}/pay?${params.toString()}`;
 

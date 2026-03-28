@@ -4,10 +4,12 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { useWalletErrorHandler } from '../Wallet/WalletErrorBoundary';
 import type { PaymentStep, InvoiceState } from './types';
 import { createClient } from '@supabase/supabase-js';
 import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
+import { getAllowedTokensForInvoice, getTokenTypeFromCode, parseAllowedTokens } from '../../utils/tokens';
 
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
 
@@ -26,6 +28,7 @@ interface GiftCardRedeemOption {
 export const useSharedPayment = () => {
     const [searchParams] = useSearchParams();
     const { address, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
+    const { handleWalletError } = useWalletErrorHandler();
     const publicKey = address;
     const [invoice, setInvoice] = useState<InvoiceState | null>(null);
     const [donationAmount, setDonationAmount] = useState<string>('');
@@ -40,6 +43,12 @@ export const useSharedPayment = () => {
     const [receiptHash] = useState<string | null>(null);
     const [receiptSearchFailed, setReceiptSearchFailed] = useState(false);
     const [giftCardRedeemOption, setGiftCardRedeemOption] = useState<GiftCardRedeemOption | null>(null);
+    const resolveActiveTokenType = (selectedTokenOverride?: number) => {
+        if (!invoice) return 0;
+        if (selectedTokenOverride !== undefined) return selectedTokenOverride;
+        const allowedTokens = getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType, invoice.allowedTokens);
+        return getTokenTypeFromCode(allowedTokens[0]);
+    };
 
     useEffect(() => {
         const init = async () => {
@@ -50,10 +59,11 @@ export const useSharedPayment = () => {
 
             const memo = searchParams.get('memo') || '';
             const tokenParam = searchParams.get('token');
-            const tokenType = tokenParam === 'usdcx' ? 1 : tokenParam === 'usad' ? 2 : 0;
+            const tokenType = tokenParam === 'usdcx' ? 1 : tokenParam === 'usad' ? 2 : tokenParam === 'any' ? 3 : 0;
             const typeParam = searchParams.get('type');
             let initialType = typeParam === 'donation' ? 2 : (typeParam === 'multipay' ? 1 : 0);
             const sessionId = searchParams.get('session_id');
+            const queryAllowedTokens = parseAllowedTokens(searchParams.get('allowed'));
 
             try {
                 setLoading(true);
@@ -112,6 +122,11 @@ export const useSharedPayment = () => {
                 } catch (e) { console.warn("Could not fetch DB details", e); }
 
                 const finalInvoiceType = invoiceData ? invoiceData.invoiceType : (dbInvoice?.invoice_type !== undefined ? dbInvoice.invoice_type : initialType);
+                const allowedTokens = getAllowedTokensForInvoice(
+                    tokenTypeOnChain,
+                    finalInvoiceType,
+                    dbInvoice?.allowed_tokens || queryAllowedTokens
+                );
 
                 console.log(`🔗 On-Chain Invoice Data | Status: ${statusOnChain}, Token Type: ${tokenTypeOnChain}, Type: ${finalInvoiceType}`);
 
@@ -149,6 +164,7 @@ export const useSharedPayment = () => {
                         hash: fetchedHash!,
                         memo,
                         tokenType: tokenTypeOnChain,
+                        allowedTokens,
                         invoiceType: finalInvoiceType,
                         items: dbInvoice?.invoice_items || undefined,
                         sessionId: sessionId || undefined
@@ -165,6 +181,7 @@ export const useSharedPayment = () => {
                     hash: fetchedHash!,
                     memo,
                     tokenType: tokenTypeOnChain,
+                    allowedTokens,
                     invoiceType: finalInvoiceType,
                     items: dbInvoice?.invoice_items || undefined,
                     sessionId: sessionId || undefined
@@ -377,7 +394,7 @@ export const useSharedPayment = () => {
         try {
             setLoading(true);
 
-            const activeTokenType = selectedTokenOverride !== undefined ? selectedTokenOverride : invoice.tokenType;
+            const activeTokenType = resolveActiveTokenType(selectedTokenOverride);
 
             // Determine Program ID and type suffix based on token type
             let tokenProgramId = 'credits.aleo';
@@ -545,6 +562,7 @@ export const useSharedPayment = () => {
             setGiftCardRedeemOption(null);
             setStatus(`Redeem submitted! NullPay covered the gas fee. Once it settles, switch to Wallet and pay the invoice.`);
         } catch (err: any) {
+            if (handleWalletError(err)) return;
             console.error(err);
             setError(err.message || 'Failed to redeem gift card balance.');
         } finally {
@@ -574,7 +592,7 @@ export const useSharedPayment = () => {
             const finalAmount = (isDonationType && parsedDonation > 0) ? parsedDonation : invoice.amount;
             if (finalAmount <= 0) throw new Error("Amount must be greater than zero.");
 
-            const activeTokenType = selectedTokenOverride !== undefined ? selectedTokenOverride : invoice.tokenType;
+            const activeTokenType = resolveActiveTokenType(selectedTokenOverride);
 
             let tokenProgram = 'credits.aleo';
             let tokenName = 'Credits';
@@ -681,6 +699,7 @@ export const useSharedPayment = () => {
             pollTransaction(transactionId);
 
         } catch (err: any) {
+            if (handleWalletError(err)) return;
             console.error(err);
             setError(err.message || "An error occurred during Gift Card payment.");
         } finally {

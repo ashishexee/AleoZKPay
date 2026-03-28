@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { Shimmer } from '../../../components/ui/Shimmer';
 import { CheckoutSession } from '../types';
 import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPrompt';
+import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../utils/tokens';
 
 interface CheckoutUIProps {
     session: CheckoutSession | null;
@@ -45,7 +46,17 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     const [giftCode, setGiftCode] = useState<string>('');
 
     const isDonation = session?.amount === 0;
+    const allowedTokens = session
+        ? getAllowedTokensForInvoice(session.token_type === 'ANY' ? 3 : 0, session.invoice_type, session.allowed_tokens)
+        : ['CREDITS', 'USDCX', 'USAD'];
     const displayToken = session?.token_type === 'ANY' ? selectedPayerToken : session?.token_type;
+    const displayTokenLabel = displayToken ? getTokenLabel(getTokenTypeFromCode(displayToken as 'CREDITS' | 'USDCX' | 'USAD')) : 'Tokens';
+
+    useEffect(() => {
+        if (!session || session.token_type !== 'ANY') return;
+        const nextToken = allowedTokens[0] || 'CREDITS';
+        setSelectedPayerToken((current) => allowedTokens.includes(current as any) ? current : nextToken);
+    }, [session, allowedTokens.join(',')]);
 
     const paymentLink = typeof window !== 'undefined' && session ? (() => {
         const amtStr = isDonation && donationAmount ? `${Math.round(parseFloat(donationAmount) * 1_000_000)}` : `${Math.round(session.amount * 1_000_000)}`;
@@ -62,6 +73,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
             token: (displayToken || 'usdcx').toLowerCase(),
             session_id: session.id
         });
+        if (session.token_type === 'ANY') {
+            params.append('allowed', allowedTokens.join(',').toLowerCase());
+        }
         return `${window.location.origin}/pay?${params.toString()}`;
     })() : '';
 
@@ -147,12 +161,12 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 placeholder="0.00"
                                                 className="w-full bg-black/40 border-2 border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-4xl font-black tracking-tighter text-white p-3 pr-16 text-right transition-colors"
                                             />
-                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500 uppercase">{displayToken === 'ANY' ? '' : displayToken}</span>
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500 uppercase">{displayToken === 'ANY' ? '' : displayTokenLabel}</span>
                                         </div>
                                     </div>
                                 ) : (
                                     <p className="text-4xl font-black text-white tracking-tighter mb-1">
-                                        {session.amount} <span className="text-sm font-medium text-gray-500">{displayToken}</span>
+                                        {session.amount} <span className="text-sm font-medium text-gray-500">{displayTokenLabel}</span>
                                     </p>
                                 )}
                                 
@@ -164,9 +178,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             onChange={(e) => setSelectedPayerToken(e.target.value)}
                                             className="w-full max-w-[200px] bg-black/40 border-2 border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-lg font-bold text-white p-3 transition-colors text-center"
                                         >
-                                            <option value="CREDITS">Aleo Credits</option>
-                                            <option value="USDCX">USDCx</option>
-                                            <option value="USAD">USAD</option>
+                                            {allowedTokens.map((token) => (
+                                                <option key={token} value={token}>{token === 'CREDITS' ? 'Aleo Credits' : token === 'USDCX' ? 'USDCx' : 'USAD'}</option>
+                                            ))}
                                         </select>
                                     </div>
                                 )}
@@ -330,7 +344,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 Processing on-chain...
                                             </span>
                                         ) : (
-                                            isDonation ? `Pay ${donationAmount || '0'} ${displayToken}` : `Pay ${session.amount} ${displayToken}`
+                                            isDonation ? `Pay ${donationAmount || '0'} ${displayTokenLabel}` : `Pay ${session.amount} ${displayTokenLabel}`
                                         )}
                                     </Button>
                                 )}
