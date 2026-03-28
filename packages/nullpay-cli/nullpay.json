@@ -1,0 +1,15 @@
+{
+  "merchant": "aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0",
+  "generated_at": "2026-03-28T20:57:51.955Z",
+  "invoices": [
+    {
+      "name": "basic",
+      "type": "multipay",
+      "amount": 1,
+      "currency": "CREDITS",
+      "label": "",
+      "hash": "7781943064332765337017658793117468628068754276527604667735873517926524355475field",
+      "salt": "135345215687768412695823937102832922458field"
+    }
+  ]
+}

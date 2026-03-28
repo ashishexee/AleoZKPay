@@ -187,13 +187,13 @@ export const DeveloperPortal = () => {
 
                     <motion.div variants={fadeInUp} className="mt-8 mb-4 flex flex-col gap-4 items-center">
                         <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.1] rounded-2xl hover:border-orange-500/30 hover:bg-white/[0.05] hover:shadow-[0_0_20px_rgba(249,115,22,0.05)] transition-all group max-w-fit cursor-pointer relative overflow-hidden" onClick={() => {
-                            navigator.clipboard.writeText('npm install @nullpay/node@1.0.1');
+                            navigator.clipboard.writeText('npm install @nullpay/node@latest');
                             setCommandCopied(true);
                             setTimeout(() => setCommandCopied(false), 2000);
                         }}>
                             <div className="absolute inset-0 bg-gradient-to-r from-orange-400/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                             <Terminal className="w-4 h-4 text-gray-500 group-hover:text-orange-400 transition-colors" />
-                            <code className="text-sm font-mono text-orange-300 font-medium">npm install @nullpay/node@1.0.1</code>
+                            <code className="text-sm font-mono text-orange-300 font-medium">npm install @nullpay/node@latest</code>
                             <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                 {commandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
                                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
@@ -204,13 +204,13 @@ export const DeveloperPortal = () => {
 
                         <div className="flex flex-col items-center gap-2.5">
                             <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.1] rounded-2xl hover:border-orange-500/30 hover:bg-white/[0.05] hover:shadow-[0_0_20px_rgba(249,115,22,0.05)] transition-all group max-w-fit cursor-pointer relative overflow-hidden" onClick={() => {
-                                navigator.clipboard.writeText('npx @nullpay/cli@1.0.1 sdk onboard');
+                                navigator.clipboard.writeText('npx @nullpay/cli@latest sdk onboard');
                                 setCliCommandCopied(true);
                                 setTimeout(() => setCliCommandCopied(false), 2000);
                             }}>
                                 <div className="absolute inset-0 bg-gradient-to-r from-orange-400/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <Command className="w-4 h-4 text-gray-500 group-hover:text-orange-400 transition-colors" />
-                                <code className="text-sm font-mono text-orange-300 font-medium">npx @nullpay/cli@1.0.1 sdk onboard</code>
+                                <code className="text-sm font-mono text-orange-300 font-medium">npx @nullpay/cli@latest sdk onboard</code>
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {cliCommandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
@@ -295,7 +295,7 @@ export const DeveloperPortal = () => {
                                 <p className="text-gray-500 text-sm mb-5 leading-relaxed">
                                     Instead of creating invoices manually via code, generate them instantly by running the CLI from the root of your backend project.
                                 </p>
-                                <CodeBlock title="Run via npx" language="bash" code={`npx @nullpay/cli sdk onboard`} />
+                                <CodeBlock title="Run via npx" language="bash" code={`npx @nullpay/cli@latest sdk onboard`} />
 
                                 <h3 className="text-lg font-bold text-gradient-gold drop-shadow-gold mb-4 mt-8">2. Review your nullpay.json</h3>
                                 <p className="text-gray-500 text-sm mb-5 leading-relaxed">
@@ -473,7 +473,7 @@ export async function createCheckout(req, res) {
                                     The <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">@nullpay/node</code> SDK is a lightweight client for your Node.js backend.
                                     Never expose your secret key on the frontend.
                                 </p>
-                                <CodeBlock title="Install SDK" language="bash" code={`npm install @nullpay/node`} />
+                                <CodeBlock title="Install SDK" language="bash" code={`npm install @nullpay/node@latest`} />
 
                                 <h2 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-10 mb-2">Initialize the Client</h2>
                                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">

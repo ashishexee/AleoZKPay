@@ -15,6 +15,24 @@ NullPay is a decentralized invoice and payment system that leverages Aleo's zero
 
 ---
 
+## 🚀 What's New in Wave 4 (March 2026)
+
+This release expands NullPay's merchant lifecycle with AI-native tooling, broader payment methods, and delegated infrastructure.
+
+### 🤖 MCP Server & Context-Aware NullBot
+- **NullPay MCP**: Shipped an installable MCP server package (`@nullpay/mcp`) allowing AI clients to create invoices, inspect merchant flows, and execute supported payment actions natively.
+- **NullBot Integrations**: The AI assistant (NullBot) now lives inside the dashboard, developer portal, and docs with route-specific context capabilities, transforming it into a live merchant copilot.
+
+### 🛠️ SDK & CLI Expansion
+- **Rich Node SDK**: The `@nullpay/node` SDK now handles local invoice manifests (`nullpay.json`), resolves invoice shortcuts, creates hosted checkout sessions, and verifies webhook signatures.
+- **CLI Onboarding Workflow**: The `@nullpay/cli` handles generating salts, submitting invoices to the relayer, polling on-chain resolutions, and writing the final manifest into your project.
+
+### 💳 Deep Payment Infrastructure
+- **Gift Card Ecosystem**: Full-flow support for creating gift cards, balance scanning, wallet redemption, and direct invoice payment paths.
+- **Delegated Proving & Sponsorship**: Introduced backend-sponsored execution endpoints (`/api/dps/sponsor-sweep`) to relay proving and fee paths, reducing direct wallet dependency.
+- **Realtime Hosted Checkout**: Standard hosted invoices now natively surface live payment status via Supabase realtime listeners, eliminating the need for merchants to wire custom websocket monitors.
+
+---
 
 ## 🚀 What's New in Wave 3 (March 2025)
 

@@ -1,10 +1,10 @@
 import React from 'react';
-import { CheckCircle, Key, Lock, Shield } from 'lucide-react';
+import { CheckCircle, Key, Lock } from 'lucide-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Button } from '../../../components/ui/Button';
 import { SdkDashboard } from './SdkDashboard';
-import { DeveloperStepCard } from './DeveloperStepCard';
+
 
 interface MerchantConsoleProps {
     publicKey: string | null;
@@ -33,12 +33,6 @@ export const MerchantConsole: React.FC<MerchantConsoleProps> = ({
 }) => {
     return (
         <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <DeveloperStepCard step="01" title="Connect Merchant Wallet" desc="Use the same Aleo wallet that owns the invoices you want to manage in the SDK dashboard." icon={Shield} />
-                <DeveloperStepCard step="02" title="Generate API Key" desc="Register once, save the one-time key, and use it only on your backend server." icon={Key} />
-                <DeveloperStepCard step="03" title="Track SDK Invoices" desc="Create invoices with the SDK toggle enabled and monitor those tagged invoices here." icon={CheckCircle} />
-            </div>
-
             <div className="grid grid-cols-1 gap-8 items-start">
                 <GlassCard className="p-8">
                     <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">Merchant Access</span>
