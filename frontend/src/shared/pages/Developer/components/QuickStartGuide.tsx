@@ -35,6 +35,8 @@ export const QuickStartGuide: React.FC = () => {
 const nullpay = new NullPay({
   secretKey: process.env.NULLPAY_SECRET_KEY!,
   baseURL: 'https://nullpay-backend-ib5q4.ondigitalocean.app/api', // optional override
+  projectRoot: __dirname, // recommended on Vercel/serverless
+  configPath: path.join(__dirname, 'nullpay.json'),
 });`}
                 />
 
@@ -77,6 +79,17 @@ const nullpay = new NullPay({
                     The <code className="text-neon-primary bg-white/5 py-0.5 px-1.5 rounded">@nullpay/node</code> SDK automatically reads this file! 
                     There are two ways to create your <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code>:
                 </p>
+                <p className="text-gray-300 text-sm leading-relaxed mb-6">
+                    <span className="text-gradient-gold drop-shadow-gold font-semibold">nullpay.json is optional</span>; use it for named pre-generated invoices, or skip it and create sessions directly with <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">amount</code>, <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">currency</code>, and <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">type</code>.
+                </p>
+                <div className="mb-6 rounded-2xl border border-orange-400/20 bg-orange-500/10 px-5 py-4 text-left">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-orange-300 mb-2">
+                        Serverless Note
+                    </p>
+                    <p className="text-sm text-white/80 leading-relaxed">
+                        On Vercel or similar serverless runtimes, pass <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">projectRoot</code> and <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">configPath</code> into <code className="text-neon-primary bg-white/5 py-0.5 px-1.5 rounded">new NullPay()</code> so the SDK resolves <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code> from the exact backend folder instead of relying on <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">process.cwd()</code>.
+                    </p>
+                </div>
                 <div className="space-y-4 mb-8">
                     <div className="p-5 bg-white/[0.02] border border-white/[0.06] rounded-xl">
                         <h4 className="text-gradient-gold drop-shadow-gold font-bold mb-2">1. Automatic Generation (Recommended)</h4>

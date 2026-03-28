@@ -26,12 +26,16 @@ export const SdkMethodsGuide: React.FC = () => {
                 <div className="bg-black/40 rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04] px-4 mb-8">
                     <PropRow name="secretKey" type="string" required desc="Merchant secret API key from the Developer Console." />
                     <PropRow name="baseURL" type="string" desc="Optional API base URL override for local development or custom environments." />
+                    <PropRow name="projectRoot" type="string" desc="Optional root folder used when resolving nullpay.json. Recommended on serverless runtimes." />
+                    <PropRow name="configPath" type="string" desc="Optional exact file path to nullpay.json. Best option when you want deterministic lookup." />
                 </div>
 
                 <DeveloperCodeBlock
                     title="new NullPay(config)"
                     code={`const nullpay = new NullPay({
   secretKey: process.env.NULLPAY_SECRET_KEY!,
+  projectRoot: __dirname,
+  configPath: path.join(__dirname, 'nullpay.json'),
 });`}
                 />
 
@@ -47,6 +51,10 @@ const firstInvoice = nullpay.invoices.getByIndex(0);
 // Filter your pre-generated invoices
 const donationInvoices = nullpay.invoices.getByType('donation');`}
                 />
+
+                <p className="text-gray-500 text-xs leading-relaxed mt-4">
+                    If you deploy on Vercel or another serverless runtime, prefer passing <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">projectRoot</code> and <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">configPath</code> so the SDK does not rely on the runtime working directory to find <code className="text-white bg-white/5 py-0.5 px-1.5 rounded">nullpay.json</code>.
+                </p>
 
                 <div className="bg-black/40 rounded-2xl border border-white/[0.06] divide-y divide-white/[0.04] px-4 mt-10">
                     <PropRow name="amount" type="number" desc="Amount in whole tokens. Intrinsically auto-resolved if utilizing nullpay_invoice_name." />

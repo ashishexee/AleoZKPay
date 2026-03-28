@@ -45,6 +45,12 @@ function getDeveloperKnowledgeContext(message, context) {
     const normalizedMessage = String(message || '').toLowerCase();
     const route = String(context?.route || '').toLowerCase();
     const docsMode = context?.mode === 'docs';
+    const wantsSecretKeyInfo =
+        normalizedMessage.includes('secret key') ||
+        normalizedMessage.includes('secret keys') ||
+        normalizedMessage.includes('api key') ||
+        normalizedMessage.includes('merchant') ||
+        route.includes('/developer');
     const wantsCliInfo =
         normalizedMessage.includes('cli') ||
         normalizedMessage.includes('nullpay.json') ||
@@ -52,6 +58,21 @@ function getDeveloperKnowledgeContext(message, context) {
         route.includes('/developer');
 
     const sections = [];
+
+    if (wantsSecretKeyInfo) {
+        sections.push([
+            'NullPay merchant registration and secret key facts from the repository:',
+            '- Secret keys are NOT auto-issued just because someone has a generic account or visits the dashboard.',
+            '- A developer must explicitly register as a merchant.',
+            '- Frontend registration flow: `frontend/src/shared/pages/Developer/index.tsx` calls `POST /api/merchants/register` from `handleRegister`.',
+            '- The registration form lives in `frontend/src/shared/pages/Developer/components/MerchantConsole.tsx` and tells the user to connect their wallet, register their store, and save the key once.',
+            '- Backend endpoint: `backend/index.js` at `POST /api/merchants/register`.',
+            '- On successful merchant registration, the backend generates a new secret key using `crypto.randomBytes(24)` and prefixes it with `sk_test_`.',
+            '- The generated key is returned once in the registration response as `secret_key`.',
+            '- The dashboard copy explicitly says the key will not be shown again after registration, so developers should save it immediately in their backend environment.',
+            '- The CLI command `nullpay sdk onboard` does not create a secret key. It asks the developer to paste an existing merchant secret key and then validates it via `POST /api/sdk/onboard/validate`.'
+        ].join('\n'));
+    }
 
     if (wantsCliInfo) {
         sections.push([
@@ -69,7 +90,9 @@ function getDeveloperKnowledgeContext(message, context) {
             '- It submits invoice creation through the NullPay relayer using `POST /api/dps/relayer/create-invoice`.',
             '- After submission, it polls the Provable mapping endpoint `salt_to_invoice` for up to about 60 retries with a 2 second delay to resolve the on-chain invoice hash.',
             '- When complete, it writes a local `nullpay.json` file containing `merchant`, `generated_at`, and the generated invoices with `name`, `type`, `amount`, `currency`, `label`, `hash`, and `salt`.',
-            '- The CLI also attempts to append `nullpay.json` to `.gitignore` because salts are sensitive.',
+            '- `nullpay.json` is optional. Developers can use it for named pre-generated invoices, or skip it and create checkout sessions directly with `amount`, `currency`, and `type`.',
+            '- If a backend uses `nullpay.json` on Vercel or another serverless runtime, it is safer to initialize the SDK with `projectRoot` and `configPath` so file lookup does not rely on `process.cwd()`.',
+            '- The CLI does NOT add `nullpay.json` to `.gitignore`. Developers can safely commit the file to source control — it contains only public invoice hashes and is not a secret.',
             '- The relayer-sponsored setup flow means NullPay covers the invoice-creation network fee instead of requiring the merchant to broadcast the setup transaction manually.',
             '- Important limitation: today the CLI is mainly an onboarding and invoice pre-generation tool. It is not a full general-purpose management CLI with many subcommands yet.'
         ].join('\n'));
@@ -271,6 +294,7 @@ async function generateDashboardAssistantReply(message, context) {
     const systemInstruction = [
         'You are NullBot, the NullPay Dashboard Assistant.',
         'Answer only from the provided dashboard context. Do not invent details.',
+        'If the dashboard context includes wallet addresses such as main or burner wallet addresses, you may return them directly.',
         'Format your responses using clean Markdown. Use **bold** for emphasis, bullet lists for multiple items, and tables if useful.',
         'IMPORTANT: NEVER WRAP your entire response in a ```markdown code block. Output raw markdown text directly.',
         'When returning hashes (invoice or receipt), wrap them in `code blocks` to make them easy to read.',
@@ -304,6 +328,7 @@ async function generateDeveloperAssistantReply(message, context) {
             : 'Your primary focus is helping developers integrate NullPay in their applications, configuring Webhooks, setting up Secret Keys, and backend implementation.',
         'Use the provided context to answer questions. Do not invent details not present in the context or your general knowledge of the system.',
         'When repository knowledge is provided, prefer it over generic assumptions and cite concrete command names, files, and behaviors.',
+        'Be precise about secret key onboarding: do not say a secret key is created automatically for any account. Explain that a developer must register as a merchant first, after which the backend generates the key and returns it once.',
         'Format your responses using clean Markdown. Use **bold** for emphasis, bullet lists for multiple items.',
         'IMPORTANT: NEVER WRAP your entire response in a ```markdown code block. Output raw markdown text directly.',
         'Provide code snippets using standard markdown code blocks when appropriate.',

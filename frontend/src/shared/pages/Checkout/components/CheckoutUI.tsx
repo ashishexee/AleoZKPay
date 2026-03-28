@@ -186,13 +186,21 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                             {/* Invoice Details */}
                             <div className="pt-6 pb-6 border-b border-white/10">
                                 <div className="flex justify-center mb-6">
-                                    <div className="p-3 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                    <div className="relative p-3 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                                         <QRCodeSVG
                                             value={paymentLink}
                                             size={140}
                                             level="H"
                                             includeMargin={false}
                                         />
+                                        <div className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg bg-white p-1 shadow-[0_6px_18px_rgba(0,0,0,0.18)]">
+                                            <img
+                                                src="/assets/nullpay_logo.png"
+                                                alt="NullPay"
+                                                className="h-full w-full object-contain"
+                                                style={{ filter: 'brightness(0)' }}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 

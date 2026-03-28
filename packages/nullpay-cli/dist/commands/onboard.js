@@ -172,19 +172,6 @@ async function pollForHash(salt, maxRetries = 60) {
     }
     return null;
 }
-function updateGitignore(projectRoot) {
-    const filePath = path.join(projectRoot, '.gitignore');
-    const entry = 'nullpay.json';
-    const note = '# NullPay - contains sensitive salt values';
-    if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        if (!content.includes(entry)) {
-            fs.appendFileSync(filePath, `\n${note}\n${entry}\n`);
-        }
-        return;
-    }
-    fs.writeFileSync(filePath, `${note}\n${entry}\n`);
-}
 function renderInvoiceCard(inv, index) {
     const typeLabel = inv.type === 'multipay'
         ? tag('MULTI-PAY', C.brand)
@@ -499,7 +486,6 @@ async function onboard() {
         invoices: generatedInvoices,
     };
     fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
-    updateGitignore(projectRoot);
     blank();
     blank();
     line(rule('='));
@@ -515,8 +501,6 @@ async function onboard() {
     kv('Output', outputPath, C.slate);
     kv('Merchant', resolvedAddress, C.brandDim);
     kv('Deployed', `${generatedInvoices.length} / ${allInvoices.length} invoices`, C.success.bold);
-    blank();
-    line(`  ${C.gold('!')}  ${C.slate('nullpay.json added to .gitignore - keep salts private')}`);
     blank();
     line(rule('-'));
     blank();

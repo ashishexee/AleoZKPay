@@ -15,7 +15,6 @@ export const GiftCardsPage: React.FC = () => {
 
     return (
         <div className="w-full max-w-2xl mx-auto px-4 pt-10 pb-20 relative min-h-screen">
-            {/* Background blobs */}
             <div className="fixed inset-0 pointer-events-none z-0 opacity-30">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/5 rounded-full blur-[120px] animate-float" />
                 <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-zinc-800/20 rounded-full blur-[100px] animate-float-delayed" />

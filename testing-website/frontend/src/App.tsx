@@ -235,6 +235,7 @@ const Spinner = () => (
 
 export default function App() {
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Processing');
   const [dollars, setDollars] = useState(10);
   const [varCurrency, setVarCurrency] = useState('USDCX');
   const [donationCurrency, setDonationCurrency] = useState('ANY');
@@ -337,9 +338,10 @@ export default function App() {
     window.localStorage.setItem('demo_processed_sessions', JSON.stringify([...processedSessions, sessionId]));
   }, [sessionId, tokens, type, verifyStatus]);
 
-  const handleCheckout = async (endpoint: string, payload: any = {}) => {
+  const handleCheckout = async (endpoint: string, payload: any = {}, options?: { loadingMessage?: string }) => {
     try {
       setLoading(true);
+      setLoadingMessage(options?.loadingMessage || 'Creating your secure checkout session...');
       const res = await fetch(`${TESTING_BACKEND_URL}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -347,6 +349,7 @@ export default function App() {
       });
       const data = await res.json();
       if (data.checkoutUrl) {
+        setLoadingMessage('Invoice created. Redirecting to NullPay checkout...');
         window.location.href = data.checkoutUrl;
       } else {
         addToast(data.error || 'Failed to initiate checkout', 'error');
@@ -355,6 +358,7 @@ export default function App() {
       addToast('Network error. Is the backend running?','error');
     } finally {
       setLoading(false);
+      setLoadingMessage('Processing');
     }
   };
 
@@ -464,13 +468,13 @@ export default function App() {
 
                 <div style={styles.divider} />
 
-                <button
+                  <button
                   className="btn-primary"
                   disabled={loading}
-                  onClick={() => handleCheckout(subscriptionInvoiceRoutes[plan.id])}
+                  onClick={() => handleCheckout(subscriptionInvoiceRoutes[plan.id], {}, { loadingMessage: `Creating your ${plan.id} subscription session...` })}
                   style={styles.primaryBtn}
                 >
-                  {loading ? <><Spinner /> Processing</> : 'Subscribe'}
+                  {loading ? <><Spinner /> {loadingMessage}</> : 'Subscribe'}
                 </button>
               </div>
             ))}
@@ -565,10 +569,14 @@ export default function App() {
               <button
                 className="btn-primary"
                 disabled={loading}
-                onClick={() => handleCheckout('checkout/variable', { currency: varCurrency, tokens: dollars * 100, price: dollars })}
+                onClick={() => handleCheckout(
+                  'checkout/variable',
+                  { currency: varCurrency, tokens: dollars * 100, price: dollars },
+                  { loadingMessage: `Creating invoice for $${dollars} in ${varCurrency}...` }
+                )}
                 style={{...styles.primaryBtn, width: 'auto', padding: '16px 40px'}}
               >
-                {loading ? <><Spinner /> Processing</> : `Pay $${dollars}`}
+                {loading ? <><Spinner /> {loadingMessage}</> : `Pay $${dollars}`}
               </button>
             </div>
           </div>
@@ -610,10 +618,10 @@ export default function App() {
               <button
                 className="btn-primary"
                 disabled={loading}
-                onClick={() => handleCheckout(donationInvoiceRoutes[donationCurrency])}
+                onClick={() => handleCheckout(donationInvoiceRoutes[donationCurrency], {}, { loadingMessage: `Creating your ${donationCurrency} donation session...` })}
                 style={{...styles.primaryBtn, marginTop: 'auto'}}
               >
-                {loading ? <><Spinner /> Processing</> : 'Create Session'}
+                {loading ? <><Spinner /> {loadingMessage}</> : 'Create Session'}
               </button>
             </div>
 

@@ -17,14 +17,17 @@ NullPay provides:
 
 Use-case summary:
 - Run `nullpay sdk onboard` (CLI) while authenticated with your NullPay secret key to create invoices on Aleo and produce `nullpay.json`.
-- Commit `nullpay.json` to your project (or keep it local — it contains salts so treat it as sensitive). The CLI attempts to add `nullpay.json` to `.gitignore` automatically.
+- Commit `nullpay.json` to your project or keep it local based on how you want to manage your backend configuration.
 - In your app, use `@nullpay/node` to load `nullpay.json` and create checkout sessions or call the remote API directly.
+- `nullpay.json` is optional; use it for named pre-generated invoices, or skip it and create sessions directly with `amount`, `currency`, and `type`.
 
 ---
 
 ## `nullpay.json` (schema and guidance)
 
 Purpose: a developer-supplied JSON manifest that lists merchant address and pre-generated invoices (names, salts, hashes). The file is used as a local convenience for creating checkout sessions by name.
+
+`nullpay.json` is optional; use it for named pre-generated invoices, or skip it and create sessions directly with `amount`, `currency`, and `type`.
 
 Schema (TypeScript interface excerpt from the SDK):
 
@@ -37,7 +40,7 @@ Schema (TypeScript interface excerpt from the SDK):
   - `currency: string` — token label (e.g., `CREDITS`, `USDCX`, `USAD`, `ANY`).
   - `label?: string` — optional memo.
   - `hash: string` — Aleo invoice hash (string, often ending in "field").
-  - `salt: string` — pre-generated salt used on-chain (sensitive; keep secret).
+  - `salt: string` — pre-generated salt used on-chain.
 
 Example (from `testing-website/backend/nullpay.json`):
 
@@ -51,10 +54,6 @@ Example (from `testing-website/backend/nullpay.json`):
   ]
 }
 ```
-
-Security note: `salt` values are private secrets — treat `nullpay.json` as sensitive. The CLI attempts to append `nullpay.json` to `.gitignore` to avoid accidental commits.
-
----
 
 ## `@nullpay/cli` — Onboard Wizard
 
@@ -88,13 +87,14 @@ Implementation notes & helpful functions:
 Developer tips:
 - The CLI prints a summary card showing `hash` and `salt` (hash truncated) for verification.
 - If mapping resolution times out, the invoice may have been submitted; you can re-run or query the mapping endpoint manually.
-- The CLI will attempt to append `nullpay.json` to `.gitignore` to avoid accidental commits.
 
 ---
 
 ## `@nullpay/node` — Node SDK Reference
 
 Implemented at [packages/nullpay-node/src/index.ts](packages/nullpay-node/src/index.ts).
+
+`nullpay.json` is optional; use it for named pre-generated invoices, or skip it and create sessions directly with `amount`, `currency`, and `type`.
 
 Exports & basic usage:
 
@@ -107,9 +107,11 @@ const client = new NullPay({ secretKey: 'sk_test_...', baseURL?: 'https://nullpa
 Constructor:
 - `secretKey` (required) — your NullPay API key (used for Authorization and HMAC verification).
 - `baseURL` (optional) — base URL of NullPay API; defaults to `https://nullpay-backend-ib5q4.ondigitalocean.app/api` in the implementation.
+- `projectRoot` (optional) — tells the SDK which folder should be treated as the root when resolving `nullpay.json`.
+- `configPath` (optional) — lets you pass the exact file path to `nullpay.json` if you do not want the SDK to guess.
 
 nullpay.json helpers
-- `loadNullPayConfig(projectRoot?)` — loads and parses `nullpay.json` in the project root or provided path.
+- `loadNullPayConfig(projectRoot?, configPath?)` — loads and parses `nullpay.json` from the project root or from an explicit file path.
 
 Invoice helper methods (client-side convenience):
 - `invoices.getAll()` — returns all invoices from `nullpay.json` or throws if missing.
@@ -157,6 +159,25 @@ const session = await client.checkout.sessions.create({
 console.log('Open the checkout URL:', session.checkout_url);
 ```
 
+Example: serverless-safe `nullpay.json` loading
+
+```ts
+import path from 'path';
+import { NullPay } from '@nullpay/node';
+
+const client = new NullPay({
+  secretKey: process.env.NULLPAY_SK!,
+  baseURL: 'https://nullpay-backend-ib5q4.ondigitalocean.app/api',
+  projectRoot: __dirname,
+  configPath: path.join(__dirname, 'nullpay.json'),
+});
+```
+
+Why this matters:
+- In local development, `process.cwd()` often already points at your backend folder, so automatic `nullpay.json` discovery works.
+- In serverless environments such as Vercel, the runtime working directory may not match your backend folder.
+- Passing `projectRoot` or `configPath` makes `nullpay.json` lookup deterministic and avoids runtime errors like `nullpay.json not found`.
+
 Example: verify an incoming webhook (Express)
 
 ```ts
@@ -194,13 +215,12 @@ If you run the CLI locally in the testing site, the generated `nullpay.json` wil
 
 - The onboarding CLI polls the Aleo mapping endpoint for up to ~2 minutes per invoice (`pollForHash` retries) — network delays can cause timeouts.
 - The SDK will attempt to pre-generate invoices by calling the remote relayer; if you host your own backend, ensure it exposes `/dps/relayer/create-invoice` with the expected contract.
-- `nullpay.json` contains salts — keep it outside version control unless you intentionally want those exact salts published.
+- If your backend runs on Vercel or another serverless platform and uses `nullpay.json`, prefer passing `projectRoot` and `configPath` into `new NullPay(...)` so the SDK does not rely on `process.cwd()`.
 
 ---
 
 ## Suggested docs improvements & future additions
 - Add MD examples showing exact request/response shapes for `/checkout/sessions` on the backend.
-- Add a section with recommended `.gitignore` practice and the security risk matrix for `nullpay.json` salts.
 - Provide a small example repo demonstrating `nullpay.json`-driven checkout flows including frontend + server webhook handling.
 
 ---

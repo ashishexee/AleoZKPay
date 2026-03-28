@@ -122,13 +122,21 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
                         transition={{ duration: 0.4 }}
                         className="flex flex-col items-center justify-center mb-8 min-h-[250px]"
                     >
-                        <div className="p-4 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] mb-4">
+                        <div className="relative p-4 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] mb-4">
                             <QRCodeSVG
                                 value={invoiceData.link}
                                 size={180}
                                 level="H"
                                 includeMargin={false}
                             />
+                            <div className="absolute left-1/2 top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl bg-white p-1.5 shadow-[0_8px_22px_rgba(0,0,0,0.2)]">
+                                <img
+                                    src="/assets/nullpay_logo.png"
+                                    alt="NullPay"
+                                    className="h-full w-full object-contain"
+                                    style={{ filter: 'brightness(0)' }}
+                                />
+                            </div>
                         </div>
                         {(!invoiceData.type || invoiceData.type === 1) && (
                             <motion.div 

@@ -756,6 +756,8 @@ const Profile: React.FC = () => {
             </motion.div>
 
             <DashboardChatbot
+                mainWalletAddress={publicKey || null}
+                burnerWalletAddress={decryptedBurnerAddress || null}
                 balances={balances}
                 merchantStats={merchantStats}
                 invoices={loadingBurner ? [] : combinedInvoices}

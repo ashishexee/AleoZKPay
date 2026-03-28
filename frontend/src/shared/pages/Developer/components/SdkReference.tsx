@@ -48,9 +48,14 @@ export const SdkReference: React.FC = () => {
   ]
 }`;
 
-    const nodeInit = `import { NullPay } from '@nullpay/node';
+    const nodeInit = `import path from 'path';
+import { NullPay } from '@nullpay/node';
 
-const client = new NullPay({ secretKey: process.env.NULLPAY_SK });`;
+const client = new NullPay({
+  secretKey: process.env.NULLPAY_SK,
+  projectRoot: __dirname,
+  configPath: path.join(__dirname, 'nullpay.json')
+});`;
 
     const createSession = `const session = await client.checkout.sessions.create({
   nullpay_invoice_name: 'basic-usdcx',
@@ -63,8 +68,14 @@ console.log(session.checkout_url);`;
         <div className="space-y-6">
             <DocSection title="What is nullpay.json?">
                 <p className="mb-3">
-                    A developer manifest containing your merchant address and pre-generated invoices (amount, currency, hash + salt). Keep salts private and add this file to your <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">.gitignore</code>.<br /><br />
+                    A developer manifest containing your merchant address and pre-generated invoices (amount, currency, hash + salt).<br /><br />
                     The SDK uses <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">fs</code> under the hood to automatically look for this file in your project's root. If you don't use the CLI wizard to generate it, you can completely fallback to creating this file manually! Just replicate the schema below and input the hashes and salts you generated from your own smart contract interactions.
+                </p>
+                <p className="mb-3">
+                    <span className="text-gradient-gold drop-shadow-gold font-semibold">nullpay.json is optional</span>; use it for named pre-generated invoices, or skip it and create sessions directly with <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">amount</code>, <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">currency</code>, and <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">type</code>.
+                </p>
+                <p className="mb-3">
+                    On Vercel or similar serverless platforms, prefer passing <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">projectRoot</code> and <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">configPath</code> into the SDK constructor so <code className="text-white bg-white/5 py-0.5 px-1.5 rounded font-mono text-xs">nullpay.json</code> lookup is deterministic.
                 </p>
                 <CodeBlock title="Schema / Example nullpay.json" code={nullpayExample} language="json" />
             </DocSection>
@@ -88,8 +99,8 @@ console.log(session.checkout_url);`;
                         </ul>
                     </div>
                     <div className="p-4 bg-white/[0.02] border border-white/[0.04] rounded-lg">
-                        <div className="text-xs text-gray-400 mb-2">Security</div>
-                        <p className="text-sm text-gray-300">`nullpay.json` contains salts (sensitive). The CLI will attempt to append it to `.gitignore` automatically.</p>
+                        <div className="text-xs text-gray-400 mb-2">Runtime note</div>
+                        <p className="text-sm text-gray-300">If you use serverless hosting, pass `projectRoot` and `configPath` so the SDK resolves `nullpay.json` from the exact backend folder.</p>
                     </div>
                 </div>
             </DocSection>

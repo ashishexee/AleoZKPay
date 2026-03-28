@@ -1,5 +1,5 @@
 {
-  "program": "zk_pay_proofs_privacy_v23.aleo",
+  "program": "zk_pay_proofs_privacy_v22.aleo",
   "structs": [
     {
       "path": [
@@ -339,7 +339,7 @@
           "path": [
             "InvoiceData"
           ],
-          "program": "zk_pay_proofs_privacy_v23"
+          "program": "zk_pay_proofs_privacy_v22"
         }
       }
     },
@@ -376,7 +376,7 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -503,7 +503,7 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -593,7 +593,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -695,7 +695,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -797,7 +797,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -899,7 +899,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1011,7 +1011,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1022,7 +1022,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1126,7 +1126,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1137,7 +1137,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1271,7 +1271,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1282,7 +1282,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1416,7 +1416,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1427,7 +1427,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1561,7 +1561,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1572,7 +1572,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1706,7 +1706,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
@@ -1717,7 +1717,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v23"
+              "program": "zk_pay_proofs_privacy_v22"
             }
           },
           "mode": "None"
