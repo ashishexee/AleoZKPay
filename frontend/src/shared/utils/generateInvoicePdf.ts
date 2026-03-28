@@ -13,7 +13,6 @@ interface InvoicePdfData {
     invoiceHash: string;
     amount: number;
     tokenType: number;
-    allowedTokens?: string[];
     invoiceType: number;
     walletType: number;
     status: string;
@@ -135,7 +134,7 @@ export async function generateInvoicePdf(invoice: InvoicePdfData): Promise<void>
 
     // Row 2
     drawDetail(detailsLeft, labelY + lineH, 'Type', TYPE_LABELS[invoice.invoiceType] || 'Standard');
-    drawDetail(detailsRight, labelY + lineH, 'Token', getTokenLabel(invoice.tokenType, invoice.invoiceType, invoice.allowedTokens));
+    drawDetail(detailsRight, labelY + lineH, 'Token', getTokenLabel(invoice.tokenType, invoice.invoiceType));
 
     // Row 3
     drawDetail(detailsLeft, labelY + lineH * 2, 'Wallet', WALLET_LABELS[invoice.walletType] || 'Main');
@@ -231,7 +230,7 @@ export async function generateInvoicePdf(invoice: InvoicePdfData): Promise<void>
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(18);
         doc.setTextColor(...NEON);
-        const amountStr = `${invoice.amount} ${getTokenLabel(invoice.tokenType, invoice.invoiceType, invoice.allowedTokens)}`;
+        const amountStr = `${invoice.amount} ${getTokenLabel(invoice.tokenType, invoice.invoiceType)}`;
         doc.text(amountStr, pageWidth - margin - 8, y + 15, { align: 'right' });
         y += 30;
     }

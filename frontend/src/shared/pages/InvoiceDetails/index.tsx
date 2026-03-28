@@ -28,7 +28,6 @@ interface InvoiceData {
     salt?: string;
     invoice_type?: number;
     token_type?: number;
-    allowed_tokens?: string[];
     invoice_items?: { name: string; quantity: number; unitPrice: number; total: number }[];
 }
 
@@ -327,7 +326,7 @@ const InvoiceDetailsPage: React.FC = () => {
         try {
             await generateInvoicePdf({
                 invoiceHash: invoice.invoice_hash, amount: invoice.amount ?? 0,
-                tokenType: invoice.token_type ?? 0, allowedTokens: invoice.allowed_tokens, invoiceType: invoice.invoice_type ?? 0,
+                tokenType: invoice.token_type ?? 0, invoiceType: invoice.invoice_type ?? 0,
                 walletType: invoice.is_burner ? 1 : 0, status: invoice.status ?? 'PENDING',
                 memo: invoice.memo, creationTx: invoice.invoice_transaction_id,
                 paymentTxIds, items: invoice.invoice_items,
@@ -367,7 +366,7 @@ const InvoiceDetailsPage: React.FC = () => {
     if (!invoice) return null;
 
     const typeInfo   = TYPE_INFO[invoice.invoice_type ?? 0] || TYPE_INFO[0];
-    const tokenLabel = getTokenLabel(invoice.token_type ?? 0, invoice.invoice_type ?? 0, invoice.allowed_tokens);
+    const tokenLabel = getTokenLabel(invoice.token_type ?? 0, invoice.invoice_type ?? 0);
     const isSettled  = invoice.status === 'SETTLED';
     const shortHash  = `${invoice.invoice_hash.slice(0, 16)}...${invoice.invoice_hash.slice(-12)}`;
     const verifyingInvoice = { invoiceHash: invoice.invoice_hash };

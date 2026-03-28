@@ -22,7 +22,6 @@ export interface Invoice {
     salt?: string;
     invoice_type?: number;
     token_type?: number;
-    allowed_tokens?: string[];
     invoice_items?: { name: string; quantity: number; unitPrice: number; total: number }[];
 }
 

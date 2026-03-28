@@ -2,7 +2,6 @@ export interface CheckoutSession {
     id: string;
     amount: number;
     token_type: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
-    allowed_tokens?: ('CREDITS' | 'USDCX' | 'USAD')[];
     status: 'PENDING' | 'PROCESSING' | 'OPEN' | 'SETTLED' | 'FAILED';
     invoice_hash: string;
     salt: string;

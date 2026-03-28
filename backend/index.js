@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const crypto = require('crypto');
 const app = express();
@@ -25,38 +26,6 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 const readMerchantStoredValue = (value) => value || null;
 const sha256Hex = (value) => crypto.createHash('sha256').update(value).digest('hex');
-const TOKEN_CODES = ['CREDITS', 'USDCX', 'USAD'];
-
-function normalizeAllowedTokens(value) {
-    if (!value) return null;
-    const rawValues = Array.isArray(value) ? value : String(value).split(',');
-    const normalized = Array.from(new Set(
-        rawValues
-            .map((item) => String(item || '').trim().toUpperCase())
-            .filter((item) => TOKEN_CODES.includes(item))
-    ));
-    return normalized.length > 0 ? normalized : null;
-}
-
-function getDefaultAllowedTokens(tokenType, invoiceType) {
-    if (tokenType === 3) {
-        return invoiceType === 2 ? ['CREDITS', 'USDCX', 'USAD'] : ['USDCX', 'USAD'];
-    }
-    if (tokenType === 1) return ['USDCX'];
-    if (tokenType === 2) return ['USAD'];
-    return ['CREDITS'];
-}
-
-function getAllowedTokensFromCurrency(currency, invoiceType, explicitAllowedTokens) {
-    const normalized = normalizeAllowedTokens(explicitAllowedTokens);
-    if (normalized) return normalized;
-    if (currency === 'ANY') {
-        return invoiceType === 2 ? ['CREDITS', 'USDCX', 'USAD'] : ['CREDITS', 'USDCX', 'USAD'];
-    }
-    if (currency === 'USDCX') return ['USDCX'];
-    if (currency === 'USAD') return ['USAD'];
-    return ['CREDITS'];
-}
 
 function getProvableCredentials() {
     const apiKey = process.env.PROVABLE_API_KEY;
@@ -64,14 +33,241 @@ function getProvableCredentials() {
     return { apiKey, consumerId };
 }
 
-async function generateDashboardAssistantReply(message, context) {
+function safeReadText(relativePath) {
+    try {
+        return fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+    } catch {
+        return '';
+    }
+}
+
+function getDeveloperKnowledgeContext(message, context) {
+    const normalizedMessage = String(message || '').toLowerCase();
+    const route = String(context?.route || '').toLowerCase();
+    const docsMode = context?.mode === 'docs';
+    const wantsCliInfo =
+        normalizedMessage.includes('cli') ||
+        normalizedMessage.includes('nullpay.json') ||
+        normalizedMessage.includes('onboard') ||
+        route.includes('/developer');
+
+    const sections = [];
+
+    if (wantsCliInfo) {
+        sections.push([
+            'NullPay CLI implementation facts from the repository:',
+            '- Package: `packages/nullpay-cli`.',
+            '- Entry point: `packages/nullpay-cli/src/cli.ts`.',
+            '- The CLI currently exposes one real command: `nullpay sdk onboard`.',
+            '- That command launches an interactive onboarding wizard implemented in `packages/nullpay-cli/src/commands/onboard.ts`.',
+            '- The wizard asks for a NullPay secret key (`sk_test_...` or `sk_live_...`) and an Aleo merchant address (`aleo1...`).',
+            '- It validates the merchant by calling `POST /api/sdk/onboard/validate` with the secret key as a Bearer token.',
+            '- It can create fixed-amount `multipay` invoices and open-amount `donation` invoices.',
+            '- Multipay invoices prompt for `name`, `amount`, `currency`, and optional memo label.',
+            '- Donation invoices are built from token templates and support `CREDITS`, `USDCX`, `USAD`, and `ANY`.',
+            '- For every invoice, the CLI generates a random salt locally with `crypto.randomBytes(16)` and converts it to a Leo/Aleo `field` string.',
+            '- It submits invoice creation through the NullPay relayer using `POST /api/dps/relayer/create-invoice`.',
+            '- After submission, it polls the Provable mapping endpoint `salt_to_invoice` for up to about 60 retries with a 2 second delay to resolve the on-chain invoice hash.',
+            '- When complete, it writes a local `nullpay.json` file containing `merchant`, `generated_at`, and the generated invoices with `name`, `type`, `amount`, `currency`, `label`, `hash`, and `salt`.',
+            '- The CLI also attempts to append `nullpay.json` to `.gitignore` because salts are sensitive.',
+            '- The relayer-sponsored setup flow means NullPay covers the invoice-creation network fee instead of requiring the merchant to broadcast the setup transaction manually.',
+            '- Important limitation: today the CLI is mainly an onboarding and invoice pre-generation tool. It is not a full general-purpose management CLI with many subcommands yet.'
+        ].join('\n'));
+    }
+
+    if (docsMode) {
+        const sdkDoc = safeReadText('docs/nullpay_sdk.md');
+        if (sdkDoc) {
+            sections.push([
+                'Relevant repository documentation excerpt:',
+                sdkDoc.slice(0, 7000)
+            ].join('\n'));
+        }
+    }
+
+    return sections.join('\n\n');
+}
+
+let geminiModelsCache = {
+    expiresAt: 0,
+    models: null
+};
+
+function getGeminiModelCandidates() {
+    const configured = (process.env.GOOGLE_GEMINI_MODELS || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+    const primary = (process.env.GOOGLE_GEMINI_MODEL || 'gemini-2.5-flash').trim();
+    const defaults = ['gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+
+    return Array.from(new Set([primary, ...configured, ...defaults].filter(Boolean)));
+}
+
+async function fetchAvailableGeminiModels(apiKey) {
+    const now = Date.now();
+    if (geminiModelsCache.models && geminiModelsCache.expiresAt > now) {
+        return geminiModelsCache.models;
+    }
+
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+        const errorMessage =
+            payload?.error?.message ||
+            payload?.error?.status ||
+            'Failed to list Gemini models.';
+        throw new Error(errorMessage);
+    }
+
+    const models = (payload?.models || [])
+        .map((model) => {
+            const rawName = String(model?.name || '');
+            const shortName = rawName.startsWith('models/') ? rawName.slice('models/'.length) : rawName;
+            const supportedMethods = Array.isArray(model?.supportedGenerationMethods)
+                ? model.supportedGenerationMethods
+                : Array.isArray(model?.supportedActions)
+                    ? model.supportedActions
+                    : [];
+
+            return {
+                rawName,
+                shortName,
+                supportedMethods
+            };
+        })
+        .filter((model) =>
+            model.shortName &&
+            model.supportedMethods.some((method) => String(method).toLowerCase() === 'generatecontent')
+        );
+
+    geminiModelsCache = {
+        models,
+        expiresAt: now + 5 * 60 * 1000
+    };
+
+    return models;
+}
+
+function isRetryableGeminiError(response, payload) {
+    const statusCode = response?.status || payload?.error?.code || 0;
+    const statusText = String(payload?.error?.status || '').toUpperCase();
+    const message = String(payload?.error?.message || '').toLowerCase();
+
+    if (statusCode === 429 || statusCode === 503) return true;
+    if (statusText === 'RESOURCE_EXHAUSTED' || statusText === 'UNAVAILABLE') return true;
+
+    return (
+        message.includes('quota') ||
+        message.includes('rate limit') ||
+        message.includes('retry in') ||
+        message.includes('resource exhausted') ||
+        message.includes('model not found') ||
+        message.includes('not found')
+    );
+}
+
+async function requestGeminiReply({ systemInstruction, prompt, maxOutputTokens }) {
     const apiKey = process.env.GOOGLE_API_KEY;
-    const model = process.env.GOOGLE_GEMINI_MODEL || 'gemini-2.5-flash';
 
     if (!apiKey) {
         throw new Error('GOOGLE_API_KEY is not configured on the backend.');
     }
 
+    const configuredCandidates = getGeminiModelCandidates();
+    let models = configuredCandidates;
+    const errors = [];
+
+    try {
+        const availableModels = await fetchAvailableGeminiModels(apiKey);
+        const availableNames = new Set(availableModels.map((model) => model.shortName));
+        const filteredConfiguredModels = configuredCandidates.filter((model) => availableNames.has(model));
+
+        if (filteredConfiguredModels.length > 0) {
+            models = filteredConfiguredModels;
+        } else if (availableModels.length > 0) {
+            models = availableModels
+                .map((model) => model.shortName)
+                .filter((name) =>
+                    name.includes('flash') &&
+                    !name.includes('image') &&
+                    !name.includes('live') &&
+                    !name.includes('preview')
+                );
+        }
+    } catch (listError) {
+        console.warn('Gemini ListModels failed, falling back to configured model list:', listError.message);
+    }
+
+    for (let index = 0; index < models.length; index += 1) {
+        const model = models[index];
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    systemInstruction: {
+                        parts: [{ text: systemInstruction }]
+                    },
+                    contents: [
+                        {
+                            role: 'user',
+                            parts: [{ text: prompt }]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: 0.2,
+                        maxOutputTokens
+                    }
+                })
+            }
+        );
+
+        const payload = await response.json();
+
+        if (response.ok) {
+            const text = payload?.candidates
+                ?.flatMap(candidate => candidate?.content?.parts || [])
+                ?.map(part => part?.text || '')
+                ?.join('\n')
+                ?.trim();
+
+            if (!text) {
+                errors.push(`${model}: empty response`);
+                continue;
+            }
+
+            return {
+                model,
+                text
+            };
+        }
+
+        const errorMessage =
+            payload?.error?.message ||
+            payload?.error?.status ||
+            `Gemini request failed for ${model}.`;
+
+        errors.push(`${model}: ${errorMessage}`);
+
+        const shouldRetryWithNextModel = index < models.length - 1 && isRetryableGeminiError(response, payload);
+        if (!shouldRetryWithNextModel) {
+            throw new Error(errorMessage);
+        }
+    }
+
+    throw new Error(
+        `All configured Gemini models failed. ${errors.join(' | ')}`
+    );
+}
+
+async function generateDashboardAssistantReply(message, context) {
     const systemInstruction = [
         'You are NullBot, the NullPay Dashboard Assistant.',
         'Answer only from the provided dashboard context. Do not invent details.',
@@ -89,67 +285,25 @@ async function generateDashboardAssistantReply(message, context) {
         message,
     ].join('\n');
 
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                systemInstruction: {
-                    parts: [{ text: systemInstruction }]
-                },
-                contents: [
-                    {
-                        role: 'user',
-                        parts: [{ text: prompt }]
-                    }
-                ],
-                generationConfig: {
-                    temperature: 0.2,
-                    maxOutputTokens: 900
-                }
-            })
-        }
-    );
+    const result = await requestGeminiReply({
+        systemInstruction,
+        prompt,
+        maxOutputTokens: 900
+    });
 
-    const payload = await response.json();
-
-    if (!response.ok) {
-        const message =
-            payload?.error?.message ||
-            payload?.error?.status ||
-            'Gemini request failed.';
-        throw new Error(message);
-    }
-
-    const text = payload?.candidates
-        ?.flatMap(candidate => candidate?.content?.parts || [])
-        ?.map(part => part?.text || '')
-        ?.join('\n')
-        ?.trim();
-
-    if (!text) {
-        throw new Error('Gemini returned an empty response.');
-    }
-
-    return text;
+    return result.text;
 }
 
 async function generateDeveloperAssistantReply(message, context) {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    const model = process.env.GOOGLE_GEMINI_MODEL || 'gemini-2.5-flash';
-
-    if (!apiKey) {
-        throw new Error('GOOGLE_API_KEY is not configured on the backend.');
-    }
-
     const isDocsMode = context.mode === 'docs';
+    const repositoryKnowledge = getDeveloperKnowledgeContext(message, context);
     const systemInstruction = [
         `You are NullBot, the NullPay ${isDocsMode ? 'Documentation' : 'Developer Portal'} Assistant.`,
         isDocsMode
             ? 'Your primary focus is helping developers navigate the NullPay technical docs, explaining APIs, SDKs, and Smart Contracts conceptually.'
             : 'Your primary focus is helping developers integrate NullPay in their applications, configuring Webhooks, setting up Secret Keys, and backend implementation.',
         'Use the provided context to answer questions. Do not invent details not present in the context or your general knowledge of the system.',
+        'When repository knowledge is provided, prefer it over generic assumptions and cite concrete command names, files, and behaviors.',
         'Format your responses using clean Markdown. Use **bold** for emphasis, bullet lists for multiple items.',
         'IMPORTANT: NEVER WRAP your entire response in a ```markdown code block. Output raw markdown text directly.',
         'Provide code snippets using standard markdown code blocks when appropriate.',
@@ -160,54 +314,20 @@ async function generateDeveloperAssistantReply(message, context) {
         'Documentation Context:',
         JSON.stringify(context, null, 2),
         '',
+        'Repository Knowledge:',
+        repositoryKnowledge || 'No extra repository knowledge was attached for this question.',
+        '',
         'Developer Question:',
         message,
     ].join('\n');
 
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                systemInstruction: {
-                    parts: [{ text: systemInstruction }]
-                },
-                contents: [
-                    {
-                        role: 'user',
-                        parts: [{ text: prompt }]
-                    }
-                ],
-                generationConfig: {
-                    temperature: 0.2,
-                    maxOutputTokens: 1200
-                }
-            })
-        }
-    );
+    const result = await requestGeminiReply({
+        systemInstruction,
+        prompt,
+        maxOutputTokens: 1200
+    });
 
-    const payload = await response.json();
-
-    if (!response.ok) {
-        const message =
-            payload?.error?.message ||
-            payload?.error?.status ||
-            'Gemini request failed.';
-        throw new Error(message);
-    }
-
-    const text = payload?.candidates
-        ?.flatMap(candidate => candidate?.content?.parts || [])
-        ?.map(part => part?.text || '')
-        ?.join('\n')
-        ?.trim();
-
-    if (!text) {
-        throw new Error('Gemini returned an empty response.');
-    }
-
-    return text;
+    return result.text;
 }
 
 async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, salt, memo, invoice_type }) {
@@ -297,6 +417,44 @@ async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, 
 
 app.get('/', (req, res) => {
     res.send('AleoZKPay Backend is running');
+});
+
+app.get('/api/ai/models', async (req, res) => {
+    const apiKey = process.env.GOOGLE_API_KEY;
+
+    if (!apiKey) {
+        return res.status(500).json({ error: 'GOOGLE_API_KEY is not configured on the backend.' });
+    }
+
+    try {
+        const availableModels = await fetchAvailableGeminiModels(apiKey);
+        const preferredModels = getGeminiModelCandidates();
+        const availableNames = new Set(availableModels.map((model) => model.shortName));
+        const fallbackOrder = preferredModels.filter((model) => availableNames.has(model));
+
+        return res.json({
+            primaryModel: process.env.GOOGLE_GEMINI_MODEL || 'gemini-2.5-flash',
+            configuredModels: preferredModels,
+            fallbackOrder: fallbackOrder.length > 0
+                ? fallbackOrder
+                : availableModels
+                    .map((model) => model.shortName)
+                    .filter((name) =>
+                        name.includes('flash') &&
+                        !name.includes('image') &&
+                        !name.includes('live') &&
+                        !name.includes('preview')
+                    ),
+            availableModels: availableModels.map((model) => ({
+                name: model.shortName,
+                rawName: model.rawName,
+                supportedMethods: model.supportedMethods
+            }))
+        });
+    } catch (error) {
+        console.error('AI models debug route error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to fetch AI model list.' });
+    }
 });
 
 app.post('/api/dashboard-assistant/chat', async (req, res) => {
@@ -672,7 +830,7 @@ app.post('/api/checkout/sessions', async (req, res) => {
     }
 
     // 2. Validate Request Body
-    const { amount, currency, success_url, cancel_url, invoice_hash, salt: providedSalt, invoice_type, type, allowed_tokens } = req.body;
+    const { amount, currency, success_url, cancel_url, invoice_hash, salt: providedSalt, invoice_type, type } = req.body;
     
     // Map SDK string 'type' to backend integer 'invoice_type'
     let finalInvoiceType = invoice_type !== undefined ? invoice_type : 0;
@@ -693,43 +851,37 @@ app.post('/api/checkout/sessions', async (req, res) => {
     if (!validCurrencies.includes(uppercaseCurrency)) {
         return res.status(400).json({ error: `Invalid currency. Must be one of: ${validCurrencies.join(', ')}` });
     }
+    if (uppercaseCurrency === 'ANY' && finalInvoiceType !== 2) {
+        return res.status(400).json({ error: 'ANY token mode is only supported for donation invoices.' });
+    }
 
     // 3. Use provided parameters for Multi-Pay or generate temp ones for Relayer
     let finalSalt = providedSalt;
     let finalInvoiceHash = invoice_hash;
     let initialStatus = 'PROCESSING'; // Default to Relayer flow
     let finalCurrency = uppercaseCurrency;
-    let finalAllowedTokens = getAllowedTokensFromCurrency(uppercaseCurrency, finalInvoiceType, allowed_tokens);
 
     if (invoice_hash && providedSalt) {
         initialStatus = 'OPEN'; // Merchant already provided the ZK parameters
         const typeName = finalInvoiceType === 1 ? 'Multi-Pay' : (finalInvoiceType === 2 ? 'Donation' : 'Standard');
         console.log(`[Checkout] Using pre-generated ${typeName} hash: ${invoice_hash}`);
 
-        const shouldReadInvoiceMeta = !currency || !normalizeAllowedTokens(allowed_tokens);
-        if (shouldReadInvoiceMeta) {
+        if (!currency) {
             const { data: invoice } = await supabase
                 .from('invoices')
-                .select('token_type, invoice_type, allowed_tokens')
+                .select('token_type')
                 .eq('invoice_hash', invoice_hash)
                 .single();
 
             if (invoice) {
-                if (!currency) {
-                    finalCurrency = invoice.token_type === 3
-                        ? 'ANY'
-                        : invoice.token_type === 1
-                            ? 'USDCX'
-                            : invoice.token_type === 2
-                                ? 'USAD'
-                                : 'CREDITS';
-                    console.log(`[Checkout] Derived currency from invoice: ${finalCurrency}`);
-                }
-
-                if (!normalizeAllowedTokens(allowed_tokens)) {
-                    finalAllowedTokens = normalizeAllowedTokens(invoice.allowed_tokens)
-                        || getDefaultAllowedTokens(invoice.token_type, invoice.invoice_type);
-                }
+                finalCurrency = invoice.token_type === 3
+                    ? 'ANY'
+                    : invoice.token_type === 1
+                        ? 'USDCX'
+                        : invoice.token_type === 2
+                            ? 'USAD'
+                            : 'CREDITS';
+                console.log(`[Checkout] Derived currency from invoice: ${finalCurrency}`);
             }
         }
     } else {
@@ -776,7 +928,6 @@ app.post('/api/checkout/sessions', async (req, res) => {
             is_burner: false,
             token_type: tokenTypeNum,
             invoice_type: finalInvoiceType,
-            allowed_tokens: finalAllowedTokens,
             salt: finalSalt,
             status: 'PENDING',
             for_sdk: true,
@@ -833,26 +984,11 @@ app.get('/api/checkout/sessions/:id', async (req, res) => {
             intent.merchants.aleo_address = intent.merchants.encrypted_aleo_address;
         }
 
-        let allowedTokens = null;
-        if (intent.invoice_hash) {
-            const { data: invoiceMeta } = await supabase
-                .from('invoices')
-                .select('token_type, invoice_type, allowed_tokens')
-                .eq('invoice_hash', intent.invoice_hash)
-                .maybeSingle();
-
-            if (invoiceMeta) {
-                allowedTokens = normalizeAllowedTokens(invoiceMeta.allowed_tokens)
-                    || getDefaultAllowedTokens(invoiceMeta.token_type, invoiceMeta.invoice_type);
-            }
-        }
-
         // Return safe data for the frontend (do NOT return secret_key or webhook URLs)
         const sessionData = {
             id: intent.id,
             amount: intent.amount,
             token_type: intent.token_type,
-            allowed_tokens: allowedTokens,
             status: intent.status,
             invoice_hash: intent.invoice_hash,
             salt: intent.salt,
@@ -946,7 +1082,7 @@ app.patch('/api/checkout/sessions/:id', async (req, res) => {
 });
 
 app.post('/api/invoices', async (req, res) => {
-    const { invoice_hash, merchant_address, designated_address, merchant_address_hash, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk, allowed_tokens } = req.body;
+    const { invoice_hash, merchant_address, designated_address, merchant_address_hash, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk } = req.body;
 
     if (!invoice_hash || !merchant_address) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -967,7 +1103,6 @@ app.post('/api/invoices', async (req, res) => {
                 salt: salt || null,  // Store salt for payment link generation
                 invoice_type: invoice_type !== undefined ? invoice_type : 0,  // 0 = Standard, 1 = Fundraising
                 token_type: token_type !== undefined ? token_type : 0,  // 0 = Credits, 1 = USDCx
-                allowed_tokens: normalizeAllowedTokens(allowed_tokens),
                 for_sdk: for_sdk === true,
                 invoice_items: invoice_items || null,  // Line items for standard invoices
                 created_at: new Date().toISOString(),

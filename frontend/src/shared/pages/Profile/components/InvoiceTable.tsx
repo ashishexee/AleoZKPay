@@ -4,7 +4,7 @@ import StatusBadge from '../../../components/StatusBadge';
 import { LinkButton } from '../../../components/ui/LinkButton';
 import { CopyButton } from '../../../components/ui/CopyButton';
 import { generateInvoicePdf } from '../../../utils/generateInvoicePdf';
-import { getAllowedTokensForInvoice, getTokenLabel } from '../../../utils/tokens';
+import { getTokenLabel } from '../../../utils/tokens';
 
 interface InvoiceTableProps {
     invoices: any[];
@@ -98,7 +98,6 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         <tr><td colSpan={8} className="text-center py-12 text-gray-500 italic">{search ? 'No invoices match your search.' : 'No created invoices found.'}</td></tr>
                     ) : (
                         paginatedInvoices.map((inv, i) => {
-                            const allowedTokens = getAllowedTokensForInvoice(inv.tokenType, inv.invoiceType, inv.allowedTokens);
                             // Base Params
                             const paymentParams = new URLSearchParams({
                                 merchant: inv.owner || '',
@@ -108,10 +107,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
 
                             if (inv.tokenType === 1) paymentParams.append('token', 'usdcx');
                             if (inv.tokenType === 2) paymentParams.append('token', 'usad');
-                            if (inv.tokenType === 3) {
-                                paymentParams.append('token', 'any');
-                                paymentParams.append('allowed', allowedTokens.join(',').toLowerCase());
-                            }
+                            if (inv.tokenType === 3) paymentParams.append('token', 'any');
                             if (inv.invoiceType === 1) paymentParams.append('type', 'multipay');
                             if (inv.invoiceType === 2) paymentParams.append('type', 'donation');
 
@@ -152,13 +148,13 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                                 {inv.donations?.usdcx > 0 && <span className="text-xs font-bold text-white">{inv.donations.usdcx} <span className="text-[10px] text-gray-500 uppercase">USDCx</span></span>}
                                                 {inv.donations?.usad > 0 && <span className="text-xs font-bold text-white">{inv.donations.usad} <span className="text-[10px] text-gray-500 uppercase">USAD</span></span>}
                                                 {(!inv.donations || (inv.donations.credits === 0 && inv.donations.usdcx === 0 && inv.donations.usad === 0)) && (
-                                                    <span className="font-bold text-gray-500">0 <span className="text-[10px] text-gray-600 uppercase">{getTokenLabel(inv.tokenType, inv.invoiceType, allowedTokens)}</span></span>
+                                                    <span className="font-bold text-gray-500">0 <span className="text-[10px] text-gray-600 uppercase">{getTokenLabel(inv.tokenType, inv.invoiceType)}</span></span>
                                                 )}
                                             </div>
                                         ) : (
                                             <div className="flex flex-col items-center">
                                                 <span className="font-bold text-white">{inv.amount}</span>
-                                                <span className="text-[10px] text-gray-500 uppercase">{getTokenLabel(inv.tokenType, inv.invoiceType, allowedTokens)}</span>
+                                                <span className="text-[10px] text-gray-500 uppercase">{getTokenLabel(inv.tokenType, inv.invoiceType)}</span>
                                             </div>
                                         )}
                                     </td>
@@ -217,7 +213,6 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                                         invoiceHash: inv.invoiceHash,
                                                         amount: inv.amount,
                                                         tokenType: inv.tokenType,
-                                                        allowedTokens,
                                                         invoiceType: inv.invoiceType,
                                                         walletType: inv.walletType,
                                                         status: inv.status,

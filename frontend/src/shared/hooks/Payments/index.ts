@@ -36,7 +36,7 @@ export const usePayment = () => {
             ? selectedTokenOverride
             : shared.invoice.tokenType === 3
                 ? getTokenTypeFromCode(
-                    getAllowedTokensForInvoice(shared.invoice.tokenType, shared.invoice.invoiceType, shared.invoice.allowedTokens)[0]
+                    getAllowedTokensForInvoice(shared.invoice.tokenType, shared.invoice.invoiceType)[0]
                 )
                 : shared.invoice.tokenType;
         if (activeTokenType === 1) {

@@ -19,7 +19,6 @@ import { BackupBanner } from './components/BackupBanner';
 import { InvoiceDistributionChart } from './components/Charts/InvoiceDistributionChart';
 import { TokenDistributionChart } from './components/Charts/TokenDistributionChart';
 import { WalletBalances } from './components/WalletBalances';
-import { getAllowedTokensForInvoice } from '../../utils/tokens';
 import { useWalletBalances } from '../../hooks/useWalletBalances';
 import { DashboardChatbot } from './components/DashboardChatbot';
 
@@ -307,7 +306,6 @@ const Profile: React.FC = () => {
                 invoiceHash: record.invoiceHash,
                 amount: record.amount / 1_000_000,
                 tokenType: record.tokenType,
-                allowedTokens: getAllowedTokensForInvoice(record.tokenType, record.invoiceType, dbTx?.allowed_tokens),
                 invoiceType: record.invoiceType,
                 walletType: 0, // Enforce Main Wallet
                 owner: record.owner,
@@ -335,7 +333,6 @@ const Profile: React.FC = () => {
                 invoiceHash: record.invoiceHash,
                 amount: record.amount / 1_000_000,
                 tokenType: record.tokenType,
-                allowedTokens: getAllowedTokensForInvoice(record.tokenType, record.invoiceType, dbTx?.allowed_tokens),
                 invoiceType: record.invoiceType,
                 walletType: 1, // Enforce Burner Wallet
                 owner: record.owner,
@@ -575,6 +572,21 @@ const Profile: React.FC = () => {
         } finally {
             setSettling(null);
         }
+    };
+
+    return (
+        <div className="page-container relative min-h-screen">
+            {/* BACKGROUND */}
+            <div className="fixed inset-0 pointer-events-none z-0 opacity-30">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-500/5 rounded-full blur-[120px] animate-float" />
+                <div className="absolute top-[20%] right-[-5%] w-[30%] h-[30%] bg-amber-400/10 rounded-full blur-[100px] animate-float-delayed" />
+                <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] bg-orange-500/5 rounded-full blur-[120px] animate-pulse-slow" />
+            </div>
+            <div className="absolute top-[-150px] left-1/2 -translate-x-1/2 w-screen h-[800px] z-0 pointer-events-none flex justify-center overflow-hidden">
+                <img
+                    src="/assets/aleo_globe.png"
+                    alt="Aleo Globe"
+                    className="w-full h-full object-cover opacity-50 mix-blend-screen mask-image-gradient-b"
                     style={{
                         maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)',
                         WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)'
@@ -754,7 +766,7 @@ const Profile: React.FC = () => {
                 loadingReceipts={loadingReceipts || loadingBurner}
                 loadingPayerReceipts={loadingPayerReceipts}
             />
-        </div >
+        </div>
     );
 };
 

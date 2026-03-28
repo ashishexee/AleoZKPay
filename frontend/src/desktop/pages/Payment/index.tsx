@@ -44,7 +44,7 @@ const PaymentPage = () => {
     const { address } = useWallet();
     const isProcess = loading;
     const allowedTokens: TokenCode[] = invoice
-        ? getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType, invoice.allowedTokens)
+        ? getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType)
         : ['CREDITS', 'USDCX', 'USAD'];
 
     useEffect(() => {

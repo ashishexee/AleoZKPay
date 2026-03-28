@@ -9,7 +9,7 @@ import type { PaymentStep, InvoiceState } from './types';
 import { createClient } from '@supabase/supabase-js';
 import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
-import { getAllowedTokensForInvoice, getTokenTypeFromCode, parseAllowedTokens } from '../../utils/tokens';
+import { getAllowedTokensForInvoice, getTokenTypeFromCode } from '../../utils/tokens';
 
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
 
@@ -46,7 +46,7 @@ export const useSharedPayment = () => {
     const resolveActiveTokenType = (selectedTokenOverride?: number) => {
         if (!invoice) return 0;
         if (selectedTokenOverride !== undefined) return selectedTokenOverride;
-        const allowedTokens = getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType, invoice.allowedTokens);
+        const allowedTokens = getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType);
         return getTokenTypeFromCode(allowedTokens[0]);
     };
 
@@ -63,7 +63,6 @@ export const useSharedPayment = () => {
             const typeParam = searchParams.get('type');
             let initialType = typeParam === 'donation' ? 2 : (typeParam === 'multipay' ? 1 : 0);
             const sessionId = searchParams.get('session_id');
-            const queryAllowedTokens = parseAllowedTokens(searchParams.get('allowed'));
 
             try {
                 setLoading(true);
@@ -122,11 +121,6 @@ export const useSharedPayment = () => {
                 } catch (e) { console.warn("Could not fetch DB details", e); }
 
                 const finalInvoiceType = invoiceData ? invoiceData.invoiceType : (dbInvoice?.invoice_type !== undefined ? dbInvoice.invoice_type : initialType);
-                const allowedTokens = getAllowedTokensForInvoice(
-                    tokenTypeOnChain,
-                    finalInvoiceType,
-                    dbInvoice?.allowed_tokens || queryAllowedTokens
-                );
 
                 console.log(`🔗 On-Chain Invoice Data | Status: ${statusOnChain}, Token Type: ${tokenTypeOnChain}, Type: ${finalInvoiceType}`);
 
@@ -164,7 +158,6 @@ export const useSharedPayment = () => {
                         hash: fetchedHash!,
                         memo,
                         tokenType: tokenTypeOnChain,
-                        allowedTokens,
                         invoiceType: finalInvoiceType,
                         items: dbInvoice?.invoice_items || undefined,
                         sessionId: sessionId || undefined
@@ -181,7 +174,6 @@ export const useSharedPayment = () => {
                     hash: fetchedHash!,
                     memo,
                     tokenType: tokenTypeOnChain,
-                    allowedTokens,
                     invoiceType: finalInvoiceType,
                     items: dbInvoice?.invoice_items || undefined,
                     sessionId: sessionId || undefined

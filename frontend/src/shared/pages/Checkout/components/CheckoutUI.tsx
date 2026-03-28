@@ -47,7 +47,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
 
     const isDonation = session?.amount === 0;
     const allowedTokens = session
-        ? getAllowedTokensForInvoice(session.token_type === 'ANY' ? 3 : 0, session.invoice_type, session.allowed_tokens)
+        ? getAllowedTokensForInvoice(session.token_type === 'ANY' ? 3 : 0, session.invoice_type)
         : ['CREDITS', 'USDCX', 'USAD'];
     const displayToken = session?.token_type === 'ANY' ? selectedPayerToken : session?.token_type;
     const displayTokenLabel = displayToken ? getTokenLabel(getTokenTypeFromCode(displayToken as 'CREDITS' | 'USDCX' | 'USAD')) : 'Tokens';
@@ -73,9 +73,6 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
             token: (displayToken || 'usdcx').toLowerCase(),
             session_id: session.id
         });
-        if (session.token_type === 'ANY') {
-            params.append('allowed', allowedTokens.join(',').toLowerCase());
-        }
         return `${window.location.origin}/pay?${params.toString()}`;
     })() : '';
 
