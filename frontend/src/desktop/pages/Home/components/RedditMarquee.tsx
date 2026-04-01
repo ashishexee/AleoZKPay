@@ -1,4 +1,5 @@
 import React from 'react';
+import { ExternalLink } from 'lucide-react';
 
 const REDDIT_POSTS = [
     {
@@ -158,7 +159,7 @@ const REDDIT_POSTS = [
     {
         sub: "r/Bitcoin",
         user: "u/RedditUser",
-        title: "Bitcoin donations on Twitch via Lightning ive",
+        title: "Bitcoin donations on Twitch via Lightning",
         url: "https://www.reddit.com/r/Bitcoin/comments/npzu5w/bitcoin_donations_on_twitch_via_lightning_ive/",
         content: "I accepted Lightning donations, and viewers clustered my channels to figure out my total Bitcoin holdings."
     },
@@ -213,66 +214,182 @@ const REDDIT_POSTS = [
     }
 ];
 
+/* Avatar initials color palette rotating by index to ensure uniqueness */
+const PALETTE = [
+    { name: 'orange', bg: 'bg-orange-500/15', text: 'text-orange-400', glow: 'bg-orange-500/10', border: 'border-orange-500/20', accent: 'via-orange-400/50' },
+    { name: 'violet', bg: 'bg-violet-500/15', text: 'text-violet-400', glow: 'bg-violet-500/10', border: 'border-violet-500/20', accent: 'via-violet-400/50' },
+    { name: 'cyan', bg: 'bg-cyan-500/15', text: 'text-cyan-400', glow: 'bg-cyan-500/10', border: 'border-cyan-500/20', accent: 'via-cyan-400/50' },
+    { name: 'emerald', bg: 'bg-emerald-500/15', text: 'text-emerald-400', glow: 'bg-emerald-500/10', border: 'border-emerald-500/20', accent: 'via-emerald-400/50' },
+    { name: 'rose', bg: 'bg-rose-500/15', text: 'text-rose-400', glow: 'bg-rose-500/10', border: 'border-rose-500/20', accent: 'via-rose-400/50' },
+    { name: 'amber', bg: 'bg-amber-500/15', text: 'text-amber-400', glow: 'bg-amber-500/10', border: 'border-amber-500/20', accent: 'via-amber-400/50' },
+    { name: 'sky', bg: 'bg-sky-500/15', text: 'text-sky-400', glow: 'bg-sky-500/10', border: 'border-sky-500/20', accent: 'via-sky-400/50' },
+    { name: 'indigo', bg: 'bg-indigo-500/15', text: 'text-indigo-400', glow: 'bg-indigo-500/10', border: 'border-indigo-500/20', accent: 'via-indigo-400/50' },
+    { name: 'teal', bg: 'bg-teal-500/15', text: 'text-teal-400', glow: 'bg-teal-500/10', border: 'border-teal-500/20', accent: 'via-teal-400/50' },
+    { name: 'fuchsia', bg: 'bg-fuchsia-500/15', text: 'text-fuchsia-400', glow: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/20', accent: 'via-fuchsia-400/50' },
+    { name: 'lime', bg: 'bg-lime-500/15', text: 'text-lime-400', glow: 'bg-lime-500/10', border: 'border-lime-500/20', accent: 'via-lime-400/50' },
+    { name: 'blue', bg: 'bg-blue-500/15', text: 'text-blue-400', glow: 'bg-blue-500/10', border: 'border-blue-500/20', accent: 'via-blue-400/50' },
+];
+
+function getSubColors(sub: string, index: number): { bg: string; text: string; glow: string; border: string; accent: string } {
+    // Thematic overrides for brand consistency
+    if (sub.includes('Bitcoin') || sub === 'BitcoinTalk') return PALETTE[0]; // Orange
+    if (sub.includes('ethereum')) return PALETTE[1]; // Violet
+    
+    // Otherwise rotate through palette based on index to ensure "no two same" neighbors
+    return PALETTE[index % PALETTE.length];
+}
+
+function getInitials(sub: string) {
+    if (sub.startsWith('r/')) return sub.slice(2, 4).toUpperCase();
+    return sub.slice(0, 2).toUpperCase();
+}
+
 export const RedditMarquee: React.FC = () => {
     return (
         <>
-            <div className="relative flex overflow-hidden group w-[100vw] left-1/2 -translate-x-1/2" style={{ maskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)", WebkitMaskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)" }}>
-                <div className="flex animate-[scroll_180s_linear_infinite] group-hover:[animation-play-state:paused] w-max gap-6 px-3">
+            {/* Row 1 — forward */}
+            <div
+                className="relative flex overflow-hidden group w-full mb-4"
+                style={{
+                    maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+                }}
+            >
+                <div className="flex animate-[scroll_160s_linear_infinite] group-hover:[animation-play-state:paused] w-max gap-4 px-2">
                     {[...Array(2)].map((_, arrayIndex) => (
-                        <div key={arrayIndex} className="flex gap-6">
-                            {REDDIT_POSTS.map((post: any, i) => (
-                                <div
-                                    key={`post-${arrayIndex}-${i}`}
-                                    className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 text-left w-[400px] shrink-0 relative overflow-hidden flex flex-col"
-                                >
-                                    <div className="absolute top-0 left-0 w-[3px] h-full bg-gradient-to-b from-white/40 to-white/5" />
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
-                                                <span className="text-white font-bold text-xs">{post.sub.startsWith('r/') ? 'r/' : post.sub[0]}</span>
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-0.5">
-                                                    <span className="font-bold text-white text-sm">{post.sub}</span>
-                                                </div>
-                                                <span className="text-gray-500 text-xs">{post.user}</span>
-                                            </div>
-                                        </div>
-                                        {post.url && (
-                                            <a href={post.url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0" title="Verify Original Post">
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                                            </a>
-                                        )}
-                                    </div>
+                        <div key={arrayIndex} className="flex gap-4">
+                            {REDDIT_POSTS.slice(0, 15).map((post, i) => {
+                                const colors = getSubColors(post.sub, i);
+                                return (
+                                    <div
+                                        key={`r1-${arrayIndex}-${i}`}
+                                        className="relative group/card w-[340px] shrink-0 overflow-hidden rounded-2xl bg-[#080808]/80 backdrop-blur-sm border border-white/[0.06] hover:border-white/[0.12] transition-all duration-700"
+                                    >
+                                        {/* Top shimmer on hover */}
+                                        <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${colors.accent} to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700`} />
+                                        {/* Corner glow */}
+                                        <div className={`absolute -top-16 -right-16 w-32 h-32 rounded-full ${colors.glow} opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 blur-3xl pointer-events-none`} />
 
-                                    <div className="mt-4 space-y-2 flex-grow">
-                                        <h3 className="font-bold text-lg leading-snug text-white">
-                                            {post.url ? (
-                                                <a href={post.url} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 hover:underline transition-colors">
-                                                    {post.title}
-                                                </a>
-                                            ) : (
-                                                post.title
-                                            )}
-                                        </h3>
-                                        {post.content && (
-                                            <p className="text-sm leading-relaxed text-gray-400 font-light line-clamp-4 mt-2">
+                                        <div className="relative p-5 flex flex-col h-full">
+                                            {/* Header */}
+                                            <div className="flex items-center justify-between gap-3 mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-9 h-9 rounded-xl ${colors.bg} border ${colors.border} flex items-center justify-center shrink-0`}>
+                                                        <span className={`font-mono font-bold text-[10px] tracking-wider ${colors.text}`}>{getInitials(post.sub)}</span>
+                                                    </div>
+                                                    <div>
+                                                        <div className={`font-bold text-[13px] ${colors.text}`}>{post.sub}</div>
+                                                        <div className="text-[11px] text-white/25 font-mono mt-0.5">{post.user}</div>
+                                                    </div>
+                                                </div>
+                                                {post.url && (
+                                                    <a
+                                                        href={post.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1.5 rounded-lg text-white/20 hover:text-white/60 hover:bg-white/[0.06] transition-all shrink-0"
+                                                        title="View original post"
+                                                    >
+                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                    </a>
+                                                )}
+                                            </div>
+
+                                            {/* Title */}
+                                            <h3 className="font-bold text-[14px] leading-snug text-white/90 mb-2.5 group-hover/card:text-orange-400 transition-colors line-clamp-2">
+                                                {post.url ? (
+                                                    <a href={post.url} target="_blank" rel="noopener noreferrer" className="hover:underline decoration-white/20">
+                                                        {post.title}
+                                                    </a>
+                                                ) : post.title}
+                                            </h3>
+
+                                            {/* Body */}
+                                            <p className="text-[12.5px] leading-relaxed text-white/30 group-hover/card:text-white/50 transition-colors duration-500 line-clamp-3 flex-grow">
                                                 {post.content}
                                             </p>
-                                        )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ))}
                 </div>
             </div>
 
-            {/* Add required custom keyframes to index.css if not present, but using style tag here for self-containment */}
+            {/* Row 2 — reverse */}
+            <div
+                className="relative flex overflow-hidden group w-full"
+                style={{
+                    maskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to right, transparent, black 8%, black 92%, transparent)',
+                }}
+            >
+                <div className="flex animate-[scroll-reverse_180s_linear_infinite] group-hover:[animation-play-state:paused] w-max gap-4 px-2">
+                    {[...Array(2)].map((_, arrayIndex) => (
+                        <div key={arrayIndex} className="flex gap-4">
+                            {REDDIT_POSTS.slice(15).map((post, i) => {
+                                const colors = getSubColors(post.sub, i);
+                                return (
+                                    <div
+                                        key={`r2-${arrayIndex}-${i}`}
+                                        className="relative group/card w-[340px] shrink-0 overflow-hidden rounded-2xl bg-[#080808]/80 backdrop-blur-sm border border-white/[0.06] hover:border-white/[0.12] transition-all duration-700"
+                                    >
+                                        <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${colors.accent} to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700`} />
+                                        <div className={`absolute -top-16 -right-16 w-32 h-32 rounded-full ${colors.glow} opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 blur-3xl pointer-events-none`} />
+
+                                        <div className="relative p-5 flex flex-col h-full">
+                                            <div className="flex items-center justify-between gap-3 mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-9 h-9 rounded-xl ${colors.bg} border ${colors.border} flex items-center justify-center shrink-0`}>
+                                                        <span className={`font-mono font-bold text-[10px] tracking-wider ${colors.text}`}>{getInitials(post.sub)}</span>
+                                                    </div>
+                                                    <div>
+                                                        <div className={`font-bold text-[13px] ${colors.text}`}>{post.sub}</div>
+                                                        <div className="text-[11px] text-white/25 font-mono mt-0.5">{post.user}</div>
+                                                    </div>
+                                                </div>
+                                                {post.url && (
+                                                    <a
+                                                        href={post.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1.5 rounded-lg text-white/20 hover:text-white/60 hover:bg-white/[0.06] transition-all shrink-0"
+                                                        title="View original post"
+                                                    >
+                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                    </a>
+                                                )}
+                                            </div>
+
+                                            <h3 className="font-bold text-[14px] leading-snug text-white/90 mb-2.5 group-hover/card:text-orange-400 transition-colors line-clamp-2">
+                                                {post.url ? (
+                                                    <a href={post.url} target="_blank" rel="noopener noreferrer" className="hover:underline decoration-white/20">
+                                                        {post.title}
+                                                    </a>
+                                                ) : post.title}
+                                            </h3>
+
+                                            <p className="text-[12.5px] leading-relaxed text-white/30 group-hover/card:text-white/50 transition-colors duration-500 line-clamp-3 flex-grow">
+                                                {post.content}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <style>{`
                 @keyframes scroll {
-                    0% { transform: translateX(0); }
+                    0%   { transform: translateX(0); }
                     100% { transform: translateX(-50%); }
+                }
+                @keyframes scroll-reverse {
+                    0%   { transform: translateX(-50%); }
+                    100% { transform: translateX(0); }
                 }
             `}</style>
         </>
