@@ -205,6 +205,9 @@ export class NullPay {
                         throw new Error(`NullPay Relayer Pre-gen Error: ${relayerRes.status} - ${errorData.error || relayerRes.statusText}`);
                     }
 
+                    const relayerData = await relayerRes.json() as { merchant_address: string };
+                    const merchantAddress = relayerData.merchant_address;
+
                     let hashStr: string | null = null;
                     let retries = 0;
                     const MAX_RETRIES = 60;
@@ -228,6 +231,29 @@ export class NullPay {
                     }
 
                     finalInvoiceHash = hashStr;
+
+                    // 📢 Sync with Dashboard
+                    try {
+                        await fetch(`${this.baseURL}/invoices`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${this.secretKey}`
+                            },
+                            body: JSON.stringify({
+                                invoice_hash: finalInvoiceHash,
+                                merchant_address: merchantAddress,
+                                amount: isDonation ? 0 : resolvedParams.amount,
+                                currency: resolvedParams.currency || 'CREDITS',
+                                salt: finalSalt,
+                                invoice_type: invoiceTypeNum,
+                                for_sdk: true,
+                                status: 'PENDING'
+                            })
+                        });
+                    } catch (syncErr) {
+                        console.error("NullPay Dashboard Sync Warning (Non-fatal):", syncErr);
+                    }
                 }
 
                 const sessionPayload = {

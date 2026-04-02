@@ -200,7 +200,7 @@ export const DeveloperPortal = () => {
                                 <code className="text-sm font-mono text-orange-300 font-medium">npm install @nullpay/node@latest</code>
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {commandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
                                         {commandCopied ? 'Copied!' : 'Copy'}
                                     </span>
                                 </div>
@@ -216,7 +216,7 @@ export const DeveloperPortal = () => {
                                 <code className="text-sm font-mono text-orange-300 font-medium">npx @nullpay/cli@latest sdk onboard</code>
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {cliCommandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
                                         {cliCommandCopied ? 'Copied!' : 'Copy'}
                                     </span>
                                 </div>
@@ -232,7 +232,7 @@ export const DeveloperPortal = () => {
                                 <code className="text-sm font-mono text-orange-300 font-medium">npx -y @nullpay/mcp</code>
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {mcpCommandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
                                         {mcpCommandCopied ? 'Copied!' : 'Copy'}
                                     </span>
                                 </div>

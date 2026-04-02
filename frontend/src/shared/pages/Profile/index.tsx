@@ -21,6 +21,7 @@ import { TokenDistributionChart } from './components/Charts/TokenDistributionCha
 import { WalletBalances } from './components/WalletBalances';
 import { useWalletBalances } from '../../hooks/useWalletBalances';
 import { DashboardChatbot } from './components/DashboardChatbot';
+// CardWalletPanel import moved to dedicated route
 
 const Profile: React.FC = () => {
     const { address, requestRecords, decrypt, executeTransaction } = useWallet();
@@ -665,6 +666,8 @@ const Profile: React.FC = () => {
 
                 {/* BURNER WALLET SETTINGS - FULL WIDTH */}
                 <BurnerWalletSettings itemVariants={itemVariants} transactions={transactions} />
+
+                {/* CardWalletPanel moved to dedicated /cards route */}
 
                 {/* INVOICE HISTORY */}
                 <GlassCard variants={itemVariants} className="p-0 overflow-hidden">

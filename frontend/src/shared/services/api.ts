@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 import { hashAddress } from '../utils/crypto';
 
 export interface Invoice {
@@ -121,6 +121,47 @@ export interface UserProfile {
     updated_at?: string;
 }
 
+export type CardTokenCode = 'CREDITS' | 'USDCX' | 'USAD';
+
+export interface CardTokenLimits {
+    max_balance: number;
+    max_single_spend: number;
+    max_daily_spend: number;
+    spent_today: number;
+}
+
+export interface CardWalletProfile {
+    address_hash: string;
+    card_address: string;
+    card_last4?: string | null;
+    encrypted_card_private_key: string;
+    card_kdf_salt: string;
+    card_kdf_algorithm: string;
+    card_kdf_params: Record<string, unknown> | null;
+    card_status: string;
+    card_label?: string | null;
+    card_hint?: string | null;
+    card_spend_window_started_at?: string | null;
+    card_limits_updated_at?: string | null;
+    limits: Record<CardTokenCode, CardTokenLimits>;
+    spent_today: Record<CardTokenCode, number>;
+}
+
+export interface CardWalletUpsertPayload {
+    card_address?: string | null;
+    card_last4?: string | null;
+    encrypted_card_private_key?: string | null;
+    card_kdf_salt?: string | null;
+    card_kdf_algorithm?: string | null;
+    card_kdf_params?: Record<string, unknown> | null;
+    card_status?: string;
+    card_label?: string | null;
+    card_hint?: string | null;
+    card_spend_window_started_at?: string | null;
+    limits?: Partial<Record<CardTokenCode, Partial<CardTokenLimits>>>;
+    spent_today?: Partial<Record<CardTokenCode, number>>;
+}
+
 export const getUserProfile = async (address: string): Promise<UserProfile | null> => {
     const hash = await hashAddress(address);
     const response = await fetch(`${API_URL}/users/profile/${hash}`);
@@ -174,6 +215,90 @@ export const clearBurnerData = async (address: string): Promise<void> => {
     if (!response.ok) {
         throw new Error('Failed to clear burner data');
     }
+};
+
+export const getCardWallet = async (address: string): Promise<CardWalletProfile | null> => {
+    const hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/users/card/${hash}`);
+    if (!response.ok) {
+        if (response.status === 404) {
+            return null;
+        }
+        throw new Error('Failed to fetch card wallet');
+    }
+    return response.json();
+};
+
+export const upsertCardWallet = async (
+    address: string,
+    payload: CardWalletUpsertPayload
+): Promise<CardWalletProfile> => {
+    const address_hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/users/card`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            address_hash,
+            ...payload
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to save card wallet');
+    }
+
+    return response.json();
+};
+
+export const submitCardLimitChange = async (
+    address: string,
+    mainAddress: string,
+    message: string,
+    signatureBase64: string
+): Promise<CardWalletProfile> => {
+    const address_hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/users/card/limits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            address_hash,
+            main_address: mainAddress,
+            message,
+            signature_base64: signatureBase64
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to update card limits');
+    }
+
+    return response.json();
+};
+
+export const recordCardSpend = async (
+    address: string,
+    token: CardTokenCode,
+    amountMicro: number
+): Promise<CardWalletProfile> => {
+    const address_hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/users/card/spend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            address_hash,
+            token,
+            amount_micro: amountMicro
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to record card spend');
+    }
+
+    return response.json();
 };
 
 export const chatWithDashboardAssistant = async (
