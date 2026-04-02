@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, BookOpen, Layers, MessageSquare, Bitcoin } from 'lucide-react';
 
 const REDDIT_POSTS = [
     {
@@ -239,10 +239,19 @@ function getSubColors(sub: string, index: number): { bg: string; text: string; g
     return PALETTE[index % PALETTE.length];
 }
 
-function getInitials(sub: string) {
-    if (sub.startsWith('r/')) return sub.slice(2, 4).toUpperCase();
-    return sub.slice(0, 2).toUpperCase();
-}
+
+
+const PlatformIcon = ({ sub, className }: { sub: string, className?: string }) => {
+    if (sub.startsWith('r/')) {
+        return (
+            <img src="/assets/download-removebg-preview.png" alt="Reddit" className={className + " opacity-90 drop-shadow-md"} />
+        );
+    }
+    if (sub === 'ArXiv') return <BookOpen className={className} />;
+    if (sub === 'StackExchange') return <Layers className={className} />;
+    if (sub === 'BitcoinTalk') return <Bitcoin className={className} />;
+    return <MessageSquare className={className} />;
+};
 
 export const RedditMarquee: React.FC = () => {
     return (
@@ -274,9 +283,7 @@ export const RedditMarquee: React.FC = () => {
                                             {/* Header */}
                                             <div className="flex items-center justify-between gap-3 mb-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-9 h-9 rounded-xl ${colors.bg} border ${colors.border} flex items-center justify-center shrink-0`}>
-                                                        <span className={`font-mono font-bold text-[10px] tracking-wider ${colors.text}`}>{getInitials(post.sub)}</span>
-                                                    </div>
+                                                    <PlatformIcon sub={post.sub} className={`w-8 h-8 shrink-0 object-contain ${colors.text}`} />
                                                     <div>
                                                         <div className={`font-bold text-[13px] ${colors.text}`}>{post.sub}</div>
                                                         <div className="text-[11px] text-white/25 font-mono mt-0.5">{post.user}</div>
@@ -341,9 +348,7 @@ export const RedditMarquee: React.FC = () => {
                                         <div className="relative p-5 flex flex-col h-full">
                                             <div className="flex items-center justify-between gap-3 mb-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`w-9 h-9 rounded-xl ${colors.bg} border ${colors.border} flex items-center justify-center shrink-0`}>
-                                                        <span className={`font-mono font-bold text-[10px] tracking-wider ${colors.text}`}>{getInitials(post.sub)}</span>
-                                                    </div>
+                                                    <PlatformIcon sub={post.sub} className={`w-8 h-8 shrink-0 object-contain ${colors.text}`} />
                                                     <div>
                                                         <div className={`font-bold text-[13px] ${colors.text}`}>{post.sub}</div>
                                                         <div className="text-[11px] text-white/25 font-mono mt-0.5">{post.user}</div>

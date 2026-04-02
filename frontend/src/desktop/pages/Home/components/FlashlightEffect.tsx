@@ -32,12 +32,6 @@ export function FlashlightEffect({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative w-full h-full">
-       <div 
-          className="pointer-events-none fixed inset-0 z-50 transition duration-300"
-          style={{
-             background: `radial-gradient(400px circle at var(--mouse-x, 50vw) var(--mouse-y, 50vh), rgba(255,255,255,0.09), transparent 40%)`
-          }}
-       />
       {children}
     </div>
   );
