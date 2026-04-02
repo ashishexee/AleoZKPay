@@ -5,20 +5,19 @@ import {
     CardTokenCode,
     CardWalletProfile,
     getCardWallet,
-    recordCardSpend as recordCardSpendApi,
     submitCardLimitChange,
     upsertCardWallet
 } from '../services/api';
 import { encryptCardPrivateKey, decryptCardPrivateKey, type CardKdfAlgorithm } from '../utils/card-crypto';
+import { decryptWithPassword, encryptWithPassword, hashAddress } from '../utils/crypto';
 import { fetchAllPrivateBalances } from '../pages/Profile/components/BurnerWallet/scanner';
 import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
+import { useBurnerWallet } from './BurnerWalletProvider';
 
 type BalanceKey = 'ALEO' | 'USDCx' | 'USAD';
 
 interface CardLimitDraft {
     max_balance: number;
-    max_single_spend: number;
-    max_daily_spend: number;
 }
 
 interface CreateCardOptions {
@@ -37,11 +36,13 @@ interface CardWalletContextValue {
     unlockCard: (pin: string, cardSecret: string, options?: { persist?: boolean }) => Promise<string>;
     lockCard: () => void;
     refreshCard: () => Promise<void>;
-    refreshCardBalances: (pin?: string, cardSecret?: string) => Promise<Record<BalanceKey, number> | null>;
-    validateCardSpend: (token: CardTokenCode, amountMicro: number) => { ok: true } | { ok: false; reason: string };
-    topUpCard: (token: CardTokenCode, amount: number, pin: string, cardSecret: string) => Promise<string>;
+    refreshCardBalances: (
+        pin?: string,
+        cardSecret?: string,
+        options?: { retryOnZero?: boolean }
+    ) => Promise<Record<BalanceKey, number> | null>;
+    topUpCard: (token: CardTokenCode, amount: number, pin?: string, cardSecret?: string) => Promise<string>;
     requestCardLimitChange: (token: CardTokenCode, nextLimits: CardLimitDraft) => Promise<CardWalletProfile>;
-    recordCardSpend: (token: CardTokenCode, amountMicro: number) => Promise<CardWalletProfile>;
 }
 
 const CardWalletContext = createContext<CardWalletContextValue | undefined>(undefined);
@@ -56,19 +57,13 @@ const TOKEN_TO_BALANCE_KEY: Record<CardTokenCode, BalanceKey> = {
 
 const DEFAULT_CARD_LIMITS: Record<CardTokenCode, CardLimitDraft> = {
     CREDITS: {
-        max_balance: 25_000_000,
-        max_single_spend: 10_000_000,
-        max_daily_spend: 25_000_000
+        max_balance: 25_000_000
     },
     USDCX: {
-        max_balance: 25_000_000,
-        max_single_spend: 10_000_000,
-        max_daily_spend: 25_000_000
+        max_balance: 25_000_000
     },
     USAD: {
-        max_balance: 25_000_000,
-        max_single_spend: 10_000_000,
-        max_daily_spend: 25_000_000
+        max_balance: 25_000_000
     }
 };
 
@@ -110,8 +105,62 @@ function generateCardLast4() {
         .padStart(4, '0');
 }
 
+function normalizeCardNumber(cardNumber: string) {
+    return cardNumber.replace(/\D/g, '');
+}
+
+function calculateLuhnCheckDigit(partialNumber: string) {
+    let sum = 0;
+    let shouldDouble = true;
+    for (let index = partialNumber.length - 1; index >= 0; index -= 1) {
+        let digit = Number(partialNumber[index]);
+        if (shouldDouble) {
+            digit *= 2;
+            if (digit > 9) digit -= 9;
+        }
+        sum += digit;
+        shouldDouble = !shouldDouble;
+    }
+    return String((10 - (sum % 10)) % 10);
+}
+
+function generateVisaStyleCardNumber() {
+    const randomDigits = Array.from(window.crypto.getRandomValues(new Uint8Array(14)))
+        .map((digit) => String(digit % 10))
+        .join('');
+    const partial = `4${randomDigits}`;
+    return `${partial}${calculateLuhnCheckDigit(partial)}`;
+}
+
 function toMicroUnits(amount: number): number {
     return Math.round(amount * 1_000_000);
+}
+
+function getWalletRecordBalance(record: any, token: CardTokenCode): number {
+    try {
+        const fieldName = token === 'CREDITS' ? 'microcredits' : 'amount';
+        const suffix = token === 'CREDITS' ? 'u64' : 'u128';
+
+        if (record?.data?.[fieldName]) {
+            return Number(String(record.data[fieldName]).replace(suffix, '').replace(/_/g, ''));
+        }
+
+        if (record?.plaintext) {
+            const regex = new RegExp(`${fieldName}:\\s*([\\d_]+)${suffix}`);
+            const match = record.plaintext.match(regex);
+            if (match?.[1]) {
+                return Number(match[1].replace(/_/g, ''));
+            }
+        }
+    } catch {
+        return 0;
+    }
+
+    return 0;
+}
+
+function getWalletRecordInput(record: any) {
+    return record.plaintext || record.ciphertext || record.recordCiphertext || record;
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -131,12 +180,10 @@ function resetKeyMaterial(value: string | null) {
 function buildLimitChangeMessage(card: CardWalletProfile, token: CardTokenCode, nextLimits: CardLimitDraft) {
     return JSON.stringify({
         action: 'nullpay_card_limit_change_v1',
-        card_address: card.card_address,
+        card_address: card.encrypted_card_address || card.card_address,
         token,
         previous_limits: {
-            max_balance: card.limits[token].max_balance,
-            max_single_spend: card.limits[token].max_single_spend,
-            max_daily_spend: card.limits[token].max_daily_spend
+            max_balance: card.limits[token].max_balance
         },
         next_limits: nextLimits,
         nonce: window.crypto.randomUUID(),
@@ -144,15 +191,61 @@ function buildLimitChangeMessage(card: CardWalletProfile, token: CardTokenCode, 
     });
 }
 
+function hasPositiveBalance(balances: Record<BalanceKey, number>) {
+    return Object.values(balances).some((value) => value > 0);
+}
+
 export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { address, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
+    const { address, wallet, executeTransaction, requestRecords, decrypt, transactionStatus } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
+    const { appPassword } = useBurnerWallet();
     const [card, setCard] = useState<CardWalletProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [decryptedCardKey, setDecryptedCardKey] = useState<string | null>(null);
     const [cardBalances, setCardBalances] = useState<Record<BalanceKey, number> | null>(null);
     const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
     const autoLockTimeoutRef = useRef<number | null>(null);
+
+    const normalizeCardProfile = async (profile: CardWalletProfile | null): Promise<CardWalletProfile | null> => {
+        if (!profile) {
+            return null;
+        }
+
+        const encryptedCardAddress = profile.card_address || null;
+        const encryptedCardNumber = profile.encrypted_card_number || null;
+
+        const decryptClientValue = async (encryptedValue: string | null, testPlaintext: (value: string) => boolean) => {
+            if (!encryptedValue) {
+                return '';
+            }
+
+            if (testPlaintext(encryptedValue)) {
+                return encryptedValue;
+            }
+
+            if (!appPassword) {
+                return '';
+            }
+
+            try {
+                return await decryptWithPassword(encryptedValue, appPassword);
+            } catch (error) {
+                console.warn('Could not decrypt card value for local use', error);
+                return '';
+            }
+        };
+
+        const decryptedCardAddress = await decryptClientValue(encryptedCardAddress, (value) => value.startsWith('aleo1'));
+        const decryptedCardNumber = await decryptClientValue(encryptedCardNumber, (value) => /^\d{16}$/.test(value));
+
+        return {
+            ...profile,
+            encrypted_card_address: encryptedCardAddress,
+            encrypted_card_number: encryptedCardNumber,
+            card_address: decryptedCardAddress,
+            card_number: decryptedCardNumber
+        };
+    };
 
     const clearAutoLockTimeout = () => {
         if (autoLockTimeoutRef.current !== null) {
@@ -185,9 +278,10 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         try {
             setIsLoading(true);
-            const nextCard = await getCardWallet(address);
+            const fetchedCard = await getCardWallet(address);
+            const nextCard = await normalizeCardProfile(fetchedCard);
             setCard(nextCard);
-            if (!nextCard) {
+            if (!fetchedCard) {
                 setCardBalances(null);
                 lockCard();
             }
@@ -198,7 +292,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     useEffect(() => {
         refreshCard();
-    }, [address]);
+    }, [address, appPassword]);
 
     useEffect(() => {
         const handlePageHide = () => lockCard();
@@ -250,7 +344,11 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return nextKey;
     };
 
-    const refreshCardBalances = async (pin?: string, cardSecret?: string) => {
+    const refreshCardBalances = async (
+        pin?: string,
+        cardSecret?: string,
+        options?: { retryOnZero?: boolean }
+    ) => {
         if (!card) {
             setCardBalances(null);
             return null;
@@ -264,7 +362,13 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         try {
             setIsRefreshingBalances(true);
-            const balances = await fetchAllPrivateBalances(activeKey);
+            let balances = await fetchAllPrivateBalances(activeKey);
+
+            if (options?.retryOnZero && !hasPositiveBalance(balances)) {
+                await new Promise((resolve) => window.setTimeout(resolve, 1500));
+                balances = await fetchAllPrivateBalances(activeKey);
+            }
+
             setCardBalances(balances);
             if (decryptedCardKey) scheduleAutoLock();
             return balances;
@@ -276,9 +380,57 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     };
 
+    const pollForFinalTransactionId = async (initialTxId: string): Promise<string> => {
+        const statusReader = transactionStatus || wallet?.adapter?.transactionStatus;
+        if (!statusReader) {
+            return initialTxId;
+        }
+
+        let isPending = true;
+        let attempts = 0;
+        let finalTransactionId = initialTxId;
+        const maxAttempts = 120;
+
+        while (isPending && attempts < maxAttempts) {
+            attempts += 1;
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            try {
+                const statusResponse = await statusReader(initialTxId);
+                const currentStatus = typeof (statusResponse as any) === 'string'
+                    ? ((statusResponse as any) as string).toLowerCase()
+                    : (statusResponse as any)?.status?.toLowerCase();
+
+                if (typeof statusResponse === 'object' && (statusResponse as any)?.transactionId) {
+                    finalTransactionId = (statusResponse as any).transactionId;
+                }
+
+                if (currentStatus !== 'pending' && currentStatus !== 'processing' && currentStatus !== 'submitted') {
+                    isPending = false;
+
+                    if (currentStatus === 'completed' || currentStatus === 'finalized' || currentStatus === 'accepted') {
+                        return finalTransactionId;
+                    }
+
+                    throw new Error(`Top-up transaction failed with status: ${currentStatus}`);
+                }
+            } catch (error: any) {
+                if (typeof error?.message === 'string' && error.message.startsWith('Top-up transaction failed with status:')) {
+                    throw error;
+                }
+                console.warn('[CardWalletProvider] Top-up status polling attempt failed:', error?.message || error);
+            }
+        }
+
+        return finalTransactionId;
+    };
+
     const createCard = async (pin: string, cardSecret: string, options: CreateCardOptions) => {
         if (!address) {
             throw new Error('Connect your main wallet first.');
+        }
+        if (!appPassword) {
+            throw new Error('Unlock the app with your password before creating a card.');
         }
 
         validatePin(pin);
@@ -289,11 +441,19 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const privateKey = new PrivateKey();
         const privateKeyString = privateKey.to_string();
         const cardAddress = privateKey.to_address().to_string();
-        const cardLast4 = generateCardLast4();
+        const cardNumber = generateVisaStyleCardNumber();
+        const cardLast4 = normalizeCardNumber(cardNumber).slice(-4) || generateCardLast4();
+        const cardNumberHash = await hashAddress(cardNumber);
         const encrypted = await encryptCardPrivateKey(privateKeyString, pin, cardSecret);
+        const encryptedCardAddress = await encryptWithPassword(cardAddress, appPassword);
+        const encryptedCardNumber = await encryptWithPassword(cardNumber, appPassword);
+        const encryptedMainAddress = await encryptWithPassword(address, appPassword);
 
-        const savedCard = await upsertCardWallet(address, {
-            card_address: cardAddress,
+        const savedCardRaw = await upsertCardWallet(address, {
+            main_address: encryptedMainAddress,
+            card_address: encryptedCardAddress,
+            encrypted_card_number: encryptedCardNumber,
+            card_number_hash: cardNumberHash,
             card_last4: cardLast4,
             encrypted_card_private_key: encrypted.encryptedPrivateKey,
             card_kdf_salt: encrypted.saltBase64,
@@ -302,37 +462,19 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             card_status: 'ACTIVE',
             card_label: options.label.trim(),
             card_hint: cardHint,
-            card_spend_window_started_at: null,
-            limits: DEFAULT_CARD_LIMITS,
-            spent_today: {
-                CREDITS: 0,
-                USDCX: 0,
-                USAD: 0
-            }
+            limits: DEFAULT_CARD_LIMITS
         });
+
+        const savedCard = await normalizeCardProfile(savedCardRaw);
+        if (!savedCard) {
+            throw new Error('Card wallet could not be loaded after creation.');
+        }
 
         setCard(savedCard);
         setDecryptedCardKey(privateKeyString);
         scheduleAutoLock();
         await refreshCardBalances(pin, cardSecret);
         return savedCard;
-    };
-
-    const validateCardSpend = (token: CardTokenCode, amountMicro: number) => {
-        if (!card) {
-            return { ok: false as const, reason: 'Create your NullPay card first.' };
-        }
-
-        const limits = card.limits[token];
-        if (limits.max_single_spend > 0 && amountMicro > limits.max_single_spend) {
-            return { ok: false as const, reason: `This payment exceeds your ${token} single-spend cap.` };
-        }
-
-        if (limits.max_daily_spend > 0 && limits.spent_today + amountMicro > limits.max_daily_spend) {
-            return { ok: false as const, reason: `This payment exceeds your ${token} daily cap.` };
-        }
-
-        return { ok: true as const };
     };
 
     const findWalletRecord = async (token: CardTokenCode, amountMicro: number) => {
@@ -345,42 +487,59 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             : token === 'USDCX'
                 ? 'test_usdcx_stablecoin.aleo'
                 : 'test_usad_stablecoin.aleo';
-        const fieldName = token === 'CREDITS' ? 'microcredits' : 'amount';
-        const records = await requestRecords(programName, false);
-
-        let matchingRecord: any = null;
-        for (const record of records as any[]) {
-            if (record.spent) continue;
-            if (record.recordCiphertext && !record.plaintext && decrypt) {
+        const processRecord = async (record: any) => {
+            let balance = getWalletRecordBalance(record, token);
+            if (balance === 0 && record.recordCiphertext && !record.plaintext && decrypt) {
                 try {
-                    record.plaintext = await decrypt(record.recordCiphertext);
+                    const decrypted = await decrypt(record.recordCiphertext);
+                    if (decrypted) {
+                        record.plaintext = decrypted;
+                        balance = getWalletRecordBalance(record, token);
+                    }
                 } catch {
-                    continue;
+                    return 0;
                 }
             }
 
-            const plaintext = record.plaintext || '';
-            const regex = token === 'CREDITS'
-                ? /microcredits\s*:\s*([\d_]+)u64/
-                : /amount\s*:\s*([\d_]+)u128/;
-            const match = plaintext.match(regex);
-            if (!match?.[1]) continue;
+            return balance;
+        };
 
-            const balance = Number(match[1].replace(/_/g, ''));
-            if (balance >= amountMicro) {
-                matchingRecord = record;
-                break;
+        const locateSpendableRecord = async (records: any[]) => {
+            let matchingRecord: any = null;
+            let totalBalance = 0;
+
+            for (const record of records) {
+                if (record.spent) continue;
+                const balance = await processRecord(record);
+                totalBalance += balance;
+                if (!matchingRecord && balance >= amountMicro) {
+                    matchingRecord = record;
+                }
             }
+
+            return { matchingRecord, totalBalance };
+        };
+
+        let records = await requestRecords(programName, false);
+        let { matchingRecord, totalBalance } = await locateSpendableRecord(records as any[]);
+
+        if (!matchingRecord) {
+            await new Promise((resolve) => window.setTimeout(resolve, 2000));
+            records = await requestRecords(programName, false);
+            ({ matchingRecord, totalBalance } = await locateSpendableRecord(records as any[]));
         }
 
         if (!matchingRecord) {
-            throw new Error(`No single private ${token} record is large enough. Convert or consolidate your wallet funds first.`);
+            if (totalBalance >= amountMicro) {
+                throw new Error(`Your private ${token} balance is split across multiple records. Convert or merge records first.`);
+            }
+            throw new Error(`Insufficient private ${token} balance in the connected wallet.`);
         }
 
-        return { matchingRecord, programName, fieldName };
+        return { matchingRecord, programName };
     };
 
-    const topUpCard = async (token: CardTokenCode, amount: number, pin: string, cardSecret: string) => {
+    const topUpCard = async (token: CardTokenCode, amount: number, pin?: string, cardSecret?: string) => {
         if (!address || !executeTransaction || !card?.card_address) {
             throw new Error('Connect your main wallet and create a card first.');
         }
@@ -390,25 +549,25 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             throw new Error('Top-up amount must be greater than zero.');
         }
 
-        const tempKey = await unlockCard(pin, cardSecret, { persist: false });
-        try {
-            const balances = await fetchAllPrivateBalances(tempKey);
-            const currentBalanceMicro = toMicroUnits(balances[TOKEN_TO_BALANCE_KEY[token]] || 0);
-            const nextBalance = currentBalanceMicro + amountMicro;
-            const maxBalance = card.limits[token].max_balance || 0;
-
-            if (maxBalance > 0 && nextBalance > maxBalance) {
+        const currentKnownBalanceMicro = cardBalances
+            ? toMicroUnits(cardBalances[TOKEN_TO_BALANCE_KEY[token]] || 0)
+            : null;
+        const maxBalance = card.limits[token].max_balance || 0;
+        if (maxBalance > 0) {
+            if (currentKnownBalanceMicro !== null && currentKnownBalanceMicro + amountMicro > maxBalance) {
                 throw new Error(`This top-up would exceed your ${token} card balance cap.`);
             }
-        } finally {
-            resetKeyMaterial(tempKey);
+            if (currentKnownBalanceMicro === null && amountMicro > maxBalance) {
+                throw new Error(`This top-up amount is larger than your ${token} card balance cap.`);
+            }
         }
 
         const { matchingRecord, programName } = await findWalletRecord(token, amountMicro);
         let inputs: string[];
+        const recordInput = getWalletRecordInput(matchingRecord);
 
         if (token === 'CREDITS') {
-            inputs = [matchingRecord.plaintext || matchingRecord.ciphertext || matchingRecord, card.card_address, `${amountMicro}u64`];
+            inputs = [recordInput, card.card_address, `${amountMicro}u64`];
         } else {
             const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../utils/aleo-utils');
             await getFreezeListRoot();
@@ -426,7 +585,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
 
             const proof = await generateFreezeListProof(1, index0FieldStr);
-            inputs = [card.card_address, `${amountMicro}u128`, matchingRecord.plaintext || matchingRecord.ciphertext || matchingRecord, `[${proof}, ${proof}]`];
+            inputs = [card.card_address, `${amountMicro}u128`, recordInput, `[${proof}, ${proof}]`];
         }
 
         const functionName = 'transfer_private';
@@ -443,11 +602,17 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 throw new Error('The wallet did not return a transaction id for the top-up.');
             }
 
-            window.setTimeout(() => {
-                refreshCardBalances(pin, cardSecret).catch(() => null);
-            }, 2500);
+            const finalTransactionId = await pollForFinalTransactionId(result.transactionId);
 
-            return result.transactionId;
+            window.setTimeout(() => {
+                if (decryptedCardKey) {
+                    refreshCardBalances(undefined, undefined, { retryOnZero: true }).catch(() => null);
+                } else if (pin && cardSecret) {
+                    refreshCardBalances(pin, cardSecret, { retryOnZero: true }).catch(() => null);
+                }
+            }, 1500);
+
+            return finalTransactionId;
         } catch (err: any) {
             if (handleWalletError(err)) {
                 throw err;
@@ -465,14 +630,8 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
 
         const sanitizedNextLimits: CardLimitDraft = {
-            max_balance: Math.round(nextLimits.max_balance),
-            max_single_spend: Math.round(nextLimits.max_single_spend),
-            max_daily_spend: Math.round(nextLimits.max_daily_spend)
+            max_balance: Math.round(nextLimits.max_balance)
         };
-
-        if (sanitizedNextLimits.max_single_spend > sanitizedNextLimits.max_balance) {
-            throw new Error('Single-spend limit cannot exceed the balance cap.');
-        }
 
         const message = buildLimitChangeMessage(card, token, sanitizedNextLimits);
         const signatureResult = await wallet.adapter.signMessage(new TextEncoder().encode(message));
@@ -484,15 +643,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
         const signatureBase64 = toBase64(signatureBytes);
         const nextCard = await submitCardLimitChange(address, address, message, signatureBase64);
-        setCard(nextCard);
-        return nextCard;
-    };
-
-    const recordCardSpend = async (token: CardTokenCode, amountMicro: number) => {
-        if (!address) {
-            throw new Error('Missing main wallet address.');
-        }
-        const nextCard = await recordCardSpendApi(address, token, amountMicro);
         setCard(nextCard);
         return nextCard;
     };
@@ -511,10 +661,8 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 lockCard,
                 refreshCard,
                 refreshCardBalances,
-                validateCardSpend,
                 topUpCard,
-                requestCardLimitChange,
-                recordCardSpend
+                requestCardLimitChange
             }}
         >
             {children}

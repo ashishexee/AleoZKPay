@@ -125,14 +125,14 @@ export type CardTokenCode = 'CREDITS' | 'USDCX' | 'USAD';
 
 export interface CardTokenLimits {
     max_balance: number;
-    max_single_spend: number;
-    max_daily_spend: number;
-    spent_today: number;
 }
 
 export interface CardWalletProfile {
     address_hash: string;
     card_address: string;
+    encrypted_card_address?: string | null;
+    card_number?: string | null;
+    encrypted_card_number?: string | null;
     card_last4?: string | null;
     encrypted_card_private_key: string;
     card_kdf_salt: string;
@@ -141,14 +141,15 @@ export interface CardWalletProfile {
     card_status: string;
     card_label?: string | null;
     card_hint?: string | null;
-    card_spend_window_started_at?: string | null;
     card_limits_updated_at?: string | null;
     limits: Record<CardTokenCode, CardTokenLimits>;
-    spent_today: Record<CardTokenCode, number>;
 }
 
 export interface CardWalletUpsertPayload {
+    main_address?: string | null;
     card_address?: string | null;
+    encrypted_card_number?: string | null;
+    card_number_hash?: string | null;
     card_last4?: string | null;
     encrypted_card_private_key?: string | null;
     card_kdf_salt?: string | null;
@@ -157,9 +158,7 @@ export interface CardWalletUpsertPayload {
     card_status?: string;
     card_label?: string | null;
     card_hint?: string | null;
-    card_spend_window_started_at?: string | null;
     limits?: Partial<Record<CardTokenCode, Partial<CardTokenLimits>>>;
-    spent_today?: Partial<Record<CardTokenCode, number>>;
 }
 
 export const getUserProfile = async (address: string): Promise<UserProfile | null> => {
@@ -246,6 +245,26 @@ export const upsertCardWallet = async (
     if (!response.ok) {
         const err = await response.json().catch(() => null);
         throw new Error(err?.error || 'Failed to save card wallet');
+    }
+
+    return response.json();
+};
+
+export const lookupCardWalletByNumberHash = async (
+    cardNumberHash: string
+): Promise<CardWalletProfile | null> => {
+    const response = await fetch(`${API_URL}/users/card/lookup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card_number_hash: cardNumberHash })
+    });
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            return null;
+        }
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to look up card wallet');
     }
 
     return response.json();

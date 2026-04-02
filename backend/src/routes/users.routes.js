@@ -5,6 +5,7 @@ const {
     clearBurner,
     getCardWallet,
     upsertCardWallet,
+    lookupCardWallet,
     verifyCardLimitChange,
     recordCardSpend
 } = require('../controllers/users.controller');
@@ -16,6 +17,7 @@ router.get('/profile/:address', getProfile);
 router.post('/profile/clear-burner', clearBurner);
 router.get('/card/:address', getCardWallet);
 router.post('/card', upsertCardWallet);
+router.post('/card/lookup', lookupCardWallet);
 router.post('/card/limits', verifyCardLimitChange);
 router.post('/card/spend', recordCardSpend);
 

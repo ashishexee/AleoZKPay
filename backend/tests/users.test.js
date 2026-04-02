@@ -46,7 +46,10 @@ describe('User Profile Endpoints', () => {
             .post('/api/users/card')
             .send({
                 address_hash: 'testhash',
+                main_address: 'encrypted-main-address',
                 card_address: 'aleo1cardaddress',
+                encrypted_card_number: 'encrypted-card-number',
+                card_number_hash: 'a'.repeat(64),
                 card_last4: '4821',
                 encrypted_card_private_key: 'ciphertext',
                 card_kdf_salt: 'salt',

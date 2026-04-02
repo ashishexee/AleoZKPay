@@ -19,7 +19,7 @@ interface CheckoutUIProps {
     txId: string | null;
     success: boolean;
     onPay: (donationAmount?: number, selectedToken?: string) => void;
-    onPayWithCard: (pin: string, cardSecret: string, donationAmount?: number, selectedToken?: string) => void;
+    onPayWithCard: (cardNumber: string, pin: string, cardSecret: string, donationAmount?: number, selectedToken?: string) => void;
     onPayWithGiftCard: (giftCode: string, donationAmount?: number, selectedToken?: string) => void;
     giftCardRedeemOption?: { giftCode: string; availableAmount: number; tokenLabel: string } | null;
     onRedeemGiftCardBalance: () => void;
@@ -46,6 +46,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     const [selectedPayerToken, setSelectedPayerToken] = useState<string>('CREDITS');
     const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'giftcard' | 'card'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
+    const [cardNumber, setCardNumber] = useState<string>('');
     const [cardPin, setCardPin] = useState<string>('');
     const [cardSecret, setCardSecret] = useState<string>('');
 
@@ -100,12 +101,12 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     };
 
     const handleCardPayClick = () => {
-        if (!cardPin || !cardSecret) return;
+        if (!cardNumber || !cardPin || !cardSecret) return;
         const tokenToPass = session?.token_type === 'ANY' ? selectedPayerToken : undefined;
         if (isDonation) {
-            onPayWithCard(cardPin, cardSecret, parseFloat(donationAmount || '0'), tokenToPass);
+            onPayWithCard(cardNumber, cardPin, cardSecret, parseFloat(donationAmount || '0'), tokenToPass);
         } else {
-            onPayWithCard(cardPin, cardSecret, undefined, tokenToPass);
+            onPayWithCard(cardNumber, cardPin, cardSecret, undefined, tokenToPass);
         }
     };
 
@@ -314,7 +315,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         Wallet
                                     </button>
                                     <button
-                                        onClick={() => setPaymentMethod('giftcard')}
+                                        onClick={() => setPaymentMethod('card')}
                                         className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
                                             paymentMethod === 'card' ? 'bg-white/10 text-orange-300 shadow-md flex items-center justify-center gap-2' : 'text-gray-500 hover:text-white/80'
                                         }`}
@@ -333,6 +334,21 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
 
                                 {paymentMethod === 'card' && (
                                     <div className="mb-4 animate-fade-in space-y-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Card Number</label>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                value={cardNumber}
+                                                onChange={(e) => {
+                                                    const digits = e.target.value.replace(/\D/g, '').slice(0, 16);
+                                                    const grouped = digits.replace(/(.{4})/g, '$1 ').trim();
+                                                    setCardNumber(grouped);
+                                                }}
+                                                placeholder="4123 4567 8910 1112"
+                                                className="w-full bg-black/40 border border-white/10 focus:border-orange-400/50 outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors tracking-[0.22em] text-center"
+                                            />
+                                        </div>
                                         <div>
                                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Card PIN</label>
                                             <input
@@ -357,11 +373,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         <p className="text-xs text-gray-500 text-center">
                                             The card key is decrypted in-memory on this device, used to generate the payment authorization locally, and never sent to NullPay.
                                         </p>
-                                        {!publicKey && (
-                                            <p className="text-xs text-orange-300/80 text-center">
-                                                Connect your main wallet first so NullPay can load your encrypted card profile.
-                                            </p>
-                                        )}
+                                        <p className="text-xs text-orange-300/80 text-center">
+                                            No Shield connection needed. Card lookup uses the card number, while PIN and secret unlock the key locally on this device.
+                                        </p>
                                     </div>
                                 )}
 
@@ -405,7 +419,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             paymentLoading ||
                                             (isDonation && (!donationAmount || parseFloat(donationAmount) <= 0)) ||
                                             (paymentMethod === 'giftcard' && !giftCode) ||
-                                            (paymentMethod === 'card' && (!publicKey || !cardPin || !cardSecret))
+                                            (paymentMethod === 'card' && (!cardNumber || !cardPin || !cardSecret))
                                         }
                                         glow
                                         className="w-full text-lg h-14"

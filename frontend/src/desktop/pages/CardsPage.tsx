@@ -26,7 +26,7 @@ const CardsPage = () => {
     ];
 
     return (
-        <div className="relative min-h-screen overflow-hidden px-4 pt-10 pb-20 md:px-8">
+        <div className="relative min-h-screen overflow-hidden pt-10 pb-20">
             <div className="fixed inset-0 pointer-events-none z-0 opacity-40">
                 <div className="absolute top-[-10%] left-[-10%] h-[40%] w-[40%] rounded-full bg-orange-500/10 blur-[120px] animate-float" />
                 <div className="absolute top-[18%] right-[-6%] h-[32%] w-[32%] rounded-full bg-amber-400/10 blur-[110px] animate-float-delayed" />
@@ -55,7 +55,7 @@ const CardsPage = () => {
                         transition: { staggerChildren: 0.12 }
                     }
                 }}
-                className="relative z-10 mx-auto w-full"
+                className="relative z-10 mx-auto w-full max-w-7xl px-2 md:px-0"
             >
                 <motion.div
                     variants={itemVariants}

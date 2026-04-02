@@ -8,6 +8,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const aiRoutes = require('./src/routes/ai.routes');
 const checkoutRoutes = require('./src/routes/checkout.routes');
 const invoicesRoutes = require('./src/routes/invoices.routes');
+const { getInvoiceByHash } = require('./src/controllers/invoices.controller');
 const merchantsRoutes = require('./src/routes/merchants.routes');
 const usersRoutes = require('./src/routes/users.routes');
 const sdkRoutes = require('./src/routes/sdk.routes');
@@ -36,11 +37,12 @@ app.get('/', (req, res) => {
 app.use('/api', aiRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/invoices', invoicesRoutes);
+app.get('/api/invoice/:hash', getInvoiceByHash);
 app.use('/api/merchants', merchantsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/sdk', sdkRoutes);
 app.use('/api/mcp', mcpRoutes);
-app.use('/api/scanner', scannerRoutes.scannerRouter);
+app.use('/api/scanner/:network', scannerRoutes.scannerRouter);
 app.use('/api/proxy/provable', proxyRoutes);
 app.use('/api/dps', dpsRoutes);
 

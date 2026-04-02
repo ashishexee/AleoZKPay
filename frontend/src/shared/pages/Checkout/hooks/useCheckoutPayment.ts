@@ -8,7 +8,9 @@ import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary
 import { getScannerSession, findSpendableRecord } from '../../Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 import { TokenCode } from '../../../utils/tokens';
-import { useCardWallet } from '../../../hooks/CardWalletProvider';
+import { decryptCardPrivateKey } from '../../../utils/card-crypto';
+import { hashAddress } from '../../../utils/crypto';
+import { lookupCardWalletByNumberHash } from '../../../services/api';
 
 // Convert Hex back to String
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
@@ -34,7 +36,6 @@ const resolveCheckoutToken = (selectedTokenOverride?: string): TokenCode => {
 export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const { address: publicKey, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
-    const { card, unlockCard, validateCardSpend, recordCardSpend } = useCardWallet();
     const [status, setStatus] = useState<string>('');
     const [txId, setTxId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -469,22 +470,60 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
     };
 
     const payWithCard = async (
+        cardNumber: string,
         pin: string,
         cardSecret: string,
         donationAmount?: number,
         selectedTokenOverride?: string
     ) => {
-        if (!session || !card) {
-            setError('Create your NullPay card first.');
+        if (!session) {
             return;
         }
 
         try {
             setLoading(true);
             setError(null);
+            setStatus('Looking up your NullPay card...');
+
+            const normalizedCardNumber = cardNumber.replace(/\D/g, '');
+            if (normalizedCardNumber.length !== 16) {
+                throw new Error('Enter a valid 16-digit card number.');
+            }
+
+            const cardNumberHash = await hashAddress(normalizedCardNumber);
+            const cardProfile = await lookupCardWalletByNumberHash(cardNumberHash);
+            if (!cardProfile) {
+                throw new Error('Card not found. Check the card number and try again.');
+            }
+            if (cardProfile.card_status !== 'ACTIVE') {
+                throw new Error('This NullPay card is not active.');
+            }
+            if (!cardProfile.encrypted_card_private_key || !cardProfile.card_kdf_salt) {
+                throw new Error('This card is missing encrypted key material.');
+            }
+
             setStatus('Unlocking your NullPay card locally...');
 
-            const pkStr = await unlockCard(pin, cardSecret, { persist: false });
+            const kdfAlgorithm = cardProfile.card_kdf_algorithm === 'argon2id'
+                ? 'argon2id'
+                : 'pbkdf2-sha256';
+            const kdfParams = {
+                opslimit: Number((cardProfile.card_kdf_params as any)?.opslimit),
+                memlimit: Number((cardProfile.card_kdf_params as any)?.memlimit),
+                alg: Number((cardProfile.card_kdf_params as any)?.alg),
+                iterations: Number((cardProfile.card_kdf_params as any)?.iterations),
+                hash: (cardProfile.card_kdf_params as any)?.hash === 'SHA-256' ? 'SHA-256' : undefined,
+                version: Number((cardProfile.card_kdf_params as any)?.version || 1)
+            };
+
+            const pkStr = await decryptCardPrivateKey(
+                cardProfile.encrypted_card_private_key,
+                pin,
+                cardSecret,
+                cardProfile.card_kdf_salt,
+                kdfAlgorithm as any,
+                kdfParams as any
+            );
             PrivateKey.from_string(pkStr);
 
             const isDonationType = session.amount === 0;
@@ -508,11 +547,6 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 tokenProgram = 'test_usad_stablecoin.aleo';
                 typeSuffix = 'u128';
                 funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
-            }
-
-            const spendValidation = validateCardSpend(actualTokenType, amountMicro);
-            if (!spendValidation.ok) {
-                throw new Error(spendValidation.reason);
             }
 
             setStatus('Scanning your card for private balance...');
@@ -582,12 +616,6 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             const transactionId = response.transaction?.id || response.transactionId || '';
             setTxId(transactionId);
             setStatus('Card payment submitted. Finalizing checkout...');
-
-            try {
-                await recordCardSpend(actualTokenType, amountMicro);
-            } catch (spendErr) {
-                console.warn('Card spend ledger update failed after broadcast:', spendErr);
-            }
 
             await fetch(`${API_URL}/invoices/${session.invoice_hash}`, {
                 method: 'PATCH',

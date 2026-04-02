@@ -1,28 +1,20 @@
 const crypto = require('crypto');
 const supabase = require('../config/supabase');
+const { encryptMerchantValue, readMerchantStoredValue } = require('../utils/crypto');
 
-const CARD_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 const LIMIT_CHANGE_MESSAGE_TYPE = 'nullpay_card_limit_change_v1';
 const CARD_HINT_MAX_LENGTH = 32;
+const CARD_NUMBER_LENGTH = 16;
 
 const TOKEN_COLUMNS = {
     CREDITS: {
-        maxBalance: 'card_credits_max_balance',
-        maxSingleSpend: 'card_credits_max_single_spend',
-        maxDailySpend: 'card_credits_max_daily_spend',
-        spentToday: 'card_credits_spent_today'
+        maxBalance: 'card_credits_max_balance'
     },
     USDCX: {
-        maxBalance: 'card_usdcx_max_balance',
-        maxSingleSpend: 'card_usdcx_max_single_spend',
-        maxDailySpend: 'card_usdcx_max_daily_spend',
-        spentToday: 'card_usdcx_spent_today'
+        maxBalance: 'card_usdcx_max_balance'
     },
     USAD: {
-        maxBalance: 'card_usad_max_balance',
-        maxSingleSpend: 'card_usad_max_single_spend',
-        maxDailySpend: 'card_usad_max_daily_spend',
-        spentToday: 'card_usad_spent_today'
+        maxBalance: 'card_usad_max_balance'
     }
 };
 
@@ -75,39 +67,32 @@ function validateCardHint(value) {
     return normalized;
 }
 
-function isCardSpendWindowExpired(startedAt) {
-    if (!startedAt) return true;
-    const startedAtMs = new Date(startedAt).getTime();
-    if (!Number.isFinite(startedAtMs)) return true;
-    return Date.now() - startedAtMs >= CARD_LIMIT_WINDOW_MS;
+function normalizeCardNumber(value) {
+    const normalized = String(value || '').replace(/\D/g, '');
+    if (normalized.length !== CARD_NUMBER_LENGTH) {
+        throw new Error(`Card number must be exactly ${CARD_NUMBER_LENGTH} digits.`);
+    }
+    return normalized;
 }
 
-function getNormalizedSpent(row, column) {
-    if (isCardSpendWindowExpired(row?.card_spend_window_started_at)) {
-        return 0;
+function validateCardNumberHash(value) {
+    const normalized = normalizeOptionalText(value);
+    if (!normalized || !/^[a-f0-9]{64}$/i.test(normalized)) {
+        throw new Error('Card number hash is invalid.');
     }
-    return Number(row?.[column] || 0);
+    return normalized.toLowerCase();
 }
 
 function buildCardLimits(row) {
     return {
         CREDITS: {
-            max_balance: Number(row?.card_credits_max_balance || 0),
-            max_single_spend: Number(row?.card_credits_max_single_spend || 0),
-            max_daily_spend: Number(row?.card_credits_max_daily_spend || 0),
-            spent_today: getNormalizedSpent(row, 'card_credits_spent_today')
+            max_balance: Number(row?.card_credits_max_balance || 0)
         },
         USDCX: {
-            max_balance: Number(row?.card_usdcx_max_balance || 0),
-            max_single_spend: Number(row?.card_usdcx_max_single_spend || 0),
-            max_daily_spend: Number(row?.card_usdcx_max_daily_spend || 0),
-            spent_today: getNormalizedSpent(row, 'card_usdcx_spent_today')
+            max_balance: Number(row?.card_usdcx_max_balance || 0)
         },
         USAD: {
-            max_balance: Number(row?.card_usad_max_balance || 0),
-            max_single_spend: Number(row?.card_usad_max_single_spend || 0),
-            max_daily_spend: Number(row?.card_usad_max_daily_spend || 0),
-            spent_today: getNormalizedSpent(row, 'card_usad_spent_today')
+            max_balance: Number(row?.card_usad_max_balance || 0)
         }
     };
 }
@@ -117,9 +102,15 @@ function buildCardResponse(row) {
         return null;
     }
 
+    const decryptedCardAddress = readMerchantStoredValue(row.card_address);
+    const decryptedCardNumber = row.encrypted_card_number
+        ? readMerchantStoredValue(row.encrypted_card_number)
+        : null;
+
     return {
         address_hash: row.address_hash,
-        card_address: row.card_address,
+        card_address: decryptedCardAddress,
+        encrypted_card_number: decryptedCardNumber,
         card_last4: row.card_last4 || null,
         encrypted_card_private_key: row.encrypted_card_private_key || null,
         card_kdf_salt: row.card_kdf_salt || null,
@@ -128,16 +119,8 @@ function buildCardResponse(row) {
         card_status: row.card_status || 'ACTIVE',
         card_label: row.card_label || null,
         card_hint: row.card_hint || null,
-        card_spend_window_started_at: isCardSpendWindowExpired(row.card_spend_window_started_at)
-            ? null
-            : row.card_spend_window_started_at,
         card_limits_updated_at: row.card_limits_updated_at || null,
-        limits: buildCardLimits(row),
-        spent_today: {
-            CREDITS: getNormalizedSpent(row, 'card_credits_spent_today'),
-            USDCX: getNormalizedSpent(row, 'card_usdcx_spent_today'),
-            USAD: getNormalizedSpent(row, 'card_usad_spent_today')
-        }
+        limits: buildCardLimits(row)
     };
 }
 
@@ -149,24 +132,25 @@ function validateLimitShape(token, limits) {
     }
 
     const next = {
-        max_balance: toIntegerOrNull(limits.max_balance),
-        max_single_spend: toIntegerOrNull(limits.max_single_spend),
-        max_daily_spend: toIntegerOrNull(limits.max_daily_spend)
+        max_balance: toIntegerOrNull(limits.max_balance)
     };
 
-    if (next.max_balance === null || next.max_single_spend === null || next.max_daily_spend === null) {
-        throw new Error('All card limits are required.');
-    }
-
-    if (next.max_single_spend > next.max_balance) {
-        throw new Error('Single-spend limit cannot exceed the token balance cap.');
+    if (next.max_balance === null) {
+        throw new Error('Card balance cap is required.');
     }
 
     return next;
 }
 
 function applyCardPayload(updates, body) {
-    if (body.card_address !== undefined) updates.card_address = body.card_address;
+    if (body.main_address !== undefined) updates.main_address = body.main_address;
+    if (body.card_address !== undefined) updates.card_address = body.card_address ? encryptMerchantValue(body.card_address) : null;
+    if (body.encrypted_card_number !== undefined) {
+        updates.encrypted_card_number = body.encrypted_card_number
+            ? encryptMerchantValue(body.encrypted_card_number)
+            : null;
+    }
+    if (body.card_number_hash !== undefined) updates.card_number_hash = validateCardNumberHash(body.card_number_hash);
     if (body.card_last4 !== undefined) updates.card_last4 = validateCardLast4(body.card_last4);
     if (body.encrypted_card_private_key !== undefined) updates.encrypted_card_private_key = body.encrypted_card_private_key;
     if (body.card_kdf_salt !== undefined) updates.card_kdf_salt = body.card_kdf_salt;
@@ -175,21 +159,13 @@ function applyCardPayload(updates, body) {
     if (body.card_status !== undefined) updates.card_status = body.card_status;
     if (body.card_label !== undefined) updates.card_label = validateCardLabel(body.card_label);
     if (body.card_hint !== undefined) updates.card_hint = validateCardHint(body.card_hint);
-    if (body.card_spend_window_started_at !== undefined) updates.card_spend_window_started_at = body.card_spend_window_started_at;
 
     const limits = body.limits || {};
-    const spentToday = body.spent_today || {};
 
     Object.entries(TOKEN_COLUMNS).forEach(([token, columns]) => {
         const tokenLimits = limits[token];
         if (tokenLimits) {
             if (tokenLimits.max_balance !== undefined) updates[columns.maxBalance] = toIntegerOrNull(tokenLimits.max_balance);
-            if (tokenLimits.max_single_spend !== undefined) updates[columns.maxSingleSpend] = toIntegerOrNull(tokenLimits.max_single_spend);
-            if (tokenLimits.max_daily_spend !== undefined) updates[columns.maxDailySpend] = toIntegerOrNull(tokenLimits.max_daily_spend);
-        }
-
-        if (spentToday[token] !== undefined) {
-            updates[columns.spentToday] = toIntegerOrNull(spentToday[token]) ?? 0;
         }
     });
 }
@@ -199,6 +175,23 @@ async function getUserByAddressHash(addressHash) {
         .from('users')
         .select('*')
         .eq('address_hash', addressHash)
+        .single();
+
+    if (error) {
+        if (error.code === 'PGRST116') {
+            return null;
+        }
+        throw error;
+    }
+
+    return data;
+}
+
+async function getUserByCardNumberHash(cardNumberHash) {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('card_number_hash', cardNumberHash)
         .single();
 
     if (error) {
@@ -328,9 +321,16 @@ const upsertCardWallet = async (req, res) => {
         const existingProfile = await getUserByAddressHash(address_hash);
         const isCreatingCard = !existingProfile?.card_address && req.body.card_address !== undefined;
         if (isCreatingCard) {
+            if (!req.body.main_address && !existingProfile?.main_address) {
+                return res.status(400).json({ error: 'Main wallet address is required when creating a card.' });
+            }
             validateCardLabel(req.body.card_label);
+            validateCardNumberHash(req.body.card_number_hash);
             validateCardLast4(req.body.card_last4);
             validateCardHint(req.body.card_hint);
+            if (!req.body.encrypted_card_number) {
+                return res.status(400).json({ error: 'Encrypted card number is required.' });
+            }
         }
 
         const updates = {};
@@ -339,6 +339,26 @@ const upsertCardWallet = async (req, res) => {
         res.json(buildCardResponse(data));
     } catch (err) {
         console.error('Error saving card wallet:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+const lookupCardWallet = async (req, res) => {
+    const { card_number_hash } = req.body || {};
+    if (!card_number_hash) {
+        return res.status(400).json({ error: 'Missing card_number_hash' });
+    }
+
+    try {
+        const normalizedHash = validateCardNumberHash(card_number_hash);
+        const data = await getUserByCardNumberHash(normalizedHash);
+        if (!data || !data.card_address) {
+            return res.status(404).json({ error: 'Card wallet not found' });
+        }
+
+        res.json(buildCardResponse(data));
+    } catch (err) {
+        console.error('Error looking up card wallet:', err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -369,7 +389,8 @@ const verifyCardLimitChange = async (req, res) => {
             return res.status(400).json({ error: 'Unsupported card token.' });
         }
 
-        if (payload.card_address !== profile.card_address) {
+        const storedCardAddress = readMerchantStoredValue(profile.card_address);
+        if (payload.card_address !== storedCardAddress) {
             return res.status(400).json({ error: 'Card address mismatch.' });
         }
 
@@ -380,11 +401,7 @@ const verifyCardLimitChange = async (req, res) => {
 
         const currentLimits = buildCardLimits(profile)[payload.token];
         const previousLimits = validateLimitShape(payload.token, payload.previous_limits);
-        if (
-            previousLimits.max_balance !== currentLimits.max_balance ||
-            previousLimits.max_single_spend !== currentLimits.max_single_spend ||
-            previousLimits.max_daily_spend !== currentLimits.max_daily_spend
-        ) {
+        if (previousLimits.max_balance !== currentLimits.max_balance) {
             return res.status(409).json({ error: 'Card limits changed before this approval was submitted.' });
         }
 
@@ -404,8 +421,6 @@ const verifyCardLimitChange = async (req, res) => {
         const columns = TOKEN_COLUMNS[payload.token];
         const updates = {
             [columns.maxBalance]: nextLimits.max_balance,
-            [columns.maxSingleSpend]: nextLimits.max_single_spend,
-            [columns.maxDailySpend]: nextLimits.max_daily_spend,
             card_limits_updated_at: new Date().toISOString()
         };
 
@@ -418,43 +433,16 @@ const verifyCardLimitChange = async (req, res) => {
 };
 
 const recordCardSpend = async (req, res) => {
-    const { address_hash, token, amount_micro } = req.body;
-    if (!address_hash || !token || amount_micro === undefined) {
-        return res.status(400).json({ error: 'Missing card spend fields' });
-    }
+    const { address_hash } = req.body;
+    if (!address_hash) return res.status(400).json({ error: 'Missing card spend fields' });
 
     try {
-        const columns = TOKEN_COLUMNS[token];
-        if (!columns) {
-            return res.status(400).json({ error: 'Unsupported card token.' });
-        }
-
         const profile = await getUserByAddressHash(address_hash);
         if (!profile || !profile.card_address) {
             return res.status(404).json({ error: 'Card wallet not found' });
         }
 
-        const spendAmount = toIntegerOrNull(amount_micro);
-        if (spendAmount === null || spendAmount <= 0) {
-            return res.status(400).json({ error: 'Spend amount must be positive.' });
-        }
-
-        const windowExpired = isCardSpendWindowExpired(profile.card_spend_window_started_at);
-        const nextStartedAt = windowExpired ? new Date().toISOString() : profile.card_spend_window_started_at;
-        const spentNow = windowExpired ? 0 : Number(profile[columns.spentToday] || 0);
-        const dailyLimit = Number(profile[columns.maxDailySpend] || 0);
-
-        if (dailyLimit > 0 && spentNow + spendAmount > dailyLimit) {
-            return res.status(409).json({ error: 'This card payment exceeds the current daily limit.' });
-        }
-
-        const updates = {
-            card_spend_window_started_at: nextStartedAt,
-            [columns.spentToday]: spentNow + spendAmount
-        };
-
-        const data = await saveUser(address_hash, updates);
-        res.json(buildCardResponse(data));
+        res.json(buildCardResponse(profile));
     } catch (err) {
         console.error('Error recording card spend:', err);
         res.status(500).json({ error: err.message });
@@ -467,6 +455,7 @@ module.exports = {
     clearBurner,
     getCardWallet,
     upsertCardWallet,
+    lookupCardWallet,
     verifyCardLimitChange,
     recordCardSpend
 };

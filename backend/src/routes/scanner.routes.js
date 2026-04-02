@@ -8,11 +8,11 @@ const {
     dpsSponsorSweep
 } = require('../controllers/provable.controller');
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
 // Scanner Proxy (mounted at /api/scanner/:network in index.js, so the sub-path here is /)
 router.all('/', scannerProxy);
-router.all('/*', scannerProxy); // capture sub-paths for proxy
+router.all('*', scannerProxy); // capture sub-paths for proxy
 
 module.exports = {
     scannerRouter: router
