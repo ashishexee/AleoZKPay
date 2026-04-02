@@ -96,7 +96,7 @@ const createInvoice = async (req, res) => {
             .upsert({
                 invoice_hash,
                 merchant_address,
-                merchant_address_hash: merchant_address_hash || null,
+                merchant_address_hash: merchant_address_hash || (merchant_address ? sha256Hex(merchant_address) : null),
                 designated_address: designated_address || merchant_address,
                 is_burner: is_burner || false,
                 status: status || 'PENDING',

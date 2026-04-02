@@ -34,4 +34,39 @@ describe('User Profile Endpoints', () => {
         const res = await request(app).post('/api/users/profile/clear-burner').send({ address_hash: 'testhash' });
         expect([200, 500]).toContain(res.statusCode);
     });
+
+    it('POST /api/users/card should fail without address_hash', async () => {
+        const res = await request(app).post('/api/users/card').send({});
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toHaveProperty('error', 'Missing address_hash');
+    });
+
+    it('POST /api/users/card should accept card wallet payloads', async () => {
+        const res = await request(app)
+            .post('/api/users/card')
+            .send({
+                address_hash: 'testhash',
+                card_address: 'aleo1cardaddress',
+                card_last4: '4821',
+                encrypted_card_private_key: 'ciphertext',
+                card_kdf_salt: 'salt',
+                card_kdf_algorithm: 'argon2id',
+                card_label: 'Personal Card',
+                card_hint: 'travel card'
+            });
+
+        expect([200, 500]).toContain(res.statusCode);
+    });
+
+    it('POST /api/users/card/limits should fail when approval fields are missing', async () => {
+        const res = await request(app).post('/api/users/card/limits').send({});
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toHaveProperty('error', 'Missing card limit change fields');
+    });
+
+    it('POST /api/users/card/spend should fail when spend fields are missing', async () => {
+        const res = await request(app).post('/api/users/card/spend').send({});
+        expect(res.statusCode).toEqual(400);
+        expect(res.body).toHaveProperty('error', 'Missing card spend fields');
+    });
 });

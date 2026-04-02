@@ -16,6 +16,7 @@ import CheckoutPage from '../shared/pages/Checkout';
 import InvoiceDetails from '../shared/pages/InvoiceDetails';
 import DeveloperPortal from '../shared/pages/Developer';
 import GiftCardsPage from '../shared/pages/GiftCards';
+import CardsPage from './pages/CardsPage';
 import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 
 const DesktopAnimatedRoutes = () => {
@@ -56,6 +57,11 @@ const DesktopApp = () => {
 
             <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/cards" element={
+                    <main className="relative z-10 pt-24 w-full">
+                        <ProtectedRoute><CardsPage /></ProtectedRoute>
+                    </main>
+                } />
                 <Route path="*" element={
                     <main className="relative z-10 pt-24 px-4 pb-12 container-custom">
                         <DesktopAnimatedRoutes />

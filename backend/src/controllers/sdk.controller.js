@@ -36,7 +36,7 @@ const createInvoiceRelayer = async (req, res) => {
             memo,
             invoice_type
         });
-        res.json({ success: true, tx_id: txId, salt: salt });
+        res.json({ success: true, tx_id: txId, salt: salt, merchant_address: merchantPubKey });
     } catch (err) {
         console.error('Relayer execution via DPS failed:', err);
         res.status(500).json({ error: err.message || 'Failed to dispatch relayer tx' });

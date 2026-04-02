@@ -192,6 +192,37 @@ async function pollForHash(salt: string, maxRetries = 60): Promise<string | null
     return null;
 }
 
+async function saveInvoiceToDashboard(
+    secretKey: string,
+    merchantAddress: string,
+    invoice: InvoiceConfig,
+    hash: string,
+    salt: string
+): Promise<void> {
+    const invoiceTypeNum = invoice.type === 'multipay' ? 1 : 2;
+    const res = await fetch(`${BACKEND_URL}/invoices`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${secretKey}`,
+        },
+        body: JSON.stringify({
+            invoice_hash: hash,
+            merchant_address: merchantAddress,
+            amount: invoice.type === 'donation' ? 0 : invoice.amount,
+            memo: invoice.label ?? '',
+            invoice_type: invoiceTypeNum,
+            salt,
+            for_sdk: true,
+            status: 'PENDING'
+        }),
+    });
+
+    if (!res.ok) {
+        throw new Error(`Dashboard sync failed (${res.status})`);
+    }
+}
+
 
 function renderInvoiceCard(inv: InvoiceConfig, index: number): void {
     const typeLabel = inv.type === 'multipay'
@@ -527,6 +558,14 @@ export async function onboard(): Promise<void> {
                 symbol: C.success('  OK'),
                 text: C.white(`"${inv.name}" confirmed on-chain`),
             });
+
+            // 📢 Sync with Dashboard
+            try {
+                await saveInvoiceToDashboard(secretKey, resolvedAddress, inv, hash, salt);
+            } catch (syncErr) {
+                line(`  ${C.gold('!')}  ${C.slate(`Dashboard sync failed for "${inv.name}", but Aleo tx succeeded.`)}`);
+            }
+
             generatedInvoices.push({ ...inv, hash, salt });
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);

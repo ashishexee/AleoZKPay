@@ -19,6 +19,7 @@ interface CheckoutUIProps {
     txId: string | null;
     success: boolean;
     onPay: (donationAmount?: number, selectedToken?: string) => void;
+    onPayWithCard: (pin: string, cardSecret: string, donationAmount?: number, selectedToken?: string) => void;
     onPayWithGiftCard: (giftCode: string, donationAmount?: number, selectedToken?: string) => void;
     giftCardRedeemOption?: { giftCode: string; availableAmount: number; tokenLabel: string } | null;
     onRedeemGiftCardBalance: () => void;
@@ -33,6 +34,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     paymentLoading,
     success,
     onPay,
+    onPayWithCard,
     onPayWithGiftCard,
     giftCardRedeemOption,
     onRedeemGiftCardBalance
@@ -42,8 +44,10 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     const [copiedSalt, setCopiedSalt] = useState(false);
     const [donationAmount, setDonationAmount] = useState<string>('');
     const [selectedPayerToken, setSelectedPayerToken] = useState<string>('CREDITS');
-    const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'giftcard'>('wallet');
+    const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'giftcard' | 'card'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
+    const [cardPin, setCardPin] = useState<string>('');
+    const [cardSecret, setCardSecret] = useState<string>('');
 
     const isDonation = session?.amount === 0;
     const allowedTokens = session
@@ -92,6 +96,16 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
             onPayWithGiftCard(giftCode, parseFloat(donationAmount || '0'), tokenToPass);
         } else {
             onPayWithGiftCard(giftCode, undefined, tokenToPass);
+        }
+    };
+
+    const handleCardPayClick = () => {
+        if (!cardPin || !cardSecret) return;
+        const tokenToPass = session?.token_type === 'ANY' ? selectedPayerToken : undefined;
+        if (isDonation) {
+            onPayWithCard(cardPin, cardSecret, parseFloat(donationAmount || '0'), tokenToPass);
+        } else {
+            onPayWithCard(cardPin, cardSecret, undefined, tokenToPass);
         }
     };
 
@@ -290,7 +304,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     </div>
                                 )}
 
-                                <div className="flex bg-black/40 p-1 rounded-xl mb-6 border border-white/5">
+                                <div className="grid grid-cols-3 bg-black/40 p-1 rounded-xl mb-6 border border-white/5 gap-1">
                                     <button
                                         onClick={() => setPaymentMethod('wallet')}
                                         className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
@@ -302,12 +316,54 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     <button
                                         onClick={() => setPaymentMethod('giftcard')}
                                         className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
+                                            paymentMethod === 'card' ? 'bg-white/10 text-orange-300 shadow-md flex items-center justify-center gap-2' : 'text-gray-500 hover:text-white/80'
+                                        }`}
+                                    >
+                                        Card
+                                    </button>
+                                    <button
+                                        onClick={() => setPaymentMethod('giftcard')}
+                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
                                             paymentMethod === 'giftcard' ? 'bg-white/10 text-neon-primary shadow-md flex items-center justify-center gap-2' : 'text-gray-500 hover:text-white/80'
                                         }`}
                                     >
                                         Gift Card
                                     </button>
                                 </div>
+
+                                {paymentMethod === 'card' && (
+                                    <div className="mb-4 animate-fade-in space-y-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Card PIN</label>
+                                            <input
+                                                type="password"
+                                                inputMode="numeric"
+                                                value={cardPin}
+                                                onChange={(e) => setCardPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                placeholder="6-digit PIN"
+                                                className="w-full bg-black/40 border border-white/10 focus:border-orange-400/50 outline-none rounded-xl text-sm text-white p-4 transition-colors tracking-[0.3em] text-center"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Card Secret</label>
+                                            <input
+                                                type="password"
+                                                value={cardSecret}
+                                                onChange={(e) => setCardSecret(e.target.value)}
+                                                placeholder="Longer card secret"
+                                                className="w-full bg-black/40 border border-white/10 focus:border-orange-400/50 outline-none rounded-xl text-sm text-white p-4 transition-colors text-center"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-500 text-center">
+                                            The card key is decrypted in-memory on this device, used to generate the payment authorization locally, and never sent to NullPay.
+                                        </p>
+                                        {!publicKey && (
+                                            <p className="text-xs text-orange-300/80 text-center">
+                                                Connect your main wallet first so NullPay can load your encrypted card profile.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
 
                                 {paymentMethod === 'giftcard' && (
                                     <div className="mb-4 animate-fade-in space-y-4">
@@ -338,8 +394,19 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                 ) : (
                                     <Button
                                         variant="primary"
-                                        onClick={paymentMethod === 'wallet' ? handlePayClick : handleGiftCardPayClick}
-                                        disabled={paymentLoading || (isDonation && (!donationAmount || parseFloat(donationAmount) <= 0)) || (paymentMethod === 'giftcard' && !giftCode)}
+                                        onClick={
+                                            paymentMethod === 'wallet'
+                                                ? handlePayClick
+                                                : paymentMethod === 'card'
+                                                    ? handleCardPayClick
+                                                    : handleGiftCardPayClick
+                                        }
+                                        disabled={
+                                            paymentLoading ||
+                                            (isDonation && (!donationAmount || parseFloat(donationAmount) <= 0)) ||
+                                            (paymentMethod === 'giftcard' && !giftCode) ||
+                                            (paymentMethod === 'card' && (!publicKey || !cardPin || !cardSecret))
+                                        }
                                         glow
                                         className="w-full text-lg h-14"
                                     >

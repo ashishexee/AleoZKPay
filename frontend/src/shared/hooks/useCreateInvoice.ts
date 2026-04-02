@@ -11,7 +11,7 @@ export type InvoiceType = 'standard' | 'multipay' | 'donation';
 
 export const useCreateInvoice = () => {
     const { address, executeTransaction, transactionStatus, requestTransactionHistory } = useWallet();
-    const { burnerAddress, appPassword } = useBurnerWallet();
+    const { decryptedBurnerAddress, appPassword } = useBurnerWallet();
     const publicKey = address;
     const [amount, setAmount] = useState<number | ''>('');
     const [loading, setLoading] = useState(false);
@@ -128,7 +128,8 @@ export const useCreateInvoice = () => {
             const memoField = memo ? stringToField(memo) : '0field';
 
             // If Burner Wallet is selected, we must register the invoice under the Burner Address!
-            const merchantAddress = walletType === 1 && burnerAddress && !forSdk ? burnerAddress : publicKey;
+            // Use decryptedBurnerAddress (plaintext aleo1...) for burner wallet — burnerAddress is the encrypted DB value.
+            const merchantAddress = walletType === 1 && decryptedBurnerAddress && !forSdk ? decryptedBurnerAddress : publicKey;
 
             const inputs = [
                 merchantAddress,

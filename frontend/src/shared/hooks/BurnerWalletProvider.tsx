@@ -189,6 +189,20 @@ export const BurnerWalletProvider: React.FC<{ children: React.ReactNode }> = ({ 
         decryptAddress();
     }, [appPassword, burnerAddress, decryptedBurnerAddress]);
 
+    useEffect(() => {
+        const decryptKey = async () => {
+            if (appPassword && encryptedBurnerKey && !decryptedBurnerKey) {
+                try {
+                    const key = await decryptWithPassword(encryptedBurnerKey, appPassword);
+                    setDecryptedBurnerKey(key);
+                } catch (e) {
+                    console.warn('Could not auto-decrypt burner private key', e);
+                }
+            }
+        };
+        decryptKey();
+    }, [appPassword, encryptedBurnerKey, decryptedBurnerKey]);
+
     return (
         <BurnerWalletContext.Provider value={{
             burnerAddress,

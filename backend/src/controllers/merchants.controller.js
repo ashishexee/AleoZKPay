@@ -1,5 +1,5 @@
 const supabase = require('../config/supabase');
-const { sha256Hex } = require('../utils/crypto');
+const { sha256Hex, encryptMerchantValue } = require('../utils/crypto');
 const crypto = require('crypto');
 
 const registerMerchant = async (req, res) => {
@@ -17,10 +17,10 @@ const registerMerchant = async (req, res) => {
             .from('merchants')
             .insert([{
                 name: name,
-                encrypted_aleo_address: aleo_address,
-                encrypted_secret_key: secretKey,
+                encrypted_aleo_address: encryptMerchantValue(aleo_address),
+                encrypted_secret_key: encryptMerchantValue(secretKey),
                 secret_key_hash: secretKeyHash,
-                encrypted_webhook_url: webhook_url || null
+                encrypted_webhook_url: webhook_url ? encryptMerchantValue(webhook_url) : null
             }])
             .select()
             .single();

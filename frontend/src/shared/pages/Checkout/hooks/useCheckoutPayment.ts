@@ -8,6 +8,7 @@ import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary
 import { getScannerSession, findSpendableRecord } from '../../Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 import { TokenCode } from '../../../utils/tokens';
+import { useCardWallet } from '../../../hooks/CardWalletProvider';
 
 // Convert Hex back to String
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
@@ -33,6 +34,7 @@ const resolveCheckoutToken = (selectedTokenOverride?: string): TokenCode => {
 export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const { address: publicKey, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
+    const { card, unlockCard, validateCardSpend, recordCardSpend } = useCardWallet();
     const [status, setStatus] = useState<string>('');
     const [txId, setTxId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -466,6 +468,159 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         }
     };
 
+    const payWithCard = async (
+        pin: string,
+        cardSecret: string,
+        donationAmount?: number,
+        selectedTokenOverride?: string
+    ) => {
+        if (!session || !card) {
+            setError('Create your NullPay card first.');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+            setStatus('Unlocking your NullPay card locally...');
+
+            const pkStr = await unlockCard(pin, cardSecret, { persist: false });
+            PrivateKey.from_string(pkStr);
+
+            const isDonationType = session.amount === 0;
+            const finalAmount = (isDonationType && donationAmount && donationAmount > 0) ? donationAmount : session.amount;
+            if (finalAmount <= 0) throw new Error('Amount must be greater than zero.');
+
+            const actualTokenType = session.token_type === 'ANY'
+                ? resolveCheckoutToken(selectedTokenOverride)
+                : session.token_type;
+
+            let tokenProgram = 'credits.aleo';
+            let amountMicro = Math.round(finalAmount * 1_000_000);
+            let typeSuffix = 'u64';
+            let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
+
+            if (actualTokenType === 'USDCX') {
+                tokenProgram = 'test_usdcx_stablecoin.aleo';
+                typeSuffix = 'u128';
+                funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+            } else if (actualTokenType === 'USAD') {
+                tokenProgram = 'test_usad_stablecoin.aleo';
+                typeSuffix = 'u128';
+                funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
+            }
+
+            const spendValidation = validateCardSpend(actualTokenType, amountMicro);
+            if (!spendValidation.ok) {
+                throw new Error(spendValidation.reason);
+            }
+
+            setStatus('Scanning your card for private balance...');
+            const host = 'https://api.explorer.provable.com/v1';
+            const networkClient = new AleoNetworkClient(host);
+            const keyProvider = new AleoKeyProvider();
+            keyProvider.useCache(true);
+
+            const scannerSession = await getScannerSession(pkStr);
+            const recordProvider = new NetworkRecordProvider(scannerSession.account, networkClient);
+            const programManager = new ProgramManager(host, keyProvider, recordProvider);
+            programManager.setAccount(scannerSession.account);
+
+            const recordName = actualTokenType === 'CREDITS' ? 'credits' : 'Token';
+            const payRecordStr = await findSpendableRecord(scannerSession, tokenProgram, recordName, amountMicro, actualTokenType === 'CREDITS');
+            if (!payRecordStr) {
+                throw new Error(`The card needs a single ${actualTokenType} record large enough for this payment.`);
+            }
+
+            let proofsInput = undefined;
+            if (actualTokenType !== 'CREDITS') {
+                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../../utils/aleo-utils');
+                await getFreezeListRoot();
+                await getFreezeListCount();
+                const firstIndex = await getFreezeListIndex(0);
+                const { Address } = await import('@provablehq/wasm');
+                let index0FieldStr = undefined;
+                if (firstIndex) {
+                    try { index0FieldStr = Address.from_string(firstIndex).toGroup().toXCoordinate().toString(); } catch { }
+                }
+                const proof = await generateFreezeListProof(1, index0FieldStr);
+                proofsInput = `[${proof}, ${proof}]`;
+            }
+
+            const paymentSecret = generateSalt();
+            if (!session.merchant_address) {
+                throw new Error('Merchant address is missing from session details.');
+            }
+
+            const inputs = [
+                payRecordStr,
+                session.merchant_address,
+                `${amountMicro}${typeSuffix}`,
+                session.salt,
+                paymentSecret,
+                session.invoice_hash
+            ];
+
+            if (proofsInput) inputs.push(proofsInput);
+
+            const authorization = await programManager.buildAuthorization({
+                programName: PROGRAM_ID,
+                functionName: funcName,
+                inputs
+            });
+
+            setStatus('Submitting card payment via DPS Relayer...');
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+            const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ execution_authorization_string: authorization.toString(), programName: PROGRAM_ID }),
+            });
+            const response = await sponsorRes.json();
+            if (!sponsorRes.ok) throw new Error(response?.error || response?.message || 'Card payment sponsorship failed.');
+
+            const transactionId = response.transaction?.id || response.transactionId || '';
+            setTxId(transactionId);
+            setStatus('Card payment submitted. Finalizing checkout...');
+
+            try {
+                await recordCardSpend(actualTokenType, amountMicro);
+            } catch (spendErr) {
+                console.warn('Card spend ledger update failed after broadcast:', spendErr);
+            }
+
+            await fetch(`${API_URL}/invoices/${session.invoice_hash}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'SETTLED', payment_tx_ids: [transactionId], session_id: session.id })
+            });
+            await fetch(`${API_URL}/checkout/sessions/${session.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'SETTLED', tx_id: transactionId })
+            });
+
+            setSuccess(true);
+            if (session.success_url) {
+                setTimeout(() => {
+                    try {
+                        const url = new URL(session.success_url as string);
+                        url.searchParams.set('session_id', session.id);
+                        window.location.href = url.toString();
+                    } catch {
+                        window.location.href = `${session.success_url as string}?session_id=${session.id}`;
+                    }
+                }, 3000);
+            }
+        } catch (err: any) {
+            if (handleWalletError(err)) return;
+            console.error(err);
+            setError(err.message || 'An error occurred during card payment.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const payWithGiftCard = async (giftCode: string, donationAmount?: number, selectedTokenOverride?: string) => {
         if (!session) return;
         if (!giftCode.startsWith('gift-')) {
@@ -623,6 +778,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
 
     return {
         pay,
+        payWithCard,
         payWithGiftCard,
         convertPublicToPrivate,
         status,
