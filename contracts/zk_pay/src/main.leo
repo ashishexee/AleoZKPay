@@ -4,8 +4,8 @@ import test_usad_stablecoin.aleo;
 
 program zk_pay_proofs_privacy_v23.aleo {
     
-    @admin(address="aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge")
-    async constructor() {
+    @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
+    constructor() {
         // The Leo compiler automatically generates the constructor logic.
     }
 
@@ -91,40 +91,10 @@ program zk_pay_proofs_privacy_v23.aleo {
         owner: address,
         card_number_hash: field,
         profile_version: u8,
-        encrypted_card_number_1: field,
-        encrypted_card_number_2: field,
-        encrypted_card_number_3: field,
-        encrypted_card_number_4: field,
-        encrypted_card_number_5: field,
-        encrypted_card_number_6: field,
-        encrypted_card_address_1: field,
-        encrypted_card_address_2: field,
-        encrypted_card_address_3: field,
-        encrypted_card_address_4: field,
-        encrypted_card_address_5: field,
-        encrypted_card_address_6: field,
-        encrypted_card_address_7: field,
-        encrypted_card_address_8: field,
-        encrypted_card_address_9: field,
-        encrypted_card_address_10: field,
-        encrypted_label_1: field,
-        encrypted_label_2: field,
-        encrypted_label_3: field,
-        encrypted_label_4: field,
-        encrypted_label_5: field,
-        encrypted_label_6: field,
-        encrypted_label_7: field,
-        encrypted_label_8: field,
-        encrypted_label_9: field,
-        encrypted_label_10: field,
-        encrypted_hint_1: field,
-        encrypted_hint_2: field,
-        encrypted_hint_3: field,
-        encrypted_hint_4: field,
-        encrypted_hint_5: field,
-        encrypted_hint_6: field,
-        encrypted_hint_7: field,
-        encrypted_hint_8: field
+        encrypted_card_number: [field; 6],
+        encrypted_card_address: [field; 10],
+        encrypted_label: [field; 10],
+        encrypted_hint: [field; 8]
     }
 
     mapping invoices: field => InvoiceData;
@@ -195,218 +165,100 @@ program zk_pay_proofs_privacy_v23.aleo {
         public card_kdf_alg: u8,
         public card_kdf_hash: u8,
         public card_kdf_version: u8,
-        private encrypted_card_private_key_1: field,
-        private encrypted_card_private_key_2: field,
-        private encrypted_card_private_key_3: field,
-        private encrypted_card_private_key_4: field,
-        private encrypted_card_private_key_5: field,
-        private encrypted_card_private_key_6: field,
-        private encrypted_card_private_key_7: field,
-        private encrypted_card_private_key_8: field,
-        private card_kdf_salt_1: field,
-        private card_kdf_salt_2: field,
-        private card_kdf_salt_3: field,
-        private encrypted_card_number_1: field,
-        private encrypted_card_number_2: field,
-        private encrypted_card_number_3: field,
-        private encrypted_card_number_4: field,
-        private encrypted_card_number_5: field,
-        private encrypted_card_number_6: field,
-        private encrypted_card_address_1: field,
-        private encrypted_card_address_2: field,
-        private encrypted_card_address_3: field,
-        private encrypted_card_address_4: field,
-        private encrypted_card_address_5: field,
-        private encrypted_card_address_6: field,
-        private encrypted_card_address_7: field,
-        private encrypted_card_address_8: field,
-        private encrypted_card_address_9: field,
-        private encrypted_card_address_10: field,
-        private encrypted_label_1: field,
-        private encrypted_label_2: field,
-        private encrypted_label_3: field,
-        private encrypted_label_4: field,
-        private encrypted_label_5: field,
-        private encrypted_label_6: field,
-        private encrypted_label_7: field,
-        private encrypted_label_8: field,
-        private encrypted_label_9: field,
-        private encrypted_label_10: field,
-        private encrypted_hint_1: field,
-        private encrypted_hint_2: field,
-        private encrypted_hint_3: field,
-        private encrypted_hint_4: field,
-        private encrypted_hint_5: field,
-        private encrypted_hint_6: field,
-        private encrypted_hint_7: field,
-        private encrypted_hint_8: field
+        private encrypted_card_private_key: [field; 8],
+        private card_kdf_salt: [field; 3],
+        private encrypted_card_number: [field; 6],
+        private encrypted_card_address: [field; 10],
+        private encrypted_label: [field; 10],
+        private encrypted_hint: [field; 8]
     ) -> (CardProfileRecord, Final) {
+        let caller: address = self.caller;
         let card_profile_record: CardProfileRecord = CardProfileRecord {
-            owner: self.caller,
+            owner: caller,
             card_number_hash: card_number_hash,
             profile_version: profile_version,
-            encrypted_card_number_1: encrypted_card_number_1,
-            encrypted_card_number_2: encrypted_card_number_2,
-            encrypted_card_number_3: encrypted_card_number_3,
-            encrypted_card_number_4: encrypted_card_number_4,
-            encrypted_card_number_5: encrypted_card_number_5,
-            encrypted_card_number_6: encrypted_card_number_6,
-            encrypted_card_address_1: encrypted_card_address_1,
-            encrypted_card_address_2: encrypted_card_address_2,
-            encrypted_card_address_3: encrypted_card_address_3,
-            encrypted_card_address_4: encrypted_card_address_4,
-            encrypted_card_address_5: encrypted_card_address_5,
-            encrypted_card_address_6: encrypted_card_address_6,
-            encrypted_card_address_7: encrypted_card_address_7,
-            encrypted_card_address_8: encrypted_card_address_8,
-            encrypted_card_address_9: encrypted_card_address_9,
-            encrypted_card_address_10: encrypted_card_address_10,
-            encrypted_label_1: encrypted_label_1,
-            encrypted_label_2: encrypted_label_2,
-            encrypted_label_3: encrypted_label_3,
-            encrypted_label_4: encrypted_label_4,
-            encrypted_label_5: encrypted_label_5,
-            encrypted_label_6: encrypted_label_6,
-            encrypted_label_7: encrypted_label_7,
-            encrypted_label_8: encrypted_label_8,
-            encrypted_label_9: encrypted_label_9,
-            encrypted_label_10: encrypted_label_10,
-            encrypted_hint_1: encrypted_hint_1,
-            encrypted_hint_2: encrypted_hint_2,
-            encrypted_hint_3: encrypted_hint_3,
-            encrypted_hint_4: encrypted_hint_4,
-            encrypted_hint_5: encrypted_hint_5,
-            encrypted_hint_6: encrypted_hint_6,
-            encrypted_hint_7: encrypted_hint_7,
-            encrypted_hint_8: encrypted_hint_8
+            encrypted_card_number: encrypted_card_number,
+            encrypted_card_address: encrypted_card_address,
+            encrypted_label: encrypted_label,
+            encrypted_hint: encrypted_hint
         };
 
         return (
             card_profile_record,
-            finalize_create_card_profile(
-                card_number_hash,
-                card_address,
-                profile_version,
-                card_kdf_algorithm,
-                card_kdf_iterations,
-                card_kdf_opslimit,
-                card_kdf_memlimit,
-                card_kdf_alg,
-                card_kdf_hash,
-                card_kdf_version,
-                encrypted_card_private_key_1,
-                encrypted_card_private_key_2,
-                encrypted_card_private_key_3,
-                encrypted_card_private_key_4,
-                encrypted_card_private_key_5,
-                encrypted_card_private_key_6,
-                encrypted_card_private_key_7,
-                encrypted_card_private_key_8,
-                card_kdf_salt_1,
-                card_kdf_salt_2,
-                card_kdf_salt_3
-            )
+            final {
+                let lookup_data: CardLookupData = CardLookupData {
+                    main_owner: caller,
+                    card_address: card_address,
+                    card_status: 0u8,
+                    profile_version: profile_version,
+                    card_kdf_algorithm: card_kdf_algorithm,
+                    card_kdf_iterations: card_kdf_iterations,
+                    card_kdf_opslimit: card_kdf_opslimit,
+                    card_kdf_memlimit: card_kdf_memlimit,
+                    card_kdf_alg: card_kdf_alg,
+                    card_kdf_hash: card_kdf_hash,
+                    card_kdf_version: card_kdf_version,
+                    encrypted_card_private_key_1: encrypted_card_private_key[0u32],
+                    encrypted_card_private_key_2: encrypted_card_private_key[1u32],
+                    encrypted_card_private_key_3: encrypted_card_private_key[2u32],
+                    encrypted_card_private_key_4: encrypted_card_private_key[3u32],
+                    encrypted_card_private_key_5: encrypted_card_private_key[4u32],
+                    encrypted_card_private_key_6: encrypted_card_private_key[5u32],
+                    encrypted_card_private_key_7: encrypted_card_private_key[6u32],
+                    encrypted_card_private_key_8: encrypted_card_private_key[7u32],
+                    card_kdf_salt_1: card_kdf_salt[0u32],
+                    card_kdf_salt_2: card_kdf_salt[1u32],
+                    card_kdf_salt_3: card_kdf_salt[2u32]
+                };
+
+                card_lookup.set(card_number_hash, lookup_data);
+            }
         );
-    }
-
-    fn finalize_create_card_profile(
-        card_number_hash: field,
-        card_address: address,
-        profile_version: u8,
-        card_kdf_algorithm: u8,
-        card_kdf_iterations: u32,
-        card_kdf_opslimit: u64,
-        card_kdf_memlimit: u64,
-        card_kdf_alg: u8,
-        card_kdf_hash: u8,
-        card_kdf_version: u8,
-        encrypted_card_private_key_1: field,
-        encrypted_card_private_key_2: field,
-        encrypted_card_private_key_3: field,
-        encrypted_card_private_key_4: field,
-        encrypted_card_private_key_5: field,
-        encrypted_card_private_key_6: field,
-        encrypted_card_private_key_7: field,
-        encrypted_card_private_key_8: field,
-        card_kdf_salt_1: field,
-        card_kdf_salt_2: field,
-        card_kdf_salt_3: field
-    ) {
-        let lookup_data: CardLookupData = CardLookupData {
-            main_owner: self.caller,
-            card_address: card_address,
-            card_status: 0u8,
-            profile_version: profile_version,
-            card_kdf_algorithm: card_kdf_algorithm,
-            card_kdf_iterations: card_kdf_iterations,
-            card_kdf_opslimit: card_kdf_opslimit,
-            card_kdf_memlimit: card_kdf_memlimit,
-            card_kdf_alg: card_kdf_alg,
-            card_kdf_hash: card_kdf_hash,
-            card_kdf_version: card_kdf_version,
-            encrypted_card_private_key_1: encrypted_card_private_key_1,
-            encrypted_card_private_key_2: encrypted_card_private_key_2,
-            encrypted_card_private_key_3: encrypted_card_private_key_3,
-            encrypted_card_private_key_4: encrypted_card_private_key_4,
-            encrypted_card_private_key_5: encrypted_card_private_key_5,
-            encrypted_card_private_key_6: encrypted_card_private_key_6,
-            encrypted_card_private_key_7: encrypted_card_private_key_7,
-            encrypted_card_private_key_8: encrypted_card_private_key_8,
-            card_kdf_salt_1: card_kdf_salt_1,
-            card_kdf_salt_2: card_kdf_salt_2,
-            card_kdf_salt_3: card_kdf_salt_3
-        };
-
-        card_lookup.set(card_number_hash, lookup_data);
     }
 
     fn set_card_status(
         public card_number_hash: field,
         public next_status: u8
     ) -> Final {
-        return finalize_set_card_status(card_number_hash, next_status);
-    }
+        let caller: address = self.caller;
+        return final {
+            if next_status != 0u8 {
+                assert_eq(next_status, 1u8);
+            }
 
-    fn finalize_set_card_status(
-        card_number_hash: field,
-        next_status: u8
-    ) {
-        if next_status != 0u8 {
-            assert_eq(next_status, 1u8);
-        }
+            let current_lookup: CardLookupData = card_lookup.get(card_number_hash);
 
-        let current_lookup: CardLookupData = card_lookup.get(card_number_hash);
+            if caller != current_lookup.main_owner {
+                assert_eq(caller, current_lookup.card_address);
+            }
 
-        if self.caller != current_lookup.main_owner {
-            assert_eq(self.caller, current_lookup.card_address);
-        }
+            let updated_lookup: CardLookupData = CardLookupData {
+                main_owner: current_lookup.main_owner,
+                card_address: current_lookup.card_address,
+                card_status: next_status,
+                profile_version: current_lookup.profile_version,
+                card_kdf_algorithm: current_lookup.card_kdf_algorithm,
+                card_kdf_iterations: current_lookup.card_kdf_iterations,
+                card_kdf_opslimit: current_lookup.card_kdf_opslimit,
+                card_kdf_memlimit: current_lookup.card_kdf_memlimit,
+                card_kdf_alg: current_lookup.card_kdf_alg,
+                card_kdf_hash: current_lookup.card_kdf_hash,
+                card_kdf_version: current_lookup.card_kdf_version,
+                encrypted_card_private_key_1: current_lookup.encrypted_card_private_key_1,
+                encrypted_card_private_key_2: current_lookup.encrypted_card_private_key_2,
+                encrypted_card_private_key_3: current_lookup.encrypted_card_private_key_3,
+                encrypted_card_private_key_4: current_lookup.encrypted_card_private_key_4,
+                encrypted_card_private_key_5: current_lookup.encrypted_card_private_key_5,
+                encrypted_card_private_key_6: current_lookup.encrypted_card_private_key_6,
+                encrypted_card_private_key_7: current_lookup.encrypted_card_private_key_7,
+                encrypted_card_private_key_8: current_lookup.encrypted_card_private_key_8,
+                card_kdf_salt_1: current_lookup.card_kdf_salt_1,
+                card_kdf_salt_2: current_lookup.card_kdf_salt_2,
+                card_kdf_salt_3: current_lookup.card_kdf_salt_3
+            };
 
-        let updated_lookup: CardLookupData = CardLookupData {
-            main_owner: current_lookup.main_owner,
-            card_address: current_lookup.card_address,
-            card_status: next_status,
-            profile_version: current_lookup.profile_version,
-            card_kdf_algorithm: current_lookup.card_kdf_algorithm,
-            card_kdf_iterations: current_lookup.card_kdf_iterations,
-            card_kdf_opslimit: current_lookup.card_kdf_opslimit,
-            card_kdf_memlimit: current_lookup.card_kdf_memlimit,
-            card_kdf_alg: current_lookup.card_kdf_alg,
-            card_kdf_hash: current_lookup.card_kdf_hash,
-            card_kdf_version: current_lookup.card_kdf_version,
-            encrypted_card_private_key_1: current_lookup.encrypted_card_private_key_1,
-            encrypted_card_private_key_2: current_lookup.encrypted_card_private_key_2,
-            encrypted_card_private_key_3: current_lookup.encrypted_card_private_key_3,
-            encrypted_card_private_key_4: current_lookup.encrypted_card_private_key_4,
-            encrypted_card_private_key_5: current_lookup.encrypted_card_private_key_5,
-            encrypted_card_private_key_6: current_lookup.encrypted_card_private_key_6,
-            encrypted_card_private_key_7: current_lookup.encrypted_card_private_key_7,
-            encrypted_card_private_key_8: current_lookup.encrypted_card_private_key_8,
-            card_kdf_salt_1: current_lookup.card_kdf_salt_1,
-            card_kdf_salt_2: current_lookup.card_kdf_salt_2,
-            card_kdf_salt_3: current_lookup.card_kdf_salt_3
+            card_lookup.set(card_number_hash, updated_lookup);
         };
-
-        card_lookup.set(card_number_hash, updated_lookup);
     }
 
     fn create_invoice(
@@ -439,7 +291,26 @@ program zk_pay_proofs_privacy_v23.aleo {
         };
 
         // Default token_type 0 for Credits
-        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 0u8, wallet_type));
+        return (
+            invoice_record,
+            invoice_hash,
+            final {
+                let blocks_to_add: u32 = expiry_hours * 360u32;
+                let expiry_height: u32 =
+                    expiry_hours != 0u32 ? block.height + blocks_to_add : 0u32;
+
+                let invoice_data: InvoiceData = InvoiceData {
+                    expiry_height: expiry_height,
+                    status: 0u8,
+                    invoice_type: invoice_type,
+                    token_type: 0u8,
+                    wallet_type: wallet_type
+                };
+
+                invoices.set(invoice_hash, invoice_data);
+                salt_to_invoice.set(salt, invoice_hash);
+            }
+        );
     }
 
     fn create_invoice_usdcx(
@@ -481,7 +352,26 @@ program zk_pay_proofs_privacy_v23.aleo {
         };
 
         // token_type 1 for USDCx
-        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 1u8, wallet_type));
+        return (
+            invoice_record,
+            invoice_hash,
+            final {
+                let blocks_to_add: u32 = expiry_hours * 360u32;
+                let expiry_height: u32 =
+                    expiry_hours != 0u32 ? block.height + blocks_to_add : 0u32;
+
+                let invoice_data: InvoiceData = InvoiceData {
+                    expiry_height: expiry_height,
+                    status: 0u8,
+                    invoice_type: invoice_type,
+                    token_type: 1u8,
+                    wallet_type: wallet_type
+                };
+
+                invoices.set(invoice_hash, invoice_data);
+                salt_to_invoice.set(salt, invoice_hash);
+            }
+        );
     }
 
     fn create_invoice_usad(
@@ -516,7 +406,26 @@ program zk_pay_proofs_privacy_v23.aleo {
         };
 
         // token_type 2 for USAD
-        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 2u8, wallet_type));
+        return (
+            invoice_record,
+            invoice_hash,
+            final {
+                let blocks_to_add: u32 = expiry_hours * 360u32;
+                let expiry_height: u32 =
+                    expiry_hours != 0u32 ? block.height + blocks_to_add : 0u32;
+
+                let invoice_data: InvoiceData = InvoiceData {
+                    expiry_height: expiry_height,
+                    status: 0u8,
+                    invoice_type: invoice_type,
+                    token_type: 2u8,
+                    wallet_type: wallet_type
+                };
+
+                invoices.set(invoice_hash, invoice_data);
+                salt_to_invoice.set(salt, invoice_hash);
+            }
+        );
     }
 
     fn create_invoice_any(
@@ -551,31 +460,26 @@ program zk_pay_proofs_privacy_v23.aleo {
         };
 
         // token_type 3 for ANY
-        return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 3u8, wallet_type));
-    }
+        return (
+            invoice_record,
+            invoice_hash,
+            final {
+                let blocks_to_add: u32 = expiry_hours * 360u32;
+                let expiry_height: u32 =
+                    expiry_hours != 0u32 ? block.height + blocks_to_add : 0u32;
 
-    fn finalize_create_invoice(
-        invoice_hash: field,
-        expiry_hours: u32,
-        salt: field,
-        invoice_type: u8,
-        token_type: u8,
-        wallet_type: u8
-    ) {
-        let blocks_to_add: u32 = expiry_hours * 360u32;
-        let expiry_height: u32 =
-            expiry_hours != 0u32 ? block.height + blocks_to_add : 0u32;
+                let invoice_data: InvoiceData = InvoiceData {
+                    expiry_height: expiry_height,
+                    status: 0u8,
+                    invoice_type: invoice_type,
+                    token_type: 3u8,
+                    wallet_type: wallet_type
+                };
 
-        let invoice_data: InvoiceData = InvoiceData {
-            expiry_height: expiry_height,
-            status: 0u8,
-            invoice_type: invoice_type,
-            token_type: token_type,
-            wallet_type: wallet_type
-        };
-
-        invoices.set(invoice_hash, invoice_data);
-        salt_to_invoice.set(salt, invoice_hash);
+                invoices.set(invoice_hash, invoice_data);
+                salt_to_invoice.set(salt, invoice_hash);
+            }
+        );
     }
 
     fn pay_donation(
@@ -624,37 +528,29 @@ program zk_pay_proofs_privacy_v23.aleo {
             token_type: 0u8
         };
 
-        // Pass 0u8 as expected_token_type for Credits
-        let f0: Final = finalize_pay_donation(invoice_hash, salt, 0u8);
-        return (r1, r2, payer_receipt, merchant_receipt, f0);
-    }
+        return (
+            r1,
+            r2,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
 
-    fn finalize_pay_donation(
-        invoice_hash: field,
-        salt: field,
-        expected_token_type: u8
-    ) {
-        let stored_hash: field = salt_to_invoice.get(salt);
-        assert_eq(invoice_hash, stored_hash);
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
 
-        let invoice_data: InvoiceData = invoices.get(stored_hash);
-        
-        if invoice_data.token_type != 3u8 {
-            assert_eq(invoice_data.token_type, expected_token_type);
-        }
-        
-        // Ensure it is a Donation Invoice (Type 2)
-        assert_eq(invoice_data.invoice_type, 2u8);
+                if invoice_data.token_type != 3u8 {
+                    assert_eq(invoice_data.token_type, 0u8);
+                }
 
-        // Enforce Status is Open (0)
-        assert_eq(invoice_data.status, 0u8);
+                assert_eq(invoice_data.invoice_type, 2u8);
+                assert_eq(invoice_data.status, 0u8);
 
-        if invoice_data.expiry_height != 0u32 {
-            assert(block.height <= invoice_data.expiry_height);
-        }
-        
-        // Donation invoices remain "Open" (status 0) indefinitely like Multi-Pay, 
-        // or we can treat them same as Multi-Pay (no status change to 1).
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+            }
+        );
     }
 
     fn pay_invoice(
@@ -698,9 +594,36 @@ program zk_pay_proofs_privacy_v23.aleo {
             token_type: 0u8
         };
 
-        // Pass 0u8 as expected_token_type for Credits
-        let f0: Final = finalize_pay_invoice(invoice_hash, salt, amount as u128, 0u8);
-        return (r1, r2, payer_receipt, merchant_receipt, f0);
+        return (
+            r1,
+            r2,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+                assert_eq(invoice_data.token_type, 0u8);
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+
+                assert_eq(invoice_data.status, 0u8);
+
+                if invoice_data.invoice_type == 0u8 {
+                    let updated_data: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data.invoice_type,
+                        token_type: invoice_data.token_type,
+                        wallet_type: invoice_data.wallet_type
+                    };
+                    invoices.set(stored_hash, updated_data);
+                }
+            }
+        );
     }
 
     fn pay_invoice_usdcx(
@@ -746,10 +669,39 @@ program zk_pay_proofs_privacy_v23.aleo {
             token_type: 1u8
         };
 
-        // Pass 1u8 as expected_token_type for USDCx
-        let f0: Final = finalize_pay_invoice_usdcx(invoice_hash, salt, amount, 1u8, transfer_future);
-        
-        return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
+        return (
+            transfer_output_1,
+            transfer_output_2,
+            compliance_record,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                transfer_future.run();
+
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+                assert_eq(invoice_data.token_type, 1u8);
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+
+                assert_eq(invoice_data.status, 0u8);
+
+                if invoice_data.invoice_type == 0u8 {
+                    let updated_data: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data.invoice_type,
+                        token_type: invoice_data.token_type,
+                        wallet_type: invoice_data.wallet_type
+                    };
+                    invoices.set(stored_hash, updated_data);
+                }
+            }
+        );
     }
 
     fn pay_invoice_usad(
@@ -795,10 +747,39 @@ program zk_pay_proofs_privacy_v23.aleo {
             token_type: 2u8
         };
 
-        // Pass 2u8 as expected_token_type for USAD
-        let f0: Final = finalize_pay_invoice_usad(invoice_hash, salt, amount, 2u8, transfer_future);
-        
-        return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
+        return (
+            transfer_output_1,
+            transfer_output_2,
+            compliance_record,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                transfer_future.run();
+
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+                assert_eq(invoice_data.token_type, 2u8);
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+
+                assert_eq(invoice_data.status, 0u8);
+
+                if invoice_data.invoice_type == 0u8 {
+                    let updated_data: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data.invoice_type,
+                        token_type: invoice_data.token_type,
+                        wallet_type: invoice_data.wallet_type
+                    };
+                    invoices.set(stored_hash, updated_data);
+                }
+            }
+        );
     }
 
     fn pay_donation_usdcx(
@@ -849,9 +830,32 @@ program zk_pay_proofs_privacy_v23.aleo {
             token_type: 1u8
         };
 
-        let f0: Final = finalize_pay_donation_usdcx(invoice_hash, salt, 1u8, transfer_future);
-        
-        return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
+        return (
+            transfer_output_1,
+            transfer_output_2,
+            compliance_record,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                transfer_future.run();
+
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+
+                if invoice_data.token_type != 3u8 {
+                    assert_eq(invoice_data.token_type, 1u8);
+                }
+
+                assert_eq(invoice_data.invoice_type, 2u8);
+                assert_eq(invoice_data.status, 0u8);
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+            }
+        );
     }
 
     fn pay_donation_usad(
@@ -902,177 +906,38 @@ program zk_pay_proofs_privacy_v23.aleo {
             token_type: 2u8
         };
 
-        let f0: Final = finalize_pay_donation_usad(invoice_hash, salt, 2u8, transfer_future);
-        
-        return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
-    }
+        return (
+            transfer_output_1,
+            transfer_output_2,
+            compliance_record,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                transfer_future.run();
 
-    fn finalize_pay_donation_usdcx(
-        invoice_hash: field,
-        salt: field,
-        expected_token_type: u8,
-        f0: Final
-    ) {
-        f0.run();
-        let stored_hash: field = salt_to_invoice.get(salt);
-        assert_eq(invoice_hash, stored_hash);
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
 
-        let invoice_data: InvoiceData = invoices.get(stored_hash);
-        
-        if invoice_data.token_type != 3u8 {
-            assert_eq(invoice_data.token_type, expected_token_type);
-        }
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
 
-        // Ensure it is a Donation Invoice (Type 2)
-        assert_eq(invoice_data.invoice_type, 2u8);
+                if invoice_data.token_type != 3u8 {
+                    assert_eq(invoice_data.token_type, 2u8);
+                }
 
-        // Enforce Status is Open (0)
-        assert_eq(invoice_data.status, 0u8);
+                assert_eq(invoice_data.invoice_type, 2u8);
+                assert_eq(invoice_data.status, 0u8);
 
-        if invoice_data.expiry_height != 0u32 {
-            assert(block.height <= invoice_data.expiry_height);
-        }
-    }
-
-    fn finalize_pay_donation_usad(
-        invoice_hash: field,
-        salt: field,
-        expected_token_type: u8,
-        f0: Final
-    ) {
-        f0.run();
-        let stored_hash: field = salt_to_invoice.get(salt);
-        assert_eq(invoice_hash, stored_hash);
-
-        let invoice_data: InvoiceData = invoices.get(stored_hash);
-        
-        if invoice_data.token_type != 3u8 {
-            assert_eq(invoice_data.token_type, expected_token_type);
-        }
-
-        // Ensure it is a Donation Invoice (Type 2)
-        assert_eq(invoice_data.invoice_type, 2u8);
-
-        // Enforce Status is Open (0)
-        assert_eq(invoice_data.status, 0u8);
-
-        if invoice_data.expiry_height != 0u32 {
-            assert(block.height <= invoice_data.expiry_height);
-        }
-    }
-
-
-    fn finalize_pay_invoice_usdcx(
-        invoice_hash: field,
-        salt: field,
-        amount: u128,
-        expected_token_type: u8,
-        f0: Final
-    ) {
-        f0.run();
-        let stored_hash: field = salt_to_invoice.get(salt);
-        assert_eq(invoice_hash, stored_hash);
-
-        let invoice_data: InvoiceData = invoices.get(stored_hash);
-        assert_eq(invoice_data.token_type, expected_token_type);
-
-        if invoice_data.expiry_height != 0u32 {
-            assert(block.height <= invoice_data.expiry_height);
-        }
-
-        // Enforce Status is Open (0) for ALL types
-        assert_eq(invoice_data.status, 0u8);
-
-        if (invoice_data.invoice_type == 0u8) {
-             // For Standard Invoices (0), we auto-settle (set to 1)
-             // No need to check status here again as we checked above
-             
-             let updated_data: InvoiceData = InvoiceData {
-                expiry_height: invoice_data.expiry_height,
-                status: 1u8,
-                invoice_type: invoice_data.invoice_type,
-                token_type: invoice_data.token_type,
-                wallet_type: invoice_data.wallet_type
-            };
-            invoices.set(stored_hash, updated_data);
-        }
-    }
-
-    fn finalize_pay_invoice_usad(
-        invoice_hash: field,
-        salt: field,
-        amount: u128,
-        expected_token_type: u8,
-        f0: Final
-    ) {
-        f0.run();
-        let stored_hash: field = salt_to_invoice.get(salt);
-        assert_eq(invoice_hash, stored_hash);
-
-        let invoice_data: InvoiceData = invoices.get(stored_hash);
-        assert_eq(invoice_data.token_type, expected_token_type);
-
-        if invoice_data.expiry_height != 0u32 {
-            assert(block.height <= invoice_data.expiry_height);
-        }
-
-        // Enforce Status is Open (0) for ALL types
-        assert_eq(invoice_data.status, 0u8);
-
-        if (invoice_data.invoice_type == 0u8) {
-             // For Standard Invoices (0), we auto-settle (set to 1)
-             // No need to check status here again as we checked above
-             
-             let updated_data: InvoiceData = InvoiceData {
-                expiry_height: invoice_data.expiry_height,
-                status: 1u8,
-                invoice_type: invoice_data.invoice_type,
-                token_type: invoice_data.token_type,
-                wallet_type: invoice_data.wallet_type
-            };
-            invoices.set(stored_hash, updated_data);
-        }
-    }
-
-    fn finalize_pay_invoice(
-        invoice_hash: field,
-        salt: field,
-        amount: u128,
-        expected_token_type: u8
-    ) {
-
-        
-        let stored_hash: field = salt_to_invoice.get(salt);
-        assert_eq(invoice_hash, stored_hash);
-
-        let invoice_data: InvoiceData = invoices.get(stored_hash);
-        assert_eq(invoice_data.token_type, expected_token_type);
-
-        if invoice_data.expiry_height != 0u32 {
-            assert(block.height <= invoice_data.expiry_height);
-        }
-
-        // Enforce Status is Open (0) for ALL types - including Multipay
-        assert_eq(invoice_data.status, 0u8);
-
-        if (invoice_data.invoice_type == 0u8) {
-             // For Standard Invoices (0), we auto-settle (set to 1)
-             
-             let updated_data: InvoiceData = InvoiceData {
-                expiry_height: invoice_data.expiry_height,
-                status: 1u8,
-                invoice_type: invoice_data.invoice_type,
-                token_type: invoice_data.token_type,
-                wallet_type: invoice_data.wallet_type
-            };
-            invoices.set(stored_hash, updated_data);
-        }
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+            }
+        );
     }
 
     fn settle_invoice(
         public salt: field,
         private amount: u64
-    ) -> (Final) {
+    ) -> Final {
         let merchant_field: field = self.caller as field;
         let amount_field: field = amount as field;
         
@@ -1082,37 +947,30 @@ program zk_pay_proofs_privacy_v23.aleo {
         
         let calculated_hash: field = merchant_hash + amount_hash + salt_hash;
         
-        return finalize_settle_invoice(calculated_hash, salt);
-    }
+        return final {
+            let stored_hash: field = salt_to_invoice.get(salt);
+            assert_eq(calculated_hash, stored_hash);
 
-    fn finalize_settle_invoice(
-        calculated_hash: field,
-        salt: field
-    ) {
-        let stored_hash: field = salt_to_invoice.get(salt);
-        assert_eq(calculated_hash, stored_hash);
-        
-        let invoice_data: InvoiceData = invoices.get(stored_hash);
-        
-        let updated_data: InvoiceData = InvoiceData {
-            expiry_height: invoice_data.expiry_height,
-            status: 1u8,
-            invoice_type: invoice_data.invoice_type,
-            token_type: invoice_data.token_type,
-            wallet_type: invoice_data.wallet_type
+            let invoice_data: InvoiceData = invoices.get(stored_hash);
+
+            let updated_data: InvoiceData = InvoiceData {
+                expiry_height: invoice_data.expiry_height,
+                status: 1u8,
+                invoice_type: invoice_data.invoice_type,
+                token_type: invoice_data.token_type,
+                wallet_type: invoice_data.wallet_type
+            };
+
+            invoices.set(stored_hash, updated_data);
         };
-        
-        invoices.set(stored_hash, updated_data);
     }
 
     fn get_invoice_status(
         public invoice_hash: field
     ) -> Final {
-        return finalize_get_invoice_status(invoice_hash);
-    }
-
-    fn finalize_get_invoice_status(invoice_hash: field) {
-        let invoice_data: InvoiceData = invoices.get(invoice_hash);
+        return final {
+            let invoice_data: InvoiceData = invoices.get(invoice_hash);
+        };
     }
 }
 

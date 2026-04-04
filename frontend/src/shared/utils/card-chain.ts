@@ -2,6 +2,7 @@ import type { CardKdfAlgorithm, CardKdfParams } from './card-crypto';
 import { fieldChunksToString, stringToFieldChunks } from './crypto';
 import type { CardTokenCode, CardWalletProfile } from '../services/api';
 import { lookupCardWalletByNumberHash } from '../services/api';
+import { PROGRAM_ID } from './aleo-utils';
 
 export const CARD_PROFILE_VERSION = 1;
 export const CARD_STATUS_ACTIVE = 'ACTIVE';
@@ -95,6 +96,18 @@ function readFieldChunkFromString(source: string, prefix: string, count: number)
     return chunks;
 }
 
+function readFieldArrayFromString(source: string, key: string): string[] {
+    const match = source.match(new RegExp(`${key}:\\s*\\[([^\\]]*)\\]`));
+    if (!match?.[1]) {
+        return [];
+    }
+
+    return match[1]
+        .split(',')
+        .map((value) => value.trim().replace(/['"]/g, ''))
+        .filter(Boolean);
+}
+
 function normalizeCardStatus(codeOrStatus: unknown): string {
     if (typeof codeOrStatus === 'string' && !/^\d/.test(codeOrStatus)) {
         return codeOrStatus.toUpperCase() === CARD_STATUS_FROZEN ? CARD_STATUS_FROZEN : CARD_STATUS_ACTIVE;
@@ -115,6 +128,10 @@ function buildEmptyLimits(): Record<CardTokenCode, { max_balance: number }> {
         USDCX: { max_balance: 0 },
         USAD: { max_balance: 0 }
     };
+}
+
+function buildLeoArray(values: string[]): string {
+    return `[${values.join(', ')}]`;
 }
 
 export function sha256HexToField(hashHex: string): string {
@@ -149,11 +166,17 @@ export function parseCardProfileRecord(record: { plaintext?: string | null }): C
     }
 
     const encryptedCardNumber = fieldChunksToString(
-        readFieldChunkFromString(data, 'encrypted_card_number', CARD_CHAIN_CHUNKS.encryptedCardNumber)
+        readFieldArrayFromString(data, 'encrypted_card_number').length > 0
+            ? readFieldArrayFromString(data, 'encrypted_card_number')
+            : readFieldChunkFromString(data, 'encrypted_card_number', CARD_CHAIN_CHUNKS.encryptedCardNumber)
     );
     const encryptedCardAddress = fieldChunksToString(
-        readFieldChunkFromString(data, 'encrypted_card_address', CARD_CHAIN_CHUNKS.encryptedCardAddress)
+        readFieldArrayFromString(data, 'encrypted_card_address').length > 0
+            ? readFieldArrayFromString(data, 'encrypted_card_address')
+            : readFieldChunkFromString(data, 'encrypted_card_address', CARD_CHAIN_CHUNKS.encryptedCardAddress)
     );
+    const encryptedLabelChunks = readFieldArrayFromString(data, 'encrypted_label');
+    const encryptedHintChunks = readFieldArrayFromString(data, 'encrypted_hint');
 
     return {
         cardNumberHashField,
@@ -161,17 +184,21 @@ export function parseCardProfileRecord(record: { plaintext?: string | null }): C
         encryptedCardNumber,
         encryptedCardAddress,
         encryptedLabel: fieldChunksToString(
-            readFieldChunkFromString(data, 'encrypted_label', CARD_CHAIN_CHUNKS.encryptedLabel)
+            encryptedLabelChunks.length > 0
+                ? encryptedLabelChunks
+                : readFieldChunkFromString(data, 'encrypted_label', CARD_CHAIN_CHUNKS.encryptedLabel)
         ) || null,
         encryptedHint: fieldChunksToString(
-            readFieldChunkFromString(data, 'encrypted_hint', CARD_CHAIN_CHUNKS.encryptedHint)
+            encryptedHintChunks.length > 0
+                ? encryptedHintChunks
+                : readFieldChunkFromString(data, 'encrypted_hint', CARD_CHAIN_CHUNKS.encryptedHint)
         ) || null
     };
 }
 
 export async function fetchOnChainCardLookup(cardNumberHashField: string): Promise<OnChainCardLookupData | null> {
     try {
-        const url = `https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v22.aleo/mapping/card_lookup/${encodeURIComponent(cardNumberHashField)}`;
+        const url = `https://api.provable.com/v2/testnet/program/${PROGRAM_ID}/mapping/card_lookup/${encodeURIComponent(cardNumberHashField)}`;
         const response = await fetch(url);
         if (!response.ok) {
             return null;
@@ -266,6 +293,13 @@ export function buildCreateCardRecordInputs(args: {
     profileVersion?: number;
 }): string[] {
     const version = args.profileVersion ?? CARD_PROFILE_VERSION;
+    const encryptedPrivateKeyChunks = toSizedFieldChunks(args.encryptedCardPrivateKey, CARD_CHAIN_CHUNKS.encryptedPrivateKey);
+    const kdfSaltChunks = toSizedFieldChunks(args.cardKdfSalt, CARD_CHAIN_CHUNKS.kdfSalt);
+    const encryptedCardNumberChunks = toSizedFieldChunks(args.encryptedCardNumber, CARD_CHAIN_CHUNKS.encryptedCardNumber);
+    const encryptedCardAddressChunks = toSizedFieldChunks(args.encryptedCardAddress, CARD_CHAIN_CHUNKS.encryptedCardAddress);
+    const encryptedLabelChunks = toSizedFieldChunks(args.encryptedLabel, CARD_CHAIN_CHUNKS.encryptedLabel);
+    const encryptedHintChunks = toSizedFieldChunks(args.encryptedHint, CARD_CHAIN_CHUNKS.encryptedHint);
+
     return [
         args.cardAddress,
         args.cardNumberHashField,
@@ -277,12 +311,12 @@ export function buildCreateCardRecordInputs(args: {
         `${Number(args.cardKdfParams.alg || 0)}u8`,
         `${args.cardKdfParams.hash === 'SHA-256' ? CARD_KDF_HASH_SHA256_CODE : 0}u8`,
         `${Number(args.cardKdfParams.version || 1)}u8`,
-        ...toSizedFieldChunks(args.encryptedCardPrivateKey, CARD_CHAIN_CHUNKS.encryptedPrivateKey),
-        ...toSizedFieldChunks(args.cardKdfSalt, CARD_CHAIN_CHUNKS.kdfSalt),
-        ...toSizedFieldChunks(args.encryptedCardNumber, CARD_CHAIN_CHUNKS.encryptedCardNumber),
-        ...toSizedFieldChunks(args.encryptedCardAddress, CARD_CHAIN_CHUNKS.encryptedCardAddress),
-        ...toSizedFieldChunks(args.encryptedLabel, CARD_CHAIN_CHUNKS.encryptedLabel),
-        ...toSizedFieldChunks(args.encryptedHint, CARD_CHAIN_CHUNKS.encryptedHint)
+        buildLeoArray(encryptedPrivateKeyChunks),
+        buildLeoArray(kdfSaltChunks),
+        buildLeoArray(encryptedCardNumberChunks),
+        buildLeoArray(encryptedCardAddressChunks),
+        buildLeoArray(encryptedLabelChunks),
+        buildLeoArray(encryptedHintChunks)
     ];
 }
 

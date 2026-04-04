@@ -1,9 +1,9 @@
 {
-  "program": "zk_pay_proofs_privacy_v22.aleo",
+  "program": "zk_pay_proofs_privacy_v23.aleo",
   "version": "0.1.0",
   "description": "",
   "license": "",
-  "leo": "3.5.0",
+  "leo": "4.0.0",
   "dependencies": null,
   "dev_dependencies": null
 }

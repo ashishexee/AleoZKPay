@@ -1,5 +1,5 @@
 {
-  "program": "zk_pay_proofs_privacy_v22.aleo",
+  "program": "zk_pay_proofs_privacy_v23.aleo",
   "structs": [
     {
       "path": [
@@ -44,6 +44,163 @@
             "Primitive": {
               "UInt": "U8"
             }
+          }
+        }
+      ]
+    },
+    {
+      "path": [
+        "CardLookupData"
+      ],
+      "fields": [
+        {
+          "name": "main_owner",
+          "ty": {
+            "Primitive": "Address"
+          }
+        },
+        {
+          "name": "card_address",
+          "ty": {
+            "Primitive": "Address"
+          }
+        },
+        {
+          "name": "card_status",
+          "ty": {
+            "Primitive": {
+              "UInt": "U8"
+            }
+          }
+        },
+        {
+          "name": "profile_version",
+          "ty": {
+            "Primitive": {
+              "UInt": "U8"
+            }
+          }
+        },
+        {
+          "name": "card_kdf_algorithm",
+          "ty": {
+            "Primitive": {
+              "UInt": "U8"
+            }
+          }
+        },
+        {
+          "name": "card_kdf_iterations",
+          "ty": {
+            "Primitive": {
+              "UInt": "U32"
+            }
+          }
+        },
+        {
+          "name": "card_kdf_opslimit",
+          "ty": {
+            "Primitive": {
+              "UInt": "U64"
+            }
+          }
+        },
+        {
+          "name": "card_kdf_memlimit",
+          "ty": {
+            "Primitive": {
+              "UInt": "U64"
+            }
+          }
+        },
+        {
+          "name": "card_kdf_alg",
+          "ty": {
+            "Primitive": {
+              "UInt": "U8"
+            }
+          }
+        },
+        {
+          "name": "card_kdf_hash",
+          "ty": {
+            "Primitive": {
+              "UInt": "U8"
+            }
+          }
+        },
+        {
+          "name": "card_kdf_version",
+          "ty": {
+            "Primitive": {
+              "UInt": "U8"
+            }
+          }
+        },
+        {
+          "name": "encrypted_card_private_key_1",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "encrypted_card_private_key_2",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "encrypted_card_private_key_3",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "encrypted_card_private_key_4",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "encrypted_card_private_key_5",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "encrypted_card_private_key_6",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "encrypted_card_private_key_7",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "encrypted_card_private_key_8",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "card_kdf_salt_1",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "card_kdf_salt_2",
+          "ty": {
+            "Primitive": "Field"
+          }
+        },
+        {
+          "name": "card_kdf_salt_3",
+          "ty": {
+            "Primitive": "Field"
           }
         }
       ]
@@ -326,6 +483,84 @@
           "mode": "None"
         }
       ]
+    },
+    {
+      "path": [
+        "CardProfileRecord"
+      ],
+      "fields": [
+        {
+          "name": "owner",
+          "ty": {
+            "Primitive": "Address"
+          },
+          "mode": "None"
+        },
+        {
+          "name": "card_number_hash",
+          "ty": {
+            "Primitive": "Field"
+          },
+          "mode": "None"
+        },
+        {
+          "name": "profile_version",
+          "ty": {
+            "Primitive": {
+              "UInt": "U8"
+            }
+          },
+          "mode": "None"
+        },
+        {
+          "name": "encrypted_card_number",
+          "ty": {
+            "Array": {
+              "element": {
+                "Primitive": "Field"
+              },
+              "length": 6
+            }
+          },
+          "mode": "None"
+        },
+        {
+          "name": "encrypted_card_address",
+          "ty": {
+            "Array": {
+              "element": {
+                "Primitive": "Field"
+              },
+              "length": 10
+            }
+          },
+          "mode": "None"
+        },
+        {
+          "name": "encrypted_label",
+          "ty": {
+            "Array": {
+              "element": {
+                "Primitive": "Field"
+              },
+              "length": 10
+            }
+          },
+          "mode": "None"
+        },
+        {
+          "name": "encrypted_hint",
+          "ty": {
+            "Array": {
+              "element": {
+                "Primitive": "Field"
+              },
+              "length": 8
+            }
+          },
+          "mode": "None"
+        }
+      ]
     }
   ],
   "mappings": [
@@ -339,7 +574,7 @@
           "path": [
             "InvoiceData"
           ],
-          "program": "zk_pay_proofs_privacy_v22"
+          "program": "zk_pay_proofs_privacy_v23.aleo"
         }
       }
     },
@@ -351,13 +586,27 @@
       "value": {
         "Primitive": "Field"
       }
+    },
+    {
+      "name": "card_lookup",
+      "key": {
+        "Primitive": "Field"
+      },
+      "value": {
+        "Struct": {
+          "path": [
+            "CardLookupData"
+          ],
+          "program": "zk_pay_proofs_privacy_v23.aleo"
+        }
+      }
     }
   ],
   "storage_variables": [],
-  "transitions": [
+  "functions": [
     {
       "name": "backup_password",
-      "is_async": false,
+      "is_final": false,
       "inputs": [
         {
           "name": "password_part",
@@ -376,7 +625,7 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -385,7 +634,7 @@
     },
     {
       "name": "backup_burner_wallet",
-      "is_async": false,
+      "is_final": false,
       "inputs": [
         {
           "name": "burner_address",
@@ -503,16 +752,261 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
+          "mode": "None"
+        }
+      ]
+    },
+    {
+      "name": "create_card_profile",
+      "is_final": true,
+      "inputs": [
+        {
+          "name": "card_address",
+          "ty": {
+            "Plaintext": {
+              "Primitive": "Address"
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "card_number_hash",
+          "ty": {
+            "Plaintext": {
+              "Primitive": "Field"
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "profile_version",
+          "ty": {
+            "Plaintext": {
+              "Primitive": {
+                "UInt": "U8"
+              }
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "card_kdf_algorithm",
+          "ty": {
+            "Plaintext": {
+              "Primitive": {
+                "UInt": "U8"
+              }
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "card_kdf_iterations",
+          "ty": {
+            "Plaintext": {
+              "Primitive": {
+                "UInt": "U32"
+              }
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "card_kdf_opslimit",
+          "ty": {
+            "Plaintext": {
+              "Primitive": {
+                "UInt": "U64"
+              }
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "card_kdf_memlimit",
+          "ty": {
+            "Plaintext": {
+              "Primitive": {
+                "UInt": "U64"
+              }
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "card_kdf_alg",
+          "ty": {
+            "Plaintext": {
+              "Primitive": {
+                "UInt": "U8"
+              }
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "card_kdf_hash",
+          "ty": {
+            "Plaintext": {
+              "Primitive": {
+                "UInt": "U8"
+              }
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "card_kdf_version",
+          "ty": {
+            "Plaintext": {
+              "Primitive": {
+                "UInt": "U8"
+              }
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "encrypted_card_private_key",
+          "ty": {
+            "Plaintext": {
+              "Array": {
+                "element": {
+                  "Primitive": "Field"
+                },
+                "length": 8
+              }
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "card_kdf_salt",
+          "ty": {
+            "Plaintext": {
+              "Array": {
+                "element": {
+                  "Primitive": "Field"
+                },
+                "length": 3
+              }
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "encrypted_card_number",
+          "ty": {
+            "Plaintext": {
+              "Array": {
+                "element": {
+                  "Primitive": "Field"
+                },
+                "length": 6
+              }
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "encrypted_card_address",
+          "ty": {
+            "Plaintext": {
+              "Array": {
+                "element": {
+                  "Primitive": "Field"
+                },
+                "length": 10
+              }
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "encrypted_label",
+          "ty": {
+            "Plaintext": {
+              "Array": {
+                "element": {
+                  "Primitive": "Field"
+                },
+                "length": 10
+              }
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "encrypted_hint",
+          "ty": {
+            "Plaintext": {
+              "Array": {
+                "element": {
+                  "Primitive": "Field"
+                },
+                "length": 8
+              }
+            }
+          },
+          "mode": "Private"
+        }
+      ],
+      "outputs": [
+        {
+          "ty": {
+            "Record": {
+              "path": [
+                "CardProfileRecord"
+              ],
+              "program": "zk_pay_proofs_privacy_v23.aleo"
+            }
+          },
+          "mode": "None"
+        },
+        {
+          "ty": "Final",
+          "mode": "None"
+        }
+      ]
+    },
+    {
+      "name": "set_card_status",
+      "is_final": true,
+      "inputs": [
+        {
+          "name": "card_number_hash",
+          "ty": {
+            "Plaintext": {
+              "Primitive": "Field"
+            }
+          },
+          "mode": "Public"
+        },
+        {
+          "name": "next_status",
+          "ty": {
+            "Plaintext": {
+              "Primitive": {
+                "UInt": "U8"
+              }
+            }
+          },
+          "mode": "Public"
+        }
+      ],
+      "outputs": [
+        {
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "create_invoice",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "merchant",
@@ -593,7 +1087,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -607,14 +1101,14 @@
           "mode": "Public"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "create_invoice_usdcx",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "merchant",
@@ -695,7 +1189,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -709,14 +1203,14 @@
           "mode": "Public"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "create_invoice_usad",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "merchant",
@@ -797,7 +1291,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -811,14 +1305,14 @@
           "mode": "Public"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "create_invoice_any",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "merchant",
@@ -899,7 +1393,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -913,14 +1407,14 @@
           "mode": "Public"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "pay_donation",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "pay_record",
@@ -929,7 +1423,7 @@
               "path": [
                 "credits"
               ],
-              "program": "credits"
+              "program": "credits.aleo"
             }
           },
           "mode": "None"
@@ -989,7 +1483,7 @@
               "path": [
                 "credits"
               ],
-              "program": "credits"
+              "program": "credits.aleo"
             }
           },
           "mode": "None"
@@ -1000,7 +1494,7 @@
               "path": [
                 "credits"
               ],
-              "program": "credits"
+              "program": "credits.aleo"
             }
           },
           "mode": "None"
@@ -1011,7 +1505,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -1022,20 +1516,20 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "pay_invoice",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "pay_record",
@@ -1044,7 +1538,7 @@
               "path": [
                 "credits"
               ],
-              "program": "credits"
+              "program": "credits.aleo"
             }
           },
           "mode": "None"
@@ -1104,7 +1598,7 @@
               "path": [
                 "credits"
               ],
-              "program": "credits"
+              "program": "credits.aleo"
             }
           },
           "mode": "None"
@@ -1115,7 +1609,7 @@
               "path": [
                 "credits"
               ],
-              "program": "credits"
+              "program": "credits.aleo"
             }
           },
           "mode": "None"
@@ -1126,7 +1620,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -1137,20 +1631,20 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "pay_invoice_usdcx",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "pay_record",
@@ -1159,7 +1653,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usdcx_stablecoin"
+              "program": "test_usdcx_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1221,7 +1715,7 @@
                     "path": [
                       "MerkleProof"
                     ],
-                    "program": "test_usdcx_stablecoin"
+                    "program": "test_usdcx_stablecoin.aleo"
                   }
                 },
                 "length": 2
@@ -1238,7 +1732,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usdcx_stablecoin"
+              "program": "test_usdcx_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1249,7 +1743,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usdcx_stablecoin"
+              "program": "test_usdcx_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1260,7 +1754,7 @@
               "path": [
                 "ComplianceRecord"
               ],
-              "program": "test_usdcx_stablecoin"
+              "program": "test_usdcx_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1271,7 +1765,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -1282,20 +1776,20 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "pay_invoice_usad",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "pay_record",
@@ -1304,7 +1798,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usad_stablecoin"
+              "program": "test_usad_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1366,7 +1860,7 @@
                     "path": [
                       "MerkleProof"
                     ],
-                    "program": "test_usad_stablecoin"
+                    "program": "test_usad_stablecoin.aleo"
                   }
                 },
                 "length": 2
@@ -1383,7 +1877,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usad_stablecoin"
+              "program": "test_usad_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1394,7 +1888,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usad_stablecoin"
+              "program": "test_usad_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1405,7 +1899,7 @@
               "path": [
                 "ComplianceRecord"
               ],
-              "program": "test_usad_stablecoin"
+              "program": "test_usad_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1416,7 +1910,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -1427,20 +1921,20 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "pay_donation_usdcx",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "pay_record",
@@ -1449,7 +1943,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usdcx_stablecoin"
+              "program": "test_usdcx_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1511,7 +2005,7 @@
                     "path": [
                       "MerkleProof"
                     ],
-                    "program": "test_usdcx_stablecoin"
+                    "program": "test_usdcx_stablecoin.aleo"
                   }
                 },
                 "length": 2
@@ -1528,7 +2022,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usdcx_stablecoin"
+              "program": "test_usdcx_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1539,7 +2033,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usdcx_stablecoin"
+              "program": "test_usdcx_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1550,7 +2044,7 @@
               "path": [
                 "ComplianceRecord"
               ],
-              "program": "test_usdcx_stablecoin"
+              "program": "test_usdcx_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1561,7 +2055,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -1572,20 +2066,20 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "pay_donation_usad",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "pay_record",
@@ -1594,7 +2088,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usad_stablecoin"
+              "program": "test_usad_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1656,7 +2150,7 @@
                     "path": [
                       "MerkleProof"
                     ],
-                    "program": "test_usad_stablecoin"
+                    "program": "test_usad_stablecoin.aleo"
                   }
                 },
                 "length": 2
@@ -1673,7 +2167,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usad_stablecoin"
+              "program": "test_usad_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1684,7 +2178,7 @@
               "path": [
                 "Token"
               ],
-              "program": "test_usad_stablecoin"
+              "program": "test_usad_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1695,7 +2189,7 @@
               "path": [
                 "ComplianceRecord"
               ],
-              "program": "test_usad_stablecoin"
+              "program": "test_usad_stablecoin.aleo"
             }
           },
           "mode": "None"
@@ -1706,7 +2200,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
@@ -1717,20 +2211,20 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v22"
+              "program": "zk_pay_proofs_privacy_v23.aleo"
             }
           },
           "mode": "None"
         },
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "settle_invoice",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "salt",
@@ -1755,14 +2249,14 @@
       ],
       "outputs": [
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]
     },
     {
       "name": "get_invoice_status",
-      "is_async": true,
+      "is_final": true,
       "inputs": [
         {
           "name": "invoice_hash",
@@ -1776,7 +2270,7 @@
       ],
       "outputs": [
         {
-          "ty": "Future",
+          "ty": "Final",
           "mode": "None"
         }
       ]

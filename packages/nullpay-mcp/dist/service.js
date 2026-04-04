@@ -461,7 +461,7 @@ class NullPayMcpService {
         });
         const sponsored = await this.backend.sponsorExecution({
             execution_authorization_string: authorization,
-            programName: 'zk_pay_proofs_privacy_v22.aleo',
+            programName: 'zk_pay_proofs_privacy_v23.aleo',
         });
         const txId = sponsored.transaction?.id;
         if (!txId) {

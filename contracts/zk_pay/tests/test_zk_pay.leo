@@ -1,11 +1,10 @@
 program test_zk_pay.aleo {
     @noupgrade
-    async constructor() {
+    constructor() {
         // The Leo compiler automatically generates the constructor logic.
     }
 
-    @test
-    script test_1_merchant_field() {
+    @test fn test_1_merchant_field() {
         let merchant: address = aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0;
         let expected_merchant_field: field = 947113542301545363857217716479361902320907642358148838248532178752253004327field;
         
@@ -14,8 +13,7 @@ program test_zk_pay.aleo {
     }
     
     // TEST 2: Verify Field Conversions (Amount)
-    @test
-    script test_2_amount_field_conversion() {
+    @test fn test_2_amount_field_conversion() {
         let amount: u64 = 1000000u64; 
         let expected_amount_field: field = 1000000field;
         
@@ -24,8 +22,7 @@ program test_zk_pay.aleo {
     }
 
 
-      @test
-      script test_mechant_hash_check(){
+      @test fn test_mechant_hash_check(){
         let merchant : address = aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0;
         let merchant_field = merchant as field;
 let merchant_hash = BHP256::hash(merchant_field.to_bits_le());
@@ -37,8 +34,7 @@ let merchant_hash = BHP256::hash(merchant_field.to_bits_le());
 
 
     // VARIANT 9: Full BHP256 Sum (Mimics pay_invoice logic)
-    @test
-    script test_variant_9_bhp_full_sum() {
+    @test fn test_variant_9_bhp_full_sum() {
         let merchant: address = aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0;
         let merchant_field: field = merchant as field;
         let amount: u64 = 1000000u64;
@@ -58,8 +54,7 @@ let merchant_hash = BHP256::hash(merchant_field.to_bits_le());
         // but this test structure ensures the code compiles and runs the BHP logic.
         assert(true);
     }
-    @test
-    transition main_test() {
+    @test fn main_test() {
         assert(true);
     }
 }
