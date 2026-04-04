@@ -54,7 +54,7 @@ async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, 
     pm.setAccount(relayerAccount);
 
     const auth = await pm.buildAuthorization({
-        programName: 'zk_pay_proofs_privacy_v23.aleo',
+        programName: 'zk_pay_proofs_privacy_v24.aleo',
         functionName: funcName,
         inputs: inputs,
         fee: 0.1

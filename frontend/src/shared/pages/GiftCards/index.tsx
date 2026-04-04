@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Ticket } from 'lucide-react';
+import { Gift, History, Ticket } from 'lucide-react';
 import { CreateGiftCard } from './components/CreateGiftCard';
+import { CreatedGiftCards } from './components/CreatedGiftCards';
 import { RedeemGiftCard } from './components/RedeemGiftCard';
 import { GlassCard } from '../../components/ui/GlassCard';
 
 const tabs = [
     { id: 'create', label: 'Create Card', icon: Gift },
+    { id: 'created', label: 'Created', icon: History },
     { id: 'redeem', label: 'Redeem Code', icon: Ticket },
 ] as const;
 
 export const GiftCardsPage: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'create' | 'redeem'>('create');
+    const [activeTab, setActiveTab] = useState<'create' | 'created' | 'redeem'>('create');
 
     return (
         <div className="w-full max-w-2xl mx-auto px-4 pt-10 pb-20 relative min-h-screen">
@@ -96,7 +98,9 @@ export const GiftCardsPage: React.FC = () => {
                     className="overflow-hidden border-white/10 backdrop-blur-3xl bg-white/[0.02] shadow-2xl"
                 >
                     <div className="p-6 md:p-8">
-                        {activeTab === 'create' ? <CreateGiftCard /> : <RedeemGiftCard />}
+                        {activeTab === 'create' ? <CreateGiftCard /> : null}
+                        {activeTab === 'created' ? <CreatedGiftCards /> : null}
+                        {activeTab === 'redeem' ? <RedeemGiftCard /> : null}
                     </div>
                 </GlassCard>
             </AnimatePresence>

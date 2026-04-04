@@ -5,10 +5,10 @@ import { PrivateKey } from '@provablehq/sdk';
 import { Copy, CheckCircle2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FloatingGiftCard } from './FloatingGiftCard';
+import { PROGRAM_ID } from '../../../utils/aleo-utils';
+import { buildCreateGiftCardRecordInputs, privateKeyToGiftCode } from '../../../utils/gift-card-chain';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
-
-const toHex = (str: string) => Array.from(new TextEncoder().encode(str)).map(b => b.toString(16).padStart(2, '0')).join('');
 
 export const CreateGiftCard: React.FC = () => {
     const { address, executeTransaction, transactionStatus, requestRecords, decrypt } = useWallet();
@@ -19,6 +19,36 @@ export const CreateGiftCard: React.FC = () => {
     const [fundingStatus, setFundingStatus] = useState<string>('');
     const [giftCode, setGiftCode] = useState<string>('');
     const [copied, setCopied] = useState(false);
+    const [historySaved, setHistorySaved] = useState(false);
+
+    const waitForFinalization = async (transactionId: string, failureMessage: string) => {
+        if (!transactionStatus) {
+            return;
+        }
+
+        let isPending = true;
+        let attempts = 0;
+        while (isPending && attempts < 120) {
+            attempts += 1;
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            try {
+                const statusResp = await transactionStatus(transactionId);
+                const statusStr = typeof (statusResp as any) === 'string'
+                    ? (statusResp as any).toLowerCase()
+                    : (statusResp as any)?.status?.toLowerCase();
+
+                if (statusStr === 'completed' || statusStr === 'finalized' || statusStr === 'accepted') {
+                    isPending = false;
+                } else if (statusStr === 'failed' || statusStr === 'rejected') {
+                    throw new Error(failureMessage);
+                }
+            } catch (err: any) {
+                if (err.message?.includes('rejected') || err.message === failureMessage) {
+                    throw err;
+                }
+            }
+        }
+    };
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,6 +71,9 @@ export const CreateGiftCard: React.FC = () => {
             setIsGenerating(true);
             setStep('FUNDING');
             setFundingStatus('Generating secure private key...');
+            setGiftCode('');
+            setCopied(false);
+            setHistorySaved(false);
 
             // 1. Generate new PrivateKey
             // A simple pause makes the UI feel more premium during generation
@@ -48,7 +81,7 @@ export const CreateGiftCard: React.FC = () => {
             const newKey = new PrivateKey();
             const newAddress = newKey.to_address().to_string();
             const rawPk = newKey.to_string();
-            const code = `gift-${toHex(rawPk)}`;
+            const code = privateKeyToGiftCode(rawPk);
 
             // 2. Fund the address (Sequential Transactions)
             const assetsToFund = [
@@ -145,26 +178,36 @@ export const CreateGiftCard: React.FC = () => {
                 }
 
                 setFundingStatus(`Waiting for ${asset.symbol} confirmation on-chain...`);
-                let isPending = true;
-                let attempts = 0;
-                while (isPending && attempts < 120 && transactionStatus) {
-                    attempts++;
-                    await new Promise(r => setTimeout(r, 1000));
-                    try {
-                        const statusResp = await transactionStatus(result.transactionId);
-                        const statusStr = typeof (statusResp as any) === 'string' 
-                            ? (statusResp as any).toLowerCase() 
-                            : (statusResp as any)?.status?.toLowerCase();
-                        
-                        if (statusStr === 'completed' || statusStr === 'finalized' || statusStr === 'accepted') {
-                            isPending = false;
-                        } else if (statusStr === 'failed' || statusStr === 'rejected') {
-                            throw new Error(`${asset.symbol} funding rejected by network.`);
-                        }
-                    } catch (err: any) {
-                        if (err.message?.includes('rejected')) throw err;
-                    }
+                await waitForFinalization(result.transactionId, `${asset.symbol} funding rejected by network.`);
+            }
+
+            setFundingStatus('Saving gift card to your private on-chain history...');
+            setHistorySaved(false);
+
+            try {
+                const historyTx = await executeWithShieldRetry(
+                    () => executeTransaction({
+                        program: PROGRAM_ID,
+                        function: 'create_gift_card_record',
+                        inputs: buildCreateGiftCardRecordInputs({
+                            giftCardAddress: newAddress,
+                            giftPrivateKey: rawPk
+                        }),
+                        fee: 100_000,
+                        privateFee: false
+                    }),
+                    { onRetry: () => setFundingStatus('Retrying on-chain history backup...') }
+                );
+
+                if (!historyTx?.transactionId) {
+                    throw new Error('History backup did not return a transaction id.');
                 }
+
+                await waitForFinalization(historyTx.transactionId, 'Gift-card history backup was rejected by the network.');
+                setHistorySaved(true);
+            } catch (historyError: any) {
+                console.error('Gift card history backup failed', historyError);
+                toast.error(historyError?.message || 'Gift card created, but on-chain history backup failed. Save this code manually.');
             }
 
             setGiftCode(code);
@@ -190,6 +233,7 @@ export const CreateGiftCard: React.FC = () => {
     const reset = () => {
         setAmounts({ ALEO: '', USDCx: '', USAD: '' });
         setGiftCode('');
+        setHistorySaved(false);
         setStep('INPUT');
     };
 
@@ -286,6 +330,11 @@ export const CreateGiftCard: React.FC = () => {
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-1">Gift Card Ready</h3>
                             <p className="text-sm text-white/40">Share this code with the recipient — they can redeem it instantly.</p>
+                            <p className={`mt-2 text-xs ${historySaved ? 'text-green-300/80' : 'text-amber-300/80'}`}>
+                                {historySaved
+                                    ? 'Saved to your private on-chain gift-card history.'
+                                    : 'On-chain history backup failed for this card, so keep this code safe.'}
+                            </p>
                         </div>
 
                         <div className="w-full cursor-pointer" onClick={copyCode}>

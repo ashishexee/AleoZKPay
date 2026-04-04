@@ -70,5 +70,8 @@ export const usePayment = () => {
         setDonationAmount: shared.setDonationAmount,
         giftCardRedeemOption: shared.giftCardRedeemOption,
         redeemGiftCardBalance: shared.redeemGiftCardBalance,
+        statusLog: shared.statusLog,
+        clearStatusLog: shared.clearStatusLog,
+        resetPaymentFeedback: shared.resetPaymentFeedback,
     };
 };

@@ -2,7 +2,7 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v23.aleo {
+program zk_pay_proofs_privacy_v24.aleo {
     
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     constructor() {
@@ -95,6 +95,12 @@ program zk_pay_proofs_privacy_v23.aleo {
         encrypted_card_address: [field; 10],
         encrypted_label: [field; 10],
         encrypted_hint: [field; 8]
+    }
+
+    record GiftCardRecord {
+        owner: address,
+        gift_card_address: address,
+        gift_private_key: [field; 8]
     }
 
     mapping invoices: field => InvoiceData;
@@ -258,6 +264,17 @@ program zk_pay_proofs_privacy_v23.aleo {
             };
 
             card_lookup.set(card_number_hash, updated_lookup);
+        };
+    }
+
+    fn create_gift_card_record(
+        private gift_card_address: address,
+        private gift_private_key: [field; 8]
+    ) -> GiftCardRecord {
+        return GiftCardRecord {
+            owner: self.caller,
+            gift_card_address: gift_card_address,
+            gift_private_key: gift_private_key
         };
     }
 

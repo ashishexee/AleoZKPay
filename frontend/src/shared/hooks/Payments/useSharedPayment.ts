@@ -46,11 +46,32 @@ export const useSharedPayment = () => {
     const [receiptHash] = useState<string | null>(null);
     const [receiptSearchFailed, setReceiptSearchFailed] = useState(false);
     const [giftCardRedeemOption, setGiftCardRedeemOption] = useState<GiftCardRedeemOption | null>(null);
+    const [statusLog, setStatusLog] = useState<string[]>([]);
     const resolveActiveTokenType = (selectedTokenOverride?: number) => {
         if (!invoice) return 0;
         if (selectedTokenOverride !== undefined) return selectedTokenOverride;
         const allowedTokens = getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType);
         return getTokenTypeFromCode(allowedTokens[0]);
+    };
+
+    useEffect(() => {
+        if (!status || status.startsWith('at1')) return;
+        setStatusLog((current) => current[current.length - 1] === status ? current : [...current, status]);
+    }, [status]);
+
+    useEffect(() => {
+        if (!error) return;
+        const errorMessage = `ERROR: ${error}`;
+        setStatusLog((current) => current[current.length - 1] === errorMessage ? current : [...current, errorMessage]);
+    }, [error]);
+
+    const clearStatusLog = () => setStatusLog([]);
+
+    const resetPaymentFeedback = () => {
+        setError(null);
+        setStatus('');
+        setGiftCardRedeemOption(null);
+        clearStatusLog();
     };
 
     useEffect(() => {
@@ -805,6 +826,7 @@ export const useSharedPayment = () => {
                 throw new Error('The card needs a single private record large enough for this payment.');
             }
 
+            setStatus('Generating card proofs locally...');
             let proofsInput = undefined;
             if (activeTokenType !== 0) {
                 const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
@@ -824,6 +846,7 @@ export const useSharedPayment = () => {
                 throw new Error('Merchant address is missing from invoice details.');
             }
 
+            setStatus('Authorizing secure card payment...');
             const inputs = [
                 payRecordStr,
                 invoice.merchant,
@@ -894,6 +917,9 @@ export const useSharedPayment = () => {
         receiptSearchFailed,
         setReceiptSearchFailed,
         giftCardRedeemOption,
+        statusLog,
+        clearStatusLog,
+        resetPaymentFeedback,
         // Wallet
         publicKey,
         executeTransaction,
