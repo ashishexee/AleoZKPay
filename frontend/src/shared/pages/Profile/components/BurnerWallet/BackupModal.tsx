@@ -1,5 +1,6 @@
 import React from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../../../utils/leo-input-limits';
 
 interface BackupModalProps {
     error: string | null;
@@ -46,20 +47,25 @@ export const BackupModal: React.FC<BackupModalProps> = ({
                     )}
                 </div>
             ) : (
-                <div className="relative mb-6">
-                    <input
-                        type={showPassword ? 'text' : 'password'}
-                        autoFocus
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-black border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-primary pr-12"
-                    />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors">
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                </div>
+                <>
+                    <div className="relative mb-6">
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            autoFocus
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full bg-black border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon-primary pr-12"
+                        />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors">
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                    </div>
+                    <p className="mb-6 text-xs leading-relaxed text-gray-500">
+                        On-chain password backup uses a single Leo field, so setup passwords should stay within {LEO_PASSWORD_BACKUP_MAX_BYTES} bytes.
+                    </p>
+                </>
             )}
 
             <div className="flex gap-3">

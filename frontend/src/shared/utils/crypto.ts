@@ -120,28 +120,32 @@ export async function hashAddress(address: string): Promise<string> {
 }
 
 // Aleo string-to-field utilities
-// An Aleo field can safely hold about 31 ASCII characters (253 bits).
-// We conservatively split long strings into 15-character chunks to be safe and fit easily in u128/field.
+// A single Aleo field can safely hold about 31 UTF-8 bytes (253 bits).
+// We conservatively split long strings into 15-byte chunks to stay well within field capacity.
 export function stringToFieldChunks(str: string, numChunks: number, chunkSize: number = 15): string[] {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(str);
+    const maxBytes = numChunks * chunkSize;
+
+    if (bytes.length > maxBytes) {
+        throw new Error(`Value exceeds on-chain storage capacity (${bytes.length}/${maxBytes} bytes).`);
+    }
+
     const chunks: string[] = [];
     for (let i = 0; i < numChunks; i++) {
-        const slice = str.substring(i * chunkSize, (i + 1) * chunkSize);
+        const slice = bytes.slice(i * chunkSize, (i + 1) * chunkSize);
         if (slice.length === 0) {
             chunks.push('0field');
             continue;
         }
 
-        // Convert ascii characters to their charCode and combine into a single large integer string
-        // Aleo usually requires little-endian or simple hex to int conversion.
-        // For simplicity, we can encode text as hex then parse as decimal string for the field type.
         let hexStr = '';
         for (let j = 0; j < slice.length; j++) {
-            let hex = slice.charCodeAt(j).toString(16);
+            let hex = slice[j].toString(16);
             if (hex.length === 1) hex = '0' + hex;
             hexStr += hex;
         }
 
-        // Convert hex string to BigInt, then to string + 'field'
         const bigIntVal = BigInt('0x' + hexStr);
         chunks.push(bigIntVal.toString() + 'field');
     }
@@ -150,7 +154,7 @@ export function stringToFieldChunks(str: string, numChunks: number, chunkSize: n
 
 // Reverse the process: convert Aleo field value back to ASCII string
 export function fieldChunksToString(chunks: string[]): string {
-    let resultStr = '';
+    const decodedBytes: number[] = [];
     for (const chunk of chunks) {
         if (!chunk || chunk === '0field' || chunk === '0') continue;
 
@@ -168,11 +172,9 @@ export function fieldChunksToString(chunks: string[]): string {
             hexStr = '0' + hexStr;
         }
 
-        // Convert hex pairs back to char codes
         for (let i = 0; i < hexStr.length; i += 2) {
-            const charCode = parseInt(hexStr.substring(i, i + 2), 16);
-            resultStr += String.fromCharCode(charCode);
+            decodedBytes.push(parseInt(hexStr.substring(i, i + 2), 16));
         }
     }
-    return resultStr;
+    return new TextDecoder().decode(new Uint8Array(decodedBytes));
 }

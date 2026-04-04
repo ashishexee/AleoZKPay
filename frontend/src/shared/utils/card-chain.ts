@@ -64,12 +64,19 @@ function readValueFromObject(source: Record<string, unknown>, ...keys: string[])
     return undefined;
 }
 
+function normalizeLeoScalarString(value: unknown): string {
+    return String(value ?? '')
+        .trim()
+        .replace(/['"]/g, '')
+        .replace(/\.(private|public)\s*$/i, '');
+}
+
 function readFieldChunkFromObject(source: Record<string, unknown>, prefix: string, count: number): string[] {
     const chunks: string[] = [];
     for (let index = 1; index <= count; index += 1) {
         const raw = readValueFromObject(source, `${prefix}_${index}`, `${prefix}${index}`);
         if (raw !== undefined && raw !== null) {
-            chunks.push(String(raw).replace(/['"]/g, ''));
+            chunks.push(normalizeLeoScalarString(raw));
         }
     }
     return chunks;
@@ -79,7 +86,7 @@ function readValueFromString(source: string, ...keys: string[]): string | null {
     for (const key of keys) {
         const match = source.match(new RegExp(`${key}:\\s*([^,}\\n]+)`));
         if (match?.[1]) {
-            return match[1].trim().replace(/['"]/g, '');
+            return normalizeLeoScalarString(match[1]);
         }
     }
     return null;
@@ -104,7 +111,7 @@ function readFieldArrayFromString(source: string, key: string): string[] {
 
     return match[1]
         .split(',')
-        .map((value) => value.trim().replace(/['"]/g, ''))
+        .map((value) => normalizeLeoScalarString(value))
         .filter(Boolean);
 }
 

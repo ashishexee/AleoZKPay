@@ -76,7 +76,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             // Compute Final Amount
             const isDonationType = session.amount === 0;
             const finalAmount = (isDonationType && donationAmount && donationAmount > 0) ? donationAmount : session.amount;
-            
+
             if (finalAmount <= 0) {
                 throw new Error("Amount must be greater than zero.");
             }
@@ -169,7 +169,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             // 3. Construct Inputs (Standard Pay)
             // pay_invoice(record input, address merchant, u64 amount, field salt, field payment_secret, field invoice_hash)
             const paymentSecret = generateSalt();
-            
+
             if (!session.merchant_address) {
                 throw new Error("Merchant address is missing from session details.");
             }
@@ -301,7 +301,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             let tokenProgramId = 'credits.aleo';
             let typeSuffix = 'u64';
             let tokenName = 'Credits';
-            
+
             const actualTokenType = session.token_type === 'ANY'
                 ? resolveCheckoutToken(selectedTokenOverride)
                 : session.token_type;

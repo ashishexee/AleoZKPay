@@ -142,7 +142,7 @@ export const useSharedPayment = () => {
                         finalAmount = Number(amount) || 0;
                     }
                 }
-                
+
                 // Override with exact DB amount if available
                 if (dbInvoice && dbInvoice.amount !== undefined) {
                     finalAmount = dbInvoice.invoice_type === 2 ? 0 : Number(dbInvoice.amount);
@@ -222,14 +222,14 @@ export const useSharedPayment = () => {
                         console.log(`📡 [Real-Time] Payment Intent settled! Fetching session redirect URL...`);
                         setStep('SUCCESS');
                         setStatus('Payment Successful! Redirecting...');
-                        
+
                         try {
                             const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
                             const response = await fetch(`${API_URL}/checkout/sessions/${sessionId}`);
                             if (response.ok) {
                                 const data = await response.json();
                                 const redirectUrl = data.success_url;
-                                
+
                                 if (redirectUrl) {
                                     console.log(`[useSharedPayment] Scheduling redirect to: ${redirectUrl} in 2 seconds...`);
                                     setTimeout(() => {
@@ -260,7 +260,7 @@ export const useSharedPayment = () => {
                         console.log(`📡 [Polling] Payment Intent settled! Fetching session redirect URL...`);
                         setStep('SUCCESS');
                         setStatus('Payment Successful! Redirecting...');
-                        
+
                         const redirectUrl = data.success_url;
                         if (redirectUrl) {
                             console.log(`[useSharedPayment] Scheduling redirect to: ${redirectUrl} in 2 seconds...`);
@@ -276,7 +276,7 @@ export const useSharedPayment = () => {
                         }
                     }
                 }
-            } catch (err) {}
+            } catch (err) { }
         }, 3000);
 
         return () => {
@@ -314,7 +314,7 @@ export const useSharedPayment = () => {
                         if (res.ok) {
                             statusStr = 'completed';
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
 
                 if (onChainId) {
@@ -332,7 +332,7 @@ export const useSharedPayment = () => {
                         const updatePayload: any = {
                             payment_tx_ids: onChainId
                         };
-                        
+
                         if (invoice?.sessionId) {
                             updatePayload.session_id = invoice.sessionId;
                         }
@@ -348,7 +348,7 @@ export const useSharedPayment = () => {
                             await updateInvoiceStatus(invoice.hash, updatePayload);
                             console.log("✅ DB Update Successful!");
                         }
-                        
+
                         if (invoice?.sessionId) {
                             try {
                                 console.log(`📢 [usePayment] Updating Checkout Session ${invoice.sessionId}`);
@@ -619,7 +619,7 @@ export const useSharedPayment = () => {
             programManager.setAccount(scannerSession.account);
 
             let recordName = activeTokenType === 0 ? 'credits' : 'Token';
-            
+
             const { scanProgramBalance } = await import('../../pages/Profile/components/BurnerWallet/scanner');
             const totalMicros = await scanProgramBalance(scannerSession, tokenProgram, recordName);
             if (totalMicros < amountMicro) {
@@ -636,7 +636,7 @@ export const useSharedPayment = () => {
                 }
                 throw new Error(`Insufficient balance! Your card has ${totalMicros / 1_000_000} ${tokenName}, but you need ${finalAmount} ${tokenName}.`);
             }
-            
+
             const payRecordStr = await findSpendableRecord(scannerSession, tokenProgram, recordName, amountMicro, activeTokenType === 0);
 
             if (!payRecordStr) throw new Error(`Insufficient Gift Card balance. Must have a single record large enough.`);

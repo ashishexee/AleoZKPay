@@ -5,6 +5,7 @@ import { AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvid
 import { useBurnerWallet } from '../../../../hooks/BurnerWalletProvider';
 import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '../../../../utils/crypto';
 import { PROGRAM_ID } from '../../../../utils/aleo-utils';
+import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../../../utils/leo-input-limits';
 import { executeWithShieldRetry } from '../../../../utils/shieldRetry';
 import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from './scanner';
 import type { PrivateBalances, SweepCurrency } from './types';
@@ -147,6 +148,10 @@ export function useBurnerActions() {
         if (e) e.preventDefault();
         if (!executeTransaction || !appPassword || !transactionStatus) {
             setError('Wallet must be connected and unlocked.');
+            return;
+        }
+        if (getUtf8ByteLength(appPassword) > LEO_PASSWORD_BACKUP_MAX_BYTES) {
+            setError(`Your password is too large for the single Leo backup field. Keep it within ${LEO_PASSWORD_BACKUP_MAX_BYTES} bytes.`);
             return;
         }
         try {

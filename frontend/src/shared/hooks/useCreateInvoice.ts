@@ -6,6 +6,7 @@ import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { InvoiceData, InvoiceItem } from '../types/invoice';
 import { useBurnerWallet } from './BurnerWalletProvider';
 import { encryptWithPassword, hashAddress } from '../utils/crypto';
+import { getUtf8ByteLength, LEO_MEMO_MAX_BYTES } from '../utils/leo-input-limits';
 
 export type InvoiceType = 'standard' | 'multipay' | 'donation';
 
@@ -84,6 +85,11 @@ export const useCreateInvoice = () => {
 
         if (!appPassword) {
             setStatus('Application is locked. Please refresh and enter your password.');
+            return;
+        }
+
+        if (memo && getUtf8ByteLength(memo) > LEO_MEMO_MAX_BYTES) {
+            setStatus(`Memo is too long for one Leo field. Keep it within ${LEO_MEMO_MAX_BYTES} bytes.`);
             return;
         }
 

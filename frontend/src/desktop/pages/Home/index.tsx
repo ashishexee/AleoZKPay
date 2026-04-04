@@ -395,10 +395,16 @@ const Home = () => {
                         {/* Background: Animated grid */}
                         <HeroGrid />
 
-                        {/* Globe */}
-                        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                            <DottedGlobe />
-                        </div>
+                        <motion.div
+                            variants={fadeInScale}
+                            initial="hidden"
+                            animate="show"
+                            className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+                        >
+                            <div className="absolute right-[-18rem] top-1/2 -translate-y-1/2 opacity-80 sm:right-[-12rem] md:right-[-12%] lg:right-[-8%] xl:right-[-4%]">
+                              <DottedGlobe className="w-[26rem] max-w-none sm:w-[30rem] md:w-[34rem] lg:w-[38rem] xl:w-[42rem]" />
+                            </div>
+                        </motion.div>
 
                         {/* Hero content */}
                         <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-36 pb-12">
@@ -406,49 +412,52 @@ const Home = () => {
                                 variants={staggerSlow}
                                 initial="hidden"
                                 animate="show"
-                                className="flex flex-col space-y-10 items-center text-center max-w-3xl mx-auto"
+                                className="mx-auto flex max-w-6xl flex-col items-center gap-10"
                             >
+                                <div className="relative flex w-full justify-center overflow-visible">
+                                    <div className="relative z-20 flex max-w-4xl flex-col items-center text-center">
+                                        {/* Main headline */}
+                                        <motion.div variants={fadeInUp} className="relative z-20">
+                                            <h1 className="text-5xl font-black leading-[0.92] tracking-tighter text-reveal md:text-7xl lg:text-[5rem] xl:text-[5.8rem]">
+                                                <span className="text-white inline-block mb-1 md:mb-3">Pay Privately.</span>
+                                                <br />
+                                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">Nullify</span>
+                                                {' '}
+                                                <span className="text-stroke">the Trace.</span>
+                                            </h1>
+                                        </motion.div>
 
-                                {/* Main headline */}
-                                <motion.div variants={fadeInUp} className="relative z-20">
-                                    <h1 className="text-5xl md:text-7xl lg:text-[4.8rem] xl:text-[5.8rem] font-black tracking-tighter leading-[0.92] text-reveal">
-                                        <span className="text-white inline-block mb-1 md:mb-3">Pay Privately.</span>
-                                        <br />
-                                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">Nullify</span>
-                                        {' '}
-                                        <span className="text-stroke">the Trace.</span>
-                                    </h1>
-                                </motion.div>
+                                        <motion.p
+                                            variants={fadeInUp}
+                                            className="max-w-2xl pt-6 text-xl font-light leading-relaxed tracking-wide text-white/40 md:text-2xl lg:text-[1.35rem]"
+                                        >
+                                            The ultimate privacy layer for Aleo. Settle invoices with zero-knowledge proofs.
+                                            Protect your <span className="text-white/80 font-medium border-b border-orange-500/30">identity</span> and <span className="text-white/80 font-medium border-b border-orange-500/30">holdings</span> from the public eye.
+                                        </motion.p>
 
-                                <motion.p
-                                    variants={fadeInUp}
-                                    className="text-xl md:text-2xl lg:text-[1.35rem] text-white/40 max-w-2xl mx-auto font-light leading-relaxed tracking-wide pt-5"
-                                >
-                                    The ultimate privacy layer for Aleo. Settle invoices with zero-knowledge proofs.
-                                    Protect your <span className="text-white/80 font-medium border-b border-orange-500/30">identity</span> and <span className="text-white/80 font-medium border-b border-orange-500/30">holdings</span> from the public eye.
-                                </motion.p>
+                                        {/* CTAs */}
+                                        <motion.div
+                                            variants={fadeInUp}
+                                            className="flex flex-col items-center justify-center gap-4 pt-6 sm:flex-row"
+                                        >
+                                            <Link
+                                                to="/explorer"
+                                                className="premium-button premium-button-primary group inline-flex min-w-[180px] items-center justify-center gap-2 px-6 py-3"
+                                            >
+                                                <span className="text-base relative z-10">Get Started</span>
+                                                <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
+                                            </Link>
 
-                                {/* CTAs */}
-                                <motion.div
-                                    variants={fadeInUp}
-                                    className="flex flex-col sm:flex-row items-center gap-4 pt-5 justify-center"
-                                >
-                                    <Link
-                                        to="/explorer"
-                                        className="premium-button premium-button-primary group inline-flex items-center justify-center gap-2 min-w-[180px] px-6 py-3"
-                                    >
-                                        <span className="text-base relative z-10">Get Started</span>
-                                        <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
-
-                                    <Link
-                                        to="/docs"
-                                        className="premium-button group inline-flex items-center justify-center gap-2 min-w-[180px] px-6 py-3"
-                                    >
-                                        <span className="text-base text-white/60 group-hover:text-white transition-colors relative z-10">Documentation</span>
-                                        <ExternalLink className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
-                                    </Link>
-                                </motion.div>
+                                            <Link
+                                                to="/docs"
+                                                className="premium-button group inline-flex min-w-[180px] items-center justify-center gap-2 px-6 py-3"
+                                            >
+                                                <span className="text-base text-white/60 group-hover:text-white transition-colors relative z-10">Documentation</span>
+                                                <ExternalLink className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
+                                            </Link>
+                                        </motion.div>
+                                    </div>
+                                </div>
 
                                 <TrustBar />
                             </motion.div>

@@ -6,6 +6,7 @@ import { GlassCard } from '../../../components/ui/GlassCard';
 import { Shimmer } from '../../../components/ui/Shimmer';
 import { useCardWallet } from '../../../hooks/CardWalletProvider';
 import type { CardTokenCode } from '../../../services/api';
+import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../../../utils/leo-input-limits';
 
 interface CardWalletPanelProps {
     itemVariants: any;
@@ -64,6 +65,7 @@ const Field = ({
     revealable = false,
     maxLength,
     placeholder,
+    helper,
     className = ''
 }: {
     label: string;
@@ -73,6 +75,7 @@ const Field = ({
     revealable?: boolean;
     maxLength?: number;
     placeholder?: string;
+    helper?: React.ReactNode;
     className?: string;
 }) => {
     const [isVisible, setIsVisible] = useState(false);
@@ -101,6 +104,7 @@ const Field = ({
                     </button>
                 )}
             </div>
+            {helper ? <div className="text-[11px] leading-relaxed text-gray-500">{helper}</div> : null}
         </div>
     );
 };
@@ -192,6 +196,10 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
     const cardAddress = card?.card_address || '';
     const isCardFrozen = card?.card_status === 'FROZEN';
     const statusLabel = isCardFrozen ? 'Frozen' : 'Active';
+    const labelBytes = getUtf8ByteLength(label.trim());
+    const hintBytes = getUtf8ByteLength(hint.trim());
+    const labelTooLong = labelBytes > CARD_LABEL_MAX_BYTES;
+    const hintTooLong = hintBytes > CARD_HINT_MAX_BYTES;
 
     const copyAddress = () => {
         if (!cardAddress) return;
@@ -224,6 +232,14 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
         event.preventDefault();
         if (!label.trim()) {
             toast.error('Card label is required');
+            return;
+        }
+        if (labelTooLong) {
+            toast.error(`Card label must stay within ${CARD_LABEL_MAX_BYTES} bytes.`);
+            return;
+        }
+        if (hintTooLong) {
+            toast.error(`Card hint must stay within ${CARD_HINT_MAX_BYTES} bytes.`);
             return;
         }
         if (!pin || pin.length !== 6 || !secret) {
@@ -339,8 +355,30 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
 
                     <form onSubmit={handleCreate} className="space-y-4">
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <Field label="Card Label" value={label} onChange={setLabel} placeholder="Daily Spending" />
-                            <Field label="Optional Hint" value={hint} onChange={setHint} placeholder="Non-secret reminder" maxLength={32} />
+                            <Field
+                                label="Card Label"
+                                value={label}
+                                onChange={setLabel}
+                                placeholder="Daily Spending"
+                                helper={
+                                    <span className={labelTooLong ? 'text-red-400' : 'text-gray-500'}>
+                                        Encrypted and stored in the on-chain card record: {labelBytes}/{CARD_LABEL_MAX_BYTES} bytes.
+                                    </span>
+                                }
+                                className={labelTooLong ? 'border-red-500/60 focus:border-red-500/60' : ''}
+                            />
+                            <Field
+                                label="Optional Hint"
+                                value={hint}
+                                onChange={setHint}
+                                placeholder="Non-secret reminder"
+                                helper={
+                                    <span className={hintTooLong ? 'text-red-400' : 'text-gray-500'}>
+                                        Keep the hint short so the encrypted Leo record fits: {hintBytes}/{CARD_HINT_MAX_BYTES} bytes.
+                                    </span>
+                                }
+                                className={hintTooLong ? 'border-red-500/60 focus:border-red-500/60' : ''}
+                            />
                         </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <Field
@@ -364,6 +402,7 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                             label="Create NullPay Card"
                             loading={isInitializing}
                             loadingLabel="Creating card"
+                            disabled={!label || !pin || !secret || labelTooLong || hintTooLong}
                         />
                     </form>
                 </GlassCard>

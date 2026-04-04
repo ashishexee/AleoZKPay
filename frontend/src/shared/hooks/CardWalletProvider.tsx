@@ -12,6 +12,7 @@ import {
 import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { decryptCardPrivateKey, encryptCardPrivateKey, type CardKdfAlgorithm } from '../utils/card-crypto';
 import { decryptWithPassword, encryptWithPassword, hashAddress } from '../utils/crypto';
+import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../utils/leo-input-limits';
 import {
     CARD_STATUS_ACTIVE,
     CARD_STATUS_FROZEN,
@@ -21,7 +22,7 @@ import {
     parseCardProfileRecord,
     sha256HexToField
 } from '../utils/card-chain';
-import { PROGRAM_ID } from '../utils/aleo-utils';
+import { fetchBurnerRecordsFromTx, PROGRAM_ID } from '../utils/aleo-utils';
 import { fetchAllPrivateBalances } from '../pages/Profile/components/BurnerWallet/scanner';
 import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
 import { useBurnerWallet } from './BurnerWalletProvider';
@@ -99,11 +100,12 @@ function validateCardSecret(cardSecret: string) {
 }
 
 function validateCardLabel(label: string) {
-    if (!label || !label.trim()) {
+    const normalized = label?.trim() || '';
+    if (!normalized) {
         throw new Error('Card label is required.');
     }
-    if (label.trim().length > 60) {
-        throw new Error('Card label must be 60 characters or fewer.');
+    if (getUtf8ByteLength(normalized) > CARD_LABEL_MAX_BYTES) {
+        throw new Error(`Card label must be ${CARD_LABEL_MAX_BYTES} bytes or fewer.`);
     }
 }
 
@@ -112,8 +114,8 @@ function normalizeCardHint(cardHint?: string) {
     if (!normalized) {
         return null;
     }
-    if (normalized.length > 32) {
-        throw new Error('Card hint must be 32 characters or fewer.');
+    if (getUtf8ByteLength(normalized) > CARD_HINT_MAX_BYTES) {
+        throw new Error(`Card hint must be ${CARD_HINT_MAX_BYTES} bytes or fewer.`);
     }
     return normalized;
 }
@@ -193,6 +195,7 @@ function buildLimitChangeMessage(card: CardWalletProfile, token: CardTokenCode, 
     return JSON.stringify({
         action: 'nullpay_card_limit_change_v1',
         card_address: card.card_address,
+        card_number_hash: card.card_number_hash || null,
         token,
         previous_limits: {
             max_balance: card.limits[token].max_balance
@@ -390,17 +393,25 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const waitForChainCard = async (cardNumberHashField: string): Promise<CardWalletProfile | null> => {
-        const dbFallback = await fetchMirrorCard();
+        let dbFallback = await fetchMirrorCard();
+
+        if (dbFallback?.card_number_hash_field === cardNumberHashField) {
+            return dbFallback;
+        }
 
         for (let attempt = 0; attempt < 20; attempt += 1) {
             const chainCard = await hydrateCardFromChain(dbFallback);
             if (chainCard?.card_number_hash_field === cardNumberHashField) {
                 return chainCard;
             }
+            dbFallback = await fetchMirrorCard();
+            if (dbFallback?.card_number_hash_field === cardNumberHashField) {
+                return dbFallback;
+            }
             await new Promise((resolve) => window.setTimeout(resolve, 1500));
         }
 
-        return null;
+        return dbFallback?.card_number_hash_field === cardNumberHashField ? dbFallback : null;
     };
 
     const setCardState = (nextCard: CardWalletProfile | null) => {
@@ -520,27 +531,56 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const pollForFinalTransactionId = async (initialTxId: string): Promise<string> => {
         const statusReader = wallet?.adapter?.transactionStatus;
-        if (!statusReader) {
-            return initialTxId;
-        }
-
+        const isShieldPendingId = initialTxId.startsWith('shield_');
         let isPending = true;
         let attempts = 0;
         let finalTransactionId = initialTxId;
         const maxAttempts = 120;
+        let adapterFailureCount = 0;
+        let explorerNotFoundCount = 0;
 
         while (isPending && attempts < maxAttempts) {
             attempts += 1;
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
             try {
-                const statusResponse: any = await statusReader(initialTxId);
-                const currentStatus = typeof statusResponse === 'string'
-                    ? statusResponse.toLowerCase()
-                    : statusResponse?.status?.toLowerCase();
+                let currentStatus = '';
 
-                if (typeof statusResponse === 'object' && statusResponse?.transactionId) {
-                    finalTransactionId = statusResponse.transactionId;
+                if (statusReader) {
+                    try {
+                        const statusResponse: any = await statusReader(initialTxId);
+                        currentStatus = typeof statusResponse === 'string'
+                            ? statusResponse.toLowerCase()
+                            : statusResponse?.status?.toLowerCase();
+
+                        if (typeof statusResponse === 'object' && statusResponse?.transactionId) {
+                            finalTransactionId = statusResponse.transactionId;
+                        }
+                    } catch (error: any) {
+                        adapterFailureCount += 1;
+                        if (!isShieldPendingId || adapterFailureCount === 1 || adapterFailureCount % 10 === 0) {
+                            console.warn('[CardWalletProvider] Status polling attempt failed:', error?.message || error);
+                        }
+                    }
+                }
+
+                if (!currentStatus) {
+                    const explorerLookupId = finalTransactionId && !finalTransactionId.startsWith('shield_')
+                        ? finalTransactionId
+                        : initialTxId;
+                    const explorerResponse = await fetch(`https://api.explorer.provable.com/v1/testnet/transaction/${explorerLookupId}`);
+                    if (explorerResponse.ok) {
+                        currentStatus = 'completed';
+                    } else if (explorerResponse.status === 404) {
+                        explorerNotFoundCount += 1;
+                    }
+                }
+
+                if (!currentStatus) {
+                    if (isShieldPendingId && adapterFailureCount >= 3 && explorerNotFoundCount >= 3 && attempts >= 8) {
+                        return finalTransactionId;
+                    }
+                    continue;
                 }
 
                 if (currentStatus !== 'pending' && currentStatus !== 'processing' && currentStatus !== 'submitted') {
@@ -556,7 +596,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 if (typeof error?.message === 'string' && error.message.startsWith('Transaction failed with status:')) {
                     throw error;
                 }
-                console.warn('[CardWalletProvider] Status polling attempt failed:', error?.message || error);
             }
         }
 
@@ -576,6 +615,27 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
         }
         throw new Error('Timed out waiting for on-chain confirmation.');
+    };
+
+    const waitForCardRecordsFromTransaction = async (transactionId: string, cardPrivateKey: string): Promise<boolean> => {
+        if (!transactionId || transactionId.startsWith('shield_') || !cardPrivateKey) {
+            return false;
+        }
+
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+            try {
+                const records = await fetchBurnerRecordsFromTx(transactionId, cardPrivateKey);
+                if (records.length > 0) {
+                    return true;
+                }
+            } catch (error) {
+                console.warn('[CardWalletProvider] Card record confirmation failed:', error);
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+
+        return false;
     };
 
     const persistMirrorCard = async (
@@ -657,7 +717,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
 
         try {
-            setIsLoading(true);
             const tx = await executeWithShieldRetry(
                 () => executeTransaction({
                     program: PROGRAM_ID,
@@ -672,6 +731,21 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if (!tx?.transactionId) {
                 throw new Error('The wallet did not return a transaction id for card creation.');
             }
+
+            await persistMirrorCard(address, {
+                encryptedMainAddress,
+                encryptedCardAddress,
+                encryptedCardNumber,
+                cardNumberHashHex,
+                cardLast4,
+                encryptedPrivateKey: encrypted.encryptedPrivateKey,
+                cardKdfSalt: encrypted.saltBase64,
+                cardKdfAlgorithm: encrypted.kdfAlgorithm,
+                cardKdfParams: encrypted.kdfParams as unknown as Record<string, unknown>,
+                cardStatus: CARD_STATUS_ACTIVE,
+                cardLabel: options.label.trim(),
+                cardHint
+            });
 
             await pollForFinalTransactionId(tx.transactionId);
             const chainCard = await waitForChainCard(cardNumberHashField);
@@ -709,8 +783,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 throw err;
             }
             throw err;
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -828,6 +900,9 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             inputs = [card.card_address, `${amountMicro}u128`, recordInput, `[${proof}, ${proof}]`];
         }
 
+        const shouldUseTempUnlock = !decryptedCardKey && pin && cardSecret;
+        const activeCardKey = decryptedCardKey || (shouldUseTempUnlock ? await unlockCard(pin!, cardSecret!, { persist: false }) : null);
+
         try {
             const result = await executeWithShieldRetry(
                 () => executeTransaction({
@@ -845,14 +920,19 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
 
             const finalTransactionId = await pollForFinalTransactionId(result.transactionId);
+            if (activeCardKey) {
+                await waitForCardRecordsFromTransaction(finalTransactionId, activeCardKey);
+            }
 
-            window.setTimeout(() => {
-                if (decryptedCardKey) {
-                    refreshCardBalances(undefined, undefined, { retryOnZero: true }).catch(() => null);
-                } else if (pin && cardSecret) {
-                    refreshCardBalances(pin, cardSecret, { retryOnZero: true }).catch(() => null);
-                }
-            }, 1500);
+            [1500, 5000, 10000].forEach((delay) => {
+                window.setTimeout(() => {
+                    if (decryptedCardKey) {
+                        refreshCardBalances(undefined, undefined, { retryOnZero: true }).catch(() => null);
+                    } else if (pin && cardSecret) {
+                        refreshCardBalances(pin, cardSecret, { retryOnZero: true }).catch(() => null);
+                    }
+                }, delay);
+            });
 
             return finalTransactionId;
         } catch (err: any) {
@@ -860,6 +940,10 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 throw err;
             }
             throw err;
+        } finally {
+            if (shouldUseTempUnlock && activeCardKey) {
+                resetKeyMaterial(activeCardKey);
+            }
         }
     };
 
@@ -871,11 +955,50 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             throw new Error('Create your NullPay card first.');
         }
 
+        let cardForLimitChange = card;
+
+        if (appPassword) {
+            const normalizedCardNumber = card.card_number ? normalizeCardNumber(card.card_number) : '';
+            const encryptedCardAddress = card.encrypted_card_address
+                || (card.card_address ? await encryptWithPassword(card.card_address, appPassword) : null);
+            const encryptedCardNumber = card.encrypted_card_number
+                || (normalizedCardNumber ? await encryptWithPassword(normalizedCardNumber, appPassword) : null);
+            const cardNumberHash = card.card_number_hash
+                || (normalizedCardNumber ? await hashAddress(normalizedCardNumber) : null);
+            const cardLast4 = card.card_last4 || normalizedCardNumber.slice(-4) || null;
+
+            if (encryptedCardAddress && encryptedCardNumber && cardNumberHash && cardLast4 && card.card_label) {
+                await upsertCardWallet(address, {
+                    main_address: await encryptWithPassword(address, appPassword),
+                    card_address: encryptedCardAddress,
+                    encrypted_card_number: encryptedCardNumber,
+                    card_number_hash: cardNumberHash,
+                    card_last4: cardLast4,
+                    encrypted_card_private_key: card.encrypted_card_private_key,
+                    card_kdf_salt: card.card_kdf_salt,
+                    card_kdf_algorithm: card.card_kdf_algorithm,
+                    card_kdf_params: card.card_kdf_params,
+                    card_status: card.card_status,
+                    card_label: card.card_label,
+                    card_hint: card.card_hint || null,
+                    limits: card.limits
+                });
+
+                cardForLimitChange = {
+                    ...card,
+                    card_number_hash: cardNumberHash,
+                    card_last4: cardLast4,
+                    encrypted_card_address: encryptedCardAddress,
+                    encrypted_card_number: encryptedCardNumber
+                };
+            }
+        }
+
         const sanitizedNextLimits: CardLimitDraft = {
             max_balance: Math.round(nextLimits.max_balance)
         };
 
-        const message = buildLimitChangeMessage(card, token, sanitizedNextLimits);
+        const message = buildLimitChangeMessage(cardForLimitChange, token, sanitizedNextLimits);
         const signatureResult = await wallet.adapter.signMessage(new TextEncoder().encode(message));
         const signatureBytes = signatureResult instanceof Uint8Array
             ? signatureResult

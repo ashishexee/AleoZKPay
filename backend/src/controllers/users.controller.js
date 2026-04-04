@@ -121,19 +121,32 @@ function buildCardLimits(row) {
     };
 }
 
+function hasStoredCardWallet(row) {
+    return Boolean(
+        row && (
+            row.card_address ||
+            row.card_number_hash ||
+            row.encrypted_card_number ||
+            row.encrypted_card_private_key
+        )
+    );
+}
+
 function buildCardResponse(row) {
-    if (!row || !row.card_address) {
+    if (!hasStoredCardWallet(row)) {
         return null;
     }
 
-    const clientEncryptedCardAddress = readMerchantStoredValue(row.card_address);
+    const clientEncryptedCardAddress = row.card_address
+        ? readMerchantStoredValue(row.card_address)
+        : null;
     const clientEncryptedCardNumber = row.encrypted_card_number
         ? readMerchantStoredValue(row.encrypted_card_number)
         : null;
 
     return {
         address_hash: row.address_hash,
-        card_address: clientEncryptedCardAddress,
+        card_address: clientEncryptedCardAddress || '',
         encrypted_card_address: clientEncryptedCardAddress,
         encrypted_card_number: clientEncryptedCardNumber,
         card_number_hash: row.card_number_hash || null,
@@ -326,11 +339,12 @@ const getCardWallet = async (req, res) => {
 
     try {
         const data = await getUserByAddressHash(address);
-        if (!data || !data.card_address) {
+        const cardResponse = buildCardResponse(data);
+        if (!cardResponse) {
             return res.status(404).json({ error: 'Card wallet not found' });
         }
 
-        res.json(buildCardResponse(data));
+        res.json(cardResponse);
     } catch (err) {
         console.error('Error fetching card wallet:', err);
         res.status(500).json({ error: err.message });
@@ -345,7 +359,7 @@ const upsertCardWallet = async (req, res) => {
 
     try {
         const existingProfile = await getUserByAddressHash(address_hash);
-        const isCreatingCard = !existingProfile?.card_address && req.body.card_address !== undefined;
+        const isCreatingCard = !hasStoredCardWallet(existingProfile) && req.body.card_address !== undefined;
         if (isCreatingCard) {
             if (!req.body.main_address && !existingProfile?.main_address) {
                 return res.status(400).json({ error: 'Main wallet address is required when creating a card.' });
@@ -378,11 +392,12 @@ const lookupCardWallet = async (req, res) => {
     try {
         const normalizedHash = validateCardNumberHash(card_number_hash);
         const data = await getUserByCardNumberHash(normalizedHash);
-        if (!data || !data.card_address) {
+        const cardResponse = buildCardResponse(data);
+        if (!cardResponse) {
             return res.status(404).json({ error: 'Card wallet not found' });
         }
 
-        res.json(buildCardResponse(data));
+        res.json(cardResponse);
     } catch (err) {
         console.error('Error looking up card wallet:', err);
         res.status(500).json({ error: err.message });
@@ -415,9 +430,16 @@ const verifyCardLimitChange = async (req, res) => {
             return res.status(400).json({ error: 'Unsupported card token.' });
         }
 
-        const storedCardAddress = readMerchantStoredValue(profile.card_address);
-        if (payload.card_address !== storedCardAddress) {
-            return res.status(400).json({ error: 'Card address mismatch.' });
+        const payloadCardHash = payload.card_number_hash ? validateCardNumberHash(payload.card_number_hash) : null;
+        if (profile.card_number_hash && payloadCardHash) {
+            if (payloadCardHash !== profile.card_number_hash) {
+                return res.status(400).json({ error: 'Card address mismatch.' });
+            }
+        } else {
+            const storedCardAddress = profile.card_address ? readMerchantStoredValue(profile.card_address) : '';
+            if (payload.card_address !== storedCardAddress) {
+                return res.status(400).json({ error: 'Card address mismatch.' });
+            }
         }
 
         const requestedAt = new Date(payload.timestamp).getTime();
@@ -463,11 +485,12 @@ const recordCardSpend = async (req, res) => {
 
     try {
         const profile = await getUserByAddressHash(address_hash);
-        if (!profile || !profile.card_address) {
+        const cardResponse = buildCardResponse(profile);
+        if (!cardResponse) {
             return res.status(404).json({ error: 'Card wallet not found' });
         }
 
-        res.json(buildCardResponse(profile));
+        res.json(cardResponse);
     } catch (err) {
         console.error('Error recording card spend:', err);
         res.status(500).json({ error: err.message });

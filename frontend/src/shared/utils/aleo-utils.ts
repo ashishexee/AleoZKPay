@@ -81,6 +81,9 @@ export const fetchBurnerRecordsFromTx = async (txId: string, privateKeyStr: stri
 export const stringToField = (str: string): string => {
     const encoder = new TextEncoder();
     const bytes = encoder.encode(str);
+    if (bytes.length > 31) {
+        throw new Error(`Value exceeds single Leo field capacity (${bytes.length}/31 bytes).`);
+    }
     let hex = '0x';
     for (const byte of bytes) {
         hex += byte.toString(16).padStart(2, '0');

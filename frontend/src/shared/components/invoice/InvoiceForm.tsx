@@ -4,6 +4,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { InvoiceType } from '../../hooks/useCreateInvoice';
 import { InvoiceItem } from '../../types/invoice';
+import { getUtf8ByteLength, LEO_MEMO_MAX_BYTES } from '../../utils/leo-input-limits';
 import { getTokenLabel } from '../../utils/tokens';
 
 interface InvoiceFormProps {
@@ -57,6 +58,9 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     updateItem,
     removeItem
 }) => {
+    const memoBytes = getUtf8ByteLength(memo);
+    const memoTooLong = memoBytes > LEO_MEMO_MAX_BYTES;
+
     return (
         <GlassCard variant="heavy" className="p-8">
             <h2 className="text-2xl font-bold text-white mb-6">Invoice Details</h2>
@@ -349,14 +353,18 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     type="text"
                     placeholder={invoiceType === 'donation' ? "e.g., Save the Whales Campaign" : "e.g., Dinner Bill"}
                     value={memo}
+                    error={memoTooLong ? `Keep memo within ${LEO_MEMO_MAX_BYTES} bytes for a single Leo field.` : undefined}
                     onChange={(e) => setMemo(e.target.value)}
                 />
+                <div className={`-mt-3 text-xs ${memoTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                    Memo is stored in one Leo `field`: {memoBytes}/{LEO_MEMO_MAX_BYTES} bytes. Regular letters usually count as 1 byte.
+                </div>
 
                 <Button
                     variant="primary"
                     className="w-full mt-4"
                     onClick={handleCreate}
-                    disabled={loading || !publicKey}
+                    disabled={loading || !publicKey || memoTooLong}
                     glow={!loading && !!publicKey}
                 >
                     {loading ? (
