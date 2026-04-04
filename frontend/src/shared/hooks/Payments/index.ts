@@ -58,6 +58,7 @@ export const usePayment = () => {
         conversionTxId: shared.conversionTxId,
         publicKey: shared.publicKey,
         payInvoice,
+        payWithCard: shared.payWithCard,
         payWithGiftCard: shared.payWithGiftCard,
         convertPublicToPrivate: shared.convertPublicToPrivate,
         handleConnect: shared.handleConnect,

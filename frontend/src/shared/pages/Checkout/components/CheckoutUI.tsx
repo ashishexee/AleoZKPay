@@ -320,7 +320,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             paymentMethod === 'card' ? 'bg-white/10 text-orange-300 shadow-md flex items-center justify-center gap-2' : 'text-gray-500 hover:text-white/80'
                                         }`}
                                     >
-                                        Card
+                                        NullPay Card
                                     </button>
                                     <button
                                         onClick={() => setPaymentMethod('giftcard')}
@@ -374,7 +374,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             The card key is decrypted in-memory on this device, used to generate the payment authorization locally, and never sent to NullPay.
                                         </p>
                                         <p className="text-xs text-orange-300/80 text-center">
-                                            No Shield connection needed. Card lookup uses the card number, while PIN and secret unlock the key locally on this device.
+                                            No Shield connection needed. Card lookup uses the card number, while PIN and secret unlock the key locally on this device before the relayer-backed payment flow begins.
                                         </p>
                                     </div>
                                 )}

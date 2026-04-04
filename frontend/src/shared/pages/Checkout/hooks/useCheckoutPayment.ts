@@ -10,7 +10,7 @@ import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, Network
 import { TokenCode } from '../../../utils/tokens';
 import { decryptCardPrivateKey } from '../../../utils/card-crypto';
 import { hashAddress } from '../../../utils/crypto';
-import { lookupCardWalletByNumberHash } from '../../../services/api';
+import { resolveCardLookupByHashHex } from '../../../utils/card-chain';
 
 // Convert Hex back to String
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
@@ -469,6 +469,60 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         }
     };
 
+    const finalizeSponsoredCheckout = async (transactionId: string, waitingMessage: string) => {
+        if (!session) {
+            throw new Error('Checkout session is missing.');
+        }
+
+        setTxId(transactionId);
+        setStatus(waitingMessage);
+
+        let isPending = true;
+        let attempts = 0;
+        while (isPending && attempts < 120) {
+            attempts += 1;
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            try {
+                const res = await fetch(`https://api.explorer.provable.com/v1/testnet/transaction/${transactionId}`);
+                if (res.ok) {
+                    isPending = false;
+                }
+            } catch {
+                // Keep polling until explorer sees the sponsored transaction.
+            }
+        }
+
+        if (isPending) {
+            throw new Error('Timed out waiting for transaction confirmation.');
+        }
+
+        const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+        await fetch(`${API_URL}/invoices/${session.invoice_hash}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'SETTLED', payment_tx_ids: [transactionId], session_id: session.id })
+        });
+        await fetch(`${API_URL}/checkout/sessions/${session.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'SETTLED', tx_id: transactionId })
+        });
+
+        setSuccess(true);
+        setStatus('Payment Successful! Redirecting...');
+        if (session.success_url) {
+            setTimeout(() => {
+                try {
+                    const url = new URL(session.success_url as string);
+                    url.searchParams.set('session_id', session.id);
+                    window.location.href = url.toString();
+                } catch {
+                    window.location.href = `${session.success_url as string}?session_id=${session.id}`;
+                }
+            }, 3000);
+        }
+    };
+
     const payWithCard = async (
         cardNumber: string,
         pin: string,
@@ -491,7 +545,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             }
 
             const cardNumberHash = await hashAddress(normalizedCardNumber);
-            const cardProfile = await lookupCardWalletByNumberHash(cardNumberHash);
+            const cardProfile = await resolveCardLookupByHashHex(cardNumberHash);
             if (!cardProfile) {
                 throw new Error('Card not found. Check the card number and try again.');
             }
@@ -614,32 +668,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             if (!sponsorRes.ok) throw new Error(response?.error || response?.message || 'Card payment sponsorship failed.');
 
             const transactionId = response.transaction?.id || response.transactionId || '';
-            setTxId(transactionId);
-            setStatus('Card payment submitted. Finalizing checkout...');
-
-            await fetch(`${API_URL}/invoices/${session.invoice_hash}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'SETTLED', payment_tx_ids: [transactionId], session_id: session.id })
-            });
-            await fetch(`${API_URL}/checkout/sessions/${session.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'SETTLED', tx_id: transactionId })
-            });
-
-            setSuccess(true);
-            if (session.success_url) {
-                setTimeout(() => {
-                    try {
-                        const url = new URL(session.success_url as string);
-                        url.searchParams.set('session_id', session.id);
-                        window.location.href = url.toString();
-                    } catch {
-                        window.location.href = `${session.success_url as string}?session_id=${session.id}`;
-                    }
-                }, 3000);
-            }
+            await finalizeSponsoredCheckout(transactionId, 'Card payment broadcasted. Waiting for final confirmation...');
         } catch (err: any) {
             if (handleWalletError(err)) return;
             console.error(err);
@@ -768,33 +797,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             if (!sponsorRes.ok) throw new Error(response?.error || response?.message || 'Payment sponsorship failed.');
 
             const transactionId = response.transaction?.id || response.transactionId || '';
-            setTxId(transactionId);
-            setStatus(`Transaction Broadcasted! Waiting for network...`);
-
-            // Same notification logic as useCheckoutPayment
-            await fetch(`${API_URL}/invoices/${session.invoice_hash}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'SETTLED', payment_tx_ids: [transactionId], session_id: session.id })
-            });
-            await fetch(`${API_URL}/checkout/sessions/${session.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'SETTLED', tx_id: transactionId })
-            });
-
-            setSuccess(true);
-            if (session.success_url) {
-                setTimeout(() => {
-                    try {
-                        const url = new URL(session.success_url as string);
-                        url.searchParams.set('session_id', session.id);
-                        window.location.href = url.toString();
-                    } catch (e) {
-                        window.location.href = session.success_url as string + `?session_id=${session.id}`;
-                    }
-                }, 3000);
-            }
+            await finalizeSponsoredCheckout(transactionId, 'Gift card payment broadcasted. Waiting for final confirmation...');
 
         } catch (err: any) {
             console.error(err);

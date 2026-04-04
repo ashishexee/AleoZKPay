@@ -10,6 +10,9 @@ import { createClient } from '@supabase/supabase-js';
 import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 import { getAllowedTokensForInvoice, getTokenTypeFromCode } from '../../utils/tokens';
+import { decryptCardPrivateKey } from '../../utils/card-crypto';
+import { hashAddress } from '../../utils/crypto';
+import { resolveCardLookupByHashHex } from '../../utils/card-chain';
 
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
 
@@ -699,6 +702,171 @@ export const useSharedPayment = () => {
         }
     };
 
+    const payWithCard = async (
+        cardNumber: string,
+        pin: string,
+        cardSecret: string,
+        selectedTokenOverride?: number
+    ) => {
+        if (!invoice) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+            setGiftCardRedeemOption(null);
+            setStatus('Looking up your NullPay card...');
+
+            const normalizedCardNumber = cardNumber.replace(/\D/g, '');
+            if (normalizedCardNumber.length !== 16) {
+                throw new Error('Enter a valid 16-digit card number.');
+            }
+
+            const cardNumberHash = await hashAddress(normalizedCardNumber);
+            const cardProfile = await resolveCardLookupByHashHex(cardNumberHash);
+
+            if (!cardProfile) {
+                throw new Error('Card not found. Check the card number and try again.');
+            }
+            if (cardProfile.card_status !== 'ACTIVE') {
+                throw new Error('This NullPay card is not active.');
+            }
+            if (!cardProfile.encrypted_card_private_key || !cardProfile.card_kdf_salt) {
+                throw new Error('This card is missing encrypted key material.');
+            }
+
+            setStatus('Unlocking your NullPay card locally...');
+
+            const kdfAlgorithm = cardProfile.card_kdf_algorithm === 'argon2id'
+                ? 'argon2id'
+                : 'pbkdf2-sha256';
+            const kdfParams = {
+                opslimit: Number((cardProfile.card_kdf_params as any)?.opslimit),
+                memlimit: Number((cardProfile.card_kdf_params as any)?.memlimit),
+                alg: Number((cardProfile.card_kdf_params as any)?.alg),
+                iterations: Number((cardProfile.card_kdf_params as any)?.iterations),
+                hash: (cardProfile.card_kdf_params as any)?.hash === 'SHA-256' ? 'SHA-256' : undefined,
+                version: Number((cardProfile.card_kdf_params as any)?.version || 1)
+            };
+
+            const pkStr = await decryptCardPrivateKey(
+                cardProfile.encrypted_card_private_key,
+                pin,
+                cardSecret,
+                cardProfile.card_kdf_salt,
+                kdfAlgorithm as any,
+                kdfParams as any
+            );
+            PrivateKey.from_string(pkStr);
+
+            const isDonationType = invoice.invoiceType === 2 || invoice.amount === 0;
+            const parsedDonation = Number(donationAmount) || 0;
+            const finalAmount = (isDonationType && parsedDonation > 0) ? parsedDonation : invoice.amount;
+            if (finalAmount <= 0) throw new Error('Amount must be greater than zero.');
+
+            const activeTokenType = resolveActiveTokenType(selectedTokenOverride);
+
+            let tokenProgram = 'credits.aleo';
+            let amountMicro = Math.round(finalAmount * 1_000_000);
+            let typeSuffix = 'u64';
+            let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
+
+            if (activeTokenType === 1) {
+                tokenProgram = 'test_usdcx_stablecoin.aleo';
+                typeSuffix = 'u128';
+                funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+            } else if (activeTokenType === 2) {
+                tokenProgram = 'test_usad_stablecoin.aleo';
+                typeSuffix = 'u128';
+                funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
+            }
+
+            setStatus('Scanning your NullPay card balance...');
+
+            const host = 'https://api.explorer.provable.com/v1';
+            const networkClient = new AleoNetworkClient(host);
+            const keyProvider = new AleoKeyProvider();
+            keyProvider.useCache(true);
+
+            const scannerSession = await getScannerSession(pkStr);
+            const recordProvider = new NetworkRecordProvider(scannerSession.account, networkClient);
+            const programManager = new ProgramManager(host, keyProvider, recordProvider);
+            programManager.setAccount(scannerSession.account);
+
+            const recordName = activeTokenType === 0 ? 'credits' : 'Token';
+            const payRecordStr = await findSpendableRecord(
+                scannerSession,
+                tokenProgram,
+                recordName,
+                amountMicro,
+                activeTokenType === 0
+            );
+
+            if (!payRecordStr) {
+                throw new Error('The card needs a single private record large enough for this payment.');
+            }
+
+            let proofsInput = undefined;
+            if (activeTokenType !== 0) {
+                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
+                await getFreezeListRoot();
+                await getFreezeListCount();
+                const firstIndex = await getFreezeListIndex(0);
+                const { Address } = await import('@provablehq/wasm');
+                let index0FieldStr = undefined;
+                if (firstIndex) {
+                    try { index0FieldStr = Address.from_string(firstIndex).toGroup().toXCoordinate().toString(); } catch { }
+                }
+                const proof = await generateFreezeListProof(1, index0FieldStr);
+                proofsInput = `[${proof}, ${proof}]`;
+            }
+
+            if (!invoice.merchant) {
+                throw new Error('Merchant address is missing from invoice details.');
+            }
+
+            const inputs = [
+                payRecordStr,
+                invoice.merchant,
+                `${amountMicro}${typeSuffix}`,
+                invoice.salt || '',
+                paymentSecret || '',
+                invoice.hash || ''
+            ];
+
+            if (proofsInput) inputs.push(proofsInput);
+
+            const authorization = await programManager.buildAuthorization({
+                programName: programId || PROGRAM_ID,
+                functionName: funcName,
+                inputs
+            });
+
+            setStatus('Submitting card payment via DPS Relayer...');
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+            const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    execution_authorization_string: authorization.toString(),
+                    programName: programId || PROGRAM_ID
+                }),
+            });
+            const response = await sponsorRes.json();
+            if (!sponsorRes.ok) throw new Error(response?.error || response?.message || 'Card payment sponsorship failed.');
+
+            const transactionId = response.transaction?.id || response.transactionId || '';
+            setTxId(transactionId);
+            setStatus('Card payment broadcasted. Waiting for final confirmation...');
+            pollTransaction(transactionId);
+        } catch (err: any) {
+            if (handleWalletError(err)) return;
+            console.error(err);
+            setError(err.message || 'An error occurred during card payment.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleConnect = async () => {
         if (!publicKey) return;
         setStep('PAY');
@@ -736,6 +904,7 @@ export const useSharedPayment = () => {
         pollTransaction,
         convertPublicToPrivate,
         handleConnect,
+        payWithCard,
         payWithGiftCard,
         redeemGiftCardBalance,
     };

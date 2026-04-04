@@ -25,8 +25,11 @@ const MobilePaymentPage = () => {
     const [customConvertAmount, setCustomConvertAmount] = useState<string>('');
     const [showConvertModal, setShowConvertModal] = useState(false);
     const [selectedToken, setSelectedToken] = useState<number>(0);
-    const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'giftcard'>('wallet');
+    const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card' | 'giftcard'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
+    const [cardNumber, setCardNumber] = useState<string>('');
+    const [cardPin, setCardPin] = useState<string>('');
+    const [cardSecret, setCardSecret] = useState<string>('');
 
     const {
         step,
@@ -37,6 +40,7 @@ const MobilePaymentPage = () => {
         txId,
         handleConnect,
         payInvoice,
+        payWithCard,
         payWithGiftCard,
         convertPublicToPrivate,
         programId,
@@ -72,6 +76,11 @@ const MobilePaymentPage = () => {
     const handleGiftCardPay = async () => {
         if (!giftCode) return;
         await payWithGiftCard(giftCode, invoice?.tokenType === 3 ? selectedToken : undefined);
+    };
+
+    const handleCardPay = async () => {
+        if (!cardNumber || !cardPin || !cardSecret) return;
+        await payWithCard(cardNumber, cardPin, cardSecret, invoice?.tokenType === 3 ? selectedToken : undefined);
     };
 
     const confirmConversion = async () => {
@@ -435,7 +444,7 @@ const MobilePaymentPage = () => {
                             </div>
                         ) : (
                             <>
-                                <div className="flex bg-black/40 p-1 rounded-xl mb-4 border border-white/5">
+                                <div className="grid grid-cols-3 bg-black/40 p-1 rounded-xl mb-4 border border-white/5 gap-1">
                                     <button
                                         onClick={() => setPaymentMethod('wallet')}
                                         className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
@@ -443,6 +452,14 @@ const MobilePaymentPage = () => {
                                         }`}
                                     >
                                         Wallet
+                                    </button>
+                                    <button
+                                        onClick={() => setPaymentMethod('card')}
+                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
+                                            paymentMethod === 'card' ? 'bg-white/10 text-orange-300 shadow-md' : 'text-gray-500 hover:text-white/80'
+                                        }`}
+                                    >
+                                        Card
                                     </button>
                                     <button
                                         onClick={() => setPaymentMethod('giftcard')}
@@ -474,6 +491,57 @@ const MobilePaymentPage = () => {
                                             variant="primary"
                                             onClick={handleGiftCardPay}
                                             disabled={isProcess || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
+                                            className="w-full text-lg h-14"
+                                            glow
+                                        >
+                                            {isProcess ? (
+                                                <span className="flex items-center gap-2">
+                                                    <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                                    Processing...
+                                                </span>
+                                            ) : (
+                                                `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`
+                                            )}
+                                        </Button>
+                                    </div>
+                                ) : paymentMethod === 'card' ? (
+                                    <div className="space-y-4 animate-fade-in">
+                                        <Input
+                                            label="Card Number"
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={cardNumber}
+                                            onChange={(e) => {
+                                                const digits = e.target.value.replace(/\D/g, '').slice(0, 16);
+                                                setCardNumber(digits.replace(/(.{4})/g, '$1 ').trim());
+                                            }}
+                                            placeholder="4123 4567 8910 1112"
+                                            className="text-center font-mono tracking-[0.2em] text-base h-12"
+                                        />
+                                        <Input
+                                            label="PIN"
+                                            type="password"
+                                            inputMode="numeric"
+                                            value={cardPin}
+                                            onChange={(e) => setCardPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            placeholder="6-digit PIN"
+                                            className="text-center tracking-[0.3em] text-base h-12"
+                                        />
+                                        <Input
+                                            label="Secret"
+                                            type="password"
+                                            value={cardSecret}
+                                            onChange={(e) => setCardSecret(e.target.value)}
+                                            placeholder="Longer card secret"
+                                            className="text-center text-base h-12"
+                                        />
+                                        <p className="text-[11px] text-gray-500 text-center">
+                                            Enter your PIN and secret to unlock the card locally, then NullPay uses the same relayer-backed payment flow as gift cards.
+                                        </p>
+                                        <Button
+                                            variant="primary"
+                                            onClick={handleCardPay}
+                                            disabled={isProcess || !cardNumber || !cardPin || !cardSecret || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
                                             className="w-full text-lg h-14"
                                             glow
                                         >

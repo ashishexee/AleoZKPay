@@ -3,6 +3,7 @@ import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '../../shared/utils/cn';
+import ProfileQrNavButton from './ProfileQrNavButton';
 
 const Navbar = () => {
     const location = useLocation();
@@ -20,7 +21,6 @@ const Navbar = () => {
         { path: '/explorer', label: 'Explorer' },
         { path: '/create', label: 'Create Invoice' },
         { path: '/profile', label: 'Dashboard' },
-        { path: '/profile-qr', label: 'Profile QR' },
         { 
             label: 'Cards',
             dropdown: [
@@ -155,6 +155,7 @@ const Navbar = () => {
                     <div className="wallet-adapter-wrapper transform hover:scale-105 transition-transform duration-300">
                         <WalletMultiButton className="!bg-white/[0.05] !backdrop-blur-[24px] !border !border-white/10 !rounded-full !py-3 !px-6 !h-auto !font-sans !font-semibold !text-sm !text-white hover:!bg-white/[0.1] hover:!border-white/20 transition-all shadow-[0_8px_32px_0_rgba(0,0,0,0.2)]" />
                     </div>
+                    {!isLanding && <ProfileQrNavButton />}
                 </div>
             </div>
         </motion.nav>

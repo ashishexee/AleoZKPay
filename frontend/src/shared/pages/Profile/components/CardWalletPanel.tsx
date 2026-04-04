@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUpRight, Copy, ExternalLink, Eye, EyeOff, Lock, ShieldCheck, Unlock, Wallet } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowUpRight, Copy, Eye, EyeOff, Lock, ShieldCheck, Unlock, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Shimmer } from '../../../components/ui/Shimmer';
@@ -36,6 +36,25 @@ const formatCardNumber = (cardNumber: string | null | undefined) =>
         .replace(/\D/g, '')
         .replace(/(.{4})/g, '$1 ')
         .trim();
+
+const CARD_SAFETY_NOTES = [
+    {
+        title: 'The database does not hold a spend-ready wallet',
+        body: 'NullPay stores encrypted card payloads and metadata, not a live wallet someone can immediately use. The full card number, card address, and card private key are all stored as ciphertext.'
+    },
+    {
+        title: 'Your PIN and secret are the real unlock layer',
+        body: 'The private key is encrypted with your 6-digit PIN and card secret before it ever leaves the browser. Those credentials are not stored in the database, so a database leak alone is not enough to unlock the card.'
+    },
+    {
+        title: 'Signing happens locally on your device',
+        body: 'Even when you pay with the card, decryption and signing happen inside your browser session after you enter the correct credentials. NullPay only receives the signed authorization or encrypted payloads needed to relay the transaction.'
+    },
+    {
+        title: 'Limits still reduce blast radius',
+        body: 'Each token on the card has its own balance cap, and increasing that cap requires a fresh approval from your main wallet. That means even if a card is actively unlocked, you still control how much value can sit on it.'
+    }
+];
 
 const Field = ({
     label,
@@ -92,7 +111,8 @@ const PrimaryAction = ({
     loading,
     loadingLabel,
     onClick,
-    type = 'button'
+    type = 'button',
+    disabled = false
 }: {
     icon: React.ComponentType<any>;
     label: string;
@@ -100,11 +120,12 @@ const PrimaryAction = ({
     loadingLabel?: string;
     onClick?: () => void;
     type?: 'button' | 'submit';
+    disabled?: boolean;
 }) => (
     <button
         type={type}
         onClick={onClick}
-        disabled={loading}
+        disabled={loading || disabled}
         className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white text-sm font-bold text-black px-4 py-3 transition-colors hover:bg-orange-50 disabled:opacity-60"
     >
         {loading ? (
@@ -128,12 +149,14 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
         isUnlocked,
         cardBalances,
         isRefreshingBalances,
+        isStatusChangePending,
         createCard,
         unlockCard,
         lockCard,
         refreshCardBalances,
         topUpCard,
-        requestCardLimitChange
+        requestCardLimitChange,
+        updateCardStatus
     } = useCardWallet();
 
     const [pin, setPin] = useState('');
@@ -143,7 +166,6 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
     const [selectedTopUpToken, setSelectedTopUpToken] = useState<CardTokenCode>('CREDITS');
     const [topUpAmount, setTopUpAmount] = useState('');
     const [isTopUpPending, setIsTopUpPending] = useState(false);
-    const [lastTopUpTxId, setLastTopUpTxId] = useState<string | null>(null);
     const [isUnlocking, setIsUnlocking] = useState(false);
     const [isInitializing, setIsInitializing] = useState(false);
     const [limitDrafts, setLimitDrafts] = useState<Record<CardTokenCode, string>>({
@@ -168,6 +190,8 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
     const maskedCardNumber = card?.card_last4 ? `**** **** **** ${card.card_last4}` : '**** **** **** ****';
     const fullCardNumber = formatCardNumber(card?.card_number);
     const cardAddress = card?.card_address || '';
+    const isCardFrozen = card?.card_status === 'FROZEN';
+    const statusLabel = isCardFrozen ? 'Frozen' : 'Active';
 
     const copyAddress = () => {
         if (!cardAddress) return;
@@ -210,7 +234,7 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
         setIsInitializing(true);
         try {
             await createCard(pin, secret, { label, hint });
-            toast.success('NullPay Card created');
+            toast.success('NullPay Card created and published on-chain');
             setLabel('');
             setHint('');
             setPin('');
@@ -224,6 +248,10 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
 
     const handleTopUp = async (event: React.FormEvent) => {
         event.preventDefault();
+        if (isCardFrozen) {
+            toast.error('This card is frozen. Unfreeze it before topping up.');
+            return;
+        }
         const amount = Number(topUpAmount);
         if (!amount || amount <= 0) {
             toast.error('Enter a valid amount');
@@ -232,14 +260,25 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
 
         try {
             setIsTopUpPending(true);
-            const txId = await topUpCard(selectedTopUpToken, amount, pin || undefined, secret || undefined);
-            setLastTopUpTxId(txId);
+            await topUpCard(selectedTopUpToken, amount, pin || undefined, secret || undefined);
             setTopUpAmount('');
             toast.success(`${selectedTopUpToken} top-up submitted.`);
         } catch (err: any) {
             toast.error(err.message || 'Top-up failed');
         } finally {
             setIsTopUpPending(false);
+        }
+    };
+
+    const handleStatusToggle = async () => {
+        if (!card) return;
+
+        const nextStatus = isCardFrozen ? 'ACTIVE' : 'FROZEN';
+        try {
+            await updateCardStatus(nextStatus);
+            toast.success(isCardFrozen ? 'Card unfrozen on-chain' : 'Card frozen on-chain');
+        } catch (err: any) {
+            toast.error(err.message || 'Status update failed');
         }
     };
 
@@ -294,7 +333,7 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                         <span className="mb-3 block text-[10px] font-bold uppercase tracking-widest text-orange-400">NullPay Card</span>
                         <h2 className="text-2xl font-bold tracking-tighter text-white">Create your dedicated private spending wallet</h2>
                         <p className="mt-3 max-w-xl text-sm leading-relaxed text-gray-400">
-                            The card key is generated in-browser, encrypted locally with your PIN and secret, and only decrypted in memory while you use it.
+                            The card key is generated in-browser, encrypted locally with your PIN and secret, then published on-chain before the dashboard unlocks.
                         </p>
                     </div>
 
@@ -317,7 +356,7 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                             <Field label="Card Secret" type="password" revealable value={secret} onChange={setSecret} placeholder="Recovery secret" />
                         </div>
                         <p className="text-xs leading-relaxed text-gray-500">
-                            Your hint should never contain the actual PIN or secret. NullPay stores ciphertext and card metadata only.
+                            Your hint should never contain the actual PIN or secret. NullPay waits for the on-chain card record to confirm before treating setup as complete.
                         </p>
                         <PrimaryAction
                             type="submit"
@@ -397,9 +436,23 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                 {card.card_label}
                             </div>
                         </div>
+
+                        <div className="mt-6 flex flex-wrap items-center gap-3">
+                            <div className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${isCardFrozen ? 'border-red-400/30 bg-red-500/10 text-red-200' : 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'}`}>
+                                {statusLabel}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleStatusToggle}
+                                disabled={isStatusChangePending}
+                                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-200 transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+                            >
+                                {isStatusChangePending ? 'Updating...' : isCardFrozen ? 'Unfreeze Card' : 'Freeze Card'}
+                            </button>
+                        </div>
                     </div>
                     <p className="mt-6 text-sm leading-relaxed text-gray-500">
-                        Unlock this card with its PIN and secret to scan private balances and use the wallet locally.
+                        Unlock this card with its PIN and secret to scan private balances and use the wallet locally. If the card is locked, freeze and unfreeze will use your connected main wallet.
                     </p>
                 </GlassCard>
 
@@ -469,12 +522,26 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                     {fullCardNumber || maskedCardNumber}
                                 </div>
 
-                                <div className="mt-8">
-                                    <div>
+                                <div className="mt-8 flex flex-col gap-5 border-t border-white/10 pt-6 lg:flex-row lg:items-end lg:justify-between">
+                                    <div className="min-w-[180px]">
                                         <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/35">Card Label</div>
                                         <div className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] text-orange-300">
                                             {card.card_label}
                                         </div>
+                                    </div>
+
+                                    <div className="grid flex-1 grid-cols-3 gap-6">
+                                        {TOKEN_OPTIONS.map((token) => (
+                                            <div
+                                                key={token.code}
+                                                className="min-w-0"
+                                            >
+                                                <div className={`text-[9px] font-bold uppercase tracking-[0.2em] ${token.tint}`}>{token.label}</div>
+                                                <div className="mt-2 text-xl font-black tracking-tighter text-white">
+                                                    {isRefreshingBalances ? <Shimmer className="h-6 w-10 rounded-md bg-white/5" /> : formatAmount(balances[token.key])}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
@@ -498,215 +565,206 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                     <span className={`h-2 w-2 rounded-full ${isRefreshingBalances ? 'bg-orange-400 animate-pulse' : 'bg-emerald-400'}`} />
                                     {isRefreshingBalances ? 'Scanning Records' : 'Ready'}
                                 </div>
+                                <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] ${isCardFrozen ? 'border-red-400/30 bg-red-500/10 text-red-200' : 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'}`}>
+                                    {statusLabel}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleStatusToggle}
+                                    disabled={isStatusChangePending}
+                                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-200 transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+                                >
+                                    {isStatusChangePending ? 'Updating...' : isCardFrozen ? 'Unfreeze Card' : 'Freeze Card'}
+                                </button>
                             </div>
                         </div>
-                    </div>
-
-                    <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3 xl:max-w-[760px]">
-                        {TOKEN_OPTIONS.map((token) => (
-                            <div
-                                key={token.code}
-                                className="rounded-3xl border border-white/10 bg-white/[0.03] px-5 py-5 transition-all hover:border-white/15 hover:bg-white/[0.05]"
-                            >
-                                <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${token.tint}`}>{token.label}</div>
-                                <div className="mt-4 text-3xl font-black tracking-tighter text-white">
-                                    {isRefreshingBalances ? <Shimmer className="h-8 w-14 rounded-md bg-white/5" /> : formatAmount(balances[token.key])}
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </GlassCard>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
-                    <GlassCard className="p-6 hover:border-white/20">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-400">Limit Controls</span>
-                                <h3 className="mt-3 text-xl font-bold tracking-tighter text-white">Adjust per-token balance caps</h3>
-                            </div>
-                            <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">
-                                Main Wallet Approval
-                            </div>
+                <div className="grid grid-cols-1 gap-4">
+                    <GlassCard className="p-6">
+                        <span className="mb-3 block text-[10px] font-bold uppercase tracking-widest text-gray-400">Add Balance</span>
+                        <h3 className="text-xl font-bold tracking-tighter text-gradient-gold drop-shadow-gold">Top up one token at a time</h3>
+                        <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                            {isCardFrozen
+                                ? 'This card is frozen on-chain, so top-ups are disabled until you unfreeze it.'
+                                : 'Move only what you need onto the card and keep everyday spending separated by token.'}
+                        </p>
+
+                        <div className="mt-6 grid grid-cols-3 gap-3">
+                            {TOKEN_OPTIONS.map((token) => (
+                                <button
+                                    key={token.code}
+                                    type="button"
+                                    onClick={() => setSelectedTopUpToken(token.code)}
+                                    disabled={isCardFrozen}
+                                    className={`rounded-2xl border px-3 py-3 text-left transition-colors ${selectedTopUpToken === token.code
+                                            ? 'border-white/20 bg-white/10'
+                                            : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]'
+                                        } ${isCardFrozen ? 'opacity-60' : ''}`}
+                                >
+                                    <div className={`text-[10px] font-bold uppercase tracking-widest ${token.tint}`}>{token.label}</div>
+                                    <div className="mt-2 text-lg font-bold tracking-tighter text-white">
+                                        {isRefreshingBalances ? <Shimmer className="h-6 w-10 rounded-md bg-white/5" /> : formatAmount(balances[token.key])}
+                                    </div>
+                                </button>
+                            ))}
                         </div>
 
-                        <div className="mt-6 space-y-4">
-                            {TOKEN_OPTIONS.map((token) => {
-                                const capValue = balanceCaps[token.key];
-                                const isSaving = limitSavingToken === token.code;
-                                return (
-                                    <div
-                                        key={token.code}
-                                        className="rounded-3xl border border-white/10 bg-white/[0.03] p-5"
-                                    >
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div>
-                                                <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${token.tint}`}>{token.label}</div>
-                                                <div className="mt-3 text-3xl font-black tracking-tighter text-white">
-                                                    {formatCap(capValue)}
-                                                </div>
-                                                <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
-                                                    Current Balance Cap
-                                                </div>
-                                            </div>
-                                            <div className="min-w-[120px] rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-right">
-                                                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Current Balance</div>
-                                                <div className="mt-2 text-xl font-bold text-white">
-                                                    {isRefreshingBalances ? <Shimmer className="ml-auto h-7 w-12 rounded-md bg-white/5" /> : formatAmount(balances[token.key])}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                                            <input
-                                                type="number"
-                                                value={limitDrafts[token.code]}
-                                                onChange={(event) => handleLimitDraftChange(token.code, event.target.value)}
-                                                placeholder={`Set new ${token.label} cap`}
-                                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-white/20 focus:outline-none"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => handleLimitSave(token.code)}
-                                                disabled={isSaving}
-                                                className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white px-5 py-3 text-sm font-bold text-black transition-colors hover:bg-orange-50 disabled:opacity-60"
-                                            >
-                                                {isSaving ? 'Requesting...' : 'Update Cap'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </GlassCard>
-
-                    <GlassCard className="p-6 hover:border-white/20">
-                        <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-400">Protection</span>
-                        <div className="mt-6 space-y-4">
-                            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-3 text-orange-300">
-                                        <ShieldCheck className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-white">Non-custodial key handling</div>
-                                        <p className="mt-1 text-sm leading-relaxed text-gray-500">
-                                            NullPay stores encrypted payloads only. Unlock and signing happen locally in your browser session.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
-                                <div className="text-sm font-bold text-white">Cap changes require approval</div>
-                                <p className="mt-1 text-sm leading-relaxed text-gray-500">
-                                    Every token cap change goes through a fresh main-wallet signature, so increasing limits stays intentional.
+                        <form onSubmit={handleTopUp} className="mt-6 space-y-4">
+                            <Field
+                                label={`${TOKEN_OPTIONS.find((token) => token.code === selectedTopUpToken)?.label || 'Token'} Amount`}
+                                value={topUpAmount}
+                                onChange={setTopUpAmount}
+                                type="number"
+                                placeholder="0.00"
+                            />
+                            <PrimaryAction
+                                type="submit"
+                                icon={ArrowUpRight}
+                                label={`Top Up ${TOKEN_OPTIONS.find((token) => token.code === selectedTopUpToken)?.label}`}
+                                loading={isTopUpPending}
+                                loadingLabel="Submitting"
+                                disabled={isCardFrozen}
+                            />
+                            {isCardFrozen && (
+                                <p className="text-xs leading-relaxed text-red-200/80">
+                                    On-chain freeze is active, so new funds cannot be moved onto this card until it is unfrozen.
                                 </p>
-                            </div>
-
-                            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
-                                <div className="text-sm font-bold text-white">Best practice</div>
-                                <p className="mt-1 text-sm leading-relaxed text-gray-500">
-                                    Keep only day-to-day spending amounts on the card and raise caps when you actually need more room.
-                                </p>
-                            </div>
-                        </div>
+                            )}
+                        </form>
                     </GlassCard>
                 </div>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                <GlassCard className="p-6">
-                    <span className="mb-3 block text-[10px] font-bold uppercase tracking-widest text-gray-400">Add Balance</span>
-                    <h3 className="text-xl font-bold tracking-tighter text-white">Top up one token at a time</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                        Use the same private wallet flow as the rest of the dashboard and fund this card with only what you need.
-                    </p>
-
-                    <div className="mt-6 grid grid-cols-3 gap-3">
-                        {TOKEN_OPTIONS.map((token) => (
-                            <button
-                                key={token.code}
-                                type="button"
-                                onClick={() => setSelectedTopUpToken(token.code)}
-                                className={`rounded-2xl border px-3 py-3 text-left transition-colors ${selectedTopUpToken === token.code
-                                        ? 'border-white/20 bg-white/10'
-                                        : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]'
-                                    }`}
-                            >
-                                <div className={`text-[10px] font-bold uppercase tracking-widest ${token.tint}`}>{token.label}</div>
-                                <div className="mt-2 text-lg font-bold tracking-tighter text-white">
-                                    {isRefreshingBalances ? <Shimmer className="h-6 w-10 rounded-md bg-white/5" /> : formatAmount(balances[token.key])}
-                                </div>
-                            </button>
-                        ))}
+            <motion.div variants={itemVariants}>
+                <GlassCard className="p-6 hover:border-white/20">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                        <div>
+                            <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-400">Limit Controls</span>
+                            <h3 className="mt-3 text-xl font-bold tracking-tighter text-gradient-gold drop-shadow-gold">Adjust per-token balance caps</h3>
+                            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-500">
+                                Keep all three token caps visible in one place and raise them only when you actually need more room on the card.
+                            </p>
+                        </div>
+                        <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">
+                            Main Wallet Approval
+                        </div>
                     </div>
 
-                    <form onSubmit={handleTopUp} className="mt-6 space-y-4">
-                        <Field
-                            label={`${TOKEN_OPTIONS.find((token) => token.code === selectedTopUpToken)?.label || 'Token'} Amount`}
-                            value={topUpAmount}
-                            onChange={setTopUpAmount}
-                            type="number"
-                            placeholder="0.00"
-                        />
-                        <PrimaryAction
-                            type="submit"
-                            icon={ArrowUpRight}
-                            label={`Top Up ${TOKEN_OPTIONS.find((token) => token.code === selectedTopUpToken)?.label}`}
-                            loading={isTopUpPending}
-                            loadingLabel="Submitting"
-                        />
-                    </form>
-                </GlassCard>
+                    <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                        {TOKEN_OPTIONS.map((token) => {
+                            const capValue = balanceCaps[token.key];
+                            const isSaving = limitSavingToken === token.code;
+                            return (
+                                <div
+                                    key={token.code}
+                                    className="rounded-3xl border border-white/10 bg-white/[0.03] p-5"
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${token.tint}`}>{token.label}</div>
+                                            <div className="mt-3 text-3xl font-black tracking-tighter text-white">
+                                                {formatCap(capValue)}
+                                            </div>
+                                            <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
+                                                Current Balance Cap
+                                            </div>
+                                        </div>
+                                        <div className="min-w-[118px] rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-right">
+                                            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">Current Balance</div>
+                                            <div className="mt-2 text-xl font-bold text-white">
+                                                {isRefreshingBalances ? <Shimmer className="ml-auto h-7 w-12 rounded-md bg-white/5" /> : formatAmount(balances[token.key])}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                <GlassCard className="p-6">
-                    <span className="mb-3 block text-[10px] font-bold uppercase tracking-widest text-gray-400">Card Summary</span>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                            <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500">Card Label</span>
-                            <div className="mt-3 text-xl font-bold tracking-tighter text-white">{card.card_label}</div>
-                        </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                            <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500">Card Number</span>
-                            <div className="mt-3 font-mono text-sm font-semibold tracking-[0.22em] text-white">
-                                {fullCardNumber || maskedCardNumber}
+                                    <div className="mt-5 flex flex-col gap-3">
+                                        <input
+                                            type="number"
+                                            value={limitDrafts[token.code]}
+                                            onChange={(event) => handleLimitDraftChange(token.code, event.target.value)}
+                                            placeholder={`Set new ${token.label} cap`}
+                                            className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-white/20 focus:outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleLimitSave(token.code)}
+                                            disabled={isSaving}
+                                            className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white px-5 py-3 text-sm font-bold text-black transition-colors hover:bg-orange-50 disabled:opacity-60"
+                                        >
+                                            {isSaving ? 'Requesting...' : 'Update Cap'}
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </GlassCard>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+                <GlassCard className="overflow-hidden p-0">
+                    <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.16),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] px-6 py-6">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="max-w-3xl">
+                                <span className="block text-[10px] font-bold uppercase tracking-widest text-orange-400">Why Funds Stay Safe</span>
+                                <h3 className="mt-3 text-2xl font-bold tracking-tighter text-white">
+                                    A database compromise alone is not enough to misuse this card
+                                </h3>
+                                <p className="mt-3 text-sm leading-relaxed text-gray-400">
+                                    This card is designed so the database is a <span className="text-orange-200/90">storage layer</span>, not a custody layer.
+                                    If someone only gets database access, they still do not get your <span className="text-orange-200/90">plain private key</span>,
+                                    your <span className="text-orange-200/90">PIN</span>, your <span className="text-orange-200/90">card secret</span>, or a
+                                    <span className="text-orange-200/90"> ready-to-broadcast wallet</span>.
+                                </p>
+                            </div>
+
+                            <div className="rounded-3xl border border-orange-400/20 bg-orange-500/10 px-5 py-4 text-sm leading-relaxed text-orange-100/90 lg:max-w-sm">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-orange-300">The key idea</div>
+                                <div className="mt-2 text-base font-semibold text-white">
+                                    database access is not the same as spending access
+                                </div>
                             </div>
                         </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                            <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500">Hint</span>
-                            <div className="mt-3 text-sm font-semibold text-white">{card.card_hint || 'No hint added'}</div>
+                    </div>
+
+                    <div className="px-6 py-6">
+                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                            {CARD_SAFETY_NOTES.map((note, index) => (
+                                <div
+                                    key={note.title}
+                                    className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5"
+                                >
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-orange-400/20 bg-orange-500/10 text-orange-300">
+                                            <ShieldCheck className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300/80">
+                                                Layer {index + 1}
+                                            </div>
+                                            <div className="mt-2 text-base font-bold tracking-tight text-white">
+                                                {note.title}
+                                            </div>
+                                            <p className="mt-2 text-sm leading-relaxed text-gray-500">
+                                                {note.body}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:col-span-2">
-                            <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500">Latest Top-Up</span>
-                            <div className="mt-3">
-                                <AnimatePresence mode="wait">
-                                    {lastTopUpTxId ? (
-                                        <motion.a
-                                            key="tx"
-                                            initial={{ opacity: 0, y: 4 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -4 }}
-                                            href={`https://testnet.explorer.provable.com/transaction/${lastTopUpTxId}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center gap-2 text-sm font-mono text-orange-300 hover:text-orange-200"
-                                        >
-                                            <ExternalLink className="h-4 w-4" />
-                                            <span>{lastTopUpTxId.slice(0, 30)}...</span>
-                                        </motion.a>
-                                    ) : (
-                                        <motion.div
-                                            key="empty"
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            className="text-sm text-gray-500"
-                                        >
-                                            No top-up submitted in this session yet.
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+
+                        <div className="mt-6 rounded-[28px] border border-white/10 bg-white/[0.03] px-5 py-5">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300/80">Important Note</div>
+                            <p className="mt-3 max-w-4xl text-sm leading-relaxed text-gray-400">
+                                This protects you against a <span className="text-orange-200/90">database-only compromise</span>, not against everything.
+                                If someone gets your <span className="text-orange-200/90">PIN</span>, your <span className="text-orange-200/90">card secret</span>,
+                                and access to your unlocked device or session, they could still act as you. The safest setup is to keep only
+                                <span className="text-orange-200/90"> day-to-day spending balances</span> on the card, keep the secret offline, and raise
+                                caps only when you actually need them.
+                            </p>
                         </div>
                     </div>
                 </GlassCard>

@@ -2,7 +2,7 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v22.aleo {
+program zk_pay_proofs_privacy_v23.aleo {
     
     @admin(address="aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge")
     async constructor() {
@@ -62,11 +62,77 @@ program zk_pay_proofs_privacy_v22.aleo {
         pk_part_10: field
     }
 
+    struct CardLookupData {
+        main_owner: address,
+        card_address: address,
+        card_status: u8,
+        profile_version: u8,
+        card_kdf_algorithm: u8,
+        card_kdf_iterations: u32,
+        card_kdf_opslimit: u64,
+        card_kdf_memlimit: u64,
+        card_kdf_alg: u8,
+        card_kdf_hash: u8,
+        card_kdf_version: u8,
+        encrypted_card_private_key_1: field,
+        encrypted_card_private_key_2: field,
+        encrypted_card_private_key_3: field,
+        encrypted_card_private_key_4: field,
+        encrypted_card_private_key_5: field,
+        encrypted_card_private_key_6: field,
+        encrypted_card_private_key_7: field,
+        encrypted_card_private_key_8: field,
+        card_kdf_salt_1: field,
+        card_kdf_salt_2: field,
+        card_kdf_salt_3: field
+    }
+
+    record CardProfileRecord {
+        owner: address,
+        card_number_hash: field,
+        profile_version: u8,
+        encrypted_card_number_1: field,
+        encrypted_card_number_2: field,
+        encrypted_card_number_3: field,
+        encrypted_card_number_4: field,
+        encrypted_card_number_5: field,
+        encrypted_card_number_6: field,
+        encrypted_card_address_1: field,
+        encrypted_card_address_2: field,
+        encrypted_card_address_3: field,
+        encrypted_card_address_4: field,
+        encrypted_card_address_5: field,
+        encrypted_card_address_6: field,
+        encrypted_card_address_7: field,
+        encrypted_card_address_8: field,
+        encrypted_card_address_9: field,
+        encrypted_card_address_10: field,
+        encrypted_label_1: field,
+        encrypted_label_2: field,
+        encrypted_label_3: field,
+        encrypted_label_4: field,
+        encrypted_label_5: field,
+        encrypted_label_6: field,
+        encrypted_label_7: field,
+        encrypted_label_8: field,
+        encrypted_label_9: field,
+        encrypted_label_10: field,
+        encrypted_hint_1: field,
+        encrypted_hint_2: field,
+        encrypted_hint_3: field,
+        encrypted_hint_4: field,
+        encrypted_hint_5: field,
+        encrypted_hint_6: field,
+        encrypted_hint_7: field,
+        encrypted_hint_8: field
+    }
+
     mapping invoices: field => InvoiceData;
     mapping salt_to_invoice: field => field;
+    mapping card_lookup: field => CardLookupData;
 
     // Transition to permanently backup ONLY the password on-chain
-    transition backup_password(
+    fn backup_password(
         private password_part: field
     ) -> BurnerWalletRecord {
         return BurnerWalletRecord {
@@ -87,7 +153,7 @@ program zk_pay_proofs_privacy_v22.aleo {
     }
 
     // Transition to permanently backup encrypted Burner Wallet credentials on-chain
-    transition backup_burner_wallet(
+    fn backup_burner_wallet(
         private burner_address: address,
         private password_part: field,
         private pk_part_1: field,
@@ -118,7 +184,232 @@ program zk_pay_proofs_privacy_v22.aleo {
         };
     }
 
-    async transition create_invoice(
+    fn create_card_profile(
+        private card_address: address,
+        public card_number_hash: field,
+        public profile_version: u8,
+        public card_kdf_algorithm: u8,
+        public card_kdf_iterations: u32,
+        public card_kdf_opslimit: u64,
+        public card_kdf_memlimit: u64,
+        public card_kdf_alg: u8,
+        public card_kdf_hash: u8,
+        public card_kdf_version: u8,
+        private encrypted_card_private_key_1: field,
+        private encrypted_card_private_key_2: field,
+        private encrypted_card_private_key_3: field,
+        private encrypted_card_private_key_4: field,
+        private encrypted_card_private_key_5: field,
+        private encrypted_card_private_key_6: field,
+        private encrypted_card_private_key_7: field,
+        private encrypted_card_private_key_8: field,
+        private card_kdf_salt_1: field,
+        private card_kdf_salt_2: field,
+        private card_kdf_salt_3: field,
+        private encrypted_card_number_1: field,
+        private encrypted_card_number_2: field,
+        private encrypted_card_number_3: field,
+        private encrypted_card_number_4: field,
+        private encrypted_card_number_5: field,
+        private encrypted_card_number_6: field,
+        private encrypted_card_address_1: field,
+        private encrypted_card_address_2: field,
+        private encrypted_card_address_3: field,
+        private encrypted_card_address_4: field,
+        private encrypted_card_address_5: field,
+        private encrypted_card_address_6: field,
+        private encrypted_card_address_7: field,
+        private encrypted_card_address_8: field,
+        private encrypted_card_address_9: field,
+        private encrypted_card_address_10: field,
+        private encrypted_label_1: field,
+        private encrypted_label_2: field,
+        private encrypted_label_3: field,
+        private encrypted_label_4: field,
+        private encrypted_label_5: field,
+        private encrypted_label_6: field,
+        private encrypted_label_7: field,
+        private encrypted_label_8: field,
+        private encrypted_label_9: field,
+        private encrypted_label_10: field,
+        private encrypted_hint_1: field,
+        private encrypted_hint_2: field,
+        private encrypted_hint_3: field,
+        private encrypted_hint_4: field,
+        private encrypted_hint_5: field,
+        private encrypted_hint_6: field,
+        private encrypted_hint_7: field,
+        private encrypted_hint_8: field
+    ) -> (CardProfileRecord, Final) {
+        let card_profile_record: CardProfileRecord = CardProfileRecord {
+            owner: self.caller,
+            card_number_hash: card_number_hash,
+            profile_version: profile_version,
+            encrypted_card_number_1: encrypted_card_number_1,
+            encrypted_card_number_2: encrypted_card_number_2,
+            encrypted_card_number_3: encrypted_card_number_3,
+            encrypted_card_number_4: encrypted_card_number_4,
+            encrypted_card_number_5: encrypted_card_number_5,
+            encrypted_card_number_6: encrypted_card_number_6,
+            encrypted_card_address_1: encrypted_card_address_1,
+            encrypted_card_address_2: encrypted_card_address_2,
+            encrypted_card_address_3: encrypted_card_address_3,
+            encrypted_card_address_4: encrypted_card_address_4,
+            encrypted_card_address_5: encrypted_card_address_5,
+            encrypted_card_address_6: encrypted_card_address_6,
+            encrypted_card_address_7: encrypted_card_address_7,
+            encrypted_card_address_8: encrypted_card_address_8,
+            encrypted_card_address_9: encrypted_card_address_9,
+            encrypted_card_address_10: encrypted_card_address_10,
+            encrypted_label_1: encrypted_label_1,
+            encrypted_label_2: encrypted_label_2,
+            encrypted_label_3: encrypted_label_3,
+            encrypted_label_4: encrypted_label_4,
+            encrypted_label_5: encrypted_label_5,
+            encrypted_label_6: encrypted_label_6,
+            encrypted_label_7: encrypted_label_7,
+            encrypted_label_8: encrypted_label_8,
+            encrypted_label_9: encrypted_label_9,
+            encrypted_label_10: encrypted_label_10,
+            encrypted_hint_1: encrypted_hint_1,
+            encrypted_hint_2: encrypted_hint_2,
+            encrypted_hint_3: encrypted_hint_3,
+            encrypted_hint_4: encrypted_hint_4,
+            encrypted_hint_5: encrypted_hint_5,
+            encrypted_hint_6: encrypted_hint_6,
+            encrypted_hint_7: encrypted_hint_7,
+            encrypted_hint_8: encrypted_hint_8
+        };
+
+        return (
+            card_profile_record,
+            finalize_create_card_profile(
+                card_number_hash,
+                card_address,
+                profile_version,
+                card_kdf_algorithm,
+                card_kdf_iterations,
+                card_kdf_opslimit,
+                card_kdf_memlimit,
+                card_kdf_alg,
+                card_kdf_hash,
+                card_kdf_version,
+                encrypted_card_private_key_1,
+                encrypted_card_private_key_2,
+                encrypted_card_private_key_3,
+                encrypted_card_private_key_4,
+                encrypted_card_private_key_5,
+                encrypted_card_private_key_6,
+                encrypted_card_private_key_7,
+                encrypted_card_private_key_8,
+                card_kdf_salt_1,
+                card_kdf_salt_2,
+                card_kdf_salt_3
+            )
+        );
+    }
+
+    fn finalize_create_card_profile(
+        card_number_hash: field,
+        card_address: address,
+        profile_version: u8,
+        card_kdf_algorithm: u8,
+        card_kdf_iterations: u32,
+        card_kdf_opslimit: u64,
+        card_kdf_memlimit: u64,
+        card_kdf_alg: u8,
+        card_kdf_hash: u8,
+        card_kdf_version: u8,
+        encrypted_card_private_key_1: field,
+        encrypted_card_private_key_2: field,
+        encrypted_card_private_key_3: field,
+        encrypted_card_private_key_4: field,
+        encrypted_card_private_key_5: field,
+        encrypted_card_private_key_6: field,
+        encrypted_card_private_key_7: field,
+        encrypted_card_private_key_8: field,
+        card_kdf_salt_1: field,
+        card_kdf_salt_2: field,
+        card_kdf_salt_3: field
+    ) {
+        let lookup_data: CardLookupData = CardLookupData {
+            main_owner: self.caller,
+            card_address: card_address,
+            card_status: 0u8,
+            profile_version: profile_version,
+            card_kdf_algorithm: card_kdf_algorithm,
+            card_kdf_iterations: card_kdf_iterations,
+            card_kdf_opslimit: card_kdf_opslimit,
+            card_kdf_memlimit: card_kdf_memlimit,
+            card_kdf_alg: card_kdf_alg,
+            card_kdf_hash: card_kdf_hash,
+            card_kdf_version: card_kdf_version,
+            encrypted_card_private_key_1: encrypted_card_private_key_1,
+            encrypted_card_private_key_2: encrypted_card_private_key_2,
+            encrypted_card_private_key_3: encrypted_card_private_key_3,
+            encrypted_card_private_key_4: encrypted_card_private_key_4,
+            encrypted_card_private_key_5: encrypted_card_private_key_5,
+            encrypted_card_private_key_6: encrypted_card_private_key_6,
+            encrypted_card_private_key_7: encrypted_card_private_key_7,
+            encrypted_card_private_key_8: encrypted_card_private_key_8,
+            card_kdf_salt_1: card_kdf_salt_1,
+            card_kdf_salt_2: card_kdf_salt_2,
+            card_kdf_salt_3: card_kdf_salt_3
+        };
+
+        card_lookup.set(card_number_hash, lookup_data);
+    }
+
+    fn set_card_status(
+        public card_number_hash: field,
+        public next_status: u8
+    ) -> Final {
+        return finalize_set_card_status(card_number_hash, next_status);
+    }
+
+    fn finalize_set_card_status(
+        card_number_hash: field,
+        next_status: u8
+    ) {
+        if next_status != 0u8 {
+            assert_eq(next_status, 1u8);
+        }
+
+        let current_lookup: CardLookupData = card_lookup.get(card_number_hash);
+
+        if self.caller != current_lookup.main_owner {
+            assert_eq(self.caller, current_lookup.card_address);
+        }
+
+        let updated_lookup: CardLookupData = CardLookupData {
+            main_owner: current_lookup.main_owner,
+            card_address: current_lookup.card_address,
+            card_status: next_status,
+            profile_version: current_lookup.profile_version,
+            card_kdf_algorithm: current_lookup.card_kdf_algorithm,
+            card_kdf_iterations: current_lookup.card_kdf_iterations,
+            card_kdf_opslimit: current_lookup.card_kdf_opslimit,
+            card_kdf_memlimit: current_lookup.card_kdf_memlimit,
+            card_kdf_alg: current_lookup.card_kdf_alg,
+            card_kdf_hash: current_lookup.card_kdf_hash,
+            card_kdf_version: current_lookup.card_kdf_version,
+            encrypted_card_private_key_1: current_lookup.encrypted_card_private_key_1,
+            encrypted_card_private_key_2: current_lookup.encrypted_card_private_key_2,
+            encrypted_card_private_key_3: current_lookup.encrypted_card_private_key_3,
+            encrypted_card_private_key_4: current_lookup.encrypted_card_private_key_4,
+            encrypted_card_private_key_5: current_lookup.encrypted_card_private_key_5,
+            encrypted_card_private_key_6: current_lookup.encrypted_card_private_key_6,
+            encrypted_card_private_key_7: current_lookup.encrypted_card_private_key_7,
+            encrypted_card_private_key_8: current_lookup.encrypted_card_private_key_8,
+            card_kdf_salt_1: current_lookup.card_kdf_salt_1,
+            card_kdf_salt_2: current_lookup.card_kdf_salt_2,
+            card_kdf_salt_3: current_lookup.card_kdf_salt_3
+        };
+
+        card_lookup.set(card_number_hash, updated_lookup);
+    }
+
+    fn create_invoice(
         private merchant: address,
         private amount: u64,
         private salt: field,
@@ -126,7 +417,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         public expiry_hours: u32,
         public invoice_type: u8,
         public wallet_type: u8
-    ) -> (Invoice, public field, Future) {
+    ) -> (Invoice, public field, Final) {
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
 
@@ -151,7 +442,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 0u8, wallet_type));
     }
 
-    async transition create_invoice_usdcx(
+    fn create_invoice_usdcx(
         private merchant: address,
         private amount: u128,
         private salt: field,
@@ -159,7 +450,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         public expiry_hours: u32,
         public invoice_type: u8,
         public wallet_type: u8
-    ) -> (Invoice, public field, Future) {
+    ) -> (Invoice, public field, Final) {
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
 
@@ -193,7 +484,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 1u8, wallet_type));
     }
 
-    async transition create_invoice_usad(
+    fn create_invoice_usad(
         private merchant: address,
         private amount: u128,
         private salt: field,
@@ -201,7 +492,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         public expiry_hours: u32,
         public invoice_type: u8,
         public wallet_type: u8
-    ) -> (Invoice, public field, Future) {
+    ) -> (Invoice, public field, Final) {
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
 
@@ -228,7 +519,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 2u8, wallet_type));
     }
 
-    async transition create_invoice_any(
+    fn create_invoice_any(
         private merchant: address,
         private amount: u128,
         private salt: field,
@@ -236,7 +527,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         public expiry_hours: u32,
         public invoice_type: u8,
         public wallet_type: u8
-    ) -> (Invoice, public field, Future) {
+    ) -> (Invoice, public field, Final) {
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
 
@@ -263,7 +554,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         return (invoice_record, invoice_hash, finalize_create_invoice(invoice_hash, expiry_hours, salt, invoice_type, 3u8, wallet_type));
     }
 
-    async function finalize_create_invoice(
+    fn finalize_create_invoice(
         invoice_hash: field,
         expiry_hours: u32,
         salt: field,
@@ -287,16 +578,16 @@ program zk_pay_proofs_privacy_v22.aleo {
         salt_to_invoice.set(salt, invoice_hash);
     }
 
-    async transition pay_donation(
-        pay_record: credits.aleo/credits,
+    fn pay_donation(
+        pay_record: credits.aleo::credits,
         merchant: address,
         amount_to_donate: u64,
         salt: field,
         private payment_secret: field,
         public message: field
-    ) -> (credits.aleo/credits, credits.aleo/credits, PayerReceipt, MerchantReceipt, Future) {
-        let (r1, r2): (credits.aleo/credits, credits.aleo/credits) = 
-            credits.aleo/transfer_private(pay_record, merchant, amount_to_donate);
+    ) -> (credits.aleo::credits, credits.aleo::credits, PayerReceipt, MerchantReceipt, Final) {
+        let (r1, r2): (credits.aleo::credits, credits.aleo::credits) = 
+            credits.aleo::transfer_private(pay_record, merchant, amount_to_donate);
         
         let merchant_field: field = merchant as field; 
         
@@ -334,11 +625,11 @@ program zk_pay_proofs_privacy_v22.aleo {
         };
 
         // Pass 0u8 as expected_token_type for Credits
-        let f0: Future = finalize_pay_donation(invoice_hash, salt, 0u8);
+        let f0: Final = finalize_pay_donation(invoice_hash, salt, 0u8);
         return (r1, r2, payer_receipt, merchant_receipt, f0);
     }
 
-    async function finalize_pay_donation(
+    fn finalize_pay_donation(
         invoice_hash: field,
         salt: field,
         expected_token_type: u8
@@ -366,16 +657,16 @@ program zk_pay_proofs_privacy_v22.aleo {
         // or we can treat them same as Multi-Pay (no status change to 1).
     }
 
-    async transition pay_invoice(
-        pay_record: credits.aleo/credits,
+    fn pay_invoice(
+        pay_record: credits.aleo::credits,
         merchant: address,
         amount: u64,
         salt: field,
         private payment_secret: field,
         public message: field
-    ) -> (credits.aleo/credits, credits.aleo/credits, PayerReceipt, MerchantReceipt, Future) {
-        let (r1, r2): (credits.aleo/credits, credits.aleo/credits) = 
-            credits.aleo/transfer_private(pay_record, merchant, amount);
+    ) -> (credits.aleo::credits, credits.aleo::credits, PayerReceipt, MerchantReceipt, Final) {
+        let (r1, r2): (credits.aleo::credits, credits.aleo::credits) = 
+            credits.aleo::transfer_private(pay_record, merchant, amount);
         
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
@@ -408,22 +699,22 @@ program zk_pay_proofs_privacy_v22.aleo {
         };
 
         // Pass 0u8 as expected_token_type for Credits
-        let f0: Future = finalize_pay_invoice(invoice_hash, salt, amount as u128, 0u8);
+        let f0: Final = finalize_pay_invoice(invoice_hash, salt, amount as u128, 0u8);
         return (r1, r2, payer_receipt, merchant_receipt, f0);
     }
 
-    async transition pay_invoice_usdcx(
-        pay_record: test_usdcx_stablecoin.aleo/Token,
+    fn pay_invoice_usdcx(
+        pay_record: test_usdcx_stablecoin.aleo::Token,
         merchant: address,
         amount: u128,
         salt: field,
         private payment_secret: field,
         public message: field,
-        private proofs: [test_usdcx_stablecoin.aleo/MerkleProof; 2]
-    ) -> (test_usdcx_stablecoin.aleo/Token, test_usdcx_stablecoin.aleo/Token, test_usdcx_stablecoin.aleo/ComplianceRecord, PayerReceipt, MerchantReceipt, Future) {
+        private proofs: [test_usdcx_stablecoin.aleo::MerkleProof; 2]
+    ) -> (test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
         
-        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usdcx_stablecoin.aleo/ComplianceRecord, test_usdcx_stablecoin.aleo/Token, test_usdcx_stablecoin.aleo/Token, Future) = 
-            test_usdcx_stablecoin.aleo/transfer_private(merchant, amount, pay_record, proofs);
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usdcx_stablecoin.aleo::ComplianceRecord, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, Final) = 
+            test_usdcx_stablecoin.aleo::transfer_private(merchant, amount, pay_record, proofs);
 
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
@@ -456,23 +747,23 @@ program zk_pay_proofs_privacy_v22.aleo {
         };
 
         // Pass 1u8 as expected_token_type for USDCx
-        let f0: Future = finalize_pay_invoice_usdcx(invoice_hash, salt, amount, 1u8, transfer_future);
+        let f0: Final = finalize_pay_invoice_usdcx(invoice_hash, salt, amount, 1u8, transfer_future);
         
         return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
     }
 
-    async transition pay_invoice_usad(
-        pay_record: test_usad_stablecoin.aleo/Token,
+    fn pay_invoice_usad(
+        pay_record: test_usad_stablecoin.aleo::Token,
         merchant: address,
         amount: u128,
         salt: field,
         private payment_secret: field,
         public message: field,
-        private proofs: [test_usad_stablecoin.aleo/MerkleProof; 2]
-    ) -> (test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/ComplianceRecord, PayerReceipt, MerchantReceipt, Future) {
+        private proofs: [test_usad_stablecoin.aleo::MerkleProof; 2]
+    ) -> (test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
         
-        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usad_stablecoin.aleo/ComplianceRecord, test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/Token, Future) = 
-            test_usad_stablecoin.aleo/transfer_private(merchant, amount, pay_record, proofs);
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usad_stablecoin.aleo::ComplianceRecord, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, Final) = 
+            test_usad_stablecoin.aleo::transfer_private(merchant, amount, pay_record, proofs);
 
         let merchant_field: field = merchant as field; 
         let amount_field: field = amount as field;
@@ -505,23 +796,23 @@ program zk_pay_proofs_privacy_v22.aleo {
         };
 
         // Pass 2u8 as expected_token_type for USAD
-        let f0: Future = finalize_pay_invoice_usad(invoice_hash, salt, amount, 2u8, transfer_future);
+        let f0: Final = finalize_pay_invoice_usad(invoice_hash, salt, amount, 2u8, transfer_future);
         
         return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
     }
 
-    async transition pay_donation_usdcx(
-        pay_record: test_usdcx_stablecoin.aleo/Token,
+    fn pay_donation_usdcx(
+        pay_record: test_usdcx_stablecoin.aleo::Token,
         merchant: address,
         amount_to_donate: u128,
         salt: field,
         private payment_secret: field,
         public message: field,
-        private proofs: [test_usdcx_stablecoin.aleo/MerkleProof; 2]
-    ) -> (test_usdcx_stablecoin.aleo/Token, test_usdcx_stablecoin.aleo/Token, test_usdcx_stablecoin.aleo/ComplianceRecord, PayerReceipt, MerchantReceipt, Future) {
+        private proofs: [test_usdcx_stablecoin.aleo::MerkleProof; 2]
+    ) -> (test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
         
-        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usdcx_stablecoin.aleo/ComplianceRecord, test_usdcx_stablecoin.aleo/Token, test_usdcx_stablecoin.aleo/Token, Future) = 
-            test_usdcx_stablecoin.aleo/transfer_private(merchant, amount_to_donate, pay_record, proofs);
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usdcx_stablecoin.aleo::ComplianceRecord, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, Final) = 
+            test_usdcx_stablecoin.aleo::transfer_private(merchant, amount_to_donate, pay_record, proofs);
 
         let merchant_field: field = merchant as field; 
         
@@ -558,23 +849,23 @@ program zk_pay_proofs_privacy_v22.aleo {
             token_type: 1u8
         };
 
-        let f0: Future = finalize_pay_donation_usdcx(invoice_hash, salt, 1u8, transfer_future);
+        let f0: Final = finalize_pay_donation_usdcx(invoice_hash, salt, 1u8, transfer_future);
         
         return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
     }
 
-    async transition pay_donation_usad(
-        pay_record: test_usad_stablecoin.aleo/Token,
+    fn pay_donation_usad(
+        pay_record: test_usad_stablecoin.aleo::Token,
         merchant: address,
         amount_to_donate: u128,
         salt: field,
         private payment_secret: field,
         public message: field,
-        private proofs: [test_usad_stablecoin.aleo/MerkleProof; 2]
-    ) -> (test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/ComplianceRecord, PayerReceipt, MerchantReceipt, Future) {
+        private proofs: [test_usad_stablecoin.aleo::MerkleProof; 2]
+    ) -> (test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
         
-        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usad_stablecoin.aleo/ComplianceRecord, test_usad_stablecoin.aleo/Token, test_usad_stablecoin.aleo/Token, Future) = 
-            test_usad_stablecoin.aleo/transfer_private(merchant, amount_to_donate, pay_record, proofs);
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usad_stablecoin.aleo::ComplianceRecord, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, Final) = 
+            test_usad_stablecoin.aleo::transfer_private(merchant, amount_to_donate, pay_record, proofs);
 
         let merchant_field: field = merchant as field; 
         
@@ -611,18 +902,18 @@ program zk_pay_proofs_privacy_v22.aleo {
             token_type: 2u8
         };
 
-        let f0: Future = finalize_pay_donation_usad(invoice_hash, salt, 2u8, transfer_future);
+        let f0: Final = finalize_pay_donation_usad(invoice_hash, salt, 2u8, transfer_future);
         
         return (transfer_output_1, transfer_output_2, compliance_record, payer_receipt, merchant_receipt, f0); 
     }
 
-    async function finalize_pay_donation_usdcx(
+    fn finalize_pay_donation_usdcx(
         invoice_hash: field,
         salt: field,
         expected_token_type: u8,
-        f0: Future
+        f0: Final
     ) {
-        f0.await();
+        f0.run();
         let stored_hash: field = salt_to_invoice.get(salt);
         assert_eq(invoice_hash, stored_hash);
 
@@ -643,13 +934,13 @@ program zk_pay_proofs_privacy_v22.aleo {
         }
     }
 
-    async function finalize_pay_donation_usad(
+    fn finalize_pay_donation_usad(
         invoice_hash: field,
         salt: field,
         expected_token_type: u8,
-        f0: Future
+        f0: Final
     ) {
-        f0.await();
+        f0.run();
         let stored_hash: field = salt_to_invoice.get(salt);
         assert_eq(invoice_hash, stored_hash);
 
@@ -671,14 +962,14 @@ program zk_pay_proofs_privacy_v22.aleo {
     }
 
 
-    async function finalize_pay_invoice_usdcx(
+    fn finalize_pay_invoice_usdcx(
         invoice_hash: field,
         salt: field,
         amount: u128,
         expected_token_type: u8,
-        f0: Future
+        f0: Final
     ) {
-        f0.await();
+        f0.run();
         let stored_hash: field = salt_to_invoice.get(salt);
         assert_eq(invoice_hash, stored_hash);
 
@@ -707,14 +998,14 @@ program zk_pay_proofs_privacy_v22.aleo {
         }
     }
 
-    async function finalize_pay_invoice_usad(
+    fn finalize_pay_invoice_usad(
         invoice_hash: field,
         salt: field,
         amount: u128,
         expected_token_type: u8,
-        f0: Future
+        f0: Final
     ) {
-        f0.await();
+        f0.run();
         let stored_hash: field = salt_to_invoice.get(salt);
         assert_eq(invoice_hash, stored_hash);
 
@@ -743,7 +1034,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         }
     }
 
-    async function finalize_pay_invoice(
+    fn finalize_pay_invoice(
         invoice_hash: field,
         salt: field,
         amount: u128,
@@ -778,10 +1069,10 @@ program zk_pay_proofs_privacy_v22.aleo {
         }
     }
 
-    async transition settle_invoice(
+    fn settle_invoice(
         public salt: field,
         private amount: u64
-    ) -> (Future) {
+    ) -> (Final) {
         let merchant_field: field = self.caller as field;
         let amount_field: field = amount as field;
         
@@ -794,7 +1085,7 @@ program zk_pay_proofs_privacy_v22.aleo {
         return finalize_settle_invoice(calculated_hash, salt);
     }
 
-    async function finalize_settle_invoice(
+    fn finalize_settle_invoice(
         calculated_hash: field,
         salt: field
     ) {
@@ -814,13 +1105,14 @@ program zk_pay_proofs_privacy_v22.aleo {
         invoices.set(stored_hash, updated_data);
     }
 
-    async transition get_invoice_status(
+    fn get_invoice_status(
         public invoice_hash: field
-    ) -> Future {
+    ) -> Final {
         return finalize_get_invoice_status(invoice_hash);
     }
 
-    async function finalize_get_invoice_status(invoice_hash: field) {
+    fn finalize_get_invoice_status(invoice_hash: field) {
         let invoice_data: InvoiceData = invoices.get(invoice_hash);
     }
 }
+

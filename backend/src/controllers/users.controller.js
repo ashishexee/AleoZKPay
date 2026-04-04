@@ -22,6 +22,30 @@ function sha256Hex(value) {
     return crypto.createHash('sha256').update(value).digest('hex');
 }
 
+function parseAleoSignature(sdk, signatureBase64) {
+    const signatureBytes = Uint8Array.from(Buffer.from(signatureBase64, 'base64'));
+    if (!signatureBytes.length) {
+        throw new Error('Card limit signature payload is empty.');
+    }
+
+    // Wallet adapters return the Aleo signature as UTF-8 bytes for the signature string.
+    // Keep a raw-byte fallback so older callers do not break.
+    const signatureString = new TextDecoder().decode(signatureBytes).trim();
+    if (signatureString) {
+        try {
+            return sdk.Signature.from_string(signatureString);
+        } catch (stringError) {
+            try {
+                return sdk.Signature.fromBytesLe(signatureBytes);
+            } catch {
+                throw stringError;
+            }
+        }
+    }
+
+    return sdk.Signature.fromBytesLe(signatureBytes);
+}
+
 function toIntegerOrNull(value) {
     if (value === undefined || value === null || value === '') return null;
     const next = Number(value);
@@ -102,15 +126,17 @@ function buildCardResponse(row) {
         return null;
     }
 
-    const decryptedCardAddress = readMerchantStoredValue(row.card_address);
-    const decryptedCardNumber = row.encrypted_card_number
+    const clientEncryptedCardAddress = readMerchantStoredValue(row.card_address);
+    const clientEncryptedCardNumber = row.encrypted_card_number
         ? readMerchantStoredValue(row.encrypted_card_number)
         : null;
 
     return {
         address_hash: row.address_hash,
-        card_address: decryptedCardAddress,
-        encrypted_card_number: decryptedCardNumber,
+        card_address: clientEncryptedCardAddress,
+        encrypted_card_address: clientEncryptedCardAddress,
+        encrypted_card_number: clientEncryptedCardNumber,
+        card_number_hash: row.card_number_hash || null,
         card_last4: row.card_last4 || null,
         encrypted_card_private_key: row.encrypted_card_private_key || null,
         card_kdf_salt: row.card_kdf_salt || null,
@@ -409,8 +435,7 @@ const verifyCardLimitChange = async (req, res) => {
 
         const sdk = await import('@provablehq/sdk');
         const encoder = new TextEncoder();
-        const signatureBytes = Uint8Array.from(Buffer.from(signature_base64, 'base64'));
-        const signature = sdk.Signature.fromBytesLe(signatureBytes);
+        const signature = parseAleoSignature(sdk, signature_base64);
         const address = sdk.Address.from_string(main_address);
         const isValid = address.verify(encoder.encode(message), signature);
 

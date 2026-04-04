@@ -133,6 +133,8 @@ export interface CardWalletProfile {
     encrypted_card_address?: string | null;
     card_number?: string | null;
     encrypted_card_number?: string | null;
+    card_number_hash?: string | null;
+    card_number_hash_field?: string | null;
     card_last4?: string | null;
     encrypted_card_private_key: string;
     card_kdf_salt: string;
