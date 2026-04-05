@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase');
 const crypto = require('crypto');
 const { readMerchantStoredValue, sha256Hex } = require('../utils/crypto');
+const { normalizePaymentTxIds } = require('../utils/invoices');
 
 const getInvoices = async (req, res) => {
     const { status, limit = 50, merchant_hash } = req.query;
@@ -139,34 +140,9 @@ const updateInvoice = async (req, res) => {
         };
         if (block_settled) updates.block_settled = block_settled;
 
-        const normalizeTxIds = (value) => {
-            const source = Array.isArray(value) ? value : (value ? [value] : []);
-            const flattened = [];
-            for (const item of source) {
-                if (!item) continue;
-                if (Array.isArray(item)) {
-                    flattened.push(...normalizeTxIds(item));
-                    continue;
-                }
-                if (typeof item === 'string') {
-                    const trimmed = item.trim();
-                    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-                        try {
-                            flattened.push(...normalizeTxIds(JSON.parse(trimmed)));
-                            continue;
-                        } catch {}
-                    }
-                    flattened.push(trimmed);
-                    continue;
-                }
-                flattened.push(String(item));
-            }
-            return Array.from(new Set(flattened.filter(Boolean)));
-        };
-
         if (payment_tx_ids) {
-            const currentIds = normalizeTxIds(current.payment_tx_ids);
-            const incomingIds = normalizeTxIds(payment_tx_ids);
+            const currentIds = normalizePaymentTxIds(current.payment_tx_ids);
+            const incomingIds = normalizePaymentTxIds(payment_tx_ids);
             updates.payment_tx_ids = Array.from(new Set([...currentIds, ...incomingIds]));
         }
 
@@ -181,8 +157,8 @@ const updateInvoice = async (req, res) => {
 
         if (error) throw error;
 
-        const incomingIds = normalizeTxIds(payment_tx_ids);
-        const currentIds = normalizeTxIds(current.payment_tx_ids);
+        const incomingIds = normalizePaymentTxIds(payment_tx_ids);
+        const currentIds = normalizePaymentTxIds(current.payment_tx_ids);
         const hasNewPayment = incomingIds.some(id => !currentIds.includes(id));
         console.log(`   - Has New Payment?`, hasNewPayment);
 

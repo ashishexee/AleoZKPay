@@ -1,22 +1,20 @@
+const { buildWebappLinks } = require('../../utils/telegram');
+
 module.exports = (bot) => {
-    bot.onText(/\/giftcards/, async (msg) => {
+    bot.onText(/^\/giftcards(?:\s|$)/, async (msg) => {
         const chatId = msg.chat.id;
-        
-        let text = `🎁 *NullPay Gift Cards*\n\n`;
-        text += `Gift cards in NullPay are generated securely on-chain. Since they are protected by zero-knowledge proofs, they cannot be created or decrypted automatically by this bot without your private key. \n\n`;
-        text += `Please use the official Web App to generate and redeem Gift Cards with your local wallet!`;
+        const giftCardsUrl = buildWebappLinks()[3].url;
 
-        const opts = {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: '✨ Launch Gift Cards Webapp', url: 'https://app.nullpay.xyz/gift-cards' }
-                    ]
-                ]
+        await bot.sendMessage(
+            chatId,
+            '🎁 Gift cards stay in the browser because redemption and balance access depend on wallet-side decryption and secret handling. Open the NullPay web app to create, redeem, or pay with them securely.',
+            {
+                reply_markup: {
+                    inline_keyboard: [[
+                        { text: '🎁 Open Gift Cards', url: giftCardsUrl }
+                    ]]
+                }
             }
-        };
-
-        bot.sendMessage(chatId, text, opts);
+        );
     });
 };

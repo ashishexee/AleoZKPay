@@ -16,12 +16,24 @@ const mcpRoutes = require('./src/routes/mcp.routes');
 const scannerRoutes = require('./src/routes/scanner.routes');
 const proxyRoutes = require('./src/routes/proxy.routes');
 const dpsRoutes = require('./src/routes/dps.routes');
+const telegramRoutes = require('./src/routes/telegram.routes');
 
 const app = express();
 const port = process.env.PORT || 3000;
+const configuredOrigins = [
+    'https://nullpay.app',
+    'http://localhost:5173',
+    'https://testing-website-frontend.vercel.app',
+    process.env.FRONTEND_URL,
+    ...(process.env.CORS_ALLOWED_ORIGINS || '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+];
+const allowedOrigins = Array.from(new Set(configuredOrigins.filter(Boolean)));
 
 app.use(cors({
-    origin: ['https://nullpay.app', 'http://localhost:5173', 'https://testing-website-frontend.vercel.app'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true
 }));
@@ -45,6 +57,7 @@ app.use('/api/mcp', mcpRoutes);
 app.use('/api/scanner/:network', scannerRoutes.scannerRouter);
 app.use('/api/proxy/provable', proxyRoutes);
 app.use('/api/dps', dpsRoutes);
+app.use('/api/telegram', telegramRoutes);
 
 console.log('Backend initialized. (Relayer daemon removed, relayer is now on-demand)');
 

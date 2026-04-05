@@ -6,6 +6,10 @@ const dashboardHandler = require('./handlers/dashboard');
 const invoiceHandler = require('./handlers/invoice');
 const payHandler = require('./handlers/pay');
 const giftcardsHandler = require('./handlers/giftcards');
+const notificationsHandler = require('./handlers/notifications');
+const webappHandler = require('./handlers/webapp');
+const fallbackHandler = require('./handlers/fallback');
+const { startInvoiceNotificationWorker } = require('./notification-worker');
 
 let botInstance = null;
 
@@ -25,12 +29,16 @@ const initBot = () => {
         // Initialize commands
         bot.setMyCommands([
             { command: '/start', description: 'Start the bot' },
-            { command: '/link', description: 'Link your Aleo Merchant Address' },
+            { command: '/link', description: 'Link your merchant wallet securely' },
+            { command: '/unlink', description: 'Remove the linked wallet' },
             { command: '/dashboard', description: 'View your merchant dashboard and stats' },
             { command: '/create', description: 'Create a new invoice' },
             { command: '/invoice', description: 'Look up an invoice by hash' },
+            { command: '/invoices', description: 'List recent invoices' },
             { command: '/pay', description: 'Get a payment link for an invoice' },
-            { command: '/giftcards', description: 'Interact with NullPay Gift Cards' }
+            { command: '/giftcards', description: 'Open gift cards in the browser' },
+            { command: '/webapp', description: 'Open NullPay browser shortcuts' },
+            { command: '/notifications', description: 'Manage payment alerts' }
         ]);
 
         authHandler(bot);
@@ -38,6 +46,10 @@ const initBot = () => {
         invoiceHandler(bot);
         payHandler(bot);
         giftcardsHandler(bot);
+        notificationsHandler(bot);
+        webappHandler(bot);
+        fallbackHandler(bot);
+        startInvoiceNotificationWorker(bot);
 
         botInstance = bot;
         console.log('✅ Telegram Bot initialized successfully');

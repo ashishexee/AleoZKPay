@@ -29,10 +29,11 @@ const Navbar = () => {
             ]
         },
         {
-            label: 'Doc',
+            label: 'Integrations',
             dropdown: [
-                { path: '/developer', label: 'Developer Portal' },
-                { path: '/docs', label: 'Docs' }
+                { path: '/docs', label: 'Documentation' },
+                { path: '/developer', label: 'SDK / Developers' },
+                { path: '/telegram-bot', label: 'Telegram Bot' }
             ]
         }
     ];
@@ -103,7 +104,7 @@ const Navbar = () => {
                                         </svg>
                                     </span>
                                 </button>
-                                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-2xl bg-black/80 backdrop-blur-2xl border border-white/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 overflow-hidden flex flex-col z-50 shadow-2xl p-1.5 translate-y-2 group-hover:translate-y-0">
+                                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 rounded-2xl bg-black/80 backdrop-blur-2xl border border-white/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 overflow-hidden flex flex-col z-50 shadow-2xl p-1.5 translate-y-2 group-hover:translate-y-0">
                                     {item.dropdown.map((drop: any) => (
                                         <Link 
                                             key={drop.path} 

@@ -16,6 +16,8 @@ import CheckoutPage from '../shared/pages/Checkout';
 import InvoiceDetails from '../shared/pages/InvoiceDetails';
 import DeveloperPortal from '../shared/pages/Developer';
 import GiftCardsPage from '../shared/pages/GiftCards';
+import TelegramLinkPage from '../shared/pages/TelegramLink';
+import TelegramBotPage from '../shared/pages/TelegramBot';
 import CardsPage from './pages/CardsPage';
 import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 
@@ -36,6 +38,8 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/verify" element={<Verification />} />
                 <Route path="/developer" element={<DeveloperPortal />} />
+                <Route path="/telegram-bot" element={<TelegramBotPage />} />
+                <Route path="/telegram/link" element={<TelegramLinkPage />} />
                 <Route path="/checkout/:id" element={<CheckoutPage />} />
                 <Route path="/invoice/:hash" element={<InvoiceDetails />} />
             </Routes>

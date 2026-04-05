@@ -252,6 +252,66 @@ export const upsertCardWallet = async (
     return response.json();
 };
 
+export interface TelegramLinkSession {
+    token: string;
+    telegram_id: number;
+    chat_id: number;
+    nonce: string;
+    expires_at: string;
+    consumed_at?: string | null;
+    is_expired?: boolean;
+    is_consumed?: boolean;
+    message: string;
+    link_url: string;
+}
+
+export interface CompleteTelegramLinkSessionResponse {
+    success: boolean;
+    user: {
+        telegram_id: number;
+        username?: string | null;
+        chat_id: number;
+        aleo_address: string;
+        aleo_address_hash?: string | null;
+        notifications_enabled?: boolean;
+        linked_at?: string | null;
+        updated_at?: string | null;
+    };
+    telegram_app_url?: string | null;
+    telegram_web_url?: string | null;
+}
+
+export const fetchTelegramLinkSession = async (token: string): Promise<TelegramLinkSession> => {
+    const response = await fetch(`${API_URL}/telegram/link-sessions/${encodeURIComponent(token)}`);
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to load Telegram link session');
+    }
+
+    return payload;
+};
+
+export const completeTelegramLinkSession = async (payload: {
+    token: string;
+    aleo_address: string;
+    signature_base64: string;
+    username?: string;
+}): Promise<CompleteTelegramLinkSessionResponse> => {
+    const response = await fetch(`${API_URL}/telegram/link-sessions/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+        throw new Error(body?.error || 'Failed to complete Telegram wallet link');
+    }
+
+    return body;
+};
+
 export const lookupCardWalletByNumberHash = async (
     cardNumberHash: string
 ): Promise<CardWalletProfile | null> => {

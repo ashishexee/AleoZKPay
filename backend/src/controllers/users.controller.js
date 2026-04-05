@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const supabase = require('../config/supabase');
 const { encryptMerchantValue, readMerchantStoredValue } = require('../utils/crypto');
+const { parseAleoSignature } = require('../utils/aleo-signature');
 
 const LIMIT_CHANGE_MESSAGE_TYPE = 'nullpay_card_limit_change_v1';
 const CARD_HINT_MAX_LENGTH = 32;
@@ -20,30 +21,6 @@ const TOKEN_COLUMNS = {
 
 function sha256Hex(value) {
     return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function parseAleoSignature(sdk, signatureBase64) {
-    const signatureBytes = Uint8Array.from(Buffer.from(signatureBase64, 'base64'));
-    if (!signatureBytes.length) {
-        throw new Error('Card limit signature payload is empty.');
-    }
-
-    // Wallet adapters return the Aleo signature as UTF-8 bytes for the signature string.
-    // Keep a raw-byte fallback so older callers do not break.
-    const signatureString = new TextDecoder().decode(signatureBytes).trim();
-    if (signatureString) {
-        try {
-            return sdk.Signature.from_string(signatureString);
-        } catch (stringError) {
-            try {
-                return sdk.Signature.fromBytesLe(signatureBytes);
-            } catch {
-                throw stringError;
-            }
-        }
-    }
-
-    return sdk.Signature.fromBytesLe(signatureBytes);
 }
 
 function toIntegerOrNull(value) {
