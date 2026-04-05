@@ -1,6 +1,4 @@
 const TelegramBot = require('node-telegram-bot-api');
-
-// Handlers
 const authHandler = require('./handlers/auth');
 const dashboardHandler = require('./handlers/dashboard');
 const invoiceHandler = require('./handlers/invoice');
@@ -35,6 +33,7 @@ const initBot = () => {
             { command: '/create', description: 'Create a new invoice' },
             { command: '/invoice', description: 'Look up an invoice by hash' },
             { command: '/invoices', description: 'List recent invoices' },
+            { command: '/verify', description: 'Check a receipt hash against an invoice flow' },
             { command: '/pay', description: 'Get a payment link for an invoice' },
             { command: '/giftcards', description: 'Open gift cards in the browser' },
             { command: '/webapp', description: 'Open NullPay browser shortcuts' },

@@ -246,10 +246,10 @@ export const DeveloperPortal = () => {
                     <motion.div variants={fadeInUp} className="flex flex-wrap justify-center gap-10 mt-6 mb-2">
                         <motion.div 
                             layout
-                            className="flex items-center gap-5 px-8 py-2 transition-colors duration-500 group/badge"
+                            className="flex flex-col items-center transition-all duration-500 group/badge"
                         >
-                            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500 mr-4 border-r border-white/10 pr-8 select-none whitespace-nowrap">MCP Works Seamlessly With</span>
-                            <div className="flex items-center gap-12">
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-6 select-none whitespace-nowrap opacity-50 group-hover/badge:opacity-100 transition-opacity duration-500">MCP Works Seamlessly With</span>
+                            <div className="flex items-center justify-center gap-8">
                                 <motion.div 
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
@@ -262,7 +262,7 @@ export const DeveloperPortal = () => {
                                             layout
                                             src="/assets/claude.svg" 
                                             alt="Claude" 
-                                            className="w-14 h-14 object-contain relative z-10 transition-all duration-700"
+                                            className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
                                             variants={{
                                                 initial: { scale: 1, rotate: 0 },
                                                 hover: { scale: 1.15, rotate: -5 }
@@ -272,16 +272,52 @@ export const DeveloperPortal = () => {
                                             layout
                                             variants={{
                                                 initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
-                                                hover: { width: 'auto', opacity: 1, marginLeft: 20, x: 0 }
+                                                hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
                                             }}
                                             transition={{ 
                                                 width: { type: "spring", stiffness: 100, damping: 20 },
                                                 opacity: { duration: 0.4 },
                                                 x: { type: "spring", stiffness: 100, damping: 20 }
                                             }}
-                                            className="overflow-hidden whitespace-nowrap text-[15px] font-bold text-white relative z-10 tracking-tight"
+                                            className="overflow-hidden whitespace-nowrap text-[12px] font-bold text-white relative z-10 tracking-tight"
                                         >
-                                            Claude Desktop
+                                            Claude
+                                        </motion.span>
+                                    </div>
+                                </motion.div>
+
+                                <motion.div 
+                                    layout
+                                    className="group/tool flex items-center cursor-pointer"
+                                    whileHover="hover"
+                                    initial="initial"
+                                >
+                                    <div className="relative flex items-center">
+                                        <div className="absolute inset-[-20%] bg-purple-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
+                                        <motion.img 
+                                            layout
+                                            src="/assets/antigravity.svg" 
+                                            alt="Antigravity" 
+                                            className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
+                                            variants={{
+                                                initial: { scale: 1, rotate: 0 },
+                                                hover: { scale: 1.15, rotate: 5 }
+                                            }}
+                                        />
+                                        <motion.span 
+                                            layout
+                                            variants={{
+                                                initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
+                                                hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
+                                            }}
+                                            transition={{ 
+                                                width: { type: "spring", stiffness: 100, damping: 20 },
+                                                opacity: { duration: 0.4 },
+                                                x: { type: "spring", stiffness: 100, damping: 20 }
+                                            }}
+                                            className="overflow-hidden whitespace-nowrap text-[12px] font-bold text-white relative z-10 tracking-tight"
+                                        >
+                                            Antigravity
                                         </motion.span>
                                     </div>
                                 </motion.div>
@@ -298,7 +334,7 @@ export const DeveloperPortal = () => {
                                             layout
                                             src="/assets/cursor-ide.png" 
                                             alt="Cursor" 
-                                            className="w-16 h-16 object-contain relative z-10 transition-all duration-700"
+                                            className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
                                             variants={{
                                                 initial: { scale: 1, rotate: 0 },
                                                 hover: { scale: 1.15, rotate: 5 }
@@ -308,16 +344,52 @@ export const DeveloperPortal = () => {
                                             layout
                                             variants={{
                                                 initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
-                                                hover: { width: 'auto', opacity: 1, marginLeft: 20, x: 0 }
+                                                hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
                                             }}
                                             transition={{ 
                                                 width: { type: "spring", stiffness: 100, damping: 20 },
                                                 opacity: { duration: 0.4 },
                                                 x: { type: "spring", stiffness: 100, damping: 20 }
                                             }}
-                                            className="overflow-hidden whitespace-nowrap text-[15px] font-bold text-white relative z-10 tracking-tight"
+                                            className="overflow-hidden whitespace-nowrap text-[12px] font-bold text-white relative z-10 tracking-tight"
                                         >
-                                            Cursor IDE
+                                            Cursor
+                                        </motion.span>
+                                    </div>
+                                </motion.div>
+
+                                <motion.div 
+                                    layout
+                                    className="group/tool flex items-center cursor-pointer"
+                                    whileHover="hover"
+                                    initial="initial"
+                                >
+                                    <div className="relative flex items-center">
+                                        <div className="absolute inset-[-20%] bg-emerald-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
+                                        <motion.img 
+                                            layout
+                                            src="/assets/codex.svg" 
+                                            alt="Codex" 
+                                            className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
+                                            variants={{
+                                                initial: { scale: 1, rotate: 0 },
+                                                hover: { scale: 1.15, rotate: -5 }
+                                            }}
+                                        />
+                                        <motion.span 
+                                            layout
+                                            variants={{
+                                                initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
+                                                hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
+                                            }}
+                                            transition={{ 
+                                                width: { type: "spring", stiffness: 100, damping: 20 },
+                                                opacity: { duration: 0.4 },
+                                                x: { type: "spring", stiffness: 100, damping: 20 }
+                                            }}
+                                            className="overflow-hidden whitespace-nowrap text-[12px] font-bold text-white relative z-10 tracking-tight"
+                                        >
+                                            Codex
                                         </motion.span>
                                     </div>
                                 </motion.div>

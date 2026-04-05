@@ -165,7 +165,19 @@ class NullPayMcpService {
                         memo: { type: 'string' },
                         invoice_type: { type: 'string', enum: ['standard', 'multipay', 'donation'] },
                         wallet: { type: 'string', enum: ['main', 'burner'] },
-                        line_items: { type: 'array' }
+                        line_items: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    name: { type: 'string' },
+                                    quantity: { type: 'number' },
+                                    unitPrice: { type: 'number' },
+                                    total: { type: 'number' }
+                                },
+                                required: ['name', 'quantity', 'unitPrice', 'total']
+                            }
+                        }
                     },
                     required: ['amount']
                 }

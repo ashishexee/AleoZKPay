@@ -1,5 +1,8 @@
+const crypto = require('crypto');
 const { getLinkedTelegramUser } = require('../services/telegram.service');
 const { buildWebappLinks } = require('../utils/telegram');
+
+const invoiceCallbackRegistry = new Map();
 
 async function requireAuth(bot, msg) {
     const chatId = msg.chat.id;
@@ -44,9 +47,33 @@ function shortHash(hash) {
     return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
 }
 
+function registerInvoiceCallback(chatId, invoiceHash) {
+    if (!chatId || !invoiceHash) return null;
+
+    const chatKey = String(chatId);
+    const token = crypto.randomBytes(4).toString('hex');
+    const existing = invoiceCallbackRegistry.get(chatKey) || new Map();
+    existing.set(token, invoiceHash);
+
+    while (existing.size > 200) {
+        const oldestKey = existing.keys().next().value;
+        existing.delete(oldestKey);
+    }
+
+    invoiceCallbackRegistry.set(chatKey, existing);
+    return token;
+}
+
+function resolveInvoiceCallback(chatId, token) {
+    if (!chatId || !token) return null;
+    return invoiceCallbackRegistry.get(String(chatId))?.get(token) || null;
+}
+
 module.exports = {
     requireAuth,
     formatTokenLabel,
     formatInvoiceTypeLabel,
-    shortHash
+    shortHash,
+    registerInvoiceCallback,
+    resolveInvoiceCallback
 };

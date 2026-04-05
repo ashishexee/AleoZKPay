@@ -406,6 +406,26 @@ async function getInvoiceForTelegramUser(user, invoiceHash) {
     return data || null;
 }
 
+async function getInvoiceByIdForTelegramUser(user, invoiceId) {
+    const parsedId = Number(invoiceId);
+    if (!Number.isFinite(parsedId)) {
+        return null;
+    }
+
+    const { data, error } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('id', parsedId)
+        .eq('merchant_address_hash', user.aleo_address_hash)
+        .maybeSingle();
+
+    if (error) {
+        throw new TelegramServiceError(error.message);
+    }
+
+    return data || null;
+}
+
 async function resolvePayTarget(invoice, user) {
     return resolvePayTargetWithOverrides(invoice, user);
 }
@@ -634,6 +654,7 @@ module.exports = {
     listInvoicesForTelegramUser,
     getDashboardForTelegramUser,
     getInvoiceForTelegramUser,
+    getInvoiceByIdForTelegramUser,
     resolvePayTarget,
     createTelegramInvoice,
     getNotificationRecipients,

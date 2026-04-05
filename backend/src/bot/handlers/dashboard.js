@@ -6,7 +6,7 @@ const {
     buildInvoiceDetailsUrl,
     buildTransactionExplorerUrl
 } = require('../../utils/telegram');
-const { requireAuth } = require('../utils');
+const { requireAuth, registerInvoiceCallback } = require('../utils');
 
 const DASHBOARD_PAGE_SIZE = 5;
 
@@ -25,7 +25,7 @@ function buildPageButtons(currentPage, totalPages) {
 
     for (let page = startPage; page <= endPage; page += 1) {
         buttons.push({
-            text: page === currentPage ? `• ${page} •` : String(page),
+            text: page === currentPage ? `[${page}]` : String(page),
             callback_data: `DASHBOARD_PAGE_${page}`
         });
     }
@@ -34,7 +34,7 @@ function buildPageButtons(currentPage, totalPages) {
 }
 
 function buildDashboardMessage(user, dashboard) {
-    let text = `📊 Merchant dashboard for \`${user.aleo_address}\`\n\n`;
+    let text = `Merchant dashboard for \`${user.aleo_address}\`\n\n`;
     text += `Total invoices: ${dashboard.total_invoices}\n`;
     text += `Settled: ${dashboard.settled_count}\n`;
     text += `Pending: ${dashboard.pending_count}\n`;
@@ -52,9 +52,7 @@ function buildDashboardMessage(user, dashboard) {
             if (invoice.invoice_transaction_id) {
                 text += `Creation tx: \`${invoice.invoice_transaction_id}\`\n`;
             }
-            if (paymentTxIds.length) {
-                text += `Payments: ${paymentTxIds.length}\n`;
-            }
+            text += `Payments: ${paymentTxIds.length}\n`;
             if (invoice.created_at) {
                 text += `Created: ${new Date(invoice.created_at).toLocaleString()}\n`;
             }
@@ -66,23 +64,34 @@ function buildDashboardMessage(user, dashboard) {
     return text;
 }
 
-function buildDashboardKeyboard(dashboard) {
+function buildInvoiceActionRows(chatId, invoice, itemNumber) {
+    const paymentTxIds = normalizePaymentTxIds(invoice.payment_tx_ids);
+    const callbackToken = registerInvoiceCallback(chatId, invoice.invoice_hash);
+    const rows = [
+        [
+            { text: `Invoice ${itemNumber}`, url: buildInvoiceDetailsUrl(invoice.invoice_hash) },
+            ...(invoice.invoice_transaction_id
+                ? [{ text: 'Creation Tx', url: buildTransactionExplorerUrl(invoice.invoice_transaction_id) }]
+                : [])
+        ]
+    ];
+
+    if (callbackToken) {
+        rows.push([
+            { text: `Payments (${paymentTxIds.length})`, callback_data: `INVOICE_PAYMENTS_${callbackToken}` },
+            { text: 'Receipt Hashes', callback_data: `INVOICE_RECEIPTS_${callbackToken}` }
+        ]);
+    }
+
+    return rows;
+}
+
+function buildDashboardKeyboard(chatId, dashboard) {
     const keyboard = [];
 
     dashboard.recent_invoices.forEach((invoice, index) => {
         const itemNumber = ((dashboard.current_page - 1) * dashboard.page_size) + index + 1;
-        const row = [
-            { text: `📄 Invoice ${itemNumber}`, url: buildInvoiceDetailsUrl(invoice.invoice_hash) }
-        ];
-
-        if (invoice.invoice_transaction_id) {
-            row.push({
-                text: `🔗 Tx ${itemNumber}`,
-                url: buildTransactionExplorerUrl(invoice.invoice_transaction_id)
-            });
-        }
-
-        keyboard.push(row);
+        keyboard.push(...buildInvoiceActionRows(chatId, invoice, itemNumber));
     });
 
     const pageButtons = buildPageButtons(dashboard.current_page, dashboard.total_pages);
@@ -91,8 +100,8 @@ function buildDashboardKeyboard(dashboard) {
     }
 
     keyboard.push([
-        { text: '🧾 Recent Invoices', callback_data: 'LIST_INVOICES' },
-        { text: '🔔 Toggle Alerts', callback_data: 'NOTIFICATIONS_MENU' }
+        { text: 'Recent Invoices', callback_data: 'LIST_INVOICES' },
+        { text: 'Toggle Alerts', callback_data: 'NOTIFICATIONS_MENU' }
     ]);
 
     return keyboard;
@@ -111,7 +120,7 @@ async function sendDashboard(bot, msgLike, page = 1) {
     const payload = {
         parse_mode: 'Markdown',
         reply_markup: {
-            inline_keyboard: buildDashboardKeyboard(dashboard)
+            inline_keyboard: buildDashboardKeyboard(chatId, dashboard)
         }
     };
 

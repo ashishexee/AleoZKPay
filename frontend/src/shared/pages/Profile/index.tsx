@@ -21,6 +21,8 @@ import { TokenDistributionChart } from './components/Charts/TokenDistributionCha
 import { WalletBalances } from './components/WalletBalances';
 import { useWalletBalances } from '../../hooks/useWalletBalances';
 import { DashboardChatbot } from './components/DashboardChatbot';
+import { downloadMerchantAuditReportHtml, downloadMerchantCreditReportHtml, ReportOptions } from '../../utils/generateMerchantReportsPdf';
+import { ReportConfigModal } from './components/modals/ReportConfigModal';
 // CardWalletPanel import moved to dedicated route
 
 const Profile: React.FC = () => {
@@ -61,6 +63,10 @@ const Profile: React.FC = () => {
     const [loadingCreated, setLoadingCreated] = useState(false);
     const [loadingBurner, setLoadingBurner] = useState(true);
     const [loadingPayerReceipts, setLoadingPayerReceipts] = useState(false);
+    const [creditReportLoading, setCreditReportLoading] = useState(false);
+    const [auditReportLoading, setAuditReportLoading] = useState(false);
+    const [showReportConfigModal, setShowReportConfigModal] = useState(false);
+    const [currentReportType, setCurrentReportType] = useState<'audit' | 'credit'>('audit');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const fetchPayerReceiptsRef = useRef(0);
@@ -349,26 +355,29 @@ const Profile: React.FC = () => {
                 isValidOnChain: true
             });
         });
-        // 3. Aggregate donation totals from MerchantReceipts
+        // 3. Aggregate receipt-derived earnings from merchant-visible records
         const allReceipts = [...merchantReceipts, ...burnerMerchantReceipts];
-        const donationTotals = new Map<string, { credits: number, usdcx: number, usad: number }>();
+        const receiptTotals = new Map<string, { credits: number, usdcx: number, usad: number }>();
         allReceipts.forEach(receipt => {
             const hash = receipt.invoiceHash.replace('field', '');
-            if (!donationTotals.has(hash)) {
-                donationTotals.set(hash, { credits: 0, usdcx: 0, usad: 0 });
+            if (!receiptTotals.has(hash)) {
+                receiptTotals.set(hash, { credits: 0, usdcx: 0, usad: 0 });
             }
-            const totals = donationTotals.get(hash)!;
+            const totals = receiptTotals.get(hash)!;
             const amt = receipt.amount / 1_000_000;
             if (receipt.tokenType === 0) totals.credits += amt;
             else if (receipt.tokenType === 1) totals.usdcx += amt;
             else if (receipt.tokenType === 2) totals.usad += amt;
         });
 
-        // Attach donation totals to donation invoices (invoiceType === 2)
+        // Attach receipt-derived earnings to every invoice, and use them as
+        // the displayed amount for open-ended / donation invoices.
         merged.forEach((inv, hash) => {
-            if (inv.invoiceType === 2) {
-                const normalizedHash = hash.replace('field', '');
-                const totals = donationTotals.get(normalizedHash);
+            const normalizedHash = hash.replace('field', '');
+            const totals = receiptTotals.get(normalizedHash);
+            inv.earnings = totals || { credits: 0, usdcx: 0, usad: 0 };
+
+            if (inv.invoiceType === 2 || !inv.amount) {
                 if (totals) {
                     inv.donations = totals;
                     // Set the display amount to the total across all token types
@@ -506,6 +515,53 @@ const Profile: React.FC = () => {
         };
     }, [combinedInvoices, uniqueBurnerReceipts, uniqueMainReceipts]);
 
+    const handleDownloadCreditReport = async (options: ReportOptions) => {
+        if (!publicKey) return;
+        setCreditReportLoading(true);
+        try {
+            downloadMerchantCreditReportHtml({
+                merchantAddress: publicKey,
+                burnerAddress: decryptedBurnerAddress || null,
+                balances,
+                merchantStats,
+                invoices: loadingBurner ? [] : combinedInvoices,
+                merchantReceipts: uniqueMainReceipts,
+                burnerMerchantReceipts: uniqueBurnerReceipts,
+                payerReceipts
+            }, options);
+            import('react-hot-toast').then(t => t.default.success('Credit report HTML downloaded.'));
+        } catch (error: any) {
+            console.error('Failed to generate credit report HTML', error);
+            import('react-hot-toast').then(t => t.default.error(error?.message || 'Failed to generate credit report HTML'));
+        } finally {
+            setCreditReportLoading(false);
+        }
+    };
+
+    const handleDownloadAuditReport = async (options: ReportOptions) => {
+        if (!publicKey) return;
+        setAuditReportLoading(true);
+        try {
+            downloadMerchantAuditReportHtml({
+                merchantAddress: publicKey,
+                burnerAddress: decryptedBurnerAddress || null,
+                balances,
+                merchantStats,
+                invoices: loadingBurner ? [] : combinedInvoices,
+                merchantReceipts: uniqueMainReceipts,
+                burnerMerchantReceipts: uniqueBurnerReceipts,
+                payerReceipts,
+                programId: PROGRAM_ID
+            }, options);
+            import('react-hot-toast').then(t => t.default.success('Audit report HTML downloaded.'));
+        } catch (error: any) {
+            console.error('Failed to generate audit report HTML', error);
+            import('react-hot-toast').then(t => t.default.error(error?.message || 'Failed to generate audit report HTML'));
+        } finally {
+            setAuditReportLoading(false);
+        }
+    };
+
     const containerVariants = {
         hidden: { opacity: 0 },
         visible: {
@@ -639,6 +695,35 @@ const Profile: React.FC = () => {
 
                     {/* NEW: WALLET BALANCES */}
                     <WalletBalances itemVariants={itemVariants} balances={balances} />
+                    <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                        <button
+                            onClick={() => {
+                                setCurrentReportType('credit');
+                                setShowReportConfigModal(true);
+                            }}
+                            disabled={creditReportLoading || (!loadingBurner && combinedInvoices.length === 0 && uniqueMainReceipts.length === 0 && uniqueBurnerReceipts.length === 0)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-orange-400/30 bg-orange-500/10 px-4 py-2.5 text-sm font-semibold text-orange-200 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6m3 6V7m3 10v-3m2 5H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414A1 1 0 0118 10.414V17a2 2 0 01-2 2z" />
+                            </svg>
+                            {creditReportLoading ? 'Preparing Credit Report...' : 'Download Credit Report'}
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                setCurrentReportType('audit');
+                                setShowReportConfigModal(true);
+                            }}
+                            disabled={auditReportLoading || (!loadingBurner && combinedInvoices.length === 0 && uniqueMainReceipts.length === 0 && uniqueBurnerReceipts.length === 0 && payerReceipts.length === 0)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5l5 5v11a2 2 0 01-2 2z" />
+                            </svg>
+                            {auditReportLoading ? 'Preparing Audit Report...' : 'Download Audit Report'}
+                        </button>
+                    </div>
                 </motion.div>
 
                 {/* BACKUP BANNER */}
@@ -770,6 +855,19 @@ const Profile: React.FC = () => {
                 loadingInvoices={loadingCreated || loadingTransactions || loadingBurner}
                 loadingReceipts={loadingReceipts || loadingBurner}
                 loadingPayerReceipts={loadingPayerReceipts}
+            />
+
+            <ReportConfigModal
+                isOpen={showReportConfigModal}
+                onClose={() => setShowReportConfigModal(false)}
+                reportType={currentReportType}
+                onDownload={(options) => {
+                    if (currentReportType === 'audit') {
+                        handleDownloadAuditReport(options);
+                    } else {
+                        handleDownloadCreditReport(options);
+                    }
+                }}
             />
         </div>
     );

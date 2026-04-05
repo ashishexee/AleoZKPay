@@ -252,9 +252,9 @@ const InvoiceDetailsPage: React.FC = () => {
         load();
     }, [hash, address, decryptedBurnerAddress]);
 
-    // Auto-scan receipts for donation invoices as soon as everything is ready
+    // Auto-scan receipts for all invoices as soon as everything is ready
     useEffect(() => {
-        if (invoice?.invoice_type === 2 && !scanned && !scanningReceipts) {
+        if (invoice && !scanned && !scanningReceipts) {
             handleScanReceipts();
         }
     }, [invoice]);
@@ -507,9 +507,9 @@ const InvoiceDetailsPage: React.FC = () => {
                             {/* Amount */}
                             <div className="mb-7">
                                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] mb-3" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                                    {invoice.invoice_type === 2 ? 'Donation Summary' : 'Invoice Total'}
+                                    {invoice.invoice_type === 2 || !invoice.amount ? 'Payment Summary' : 'Invoice Total'}
                                 </p>
-                                {invoice.invoice_type === 2 ? (() => {
+                                {invoice.invoice_type === 2 || !invoice.amount ? (() => {
                                     // Show shimmer while scanning
                                     if (scanningReceipts) return (
                                         <div className="flex items-center gap-4">

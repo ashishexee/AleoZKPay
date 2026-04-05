@@ -3,7 +3,8 @@ const {
     getInvoiceForTelegramUser,
     listInvoicesForTelegramUser,
     resolvePayTarget,
-    normalizePaymentTxIds
+    normalizePaymentTxIds,
+    deriveInvoiceAmount
 } = require('../../services/telegram.service');
 const {
     buildInvoiceDetailsUrl,
@@ -13,7 +14,9 @@ const {
     requireAuth,
     formatInvoiceTypeLabel,
     formatTokenLabel,
-    shortHash
+    shortHash,
+    registerInvoiceCallback,
+    resolveInvoiceCallback
 } = require('../utils');
 
 const userStates = new Map();
@@ -28,6 +31,10 @@ function clearState(chatId) {
 
 function getState(chatId) {
     return userStates.get(chatId) || null;
+}
+
+function normalizeInvoiceHashInput(value) {
+    return String(value || '').trim().replace(/^`+|`+$/g, '');
 }
 
 function parseTokenCallback(data, fallbackInvoiceType = null) {
@@ -50,17 +57,46 @@ function parseTokenCallback(data, fallbackInvoiceType = null) {
         : null;
 }
 
+function buildInvoiceActionRows(invoice, options = {}) {
+    const paymentTxIds = normalizePaymentTxIds(invoice.payment_tx_ids);
+    const title = options.title || 'Open Invoice';
+    const callbackToken = options.chatId
+        ? registerInvoiceCallback(options.chatId, invoice.invoice_hash)
+        : null;
+    const rows = [
+        [
+            { text: title, url: buildInvoiceDetailsUrl(invoice.invoice_hash) },
+            ...(invoice.invoice_transaction_id
+                ? [{ text: 'Creation Tx', url: buildTransactionExplorerUrl(invoice.invoice_transaction_id) }]
+                : [])
+        ]
+    ];
+
+    if (options.includeBrowserLink && options.browserUrl) {
+        rows.push([{ text: options.browserLabel || 'Open Browser View', url: options.browserUrl }]);
+    }
+
+    if (callbackToken) {
+        rows.push([
+            { text: `Payments (${paymentTxIds.length})`, callback_data: `INVOICE_PAYMENTS_${callbackToken}` },
+            { text: 'Receipt Hashes', callback_data: `INVOICE_RECEIPTS_${callbackToken}` }
+        ]);
+    }
+
+    return rows;
+}
+
 async function sendTypePrompt(bot, chatId) {
-    await bot.sendMessage(chatId, '🧾 Choose the invoice type you want to create:', {
+    await bot.sendMessage(chatId, 'Choose the invoice type you want to create:', {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '🧾 Standard', callback_data: 'CREATE_TYPE_standard' },
-                    { text: '🔀 Multipay', callback_data: 'CREATE_TYPE_multipay' }
+                    { text: 'Standard', callback_data: 'CREATE_TYPE_standard' },
+                    { text: 'Multipay', callback_data: 'CREATE_TYPE_multipay' }
                 ],
                 [
-                    { text: '💝 Donation', callback_data: 'CREATE_TYPE_donation' },
-                    { text: '✖️ Cancel', callback_data: 'CREATE_CANCEL' }
+                    { text: 'Donation', callback_data: 'CREATE_TYPE_donation' },
+                    { text: 'Cancel', callback_data: 'CREATE_CANCEL' }
                 ]
             ]
         }
@@ -70,21 +106,21 @@ async function sendTypePrompt(bot, chatId) {
 async function sendTokenPrompt(bot, chatId, invoiceType) {
     const rows = [
         [
-            { text: '🪙 CREDITS', callback_data: `CREATE_TOKEN_${invoiceType}_CREDITS` },
-            { text: '💵 USDCX', callback_data: `CREATE_TOKEN_${invoiceType}_USDCX` }
+            { text: 'CREDITS', callback_data: `CREATE_TOKEN_${invoiceType}_CREDITS` },
+            { text: 'USDCX', callback_data: `CREATE_TOKEN_${invoiceType}_USDCX` }
         ],
         [
-            { text: '🏦 USAD', callback_data: `CREATE_TOKEN_${invoiceType}_USAD` }
+            { text: 'USAD', callback_data: `CREATE_TOKEN_${invoiceType}_USAD` }
         ]
     ];
 
     if (invoiceType === 'donation') {
-        rows[1].push({ text: '🌐 ANY', callback_data: `CREATE_TOKEN_${invoiceType}_ANY` });
+        rows[1].push({ text: 'ANY', callback_data: `CREATE_TOKEN_${invoiceType}_ANY` });
     }
 
-    rows.push([{ text: '✖️ Cancel', callback_data: 'CREATE_CANCEL' }]);
+    rows.push([{ text: 'Cancel', callback_data: 'CREATE_CANCEL' }]);
 
-    await bot.sendMessage(chatId, '💳 Pick the token mode for this invoice:', {
+    await bot.sendMessage(chatId, 'Pick the token mode for this invoice:', {
         reply_markup: {
             inline_keyboard: rows
         }
@@ -111,8 +147,8 @@ async function sendConfirmPrompt(bot, chatId, state) {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: '✅ Create Invoice', callback_data: 'CREATE_CONFIRM' },
-                    { text: '✖️ Cancel', callback_data: 'CREATE_CANCEL' }
+                    { text: 'Create Invoice', callback_data: 'CREATE_CONFIRM' },
+                    { text: 'Cancel', callback_data: 'CREATE_CANCEL' }
                 ]
             ]
         }
@@ -131,29 +167,172 @@ async function handleRecentInvoices(bot, msgOrQuery, user) {
     let text = 'Recent invoices:\n\n';
     const buttons = [];
 
-    for (const invoice of invoices) {
-        text += `Hash: \`${invoice.invoice_hash}\`\n`;
+    invoices.forEach((invoice, index) => {
+        const paymentTxIds = normalizePaymentTxIds(invoice.payment_tx_ids);
+
+        text += `${index + 1}. Hash: \`${invoice.invoice_hash}\`\n`;
         text += `Status: ${invoice.status}\n`;
         text += `Token: ${formatTokenLabel(invoice.token_type)}\n`;
         text += `Type: ${formatInvoiceTypeLabel(invoice.invoice_type)}\n`;
         if (invoice.invoice_transaction_id) {
             text += `Creation tx: \`${invoice.invoice_transaction_id}\`\n`;
         }
+        text += `Payments: ${paymentTxIds.length}\n`;
+        if (invoice.created_at) {
+            text += `Created: ${new Date(invoice.created_at).toLocaleString()}\n`;
+        }
         text += '\n';
 
-        const row = [
-            { text: `📄 ${shortHash(invoice.invoice_hash)}`, url: buildInvoiceDetailsUrl(invoice.invoice_hash) }
-        ];
-        if (invoice.invoice_transaction_id) {
-            row.push({ text: '🔗 Creation Tx', url: buildTransactionExplorerUrl(invoice.invoice_transaction_id) });
+        buttons.push(...buildInvoiceActionRows(invoice, { title: `Invoice ${index + 1}`, chatId }));
+    });
+
+    await bot.sendMessage(chatId, text.trim(), {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: buttons
         }
-        buttons.push(row);
+    });
+}
+
+async function sendPaymentTxBreakdown(bot, chatId, invoice) {
+    const txIds = normalizePaymentTxIds(invoice.payment_tx_ids);
+    const invoiceRef = shortHash(invoice.invoice_hash);
+
+    if (!txIds.length) {
+        await bot.sendMessage(chatId, `No payment transaction IDs are recorded yet for invoice \`${invoiceRef}\`.`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [[
+                    { text: 'Open Invoice Details', url: buildInvoiceDetailsUrl(invoice.invoice_hash) }
+                ]]
+            }
+        });
+        return;
     }
+
+    let text = `Payment transaction IDs for invoice \`${invoiceRef}\`\n\n`;
+    txIds.forEach((txId, index) => {
+        text += `${index + 1}. \`${txId}\`\n`;
+    });
+
+    await bot.sendMessage(chatId, text.trim(), {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [
+                ...txIds.map((txId, index) => ([
+                    { text: `Open Tx ${index + 1}`, url: buildTransactionExplorerUrl(txId) }
+                ])),
+                [
+                    { text: 'Open Invoice Details', url: buildInvoiceDetailsUrl(invoice.invoice_hash) }
+                ]
+            ]
+        }
+    });
+}
+
+async function sendReceiptHashBreakdown(bot, chatId, invoice) {
+    const paymentCount = normalizePaymentTxIds(invoice.payment_tx_ids).length;
+    const amount = deriveInvoiceAmount(invoice);
+    let text = `Receipt hashes for invoice \`${shortHash(invoice.invoice_hash)}\`\n\n`;
+    text += 'Telegram cannot list or cryptographically verify merchant receipt hashes yet.\n';
+    text += 'The frontend verify flow works by scanning your private wallet records, and those private records never leave your device.\n\n';
+    text += `Reference invoice status: ${invoice.status}\n`;
+    text += `Reference token: ${formatTokenLabel(invoice.token_type)}\n`;
+    if (amount !== null) {
+        text += `Reference amount: ${amount}\n`;
+    }
+    text += `Recorded payment txs: ${paymentCount}\n\n`;
+    text += 'Open the browser invoice view to inspect private receipt hashes and use the full verify flow.';
 
     await bot.sendMessage(chatId, text, {
         parse_mode: 'Markdown',
         reply_markup: {
-            inline_keyboard: buttons
+            inline_keyboard: [[
+                { text: 'Open Invoice Details', url: buildInvoiceDetailsUrl(invoice.invoice_hash) }
+            ]]
+        }
+    });
+}
+
+async function beginVerifyFlow(bot, msg, invoiceHash = '') {
+    const user = await requireAuth(bot, msg);
+    if (!user) return;
+
+    const normalizedHash = normalizeInvoiceHashInput(invoiceHash);
+
+    if (normalizedHash) {
+        const invoice = await getInvoiceForTelegramUser(user, normalizedHash);
+        if (!invoice) {
+            await bot.sendMessage(msg.chat.id, 'I could not find that invoice under your linked merchant wallet. Send a valid invoice hash or use /cancel.');
+            setState(msg.chat.id, { mode: 'verify', step: 'invoice', user });
+            return;
+        }
+
+        setState(msg.chat.id, { mode: 'verify', step: 'receipt', user, invoice });
+        await bot.sendMessage(
+            msg.chat.id,
+            `Receipt verification started for invoice \`${invoice.invoice_hash}\`.\n\nNow send the receipt hash you want me to check.`,
+            { parse_mode: 'Markdown' }
+        );
+        return;
+    }
+
+    setState(msg.chat.id, { mode: 'verify', step: 'invoice', user });
+    await bot.sendMessage(msg.chat.id, 'Send the invoice hash you want to verify a receipt against.');
+}
+
+async function handleVerifyState(bot, msg, state) {
+    const chatId = msg.chat.id;
+
+    if (state.step === 'invoice') {
+        const invoiceHash = normalizeInvoiceHashInput(msg.text);
+        if (!invoiceHash) {
+            await bot.sendMessage(chatId, 'Send a valid invoice hash, or use /cancel to stop.');
+            return;
+        }
+
+        const invoice = await getInvoiceForTelegramUser(state.user, invoiceHash);
+        if (!invoice) {
+            await bot.sendMessage(chatId, 'I could not find that invoice under your linked merchant wallet. Try again or use /cancel.');
+            return;
+        }
+
+        setState(chatId, { ...state, step: 'receipt', invoice });
+        await bot.sendMessage(
+            chatId,
+            `Invoice found.\n\nHash: \`${invoice.invoice_hash}\`\nStatus: ${invoice.status}\nToken: ${formatTokenLabel(invoice.token_type)}\n\nNow send the receipt hash you want me to check.`,
+            { parse_mode: 'Markdown' }
+        );
+        return;
+    }
+
+    const receiptHash = normalizeInvoiceHashInput(msg.text);
+    if (!receiptHash) {
+        await bot.sendMessage(chatId, 'Send a valid receipt hash, or use /cancel to stop.');
+        return;
+    }
+
+    const { invoice } = state;
+    const amount = deriveInvoiceAmount(invoice);
+    clearState(chatId);
+
+    let text = `Receipt check requested\n\n`;
+    text += `Invoice: \`${invoice.invoice_hash}\`\n`;
+    text += `Receipt hash: \`${receiptHash}\`\n\n`;
+    text += 'Telegram cannot validate private receipt hashes yet because the frontend verification flow depends on private wallet records that never leave your device.\n\n';
+    text += `Reference token: ${formatTokenLabel(invoice.token_type)}\n`;
+    if (amount !== null) {
+        text += `Reference amount: ${amount}\n`;
+    }
+    text += `Invoice status: ${invoice.status}\n\n`;
+    text += 'Open the browser invoice view to run the full private verification flow.';
+
+    await bot.sendMessage(chatId, text, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [[
+                { text: 'Open Invoice Details', url: buildInvoiceDetailsUrl(invoice.invoice_hash) }
+            ]]
         }
     });
 }
@@ -175,19 +354,29 @@ module.exports = (bot) => {
         await sendTypePrompt(bot, msg.chat.id);
     });
 
+    bot.onText(/^\/verify(?:\s+(.+))?$/i, async (msg, match) => {
+        try {
+            await beginVerifyFlow(bot, msg, match?.[1] || '');
+        } catch (error) {
+            console.error('Telegram verify flow failed:', error);
+            await bot.sendMessage(msg.chat.id, 'I could not start the verify flow right now. Please try again in a moment.');
+        }
+    });
+
     bot.onText(/^\/cancel(?:\s|$)/, async (msg) => {
-        if (!getState(msg.chat.id)) {
-            await bot.sendMessage(msg.chat.id, 'There is no active Telegram invoice flow to cancel.');
+        const activeState = getState(msg.chat.id);
+        if (!activeState) {
+            await bot.sendMessage(msg.chat.id, 'There is no active Telegram flow to cancel.');
             return;
         }
 
         clearState(msg.chat.id);
-        await bot.sendMessage(msg.chat.id, 'The current Telegram invoice flow has been cancelled.');
+        await bot.sendMessage(msg.chat.id, 'The current Telegram flow has been cancelled.');
     });
 
     bot.onText(/^\/invoice(?:\s+(.+))?$/i, async (msg, match) => {
         const chatId = msg.chat.id;
-        const invoiceHash = match?.[1]?.trim();
+        const invoiceHash = normalizeInvoiceHashInput(match?.[1] || '');
         const user = await requireAuth(bot, msg);
         if (!user) return;
 
@@ -216,22 +405,18 @@ module.exports = (bot) => {
             if (invoice.invoice_transaction_id) {
                 text += `Creation tx: \`${invoice.invoice_transaction_id}\`\n`;
             }
-            if (txIds.length) {
-                text += `Payments: ${txIds.map((txId) => `\`${txId}\``).join(', ')}\n`;
-            }
+            text += `Payments: ${txIds.length}\n`;
 
             await bot.sendMessage(chatId, text, {
                 parse_mode: 'Markdown',
                 reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: '📄 Open Invoice', url: buildInvoiceDetailsUrl(invoice.invoice_hash) },
-                            { text: payTarget.kind === 'invoice' ? '🌐 Open Browser View' : '💳 Open Pay Route', url: payTarget.url }
-                        ],
-                        ...(invoice.invoice_transaction_id
-                            ? [[{ text: '🔗 Open Creation Tx', url: buildTransactionExplorerUrl(invoice.invoice_transaction_id) }]]
-                            : [])
-                    ]
+                    inline_keyboard: buildInvoiceActionRows(invoice, {
+                        title: 'Open Invoice',
+                        chatId,
+                        includeBrowserLink: true,
+                        browserUrl: payTarget.url,
+                        browserLabel: payTarget.kind === 'invoice' ? 'Open Browser View' : 'Open Pay Route'
+                    })
                 }
             });
         } catch (error) {
@@ -250,7 +435,21 @@ module.exports = (bot) => {
         if (!msg.text || msg.text.startsWith('/')) return;
 
         const state = getState(msg.chat.id);
-        if (!state || state.mode !== 'create') {
+        if (!state) {
+            return;
+        }
+
+        if (state.mode === 'verify') {
+            try {
+                await handleVerifyState(bot, msg, state);
+            } catch (error) {
+                console.error('Telegram verify step failed:', error);
+                await bot.sendMessage(msg.chat.id, 'I could not continue the verify flow right now. Please try /verify again in a moment.');
+            }
+            return;
+        }
+
+        if (state.mode !== 'create') {
             return;
         }
 
@@ -285,10 +484,14 @@ module.exports = (bot) => {
             return;
         }
 
+        const data = query.data || '';
+        const paymentMatch = data.match(/^INVOICE_PAYMENTS_([a-f0-9]+)$/);
+        const receiptMatch = data.match(/^INVOICE_RECEIPTS_([a-f0-9]+)$/);
+
         let state = getState(chatId);
         const syntheticMsg = { chat: query.message.chat, from: query.from };
 
-        if (query.data === 'LIST_INVOICES') {
+        if (data === 'LIST_INVOICES') {
             await bot.answerCallbackQuery(query.id);
             const user = await requireAuth(bot, syntheticMsg);
             if (!user) return;
@@ -296,15 +499,44 @@ module.exports = (bot) => {
             return;
         }
 
+        if (paymentMatch || receiptMatch) {
+            try {
+                await bot.answerCallbackQuery(query.id);
+                const user = await requireAuth(bot, syntheticMsg);
+                if (!user) return;
+
+                const invoiceHash = resolveInvoiceCallback(chatId, (paymentMatch || receiptMatch)[1]);
+                const invoice = invoiceHash
+                    ? await getInvoiceForTelegramUser(user, invoiceHash)
+                    : null;
+                if (!invoice) {
+                    await bot.sendMessage(chatId, 'I could not find that invoice under your linked merchant wallet.');
+                    return;
+                }
+
+                if (paymentMatch) {
+                    await sendPaymentTxBreakdown(bot, chatId, invoice);
+                    return;
+                }
+
+                await sendReceiptHashBreakdown(bot, chatId, invoice);
+                return;
+            } catch (error) {
+                console.error('Telegram invoice evidence callback failed:', error);
+                await bot.sendMessage(chatId, 'I could not load that invoice evidence right now. Please try again in a moment.');
+                return;
+            }
+        }
+
         try {
-            if (query.data === 'CREATE_CANCEL') {
+            if (data === 'CREATE_CANCEL') {
                 clearState(chatId);
-                await bot.answerCallbackQuery(query.id, { text: 'Invoice flow cancelled.' });
-                await bot.sendMessage(chatId, 'The current Telegram invoice draft has been cancelled.');
+                await bot.answerCallbackQuery(query.id, { text: 'Flow cancelled.' });
+                await bot.sendMessage(chatId, 'The current Telegram flow has been cancelled.');
                 return;
             }
 
-            if (query.data.startsWith('CREATE_TYPE_')) {
+            if (data.startsWith('CREATE_TYPE_')) {
                 if (!state || state.mode !== 'create') {
                     const user = await requireAuth(bot, syntheticMsg);
                     if (!user) return;
@@ -318,7 +550,7 @@ module.exports = (bot) => {
                     };
                 }
 
-                state.invoiceType = query.data.replace('CREATE_TYPE_', '');
+                state.invoiceType = data.replace('CREATE_TYPE_', '');
                 state.currency = null;
                 state.amount = null;
                 state.memo = '';
@@ -328,8 +560,8 @@ module.exports = (bot) => {
                 return;
             }
 
-            if (query.data.startsWith('CREATE_TOKEN_')) {
-                const parsedToken = parseTokenCallback(query.data, state?.invoiceType || null);
+            if (data.startsWith('CREATE_TOKEN_')) {
+                const parsedToken = parseTokenCallback(data, state?.invoiceType || null);
                 if (!parsedToken) {
                     await bot.answerCallbackQuery(query.id, { text: 'This invoice draft expired. Use /create again.' });
                     return;
@@ -366,14 +598,14 @@ module.exports = (bot) => {
                 return;
             }
 
-            if (query.data === 'CREATE_CONFIRM') {
+            if (data === 'CREATE_CONFIRM') {
                 if (!state || state.mode !== 'create' || !state.invoiceType || !state.currency) {
                     await bot.answerCallbackQuery(query.id, { text: 'This invoice draft expired. Use /create again.' });
                     return;
                 }
 
                 await bot.answerCallbackQuery(query.id, { text: 'Creating invoice...' });
-                await bot.sendMessage(chatId, '🧾 Submitting your invoice through the NullPay relayer and waiting for the on-chain invoice hash...');
+                await bot.sendMessage(chatId, 'Submitting your invoice through the NullPay relayer and waiting for the on-chain invoice hash...');
 
                 const result = await createTelegramInvoice(state.user, state);
                 clearState(chatId);
@@ -393,15 +625,13 @@ module.exports = (bot) => {
                 await bot.sendMessage(chatId, text, {
                     parse_mode: 'Markdown',
                     reply_markup: {
-                        inline_keyboard: [
-                            [
-                                { text: '📄 Open Invoice', url: buildInvoiceDetailsUrl(result.invoice.invoice_hash) },
-                                { text: '💳 Share Pay Link', url: result.payTarget.url }
-                            ],
-                            [
-                                { text: '🔗 Open Creation Tx', url: buildTransactionExplorerUrl(result.txId) }
-                            ]
-                        ]
+                        inline_keyboard: buildInvoiceActionRows(result.invoice, {
+                            title: 'Open Invoice',
+                            chatId,
+                            includeBrowserLink: true,
+                            browserUrl: result.payTarget.url,
+                            browserLabel: 'Share Pay Link'
+                        })
                     }
                 });
                 return;

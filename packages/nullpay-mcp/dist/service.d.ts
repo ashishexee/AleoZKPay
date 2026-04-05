@@ -74,6 +74,24 @@ export declare class NullPayMcpService {
                 };
                 line_items: {
                     type: string;
+                    items: {
+                        type: string;
+                        properties: {
+                            name: {
+                                type: string;
+                            };
+                            quantity: {
+                                type: string;
+                            };
+                            unitPrice: {
+                                type: string;
+                            };
+                            total: {
+                                type: string;
+                            };
+                        };
+                        required: string[];
+                    };
                 };
                 address?: undefined;
                 password?: undefined;

@@ -24,6 +24,7 @@ const ShimmerRow: React.FC = () => (
     <tr className="animate-pulse">
         <td className="py-4 px-6"><div className="h-4 w-28 bg-white/10 rounded" /></td>
         <td className="py-4 px-6 text-center"><div className="h-4 w-12 bg-white/10 rounded mx-auto" /></td>
+        <td className="py-4 px-6 text-center"><div className="h-4 w-12 bg-white/10 rounded mx-auto" /></td>
         <td className="py-4 px-6 text-center"><div className="h-5 w-16 bg-white/10 rounded mx-auto" /></td>
         <td className="py-4 px-6 text-center"><div className="h-5 w-14 bg-white/10 rounded mx-auto" /></td>
         <td className="py-4 px-6 text-center"><div className="h-5 w-16 bg-white/10 rounded-full mx-auto" /></td>
@@ -48,6 +49,39 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
 }) => {
     const navigate = useNavigate();
     const [initialGrace, setInitialGrace] = useState(true);
+
+    const renderTokenTotals = (
+        totals: { credits?: number; usdcx?: number; usad?: number } | undefined,
+        fallbackAmount: number,
+        fallbackTokenType: number,
+        invoiceType: number
+    ) => {
+        const values = [
+            { key: 'credits', amount: totals?.credits || 0, label: 'Credits' },
+            { key: 'usdcx', amount: totals?.usdcx || 0, label: 'USDCx' },
+            { key: 'usad', amount: totals?.usad || 0, label: 'USAD' }
+        ].filter((entry) => entry.amount > 0);
+
+        if (values.length > 0) {
+            return (
+                <div className="flex items-start justify-center gap-4">
+                    {values.map((entry) => (
+                        <div key={entry.key} className="flex min-w-[52px] flex-col items-center">
+                            <span className="font-bold text-white">{entry.amount}</span>
+                            <span className="text-[10px] text-gray-500 uppercase">{entry.label}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        return (
+            <div className="flex flex-col items-center">
+                <span className="font-bold text-gray-500">{fallbackAmount}</span>
+                <span className="text-[10px] text-gray-600 uppercase">{getTokenLabel(fallbackTokenType, invoiceType)}</span>
+            </div>
+        );
+    };
 
     // Always show shimmer for the first 5 seconds after mount, then allow empty state
     useEffect(() => {
@@ -79,6 +113,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                     <tr className="border-b border-white/10 text-left">
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest">Invoice Hash</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Amount</th>
+                        <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Earnings</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Type</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Wallet</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
@@ -95,7 +130,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                             <ShimmerRow />
                         </>
                     ) : showEmpty ? (
-                        <tr><td colSpan={8} className="text-center py-12 text-gray-500 italic">{search ? 'No invoices match your search.' : 'No created invoices found.'}</td></tr>
+                        <tr><td colSpan={9} className="text-center py-12 text-gray-500 italic">{search ? 'No invoices match your search.' : 'No created invoices found.'}</td></tr>
                     ) : (
                         paginatedInvoices.map((inv, i) => {
                             // Base Params
@@ -143,20 +178,16 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                     </td>
                                     <td className="py-4 px-6 text-center">
                                         {inv.invoiceType === 2 ? (
-                                            <div className="flex flex-col items-center gap-1">
-                                                {inv.donations?.credits > 0 && <span className="text-xs font-bold text-white">{inv.donations.credits} <span className="text-[10px] text-gray-500 uppercase">Credits</span></span>}
-                                                {inv.donations?.usdcx > 0 && <span className="text-xs font-bold text-white">{inv.donations.usdcx} <span className="text-[10px] text-gray-500 uppercase">USDCx</span></span>}
-                                                {inv.donations?.usad > 0 && <span className="text-xs font-bold text-white">{inv.donations.usad} <span className="text-[10px] text-gray-500 uppercase">USAD</span></span>}
-                                                {(!inv.donations || (inv.donations.credits === 0 && inv.donations.usdcx === 0 && inv.donations.usad === 0)) && (
-                                                    <span className="font-bold text-gray-500">0 <span className="text-[10px] text-gray-600 uppercase">{getTokenLabel(inv.tokenType, inv.invoiceType)}</span></span>
-                                                )}
-                                            </div>
+                                            renderTokenTotals(inv.donations, 0, inv.tokenType, inv.invoiceType)
                                         ) : (
                                             <div className="flex flex-col items-center">
                                                 <span className="font-bold text-white">{inv.amount}</span>
                                                 <span className="text-[10px] text-gray-500 uppercase">{getTokenLabel(inv.tokenType, inv.invoiceType)}</span>
                                             </div>
                                         )}
+                                    </td>
+                                    <td className="py-4 px-6 text-center">
+                                        {renderTokenTotals(inv.earnings, 0, inv.tokenType, inv.invoiceType)}
                                     </td>
                                     <td className="py-4 px-6 text-center">
                                         <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider ${inv.invoiceType === 1 ? 'bg-purple-900/30 text-purple-400 border border-purple-500/20' :
@@ -257,7 +288,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                             )}
 
                                             <button
-                                                onClick={() => onVerify(inv)}
+                                                onClick={(e) => { e.stopPropagation(); onVerify(inv); }}
                                                 className="flex items-center gap-1.5 text-xs bg-neon-primary/10 hover:bg-neon-primary/20 px-3 py-1.5 rounded-md border border-neon-primary/20 hover:border-neon-primary/50 transition-all text-neon-primary font-medium group/btn"
                                             >
                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

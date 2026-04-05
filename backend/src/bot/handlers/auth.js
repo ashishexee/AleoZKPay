@@ -14,14 +14,14 @@ async function sendLinkFlow(bot, msg, options = {}) {
     if (existingUser?.aleo_address && !options.force) {
         await bot.sendMessage(
             chatId,
-            `🔐 Your merchant wallet is already linked:\n\`${existingUser.aleo_address}\`\n\nYou can use /dashboard for a live summary, /create for a new invoice, or /unlink if you want to replace this wallet.`,
+            `Your merchant wallet is already linked:\n\`${existingUser.aleo_address}\`\n\nYou can use /dashboard for a live summary, /create for a new invoice, or /unlink if you want to replace this wallet.`,
             {
                 parse_mode: 'Markdown',
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '📊 Open Dashboard', callback_data: 'OPEN_DASHBOARD' },
-                            { text: '🔁 Relink Wallet', callback_data: 'LINK_FORCE' }
+                            { text: 'Open Dashboard', callback_data: 'OPEN_DASHBOARD' },
+                            { text: 'Relink Wallet', callback_data: 'LINK_FORCE' }
                         ]
                     ]
                 }
@@ -38,11 +38,11 @@ async function sendLinkFlow(bot, msg, options = {}) {
 
     await bot.sendMessage(
         chatId,
-        '🔐 Open the secure NullPay browser flow below.\n\nYou will:\n1. Connect your Aleo wallet\n2. Create or unlock your NullPay password\n3. Sign one short one-time link message\n\nPayments and private wallet actions still stay browser-only for security.',
+        'Open the secure NullPay browser flow below.\n\nYou will:\n1. Connect your Aleo wallet\n2. Create or unlock your NullPay password\n3. Sign one short one-time link message\n\nPayments and private wallet actions still stay browser-only for security.',
         {
             reply_markup: {
                 inline_keyboard: [[
-                    { text: '🔐 Link Wallet Securely', url: session.link_url }
+                    { text: 'Link Wallet Securely', url: session.link_url }
                 ]]
             }
         }
@@ -55,21 +55,21 @@ module.exports = (bot) => {
 
         await bot.sendMessage(
             chatId,
-            'NullPay Telegram Bot\n\nWhat I can help you with:\n• Securely link your merchant wallet once\n• Create standard, multipay, and donation invoices\n• Show a lightweight dashboard from your DB invoice history\n• Look up invoice hashes, status, and payment tx ids\n• Send real-time payment alerts in Telegram\n• Open the web app for wallet signing, gift cards, and private views\n\nSecurity boundary:\nPayments, gift cards, burner wallet actions, card wallet actions, and private record decryption always stay in the browser.\n\nQuick start:\nUse /link first, then /dashboard or /create.',
+            'NullPay Telegram Bot\n\nWhat I can help you with:\n- Securely link your merchant wallet once\n- Create standard, multipay, and donation invoices\n- Show a lightweight dashboard from your DB invoice history\n- Look up invoice hashes, status, creation txs, and payment tx ids\n- Start a guided /verify flow for receipt checks\n- Send real-time payment alerts in Telegram\n- Open the web app for wallet signing, gift cards, and private views\n\nSecurity boundary:\nPayments, gift cards, burner wallet actions, card wallet actions, and private record decryption always stay in the browser.\n\nQuick start:\nUse /link first, then /dashboard or /create.',
             {
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: '🔐 Link Wallet', callback_data: 'LINK_START' },
-                            { text: '📊 Dashboard', callback_data: 'OPEN_DASHBOARD' }
+                            { text: 'Link Wallet', callback_data: 'LINK_START' },
+                            { text: 'Dashboard', callback_data: 'OPEN_DASHBOARD' }
                         ],
                         [
-                            { text: '🧾 Create Invoice', callback_data: 'START_CREATE' },
-                            { text: '🌐 Open Web App', callback_data: 'OPEN_WEBAPP' }
+                            { text: 'Create Invoice', callback_data: 'START_CREATE' },
+                            { text: 'Open Web App', callback_data: 'OPEN_WEBAPP' }
                         ],
                         [
-                            { text: '🔔 Alerts', callback_data: 'NOTIFICATIONS_MENU' },
-                            { text: 'ℹ️ Commands', callback_data: 'SHOW_HELP' }
+                            { text: 'Alerts', callback_data: 'NOTIFICATIONS_MENU' },
+                            { text: 'Commands', callback_data: 'SHOW_HELP' }
                         ]
                     ]
                 }
@@ -116,7 +116,7 @@ module.exports = (bot) => {
             if (query.data === 'SHOW_HELP') {
                 await bot.sendMessage(
                     query.message.chat.id,
-                    'Available commands:\n\n/link  Securely verify your merchant wallet\n/dashboard  View invoice totals and recent activity\n/create  Start a guided invoice wizard\n/invoice <hash>  View a single invoice\n/invoices  List recent invoices\n/pay <hash>  Open the browser payment route\n/notifications  Manage payment alerts\n/webapp  Open web app shortcuts\n/giftcards  Open the gift card area in the browser\n/unlink  Remove the linked wallet',
+                    'Available commands:\n\n/link  Securely verify your merchant wallet\n/dashboard  View invoice totals and recent activity\n/create  Start a guided invoice wizard\n/invoice <hash>  View a single invoice\n/invoices  List recent invoices\n/verify  Start the receipt verification flow\n/pay <hash>  Open the browser payment route\n/notifications  Manage payment alerts\n/webapp  Open web app shortcuts\n/giftcards  Open the gift card area in the browser\n/unlink  Remove the linked wallet'
                 );
                 return;
             }
