@@ -341,7 +341,7 @@ export const CreateGiftCard: React.FC = () => {
                             <FloatingGiftCard giftCode={giftCode} amounts={{ ALEO: amounts.ALEO, USDCx: amounts.USDCx, USAD: amounts.USAD }} isInteractive={false} />
                             <p className="mt-3 text-xs text-white/25 flex items-center justify-center gap-1.5">
                                 <Copy className="w-3 h-3" />
-                                {copied ? 'Copied!' : 'Click to copy code'}
+                                {copied ? 'Copied brother' : 'Click to copy code'}
                             </p>
                         </div>
 

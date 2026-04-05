@@ -11,6 +11,7 @@ import {
 } from '../../services/api';
 import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
 import { PasswordPrompt } from '../../components/PasswordPrompt';
+import { encryptWithPassword } from '../../utils/crypto';
 
 function toBase64(bytes: Uint8Array): string {
     let binary = '';
@@ -23,7 +24,7 @@ function toBase64(bytes: Uint8Array): string {
 export default function TelegramLinkPage() {
     const [searchParams] = useSearchParams();
     const { address, wallet } = useWallet();
-    const { isUnlocked, isAutoUnlocking } = useBurnerWallet();
+    const { isUnlocked, isAutoUnlocking, appPassword } = useBurnerWallet();
     const [session, setSession] = useState<TelegramLinkSession | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -131,10 +132,15 @@ export default function TelegramLinkPage() {
                 throw new Error('The wallet did not return a usable signature.');
             }
 
+            const clientCiphertext = appPassword
+                ? await encryptWithPassword(address, appPassword)
+                : undefined;
+
             const result = await completeTelegramLinkSession({
                 token,
                 aleo_address: address,
-                signature_base64: toBase64(signatureBytes)
+                signature_base64: toBase64(signatureBytes),
+                aleo_address_client_ciphertext: clientCiphertext
             });
 
             setTelegramWebUrl(result.telegram_web_url || null);

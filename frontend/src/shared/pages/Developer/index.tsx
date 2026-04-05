@@ -173,8 +173,10 @@ export const DeveloperPortal = () => {
                     variants={staggerContainer}
                     initial="hidden"
                     animate="show"
-                    className="mb-16 flex flex-col items-center text-center"
+                    className="mb-8 flex flex-col items-center text-center"
                 >
+
+
                     <motion.div variants={fadeInUp} className="mb-6">
                         <span className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-semibold">For Developers</span>
                     </motion.div>
@@ -196,12 +198,12 @@ export const DeveloperPortal = () => {
                                 setTimeout(() => setCommandCopied(false), 2000);
                             }}>
                                 <div className="absolute inset-0 bg-gradient-to-r from-orange-400/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <Terminal className="w-4 h-4 text-gray-500 group-hover:text-orange-400 transition-colors" />
+                                <svg className="w-4 h-4 text-[#CB3837] group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor"><path d="M0 7.334v8h6.666v2.666H12v-2.666h12v-8H0zm6.666 5.332H4V10h2.666v2.666zm5.334 0h-2.666V10h2.666v2.666zm8 0h-2.666V10h2.666v2.666z" /></svg>
                                 <code className="text-sm font-mono text-orange-300 font-medium">npm install @nullpay/node@latest</code>
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {commandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
-                                        {commandCopied ? 'Copied!' : 'Copy'}
+                                        {commandCopied ? 'Copied brother' : 'Copy'}
                                     </span>
                                 </div>
                             </div>
@@ -217,7 +219,7 @@ export const DeveloperPortal = () => {
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {cliCommandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
-                                        {cliCommandCopied ? 'Copied!' : 'Copy'}
+                                        {cliCommandCopied ? 'Copied brother' : 'Copy'}
                                     </span>
                                 </div>
                             </div>
@@ -233,7 +235,7 @@ export const DeveloperPortal = () => {
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {mcpCommandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
-                                        {mcpCommandCopied ? 'Copied!' : 'Copy'}
+                                        {mcpCommandCopied ? 'Copied brother' : 'Copy'}
                                     </span>
                                 </div>
                             </div>
@@ -241,17 +243,86 @@ export const DeveloperPortal = () => {
                         <span className="text-[10px] text-orange-500/70 font-black uppercase tracking-[0.2em] text-center">Run the SDK and CLI commands inside the root of your Node.js backend. Run the MCP command from any terminal on the user machine.</span>
                     </motion.div>
 
-                    <motion.div variants={fadeInUp} className="flex flex-wrap justify-center gap-6 mt-6">
-                        {[
-                            { icon: Shield, label: 'AES-256-GCM encrypted keys' },
-                            { icon: Zap, label: 'Sub-500ms session creation' },
-                            { icon: Lock, label: 'ZK proofs, zero exposure' },
-                        ].map((feat, i) => (
-                            <div key={i} className="flex items-center gap-2.5 text-sm text-gray-400 font-medium group/feat cursor-default">
-                                <feat.icon className="w-4 h-4 text-orange-400 transition-colors" />
-                                <span className="group-hover/feat:text-gray-300 transition-colors">{feat.label}</span>
+                    <motion.div variants={fadeInUp} className="flex flex-wrap justify-center gap-10 mt-6 mb-2">
+                        <motion.div 
+                            layout
+                            className="flex items-center gap-5 px-8 py-2 transition-colors duration-500 group/badge"
+                        >
+                            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-500 mr-4 border-r border-white/10 pr-8 select-none whitespace-nowrap">MCP Works Seamlessly With</span>
+                            <div className="flex items-center gap-12">
+                                <motion.div 
+                                    layout
+                                    className="group/tool flex items-center cursor-pointer"
+                                    whileHover="hover"
+                                    initial="initial"
+                                >
+                                    <div className="relative flex items-center">
+                                        <div className="absolute inset-[-20%] bg-orange-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
+                                        <motion.img 
+                                            layout
+                                            src="/assets/claude.svg" 
+                                            alt="Claude" 
+                                            className="w-14 h-14 object-contain relative z-10 transition-all duration-700"
+                                            variants={{
+                                                initial: { scale: 1, rotate: 0 },
+                                                hover: { scale: 1.15, rotate: -5 }
+                                            }}
+                                        />
+                                        <motion.span 
+                                            layout
+                                            variants={{
+                                                initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
+                                                hover: { width: 'auto', opacity: 1, marginLeft: 20, x: 0 }
+                                            }}
+                                            transition={{ 
+                                                width: { type: "spring", stiffness: 100, damping: 20 },
+                                                opacity: { duration: 0.4 },
+                                                x: { type: "spring", stiffness: 100, damping: 20 }
+                                            }}
+                                            className="overflow-hidden whitespace-nowrap text-[15px] font-bold text-white relative z-10 tracking-tight"
+                                        >
+                                            Claude Desktop
+                                        </motion.span>
+                                    </div>
+                                </motion.div>
+
+                                <motion.div 
+                                    layout
+                                    className="group/tool flex items-center cursor-pointer"
+                                    whileHover="hover"
+                                    initial="initial"
+                                >
+                                    <div className="relative flex items-center">
+                                        <div className="absolute inset-[-20%] bg-blue-500/10 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
+                                        <motion.img 
+                                            layout
+                                            src="/assets/cursor-ide.png" 
+                                            alt="Cursor" 
+                                            className="w-16 h-16 object-contain relative z-10 transition-all duration-700"
+                                            variants={{
+                                                initial: { scale: 1, rotate: 0 },
+                                                hover: { scale: 1.15, rotate: 5 }
+                                            }}
+                                        />
+                                        <motion.span 
+                                            layout
+                                            variants={{
+                                                initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
+                                                hover: { width: 'auto', opacity: 1, marginLeft: 20, x: 0 }
+                                            }}
+                                            transition={{ 
+                                                width: { type: "spring", stiffness: 100, damping: 20 },
+                                                opacity: { duration: 0.4 },
+                                                x: { type: "spring", stiffness: 100, damping: 20 }
+                                            }}
+                                            className="overflow-hidden whitespace-nowrap text-[15px] font-bold text-white relative z-10 tracking-tight"
+                                        >
+                                            Cursor IDE
+                                        </motion.span>
+                                    </div>
+                                </motion.div>
                             </div>
-                        ))}
+                        </motion.div>
                     </motion.div>
                 </motion.div>
 

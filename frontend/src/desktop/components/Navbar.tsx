@@ -31,11 +31,11 @@ const Navbar = () => {
         {
             label: 'Integrations',
             dropdown: [
-                { path: '/docs', label: 'Documentation' },
                 { path: '/developer', label: 'SDK / Developers' },
                 { path: '/telegram-bot', label: 'Telegram Bot' }
             ]
-        }
+        },
+        { path: '/docs', label: 'Docs' }
     ];
 
     const navItems = isLanding ? landingNavItems : appNavItems;

@@ -297,6 +297,7 @@ export const completeTelegramLinkSession = async (payload: {
     aleo_address: string;
     signature_base64: string;
     username?: string;
+    aleo_address_client_ciphertext?: string;
 }): Promise<CompleteTelegramLinkSessionResponse> => {
     const response = await fetch(`${API_URL}/telegram/link-sessions/complete`, {
         method: 'POST',

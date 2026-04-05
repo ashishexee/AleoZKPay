@@ -116,7 +116,7 @@ export function GlobePulse({
         mapSamples: 16000,
         mapBrightness: 10,
         baseColor: [0.5, 0.5, 0.5],
-        markerColor: [0.2, 0.8, 0.9],
+        markerColor: [0.98, 0.45, 0.09],
         glowColor: [0.05, 0.05, 0.05],
         markerElevation: 0,
         markers: markers.map((marker) => ({
@@ -125,7 +125,7 @@ export function GlobePulse({
           size: 0.025,
         })),
         arcs: [],
-        arcColor: [0.3, 0.85, 0.95],
+        arcColor: [0.98, 0.45, 0.09],
         arcWidth: 0.5,
         arcHeight: 0.25,
         opacity: 0.7,
@@ -237,7 +237,7 @@ export function GlobePulse({
               style={{
                 position: "absolute",
                 inset: 0,
-                border: "2px solid #33ccdd",
+                border: "2px solid #f97316",
                 borderRadius: "50%",
                 opacity: 0,
                 animation: `pulse-expand 2s ease-out infinite ${marker.delay}s`,
@@ -247,7 +247,7 @@ export function GlobePulse({
               style={{
                 position: "absolute",
                 inset: 0,
-                border: "2px solid #33ccdd",
+                border: "2px solid #f97316",
                 borderRadius: "50%",
                 opacity: 0,
                 animation: `pulse-expand 2s ease-out infinite ${marker.delay + 0.5}s`,
@@ -257,9 +257,9 @@ export function GlobePulse({
               style={{
                 width: 10,
                 height: 10,
-                background: "#33ccdd",
+                background: "#f97316",
                 borderRadius: "50%",
-                boxShadow: "0 0 0 3px #111, 0 0 0 5px #33ccdd",
+                boxShadow: "0 0 0 3px #111, 0 0 0 5px #f97316",
               }}
             />
           </div>

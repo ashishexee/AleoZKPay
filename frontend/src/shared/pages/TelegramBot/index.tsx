@@ -46,30 +46,6 @@ const dashboardHighlights = [
     'Explorer links open the Aleo testnet transaction directly from Telegram.'
 ];
 
-function CopyPill({ label, value }: { label: string; value: string }) {
-    const [copied, setCopied] = useState(false);
-
-    const handleCopy = async () => {
-        await navigator.clipboard.writeText(value);
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1600);
-    };
-
-    return (
-        <button
-            type="button"
-            onClick={handleCopy}
-            className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-left transition-colors hover:bg-white/5"
-        >
-            <div>
-                <p className="text-[10px] uppercase tracking-[0.24em] text-gray-500">{label}</p>
-                <code className="mt-2 block text-sm text-orange-300">{value}</code>
-            </div>
-            {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-gray-500" />}
-        </button>
-    );
-}
-
 const CodeBlock = ({ title, code, language = 'text' }: { title: string; code: string; language?: string }) => (
     <div className="mt-6 mb-8 group">
         <div className="flex items-center justify-between px-4 py-2 bg-white/5 border border-white/10 rounded-t-lg border-b-0">
@@ -84,6 +60,13 @@ const CodeBlock = ({ title, code, language = 'text' }: { title: string; code: st
 
 export default function TelegramBotPage() {
     const [activeTab, setActiveTab] = useState('overview');
+    const [usernameCopied, setUsernameCopied] = useState(false);
+
+    const handleCopyUsername = async () => {
+        await navigator.clipboard.writeText(BOT_USERNAME);
+        setUsernameCopied(true);
+        window.setTimeout(() => setUsernameCopied(false), 1600);
+    };
 
     return (
         <motion.div
@@ -122,9 +105,48 @@ export default function TelegramBotPage() {
                         NullPay <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Telegram Bot</span>
                     </h1>
                     <p className="text-gray-300 text-lg md:text-xl max-w-3xl leading-relaxed">
-                        Deep documentation for the merchant companion experience in Telegram: secure wallet linking,
-                        invoice creation, dashboard snapshots, and realtime payment alerts.
+                        Telegram docs for the merchant companion: wallet linking, invoice creation, dashboard snapshots,
+                        and real-time payment alerts.
                     </p>
+                    <div className="mt-8 flex flex-col items-center gap-4">
+                        <div className="flex flex-wrap justify-center gap-3">
+                            <button
+                                type="button"
+                                onClick={handleCopyUsername}
+                                className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.1] rounded-2xl hover:border-orange-500/30 hover:bg-white/[0.05] hover:shadow-[0_0_20px_rgba(249,115,22,0.05)] transition-all group max-w-fit cursor-pointer relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-orange-400/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <Copy className="w-4 h-4 text-gray-500 group-hover:text-orange-400 transition-colors" />
+                                <code className="text-sm font-mono text-orange-300 font-medium">{BOT_USERNAME}</code>
+                                <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
+                                    {usernameCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
+                                        {usernameCopied ? 'Copied!' : 'Copy'}
+                                    </span>
+                                </div>
+                            </button>
+
+                            <a
+                                href={BOT_LINK}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.1] rounded-2xl hover:border-orange-500/30 hover:bg-white/[0.05] hover:shadow-[0_0_20px_rgba(249,115,22,0.05)] transition-all group max-w-fit cursor-pointer relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-orange-400/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-orange-400 transition-colors" />
+                                <code className="text-sm font-mono text-orange-300 font-medium">{BOT_LINK}</code>
+                                <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
+                                    <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
+                                        Open
+                                    </span>
+                                </div>
+                            </a>
+                        </div>
+                        <span className="text-[10px] text-orange-500/70 font-black uppercase tracking-[0.2em] text-center">
+                            Copy the bot username or jump straight into Telegram.
+                        </span>
+                    </div>
                 </motion.div>
 
                 <motion.div variants={fadeInUp} className="flex flex-wrap justify-center gap-4 mb-12 sticky top-24 z-50 bg-black/50 backdrop-blur-xl p-4 rounded-full border border-white/5 max-w-6xl mx-auto">
@@ -181,27 +203,6 @@ export default function TelegramBotPage() {
                                             Merchants receive payment alerts in Telegram when the invoice row gains a new payment transaction ID.
                                         </p>
                                     </div>
-                                </div>
-                            </GlassCard>
-
-                            <GlassCard className="p-10">
-                                <h2 className="text-3xl font-bold mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">
-                                    Bot Identity
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <CopyPill label="Username" value={BOT_USERNAME} />
-                                    <a
-                                        href={BOT_LINK}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-left transition-colors hover:bg-white/5"
-                                    >
-                                        <div>
-                                            <p className="text-[10px] uppercase tracking-[0.24em] text-gray-500">Open Link</p>
-                                            <code className="mt-2 block text-sm text-orange-300">{BOT_LINK}</code>
-                                        </div>
-                                        <ExternalLink className="h-4 w-4 text-gray-400" />
-                                    </a>
                                 </div>
                             </GlassCard>
                         </motion.div>

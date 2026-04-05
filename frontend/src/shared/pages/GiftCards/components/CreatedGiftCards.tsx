@@ -35,6 +35,7 @@ export const CreatedGiftCards: React.FC = () => {
     const [entries, setEntries] = useState<CreatedGiftCardEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasLoaded, setHasLoaded] = useState(false);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
     const loadCreatedGiftCards = useCallback(async () => {
         if (!address || !requestRecords) {
@@ -113,9 +114,11 @@ export const CreatedGiftCards: React.FC = () => {
         [entries]
     );
 
-    const copyGiftCode = async (giftCode: string) => {
+    const copyGiftCode = async (giftCode: string, entryId: string) => {
         await navigator.clipboard.writeText(giftCode);
+        setCopiedId(entryId);
         toast.success('Gift code copied.');
+        setTimeout(() => setCopiedId(null), 2000);
     };
 
     if (!address) {
@@ -182,11 +185,11 @@ export const CreatedGiftCards: React.FC = () => {
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => copyGiftCode(entry.giftCode)}
+                                    onClick={() => copyGiftCode(entry.giftCode, entry.id)}
                                     className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-orange-400/10 bg-orange-500/[0.06] px-3.5 py-2.5 text-xs font-semibold text-orange-100/80 transition-all hover:border-orange-300/20 hover:bg-orange-500/[0.1] hover:text-white"
                                 >
                                     <Copy className="h-3.5 w-3.5" />
-                                    Copy code
+                                    {copiedId === entry.id ? 'Copied' : 'Copy code'}
                                 </button>
                             </div>
 

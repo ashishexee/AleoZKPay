@@ -1,6 +1,8 @@
 const supabase = require('../config/supabase');
 const {
     sha256Hex,
+    decryptStoredValue,
+    encryptStoredValue,
     encryptMerchantValue,
     readMerchantStoredValue
 } = require('../utils/crypto');
@@ -39,15 +41,66 @@ function assertAleoAddress(address) {
     }
 }
 
-function decorateLinkSession(session) {
+function hashLookupValue(value) {
+    return sha256Hex(String(value));
+}
+
+function decryptTelegramValue(value, label) {
+    if (!value) return null;
+    try {
+        return decryptStoredValue(value, { label });
+    } catch {
+        return null;
+    }
+}
+
+function decryptTelegramNumber(ciphertext, fallback, label) {
+    const rawValue = ciphertext
+        ? decryptTelegramValue(ciphertext, label)
+        : (fallback === undefined || fallback === null ? null : String(fallback));
+
+    if (rawValue === null || rawValue === '') {
+        return null;
+    }
+
+    const parsed = Number(rawValue);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function encryptTelegramValue(value, label) {
+    if (value === undefined || value === null || value === '') {
+        return null;
+    }
+
+    return encryptStoredValue(String(value), { label });
+}
+
+function decorateLinkSession(session, tokenOverride = null) {
     if (!session) return null;
 
+    const telegramId = decryptTelegramNumber(session.telegram_id_ciphertext, session.telegram_id, 'Telegram link session id');
+    const chatId = decryptTelegramNumber(session.chat_id_ciphertext, session.chat_id, 'Telegram link session chat id');
+    const nonce = decryptTelegramValue(session.nonce_ciphertext, 'Telegram link session nonce') || session.nonce || null;
+    const username = decryptTelegramValue(session.username_ciphertext, 'Telegram link session username') || session.username || null;
+    const token = tokenOverride || session.token || null;
+    const decorated = {
+        id: session.id,
+        token,
+        telegram_id: telegramId,
+        chat_id: chatId,
+        username,
+        nonce,
+        expires_at: session.expires_at,
+        consumed_at: session.consumed_at || null,
+        created_at: session.created_at || null
+    };
+
     return {
-        ...session,
-        is_expired: new Date(session.expires_at).getTime() <= Date.now(),
-        is_consumed: Boolean(session.consumed_at),
-        message: buildTelegramLinkMessage(session),
-        link_url: buildTelegramLinkUrl(session.token)
+        ...decorated,
+        is_expired: new Date(decorated.expires_at).getTime() <= Date.now(),
+        is_consumed: Boolean(decorated.consumed_at),
+        message: buildTelegramLinkMessage(decorated),
+        link_url: buildTelegramLinkUrl(token)
     };
 }
 
@@ -65,8 +118,15 @@ function decorateTelegramUser(user) {
     if (!user) return null;
 
     return {
-        ...user,
-        aleo_address: getDecryptedTelegramAddress(user.aleo_address)
+        id: user.id,
+        telegram_id: decryptTelegramNumber(user.telegram_id_ciphertext, user.telegram_id, 'Telegram user id'),
+        username: decryptTelegramValue(user.username_ciphertext, 'Telegram username') || user.username || null,
+        chat_id: decryptTelegramNumber(user.chat_id_ciphertext, user.chat_id, 'Telegram chat id'),
+        aleo_address: getDecryptedTelegramAddress(user.aleo_address),
+        aleo_address_hash: user.aleo_address_hash || null,
+        notifications_enabled: Boolean(user.notifications_enabled),
+        linked_at: user.linked_at || null,
+        updated_at: user.updated_at || null
     };
 }
 
@@ -85,10 +145,11 @@ async function getNullPayProfile(addressHash) {
 }
 
 async function getLinkedTelegramUser(telegramId) {
+    const telegramIdHash = hashLookupValue(telegramId);
     const { data, error } = await supabase
         .from('telegram_users')
         .select('*')
-        .eq('telegram_id', telegramId)
+        .eq('telegram_id_hash', telegramIdHash)
         .maybeSingle();
 
     if (error) {
@@ -99,11 +160,16 @@ async function getLinkedTelegramUser(telegramId) {
 }
 
 async function createLinkSession({ telegramId, chatId, username }) {
+    const token = generateSecureToken(24);
+    const nonce = generateSecureToken(12);
     const session = {
-        token: generateSecureToken(24),
-        telegram_id: telegramId,
-        chat_id: chatId,
-        nonce: generateSecureToken(12),
+        token_hash: hashLookupValue(token),
+        telegram_id_hash: hashLookupValue(telegramId),
+        telegram_id_ciphertext: encryptTelegramValue(telegramId, 'Telegram link session id'),
+        chat_id_hash: hashLookupValue(chatId),
+        chat_id_ciphertext: encryptTelegramValue(chatId, 'Telegram link session chat id'),
+        username_ciphertext: encryptTelegramValue(username, 'Telegram link session username'),
+        nonce_ciphertext: encryptTelegramValue(nonce, 'Telegram link session nonce'),
         expires_at: getLinkExpiryDate().toISOString(),
         consumed_at: null
     };
@@ -122,28 +188,31 @@ async function createLinkSession({ telegramId, chatId, username }) {
         await supabase
             .from('telegram_users')
             .upsert({
-                telegram_id: telegramId,
-                username,
-                chat_id: chatId,
+                telegram_id_hash: hashLookupValue(telegramId),
+                telegram_id_ciphertext: encryptTelegramValue(telegramId, 'Telegram user id'),
+                username_ciphertext: encryptTelegramValue(username, 'Telegram username'),
+                chat_id_hash: hashLookupValue(chatId),
+                chat_id_ciphertext: encryptTelegramValue(chatId, 'Telegram chat id'),
                 updated_at: new Date().toISOString()
-            }, { onConflict: 'telegram_id' });
+            }, { onConflict: 'telegram_id_hash' });
     }
 
-    return decorateLinkSession(data);
+    return decorateLinkSession(data, token);
 }
 
 async function getLinkSession(token) {
+    const tokenHash = hashLookupValue(token);
     const { data, error } = await supabase
         .from('telegram_link_sessions')
         .select('*')
-        .eq('token', token)
+        .eq('token_hash', tokenHash)
         .maybeSingle();
 
     if (error) {
         throw new TelegramServiceError(error.message);
     }
 
-    return decorateLinkSession(data);
+    return decorateLinkSession(data, token);
 }
 
 async function requireActiveLinkSession(token) {
@@ -162,7 +231,7 @@ async function requireActiveLinkSession(token) {
     return session;
 }
 
-async function completeLinkSession({ token, aleoAddress, signatureBase64, username }) {
+async function completeLinkSession({ token, aleoAddress, signatureBase64, username, aleoAddressClientCiphertext }) {
     assertAleoAddress(aleoAddress);
     if (!signatureBase64) {
         throw new TelegramServiceError('A wallet signature is required.', 400);
@@ -191,10 +260,13 @@ async function completeLinkSession({ token, aleoAddress, signatureBase64, userna
 
     const now = new Date().toISOString();
     const payload = {
-        telegram_id: session.telegram_id,
-        username: username || null,
-        chat_id: session.chat_id,
+        telegram_id_hash: hashLookupValue(session.telegram_id),
+        telegram_id_ciphertext: encryptTelegramValue(session.telegram_id, 'Telegram user id'),
+        username_ciphertext: encryptTelegramValue(username || session.username || null, 'Telegram username'),
+        chat_id_hash: hashLookupValue(session.chat_id),
+        chat_id_ciphertext: encryptTelegramValue(session.chat_id, 'Telegram chat id'),
         aleo_address: encryptMerchantValue(aleoAddress),
+        aleo_address_client_ciphertext: encryptTelegramValue(aleoAddressClientCiphertext, 'Telegram client wallet snapshot'),
         aleo_address_hash: addressHash,
         notifications_enabled: true,
         linked_at: now,
@@ -203,7 +275,7 @@ async function completeLinkSession({ token, aleoAddress, signatureBase64, userna
 
     const { data: user, error: userError } = await supabase
         .from('telegram_users')
-        .upsert(payload, { onConflict: 'telegram_id' })
+        .upsert(payload, { onConflict: 'telegram_id_hash' })
         .select()
         .single();
 
@@ -214,7 +286,7 @@ async function completeLinkSession({ token, aleoAddress, signatureBase64, userna
     const { error: consumeError } = await supabase
         .from('telegram_link_sessions')
         .update({ consumed_at: now })
-        .eq('token', token);
+        .eq('token_hash', hashLookupValue(token));
 
     if (consumeError) {
         throw new TelegramServiceError(consumeError.message);
@@ -224,10 +296,11 @@ async function completeLinkSession({ token, aleoAddress, signatureBase64, userna
 }
 
 async function unlinkTelegramUser(telegramId) {
+    const telegramIdHash = hashLookupValue(telegramId);
     const { data, error } = await supabase
         .from('telegram_users')
         .delete()
-        .eq('telegram_id', telegramId)
+        .eq('telegram_id_hash', telegramIdHash)
         .select();
 
     if (error) {
@@ -238,13 +311,14 @@ async function unlinkTelegramUser(telegramId) {
 }
 
 async function setNotificationsEnabled(telegramId, enabled) {
+    const telegramIdHash = hashLookupValue(telegramId);
     const { data, error } = await supabase
         .from('telegram_users')
         .update({
             notifications_enabled: Boolean(enabled),
             updated_at: new Date().toISOString()
         })
-        .eq('telegram_id', telegramId)
+        .eq('telegram_id_hash', telegramIdHash)
         .select()
         .maybeSingle();
 
@@ -518,7 +592,7 @@ async function getNotificationRecipients(merchantAddressHash) {
         throw new TelegramServiceError(error.message);
     }
 
-    return data || [];
+    return (data || []).map((recipient) => decorateTelegramUser(recipient)).filter(Boolean);
 }
 
 async function recordNotificationDelivery({ telegramId, chatId, invoiceHash, eventType, paymentTxId }) {
@@ -526,12 +600,15 @@ async function recordNotificationDelivery({ telegramId, chatId, invoiceHash, eve
     const { error } = await supabase
         .from('telegram_notification_deliveries')
         .insert({
-            dedupe_key: dedupeKey,
-            telegram_id: telegramId,
-            chat_id: chatId,
-            invoice_hash: invoiceHash,
-            event_type: eventType,
-            payment_tx_id: paymentTxId || null,
+            dedupe_key_hash: hashLookupValue(dedupeKey),
+            telegram_id_hash: hashLookupValue(telegramId),
+            telegram_id_ciphertext: encryptTelegramValue(telegramId, 'Telegram delivery id'),
+            chat_id_hash: hashLookupValue(chatId),
+            chat_id_ciphertext: encryptTelegramValue(chatId, 'Telegram delivery chat id'),
+            invoice_hash_hash: hashLookupValue(invoiceHash),
+            invoice_hash_ciphertext: encryptTelegramValue(invoiceHash, 'Telegram delivery invoice hash'),
+            event_type_ciphertext: encryptTelegramValue(eventType, 'Telegram delivery event type'),
+            payment_tx_id_ciphertext: encryptTelegramValue(paymentTxId || null, 'Telegram delivery payment tx id'),
             delivered_at: new Date().toISOString()
         });
 

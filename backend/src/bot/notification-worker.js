@@ -7,6 +7,7 @@ const {
 } = require('../services/telegram.service');
 const {
     buildInvoiceDetailsUrl,
+    buildTransactionExplorerUrl,
     shortHash
 } = require('../utils/telegram');
 const { tokenTypeToLabel } = require('../utils/invoices');
@@ -43,6 +44,16 @@ async function notifyRecipients(bot, invoice, eventType, paymentTxId) {
         return;
     }
 
+    const buttons = [
+        [{ text: '📄 Open Invoice Details', url: buildInvoiceDetailsUrl(invoice.invoice_hash) }]
+    ];
+
+    if (paymentTxId) {
+        buttons.push([
+            { text: '🔗 View Transaction', url: buildTransactionExplorerUrl(paymentTxId) }
+        ]);
+    }
+
     for (const recipient of recipients) {
         try {
             const shouldSend = await recordNotificationDelivery({
@@ -60,9 +71,7 @@ async function notifyRecipients(bot, invoice, eventType, paymentTxId) {
             await bot.sendMessage(recipient.chat_id, buildMessage(invoice, eventType, paymentTxId), {
                 parse_mode: 'Markdown',
                 reply_markup: {
-                    inline_keyboard: [[
-                        { text: '📄 Open Invoice Details', url: buildInvoiceDetailsUrl(invoice.invoice_hash) }
-                    ]]
+                    inline_keyboard: buttons
                 }
             });
         } catch (error) {
@@ -76,8 +85,10 @@ async function processInvoiceUpdate(bot, oldRecord, newRecord) {
     const newTxIds = normalizePaymentTxIds(newRecord?.payment_tx_ids);
     const addedTxIds = newTxIds.filter((txId) => !oldTxIds.includes(txId));
 
-    for (const txId of addedTxIds) {
-        await notifyRecipients(bot, newRecord, 'payment_received', txId);
+    if (addedTxIds.length > 0) {
+        // Collapse a burst of newly-added tx ids into a single Telegram alert for this update.
+        const latestTxId = addedTxIds[addedTxIds.length - 1];
+        await notifyRecipients(bot, newRecord, 'payment_received', latestTxId);
     }
 
     if (newRecord?.status === 'SETTLED' && oldRecord?.status !== 'SETTLED') {

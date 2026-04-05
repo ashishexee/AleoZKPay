@@ -54,7 +54,7 @@ const getTelegramLinkSession = async (req, res) => {
 
 const completeTelegramLinkSession = async (req, res) => {
     try {
-        const { token, aleo_address, signature_base64, username } = req.body || {};
+        const { token, aleo_address, signature_base64, username, aleo_address_client_ciphertext } = req.body || {};
         if (!token || !aleo_address || !signature_base64) {
             return res.status(400).json({ error: 'token, aleo_address, and signature_base64 are required.' });
         }
@@ -63,7 +63,8 @@ const completeTelegramLinkSession = async (req, res) => {
             token,
             aleoAddress: aleo_address,
             signatureBase64: signature_base64,
-            username: username || null
+            username: username || null,
+            aleoAddressClientCiphertext: aleo_address_client_ciphertext || null
         });
 
         const bot = getBotInstance();
