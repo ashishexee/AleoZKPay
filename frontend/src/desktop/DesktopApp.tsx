@@ -18,6 +18,7 @@ import DeveloperPortal from '../shared/pages/Developer';
 import GiftCardsPage from '../shared/pages/GiftCards';
 import TelegramLinkPage from '../shared/pages/TelegramLink';
 import TelegramBotPage from '../shared/pages/TelegramBot';
+import AuditVerifyPage from '../shared/pages/AuditVerify';
 import CardsPage from './pages/CardsPage';
 import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 
@@ -40,6 +41,7 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/developer" element={<DeveloperPortal />} />
                 <Route path="/telegram-bot" element={<TelegramBotPage />} />
                 <Route path="/telegram/link" element={<TelegramLinkPage />} />
+                <Route path="/audit/verify" element={<AuditVerifyPage />} />
                 <Route path="/checkout/:id" element={<CheckoutPage />} />
                 <Route path="/invoice/:hash" element={<InvoiceDetails />} />
             </Routes>

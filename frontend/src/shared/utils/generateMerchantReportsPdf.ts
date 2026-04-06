@@ -11,7 +11,7 @@ interface InvoiceItem {
     total: number;
 }
 
-interface ReportInvoice {
+export interface ReportInvoice {
     invoiceHash: string;
     amount: number;
     tokenType: number;
@@ -43,7 +43,7 @@ interface MerchantStatsSnapshot {
     pending: number;
 }
 
-interface CreditReportInput {
+export interface CreditReportInput {
     merchantAddress: string;
     burnerAddress?: string | null;
     balances: WalletTokenBalance[];
@@ -54,9 +54,11 @@ interface CreditReportInput {
     payerReceipts: PayerReceipt[];
 }
 
-interface AuditReportInput extends CreditReportInput {
+export interface AuditReportInput extends CreditReportInput {
     programId: string;
 }
+
+export type AuditReportPerspective = 'merchant' | 'payer' | 'both';
 
 export interface ReportOptions {
     filename?: string;
@@ -68,6 +70,99 @@ export interface ReportOptions {
     includeIncomingReceipts?: boolean;
     includeOutgoingReceipts?: boolean;
     includeInvoiceAppendices?: boolean;
+    auditPerspective?: AuditReportPerspective;
+}
+
+export interface AuditTokenTotals {
+    credits: number;
+    usdcx: number;
+    usad: number;
+}
+
+export interface AuditReportSummary {
+    invoices: number;
+    incomingMerchantReceipts: number;
+    outgoingPayerReceipts: number;
+    totalEarnings: AuditTokenTotals;
+    totalOutgoing: AuditTokenTotals;
+}
+
+export interface AuditPayloadInvoice {
+    invoiceHash: string;
+    status: string;
+    tokenLabel: string;
+    amountLabel: string;
+    invoiceTypeLabel: string;
+    walletLabel: string;
+    memo?: string;
+    lineItemsSummary?: string;
+    owner?: string;
+    salt?: string;
+    creationTx?: string | null;
+    paymentTxIds?: string[];
+    items?: InvoiceItem[];
+    relatedReceiptHashes?: string[];
+}
+
+export interface AuditPayloadReceipt {
+    invoiceHash: string;
+    receiptHash: string;
+    tokenLabel: string;
+    amountLabel: string;
+    amount: number;
+    merchant?: string;
+}
+
+export interface MerchantAuditPayload {
+    version: '1.0.0';
+    reportId: string;
+    role: AuditReportPerspective;
+    generatedAt: string;
+    programId: string;
+    merchantAddress?: string | null;
+    burnerAddress?: string | null;
+    disclosure: Required<Omit<ReportOptions, 'filename'>>;
+    summary: AuditReportSummary;
+    balances: Array<{ name: string; publicAmount: number; privateAmount: number }>;
+    invoices: AuditPayloadInvoice[];
+    incomingMerchantReceipts: AuditPayloadReceipt[];
+    outgoingPayerReceipts: AuditPayloadReceipt[];
+}
+
+export interface MerchantAuditPackage {
+    version: '1.0.0';
+    packageType: 'nullpay_audit_report';
+    reportId: string;
+    role: AuditReportPerspective;
+    filename: string;
+    generatedAt: string;
+    signerAddress: string;
+    auditKeyHash: string;
+    payloadHash: string;
+    signatureMessage: string | null;
+    signatureBase64: string | null;
+    encryption: {
+        algorithm: 'AES-GCM';
+        iv: string;
+        ciphertext: string;
+    };
+    disclosure: Required<Omit<ReportOptions, 'filename'>>;
+    summary: AuditReportSummary;
+}
+
+export interface GeneratedMerchantAuditBundle {
+    html: string;
+    htmlFilename: string;
+    auditPackage: MerchantAuditPackage;
+    packageFilename: string;
+    auditKey: string;
+    auditKeyFilename: string;
+}
+
+export interface VerifiedMerchantAuditPackage {
+    auditPackage: MerchantAuditPackage;
+    payload: MerchantAuditPayload;
+    signatureStatus: 'verified' | 'missing' | 'invalid';
 }
 
 const DARK: [number, number, number] = [10, 12, 18];
@@ -112,6 +207,31 @@ function uniqueBy<T>(items: T[], getKey: (item: T) => string): T[] {
         seen.add(key);
         return true;
     });
+}
+
+function createTokenTotals(): AuditTokenTotals {
+    return { credits: 0, usdcx: 0, usad: 0 };
+}
+
+function addReceiptAmount(totals: AuditTokenTotals, tokenType: number, amountMicro: number): void {
+    const amount = Number(amountMicro || 0) / 1_000_000;
+    if (tokenType === 1) totals.usdcx += amount;
+    else if (tokenType === 2) totals.usad += amount;
+    else totals.credits += amount;
+}
+
+function sumMerchantReceiptTotals(receipts: MerchantReceipt[]): AuditTokenTotals {
+    return receipts.reduce((totals, receipt) => {
+        addReceiptAmount(totals, receipt.tokenType, receipt.amount);
+        return totals;
+    }, createTokenTotals());
+}
+
+function sumPayerReceiptTotals(receipts: PayerReceipt[]): AuditTokenTotals {
+    return receipts.reduce((totals, receipt) => {
+        addReceiptAmount(totals, receipt.tokenType, receipt.amount);
+        return totals;
+    }, createTokenTotals());
 }
 
 function buildCreditSnapshot(input: CreditReportInput) {
@@ -1196,7 +1316,13 @@ export function downloadMerchantCreditReportHtml(input: CreditReportInput, optio
     URL.revokeObjectURL(url);
 }
 
-export function downloadMerchantAuditReportHtml(input: AuditReportInput, options?: ReportOptions): void {
+export function buildMerchantAuditReportHtmlAsset(input: AuditReportInput, options?: ReportOptions): { html: string; filename: string } {
+    const perspective = options?.auditPerspective === 'merchant' || options?.auditPerspective === 'payer' || options?.auditPerspective === 'both'
+        ? options.auditPerspective
+        : 'both';
+    const roleLabel = perspective === 'merchant' ? 'Merchant' : perspective === 'payer' ? 'Payer' : 'Combined';
+    const showMerchantView = perspective !== 'payer';
+    const showPayerView = perspective !== 'merchant';
     const opts = {
         filename: options?.filename || `NullPay_Audit_Report_${shortHash(input.merchantAddress, 8, 6).replace('...', '_')}.html`,
         includeMerchantAddress: options?.includeMerchantAddress !== false,
@@ -1206,7 +1332,8 @@ export function downloadMerchantAuditReportHtml(input: AuditReportInput, options
         includeBalanceSnapshot: options?.includeBalanceSnapshot !== false,
         includeIncomingReceipts: options?.includeIncomingReceipts !== false,
         includeOutgoingReceipts: options?.includeOutgoingReceipts !== false,
-        includeInvoiceAppendices: options?.includeInvoiceAppendices !== false
+        includeInvoiceAppendices: options?.includeInvoiceAppendices !== false,
+        auditPerspective: perspective
     };
 
     const incomingReceipts = uniqueBy(
@@ -1215,14 +1342,23 @@ export function downloadMerchantAuditReportHtml(input: AuditReportInput, options
     );
     const outgoingReceipts = uniqueBy(list(input.payerReceipts), (receipt) => receipt.receiptHash);
     const invoices = [...list(input.invoices)].sort((left, right) => left.invoiceHash.localeCompare(right.invoiceHash));
+    const totalEarnings = sumMerchantReceiptTotals(incomingReceipts);
+    const totalOutgoing = sumPayerReceiptTotals(outgoingReceipts);
 
     const summaryCards = [
+        { label: 'Prepared as', value: roleLabel, compact: false },
         { label: 'Program ID', value: shortHash(input.programId, 12, 8), compact: true },
         ...(opts.includeMerchantAddress ? [{ label: 'Main merchant wallet', value: shortHash(input.merchantAddress, 12, 8), compact: true, copyValue: input.merchantAddress }] : []),
         ...(opts.includeBurnerAddress ? [{ label: 'Burner wallet', value: input.burnerAddress ? shortHash(input.burnerAddress, 12, 8) : 'Not configured', compact: true, copyValue: input.burnerAddress || undefined }] : []),
-        { label: 'Invoices exported', value: String(invoices.length), compact: false },
-        { label: 'Incoming merchant receipts', value: String(incomingReceipts.length), compact: false },
-        { label: 'Outgoing payer receipts', value: String(outgoingReceipts.length), compact: false }
+        ...(showMerchantView ? [{ label: 'Invoices exported', value: String(invoices.length), compact: false }] : []),
+        ...(showMerchantView ? [{ label: 'Incoming merchant receipts', value: String(incomingReceipts.length), compact: false }] : []),
+        ...(showMerchantView ? [{ label: 'Total credits earned', value: units(totalEarnings.credits), compact: false }] : []),
+        ...(showMerchantView ? [{ label: 'Total USDCx earned', value: units(totalEarnings.usdcx), compact: false }] : []),
+        ...(showMerchantView ? [{ label: 'Total USAD earned', value: units(totalEarnings.usad), compact: false }] : []),
+        ...(showPayerView ? [{ label: 'Outgoing payer receipts', value: String(outgoingReceipts.length), compact: false }] : []),
+        ...(showPayerView ? [{ label: 'Outgoing credits', value: units(totalOutgoing.credits), compact: false }] : []),
+        ...(showPayerView ? [{ label: 'Outgoing USDCx', value: units(totalOutgoing.usdcx), compact: false }] : []),
+        ...(showPayerView ? [{ label: 'Outgoing USAD', value: units(totalOutgoing.usad), compact: false }] : [])
     ].map((card) => `
         <div class="card">
             <div class="label">${escapeHtml(card.label)}</div>
@@ -1337,12 +1473,13 @@ export function downloadMerchantAuditReportHtml(input: AuditReportInput, options
     }).join('');
 
     const hero = buildReportHero(
-        'Merchant Audit Center',
+        `${roleLabel} Audit Center`,
         'NullPay',
         'Audit Report',
-        'Detailed operational export for third-party review, styled to match the live NullPay product. This report keeps explorer links, copy actions, memo detail, and item-level visibility in one shareable HTML package.',
+        'Detailed operational export for third-party review, styled to match the live NullPay product. This report now highlights total earnings across all invoices so auditors can review the full picture without reading invoice totals one by one.',
         [
             { label: 'Export Type', value: 'Interactive HTML' },
+            { label: 'Prepared As', value: roleLabel },
             { label: 'Program ID', value: shortHash(input.programId, 12, 8) },
             { label: 'Generated', value: new Date().toLocaleString() }
         ]
@@ -1361,6 +1498,19 @@ export function downloadMerchantAuditReportHtml(input: AuditReportInput, options
         ${hero}
 
         <section class="grid">${summaryCards}</section>
+
+        <section class="panel">
+            <h2>Aggregate Flow Summary</h2>
+            <p>This summary shows the total visible flow across all invoices included in this export.</p>
+            <table>
+                <thead><tr><th>Token</th>${showMerchantView ? '<th>Total Earnings</th>' : ''}${showPayerView ? '<th>Total Outgoing</th>' : ''}</tr></thead>
+                <tbody>
+                    <tr><td>Credits</td>${showMerchantView ? `<td>${escapeHtml(units(totalEarnings.credits))}</td>` : ''}${showPayerView ? `<td>${escapeHtml(units(totalOutgoing.credits))}</td>` : ''}</tr>
+                    <tr><td>USDCx</td>${showMerchantView ? `<td>${escapeHtml(units(totalEarnings.usdcx))}</td>` : ''}${showPayerView ? `<td>${escapeHtml(units(totalOutgoing.usdcx))}</td>` : ''}</tr>
+                    <tr><td>USAD</td>${showMerchantView ? `<td>${escapeHtml(units(totalEarnings.usad))}</td>` : ''}${showPayerView ? `<td>${escapeHtml(units(totalOutgoing.usad))}</td>` : ''}</tr>
+                </tbody>
+            </table>
+        </section>
 
         ${opts.includeBalanceSnapshot ? `
         <section class="panel">
@@ -1444,11 +1594,16 @@ export function downloadMerchantAuditReportHtml(input: AuditReportInput, options
 </body>
 </html>`;
 
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    return { html, filename: opts.filename };
+}
+
+export function downloadMerchantAuditReportHtml(input: AuditReportInput, options?: ReportOptions): void {
+    const report = buildMerchantAuditReportHtmlAsset(input, options);
+    const blob = new Blob([report.html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = opts.filename;
+    anchor.download = report.filename;
     anchor.click();
     URL.revokeObjectURL(url);
 }

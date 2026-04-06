@@ -1,6 +1,7 @@
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useTransactions } from '../../hooks/useTransactions';
 import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
@@ -21,12 +22,13 @@ import { TokenDistributionChart } from './components/Charts/TokenDistributionCha
 import { WalletBalances } from './components/WalletBalances';
 import { useWalletBalances } from '../../hooks/useWalletBalances';
 import { DashboardChatbot } from './components/DashboardChatbot';
-import { downloadMerchantAuditReportHtml, downloadMerchantCreditReportHtml, ReportOptions } from '../../utils/generateMerchantReportsPdf';
-import { ReportConfigModal } from './components/modals/ReportConfigModal';
+import { buildMerchantAuditReportHtmlAsset, downloadMerchantCreditReportHtml, ReportOptions } from '../../utils/generateMerchantReportsPdf';
+import { generateMerchantAuditPackage } from '../../utils/auditPackage';
+import { GeneratedAuditAssets, ReportConfigModal } from './components/modals/ReportConfigModal';
 // CardWalletPanel import moved to dedicated route
 
 const Profile: React.FC = () => {
-    const { address, requestRecords, decrypt, executeTransaction } = useWallet();
+    const { address, requestRecords, decrypt, executeTransaction, wallet } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
     const { decryptedBurnerKey, decryptedBurnerAddress } = useBurnerWallet();
     const publicKey = address;
@@ -538,11 +540,11 @@ const Profile: React.FC = () => {
         }
     };
 
-    const handleDownloadAuditReport = async (options: ReportOptions) => {
+    const handleDownloadAuditReport = async (options: ReportOptions): Promise<GeneratedAuditAssets | void> => {
         if (!publicKey) return;
         setAuditReportLoading(true);
         try {
-            downloadMerchantAuditReportHtml({
+            const auditInput = {
                 merchantAddress: publicKey,
                 burnerAddress: decryptedBurnerAddress || null,
                 balances,
@@ -552,11 +554,41 @@ const Profile: React.FC = () => {
                 burnerMerchantReceipts: uniqueBurnerReceipts,
                 payerReceipts,
                 programId: PROGRAM_ID
-            }, options);
-            import('react-hot-toast').then(t => t.default.success('Audit report HTML downloaded.'));
+            };
+            const htmlAsset = buildMerchantAuditReportHtmlAsset(auditInput, options);
+            const auditBundle = await generateMerchantAuditPackage(auditInput, options, async (message) => {
+                if (!wallet?.adapter?.signMessage) return null;
+                const signatureResult = await wallet.adapter.signMessage(new TextEncoder().encode(message));
+                const signatureValue = signatureResult instanceof Uint8Array
+                    ? signatureResult
+                    : (signatureResult as any)?.signature;
+                if (!signatureValue) return null;
+
+                if (typeof signatureValue === 'string') {
+                    return { signature: signatureValue, signatureBase64: null };
+                }
+
+                let binary = '';
+                signatureValue.forEach((byte: number) => {
+                    binary += String.fromCharCode(byte);
+                });
+                return {
+                    signature: null,
+                    signatureBase64: window.btoa(binary)
+                };
+            });
+            import('react-hot-toast').then(t => t.default.success('Audit report bundle unlocked. Download the HTML, JSON, and audit key from the popup.'));
+            return {
+                html: htmlAsset.html,
+                htmlFilename: htmlAsset.filename,
+                packageJson: auditBundle.packageJson,
+                packageFilename: auditBundle.packageFilename,
+                auditKey: auditBundle.auditKey,
+                auditKeyFilename: auditBundle.auditKeyFilename
+            };
         } catch (error: any) {
             console.error('Failed to generate audit report HTML', error);
-            import('react-hot-toast').then(t => t.default.error(error?.message || 'Failed to generate audit report HTML'));
+            import('react-hot-toast').then(t => t.default.error(error?.message || 'Failed to generate audit report bundle'));
         } finally {
             setAuditReportLoading(false);
         }
@@ -724,6 +756,20 @@ const Profile: React.FC = () => {
                             {auditReportLoading ? 'Preparing Audit Report...' : 'Download Audit Report'}
                         </button>
                     </div>
+                    <div className="mt-4 text-center">
+                        <Link
+                            to="/audit/verify"
+                            className="inline-flex items-center gap-2 text-sm font-medium text-cyan-200 transition hover:text-white"
+                        >
+                            Open Auditor Verification Page
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </Link>
+                        <p className="mt-2 text-xs text-gray-500">
+                            Auditors should verify the encrypted JSON package and audit key here before trusting the HTML report.
+                        </p>
+                    </div>
                 </motion.div>
 
                 {/* BACKUP BANNER */}
@@ -863,9 +909,9 @@ const Profile: React.FC = () => {
                 reportType={currentReportType}
                 onDownload={(options) => {
                     if (currentReportType === 'audit') {
-                        handleDownloadAuditReport(options);
+                        return handleDownloadAuditReport(options);
                     } else {
-                        handleDownloadCreditReport(options);
+                        return handleDownloadCreditReport(options);
                     }
                 }}
             />
