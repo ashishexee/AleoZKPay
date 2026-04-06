@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, DragEvent, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { verifyMerchantAuditPackage } from '../../utils/auditPackage';
 import type { MerchantAuditPackage, MerchantAuditPayload } from '../../utils/auditPackage';
@@ -287,8 +287,43 @@ const AuditVerifyPage = () => {
     );
 };
 
-const DropZone = ({ step, title, subtitle, accept, fileName, fileLoaded, isDragOver, onDragOver, onDragLeave, onDrop, onFileChange, icon, placeholderLabel, children }: any) => (
-    <div className={`rounded-2xl border transition-all duration-200 ${isDragOver ? 'border-orange-400/40 bg-orange-500/[0.06]' : fileLoaded ? 'border-orange-400/30 bg-white/[0.08]' : 'border-white/[0.12] bg-white/[0.04]'}`} onDragOver={e => { e.preventDefault(); onDragOver(); }} onDragLeave={onDragLeave} onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) onDrop(f); }}>
+const DropZone = ({
+    step,
+    title,
+    subtitle,
+    accept,
+    fileName,
+    fileLoaded,
+    isDragOver,
+    onDragOver,
+    onDragLeave,
+    onDrop,
+    onFileChange,
+    icon,
+    placeholderLabel,
+    children
+}: {
+    step: string;
+    title: string;
+    subtitle: string;
+    accept: string;
+    fileName: string;
+    fileLoaded: boolean;
+    isDragOver: boolean;
+    onDragOver: () => void;
+    onDragLeave: () => void;
+    onDrop: (file: File) => void;
+    onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
+    icon: ReactNode;
+    placeholderLabel: string;
+    children: ReactNode;
+}) => (
+    <div
+        className={`rounded-2xl border transition-all duration-200 ${isDragOver ? 'border-orange-400/40 bg-orange-500/[0.06]' : fileLoaded ? 'border-orange-400/30 bg-white/[0.08]' : 'border-white/[0.12] bg-white/[0.04]'}`}
+        onDragOver={(e: DragEvent<HTMLDivElement>) => { e.preventDefault(); onDragOver(); }}
+        onDragLeave={onDragLeave}
+        onDrop={(e: DragEvent<HTMLDivElement>) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) onDrop(f); }}
+    >
         <div className="flex items-start justify-between border-b border-white/[0.08] px-5 py-4">
             <div>
                 <div className="flex items-center gap-2"><span className="text-[10px] font-bold tracking-[0.25em] text-orange-400/60">STEP {step}</span><span className="h-px w-4 bg-white/20" />{fileLoaded && <span className="text-[10px] text-emerald-400/70">● Loaded</span>}</div>

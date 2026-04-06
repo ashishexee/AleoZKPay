@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useTransactions } from '../../hooks/useTransactions';
-import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
+import { PROGRAM_ID, estimateExecutionFee, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
 import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
 import { useWalletErrorHandler } from '../../hooks/Wallet/WalletErrorBoundary';
 import { StatsCards } from './components/StatsCards';
@@ -628,7 +628,15 @@ const Profile: React.FC = () => {
                     invoice.salt,
                     `${amountMicro}u64`
                 ],
-                fee: 100_000,
+                fee: await estimateExecutionFee({
+                    programName: PROGRAM_ID,
+                    functionName: 'settle_invoice',
+                    inputs: [
+                        invoice.salt,
+                        `${amountMicro}u64`
+                    ],
+                    fallbackMicrocredits: 100_000
+                }),
                 privateFee: false
             };
 

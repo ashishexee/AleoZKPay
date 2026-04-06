@@ -22,7 +22,7 @@ import {
     parseCardProfileRecord,
     sha256HexToField
 } from '../utils/card-chain';
-import { fetchBurnerRecordsFromTx, PROGRAM_ID } from '../utils/aleo-utils';
+import { estimateExecutionFee, fetchBurnerRecordsFromTx, PROGRAM_ID } from '../utils/aleo-utils';
 import { fetchAllPrivateBalances } from '../pages/Profile/components/BurnerWallet/scanner';
 import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
 import { useBurnerWallet } from './BurnerWalletProvider';
@@ -717,12 +717,18 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
 
         try {
+            const estimatedCreateCardFee = await estimateExecutionFee({
+                programName: PROGRAM_ID,
+                functionName: 'create_card_profile',
+                inputs,
+                fallbackMicrocredits: DEFAULT_TOP_UP_FEE
+            });
             const tx = await executeWithShieldRetry(
                 () => executeTransaction({
                     program: PROGRAM_ID,
                     function: 'create_card_profile',
                     inputs,
-                    fee: DEFAULT_TOP_UP_FEE,
+                    fee: estimatedCreateCardFee,
                     privateFee: false
                 } as TransactionOptions),
                 { onRetry: () => void 0 }
@@ -904,12 +910,18 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const activeCardKey = decryptedCardKey || (shouldUseTempUnlock ? await unlockCard(pin!, cardSecret!, { persist: false }) : null);
 
         try {
+            const estimatedTopUpFee = await estimateExecutionFee({
+                programName,
+                functionName: 'transfer_private',
+                inputs,
+                fallbackMicrocredits: DEFAULT_TOP_UP_FEE
+            });
             const result = await executeWithShieldRetry(
                 () => executeTransaction({
                     program: programName,
                     function: 'transfer_private',
                     inputs,
-                    fee: DEFAULT_TOP_UP_FEE,
+                    fee: estimatedTopUpFee,
                     privateFee: false
                 }),
                 { onRetry: () => void 0 }
@@ -1095,12 +1107,20 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     throw new Error('Main wallet transaction support is unavailable.');
                 }
 
+                const statusInputs = buildCardStatusInputs(cardNumberHashField, nextStatus);
+                const estimatedStatusFee = await estimateExecutionFee({
+                    programName: PROGRAM_ID,
+                    functionName: 'set_card_status',
+                    inputs: statusInputs,
+                    fallbackMicrocredits: DEFAULT_TOP_UP_FEE
+                });
+
                 const tx = await executeWithShieldRetry(
                     () => executeTransaction({
                         program: PROGRAM_ID,
                         function: 'set_card_status',
-                        inputs: buildCardStatusInputs(cardNumberHashField, nextStatus),
-                        fee: DEFAULT_TOP_UP_FEE,
+                        inputs: statusInputs,
+                        fee: estimatedStatusFee,
                         privateFee: false
                     }),
                     { onRetry: () => void 0 }

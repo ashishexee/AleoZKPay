@@ -4,6 +4,57 @@ function getProvableCredentials() {
     return { apiKey, consumerId };
 }
 
+let cachedProgramSource = null;
+const cachedImportSources = new Map();
+
+async function getProgramSource(programName = 'zk_pay_proofs_privacy_v24.aleo') {
+    if (programName === 'zk_pay_proofs_privacy_v24.aleo' && cachedProgramSource) return cachedProgramSource;
+
+    const response = await fetch(`https://api.provable.com/v1/testnet/program/${encodeURIComponent(programName)}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch program source for ${programName}: ${response.status}`);
+    }
+    const data = await response.json();
+    const programSource = typeof data === 'string'
+        ? data
+        : typeof data?.program === 'string'
+            ? data.program
+            : '';
+    if (!programSource) {
+        throw new Error(`Program source missing from Provable v1 response for ${programName}`);
+    }
+
+    if (programName === 'zk_pay_proofs_privacy_v24.aleo') {
+        cachedProgramSource = programSource;
+    }
+
+    return programSource;
+}
+
+function extractImportIds(programSource) {
+    return Array.from(programSource.matchAll(/^\s*import\s+([A-Za-z0-9_.]+);/gm), match => match[1]).filter(Boolean);
+}
+
+async function getProgramImports(programName, programSource) {
+    if (cachedImportSources.has(programName)) {
+        return cachedImportSources.get(programName);
+    }
+
+    const resolvedProgramSource = programSource || await getProgramSource(programName);
+    const imports = {};
+
+    for (const importId of extractImportIds(resolvedProgramSource)) {
+        const importSource = await getProgramSource(importId);
+        imports[importId] = importSource;
+
+        const nestedImports = await getProgramImports(importId, importSource);
+        Object.assign(imports, nestedImports);
+    }
+
+    cachedImportSources.set(programName, imports);
+    return imports;
+}
+
 async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, salt, memo, invoice_type }) {
     const uppercaseCurrency = (currency || 'CREDITS').toUpperCase();
     const isDonation = invoice_type === 2;
@@ -53,17 +104,29 @@ async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, 
     const pm = new sdk.ProgramManager(host, keyProvider, undefined);
     pm.setAccount(relayerAccount);
 
+    const programName = 'zk_pay_proofs_privacy_v24.aleo';
+    const programSource = await getProgramSource(programName);
+    const programImports = await getProgramImports(programName, programSource);
+
     const auth = await pm.buildAuthorization({
-        programName: 'zk_pay_proofs_privacy_v24.aleo',
+        programName,
         functionName: funcName,
         inputs: inputs,
-        fee: 0.1
+        programSource
     });
+
+    const baseFeeMicrocredits = await pm.estimateFeeForAuthorization({
+        authorization: auth,
+        program: sdk.Program.fromString(programSource),
+        imports: programImports
+    });
+    const safeFeeMicrocredits = Math.ceil(Number(baseFeeMicrocredits) * 1.2);
+    const feeCredits = safeFeeMicrocredits / 1_000_000;
 
     const feeAuth = await pm.buildFeeAuthorization({
         privateKey: relayerAccount.privateKey(),
         deploymentOrExecutionId: auth.toExecutionId().toString(),
-        baseFeeCredits: 0.05,
+        baseFeeCredits: feeCredits,
         priorityFeeCredits: 0
     });
 

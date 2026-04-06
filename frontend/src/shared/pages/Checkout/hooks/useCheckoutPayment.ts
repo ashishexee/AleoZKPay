@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { PROGRAM_ID, generateSalt } from '../../../utils/aleo-utils';
+import { PROGRAM_ID, estimateExecutionFee, generateSalt } from '../../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 import { CheckoutSession } from '../types';
 import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
@@ -187,11 +187,18 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 inputs.push(proofsInput);
             }
 
+            const estimatedFee = await estimateExecutionFee({
+                programName: PROGRAM_ID,
+                functionName: funcName,
+                inputs,
+                fallbackMicrocredits: 100_000
+            });
+
             const transaction: TransactionOptions = {
                 program: PROGRAM_ID,
                 function: funcName,
                 inputs: inputs,
-                fee: 100_000,
+                fee: estimatedFee,
                 privateFee: false
             };
 
@@ -320,12 +327,19 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
 
             const finalAmount = (overrideAmount !== undefined && overrideAmount > 0) ? overrideAmount : session.amount;
             const amountMicro = Math.round(finalAmount * 1_000_000);
+            const inputs = [publicKey, `${amountMicro}${typeSuffix}`];
+            const estimatedFee = await estimateExecutionFee({
+                programName: tokenProgramId,
+                functionName: 'transfer_public_to_private',
+                inputs,
+                fallbackMicrocredits: 100_000
+            });
 
             const transaction: TransactionOptions = {
                 program: tokenProgramId,
                 function: 'transfer_public_to_private',
-                inputs: [publicKey, `${amountMicro}${typeSuffix}`],
-                fee: 100_000,
+                inputs,
+                fee: estimatedFee,
                 privateFee: false
             };
 

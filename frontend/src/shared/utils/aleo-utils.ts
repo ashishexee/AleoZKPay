@@ -1,6 +1,175 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
+import { FIXED_FEE_MICROCREDITS, getFeePreferenceMode } from './feePreference';
 export const PROGRAM_ID = "zk_pay_proofs_privacy_v24.aleo";
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
+const PROVABLE_HOST = 'https://api.explorer.provable.com/v1';
+const PROVABLE_PROGRAM_API = 'https://api.provable.com/v1/testnet/program';
+
+let feeEstimatorManagerPromise: Promise<any> | null = null;
+const programSourceCache = new Map<string, string>();
+const programImportsCache = new Map<string, Record<string, string>>();
+
+const getFeeEstimatorProgramManager = async () => {
+    if (!feeEstimatorManagerPromise) {
+        feeEstimatorManagerPromise = (async () => {
+            const sdk = await import('@provablehq/sdk');
+            const keyProvider = new sdk.AleoKeyProvider();
+            keyProvider.useCache(true);
+            const programManager = new sdk.ProgramManager(PROVABLE_HOST, keyProvider, undefined);
+            const tempPrivateKey = new sdk.PrivateKey();
+            programManager.setAccount(new sdk.Account({ privateKey: tempPrivateKey.to_string() }));
+            return programManager;
+        })();
+    }
+
+    return feeEstimatorManagerPromise;
+};
+
+const getProgramSource = async (programName: string): Promise<string> => {
+    const cached = programSourceCache.get(programName);
+    if (cached) return cached;
+
+    const response = await fetch(`${PROVABLE_PROGRAM_API}/${encodeURIComponent(programName)}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch program source for ${programName}: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[fee-estimation] getProgramSource response', {
+        programName,
+        responseType: typeof data,
+        isString: typeof data === 'string',
+        keys: typeof data === 'object' && data ? Object.keys(data) : [],
+        preview: typeof data === 'string' ? data.slice(0, 120) : typeof data?.program === 'string' ? data.program.slice(0, 120) : data
+    });
+    const programSource = typeof data === 'string'
+        ? data
+        : typeof data?.program === 'string'
+            ? data.program
+            : '';
+    if (!programSource) {
+        throw new Error(`Program source missing for ${programName}`);
+    }
+
+    programSourceCache.set(programName, programSource);
+    return programSource;
+};
+
+const extractImportIds = (programSource: string): string[] => {
+    const importMatches = programSource.matchAll(/^\s*import\s+([A-Za-z0-9_.]+);/gm);
+    return Array.from(importMatches, (match) => match[1]).filter(Boolean);
+};
+
+const getProgramImports = async (programName: string, programSource?: string): Promise<Record<string, string>> => {
+    const cached = programImportsCache.get(programName);
+    if (cached) return cached;
+
+    const resolvedProgramSource = programSource ?? await getProgramSource(programName);
+    const imports: Record<string, string> = {};
+
+    for (const importId of extractImportIds(resolvedProgramSource)) {
+        const importSource = await getProgramSource(importId);
+        imports[importId] = importSource;
+
+        const nestedImports = await getProgramImports(importId, importSource);
+        Object.assign(imports, nestedImports);
+    }
+
+    programImportsCache.set(programName, imports);
+    return imports;
+};
+
+export const estimateExecutionFee = async ({
+    programName,
+    functionName,
+    inputs,
+    fallbackMicrocredits = 250_000,
+    bufferPercent = 20
+}: {
+    programName: string;
+    functionName: string;
+    inputs: string[];
+    fallbackMicrocredits?: number;
+    bufferPercent?: number;
+}): Promise<number> => {
+    try {
+        const feeMode = getFeePreferenceMode();
+        if (feeMode === 'fixed') {
+            console.log('[fee-estimation] fixed fee mode enabled', {
+                programName,
+                functionName,
+                fixedFeeMicrocredits: FIXED_FEE_MICROCREDITS
+            });
+            return FIXED_FEE_MICROCREDITS;
+        }
+
+        const sdk = await import('@provablehq/sdk');
+        console.log('[fee-estimation] starting', {
+            programName,
+            functionName,
+            inputCount: inputs.length,
+            fallbackMicrocredits,
+            bufferPercent
+        });
+        const programManager = await getFeeEstimatorProgramManager();
+        const authorizationParams: {
+            programName: string;
+            functionName: string;
+            inputs: string[];
+            programSource?: string;
+        } = {
+            programName,
+            functionName,
+            inputs
+        };
+        const programSource = await getProgramSource(programName);
+        const programImports = await getProgramImports(programName, programSource);
+        authorizationParams.programSource = programSource;
+        console.log('[fee-estimation] program bundle loaded', {
+            programName,
+            sourceLength: programSource.length,
+            importCount: Object.keys(programImports).length,
+            importIds: Object.keys(programImports)
+        });
+
+        console.log('[fee-estimation] building authorization', {
+            programName,
+            functionName
+        });
+        const authorization = await programManager.buildAuthorization(authorizationParams);
+        console.log('[fee-estimation] authorization built', {
+            programName,
+            functionName,
+            executionId: authorization.toExecutionId().toString()
+        });
+
+        const baseFeeMicrocredits = await programManager.estimateFeeForAuthorization({
+            authorization,
+            program: sdk.Program.fromString(programSource),
+            imports: programImports
+        });
+        console.log('[fee-estimation] base fee estimated', {
+            programName,
+            functionName,
+            baseFeeMicrocredits: baseFeeMicrocredits.toString()
+        });
+
+        const fee = BigInt(baseFeeMicrocredits.toString());
+        const safeFee = fee + ((fee * BigInt(bufferPercent)) / 100n);
+        console.log('[fee-estimation] safe fee computed', {
+            programName,
+            functionName,
+            safeFeeMicrocredits: safeFee.toString()
+        });
+        return Number(safeFee);
+    } catch (error) {
+        console.warn(`[fee-estimation] Falling back to ${fallbackMicrocredits} microcredits for ${programName}/${functionName}`, {
+            error,
+            inputs
+        });
+        return fallbackMicrocredits;
+    }
+};
 
 
 export const fetchBurnerRecordsFromTx = async (txId: string, privateKeyStr: string): Promise<any[]> => {

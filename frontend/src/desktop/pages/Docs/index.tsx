@@ -789,11 +789,18 @@ let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
         functionName = 'create_invoice_usdcx';
     }
 
+    const estimatedFee = await estimateExecutionFee({
+        programName: PROGRAM_ID,
+        functionName,
+        inputs,
+        fallbackMicrocredits: 100_000
+    });
+
     const transaction: TransactionOptions = {
         program: PROGRAM_ID,  // zk_pay_proofs_privacy_v11.aleo
         function: functionName,
         inputs: inputs,
-        fee: 100_000,
+        fee: estimatedFee,
         privateFee: false
     };
 

@@ -5,7 +5,7 @@ import { PrivateKey } from '@provablehq/sdk';
 import { Copy, CheckCircle2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FloatingGiftCard } from './FloatingGiftCard';
-import { PROGRAM_ID } from '../../../utils/aleo-utils';
+import { estimateExecutionFee, PROGRAM_ID } from '../../../utils/aleo-utils';
 import { buildCreateGiftCardRecordInputs, privateKeyToGiftCode } from '../../../utils/gift-card-chain';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
@@ -161,11 +161,17 @@ export const CreateGiftCard: React.FC = () => {
                 }
 
                 setFundingStatus(`Funding ${asset.symbol} (${i + 1}/${assetsToFund.length}). Please approve in wallet...`);
+                const estimatedTransferFee = await estimateExecutionFee({
+                    programName: asset.program,
+                    functionName: 'transfer_private',
+                    inputs,
+                    fallbackMicrocredits: 100_000
+                });
                 const tx = {
                     program: asset.program,
                     function: 'transfer_private',
                     inputs: inputs,
-                    fee: 100_000,
+                    fee: estimatedTransferFee,
                     privateFee: false
                 };
 
@@ -185,15 +191,22 @@ export const CreateGiftCard: React.FC = () => {
             setHistorySaved(false);
 
             try {
+                const historyInputs = buildCreateGiftCardRecordInputs({
+                    giftCardAddress: newAddress,
+                    giftPrivateKey: rawPk
+                });
+                const estimatedHistoryFee = await estimateExecutionFee({
+                    programName: PROGRAM_ID,
+                    functionName: 'create_gift_card_record',
+                    inputs: historyInputs,
+                    fallbackMicrocredits: 100_000
+                });
                 const historyTx = await executeWithShieldRetry(
                     () => executeTransaction({
                         program: PROGRAM_ID,
                         function: 'create_gift_card_record',
-                        inputs: buildCreateGiftCardRecordInputs({
-                            giftCardAddress: newAddress,
-                            giftPrivateKey: rawPk
-                        }),
-                        fee: 100_000,
+                        inputs: historyInputs,
+                        fee: estimatedHistoryFee,
                         privateFee: false
                     }),
                     { onRetry: () => setFundingStatus('Retrying on-chain history backup...') }

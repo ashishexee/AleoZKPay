@@ -1,5 +1,5 @@
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { PROGRAM_ID } from '../../utils/aleo-utils';
+import { estimateExecutionFee, PROGRAM_ID } from '../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
 import type { InvoiceState } from './types';
 
@@ -171,11 +171,18 @@ export const createUSDCxPayment = (deps: USDCxPaymentDeps) => {
 
             console.log("Transaction Inputs:", JSON.stringify(inputs, null, 2));
 
+            const estimatedFee = await estimateExecutionFee({
+                programName: PROGRAM_ID,
+                functionName: funcName,
+                inputs,
+                fallbackMicrocredits: 100_000
+            });
+
             const transaction: TransactionOptions = {
                 program: PROGRAM_ID,
                 function: funcName,
                 inputs: inputs,
-                fee: 100_000,
+                fee: estimatedFee,
                 privateFee: false
             };
 

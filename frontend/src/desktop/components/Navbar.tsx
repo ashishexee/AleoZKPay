@@ -74,7 +74,7 @@ const Navbar = () => {
                 </Link>
 
                 {/* NAVIGATION PILL (CENTERED ABSOLUTELY) */}
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1.5 rounded-full bg-white/[0.03] backdrop-blur-[32px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] gap-1">
+                <div className="absolute left-1/2 -translate-x-1/2 flex max-w-[calc(100%-640px)] items-center p-1.5 rounded-full bg-white/[0.03] backdrop-blur-[32px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] gap-0.5">
                     {navItems.map((item: any) => {
                         const isDirectActive = item.path ? isActive(item.path) : false;
                         const isDropdownActive = item.dropdown?.some((drop: any) => isActive(drop.path));
@@ -83,7 +83,7 @@ const Navbar = () => {
                         return item.dropdown ? (
                             <div key={item.label} className="relative group">
                                 <button className={cn(
-                                    "relative z-10 flex items-center gap-1.5 px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-300",
+                                    "relative z-10 flex items-center gap-1 px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-300",
                                     active ? "text-white" : "text-white/40 group-hover:text-white"
                                 )}>
                                     {active && (
@@ -124,7 +124,7 @@ const Navbar = () => {
                                 key={item.path}
                                 to={item.path}
                                 className={cn(
-                                    "relative px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-500 whitespace-nowrap",
+                                    "relative px-4 py-2.5 rounded-full text-sm font-semibold transition-all duration-500 whitespace-nowrap",
                                     active ? "text-white" : "text-white/40 hover:text-white"
                                 )}
                             >

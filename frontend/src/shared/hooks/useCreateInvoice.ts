@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from '../utils/aleo-utils';
+import { estimateExecutionFee, generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from '../utils/aleo-utils';
 import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { InvoiceData, InvoiceItem } from '../types/invoice';
 import { useBurnerWallet } from './BurnerWalletProvider';
@@ -147,11 +147,18 @@ export const useCreateInvoice = () => {
                 `${walletType}u8`
             ];
 
+            const estimatedFee = await estimateExecutionFee({
+                programName: PROGRAM_ID,
+                functionName,
+                inputs,
+                fallbackMicrocredits: 100_000
+            });
+
             const transaction: TransactionOptions = {
                 program: PROGRAM_ID,
                 function: functionName,
                 inputs: inputs,
-                fee: 100_000,
+                fee: estimatedFee,
                 privateFee: false
             };
 

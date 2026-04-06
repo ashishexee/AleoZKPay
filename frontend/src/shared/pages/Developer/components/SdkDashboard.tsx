@@ -6,6 +6,7 @@ import { CopyButton } from '../../../components/ui/CopyButton';
 import { fetchInvoicesByMerchantForSdk, getUserProfile, Invoice, updateInvoiceStatus } from '../../../services/api';
 import {
     PROGRAM_ID,
+    estimateExecutionFee,
     InvoiceRecord,
     MerchantReceipt,
     parseInvoice,
@@ -484,7 +485,15 @@ export const SdkDashboard: React.FC = () => {
                     invoice.salt,
                     `${amountMicro}u64`
                 ],
-                fee: 100_000,
+                fee: await estimateExecutionFee({
+                    programName: PROGRAM_ID,
+                    functionName: 'settle_invoice',
+                    inputs: [
+                        invoice.salt,
+                        `${amountMicro}u64`
+                    ],
+                    fallbackMicrocredits: 100_000
+                }),
                 privateFee: false
             };
 

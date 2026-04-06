@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
+import { estimateExecutionFee, getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
 import { useWalletErrorHandler } from '../Wallet/WalletErrorBoundary';
 import type { PaymentStep, InvoiceState } from './types';
@@ -433,12 +433,19 @@ export const useSharedPayment = () => {
 
             const finalAmount = (overrideAmount !== undefined && overrideAmount > 0) ? overrideAmount : invoiceAmount;
             const amountMicro = Math.round(finalAmount * 1_000_000);
+            const inputs = [publicKey, `${amountMicro}${typeSuffix}`];
+            const estimatedFee = await estimateExecutionFee({
+                programName: tokenProgramId,
+                functionName: 'transfer_public_to_private',
+                inputs,
+                fallbackMicrocredits: 100_000
+            });
 
             const transaction: TransactionOptions = {
                 program: tokenProgramId,
                 function: 'transfer_public_to_private',
-                inputs: [publicKey, `${amountMicro}${typeSuffix}`],
-                fee: 100_000,
+                inputs,
+                fee: estimatedFee,
                 privateFee: false
             };
 
