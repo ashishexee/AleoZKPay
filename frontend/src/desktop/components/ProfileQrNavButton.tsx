@@ -237,45 +237,49 @@ const ProfileQrNavButton = () => {
                 </button>
 
                 {settingsOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-3 w-[248px] rounded-[22px] border border-white/10 bg-black/84 p-3 backdrop-blur-[28px] shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
-                        <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-3">
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Transaction Fees</p>
-                                <p className="text-sm font-semibold text-white">Auto estimate</p>
+                    <div className="absolute right-0 top-full z-50 mt-3 w-[260px] overflow-hidden rounded-[24px] border border-white/[0.1] bg-[#0A0A0A]/95 p-1.5 backdrop-blur-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)]">
+                        <div className="rounded-[20px] bg-white/[0.03] p-4">
+                            <div className="mb-4 text-left">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Transaction Fees</p>
+                                <h4 className="mt-1 text-sm font-bold text-white">Auto estimate</h4>
                             </div>
 
-                            <div className="mt-3 flex items-center justify-between rounded-[16px] border border-white/10 bg-black/30 px-3 py-3">
-                                <div className="pr-3">
-                                    <p className="text-sm font-medium text-white">Use estimation</p>
-                                    <p className="mt-1 text-xs leading-relaxed text-white/45">
-                                        Turn off to always use {(FIXED_FEE_MICROCREDITS / 1_000_000).toFixed(2)} credits.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => handleFeeModeChange(feeMode === 'estimate' ? 'fixed' : 'estimate')}
-                                    aria-pressed={feeMode === 'estimate'}
-                                    className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-all ${feeMode === 'estimate'
-                                        ? 'border-orange-300/40 bg-orange-400/20'
-                                        : 'border-white/10 bg-white/[0.06]'
-                                        }`}
-                                >
-                                    <span
-                                        className={`inline-flex h-5 w-5 items-center justify-center rounded-full transition-all ${feeMode === 'estimate'
-                                            ? 'translate-x-6 bg-gradient-to-br from-orange-300 to-amber-200 text-black'
-                                            : 'translate-x-1 bg-white text-black'
+                            <div className="space-y-4 text-left">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-[13px] font-semibold text-white/95">Use estimation</p>
+                                        <p className="mt-1 text-[11px] leading-relaxed text-white/60">
+                                            Enable dynamic fee calculation based on network load.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleFeeModeChange(feeMode === 'estimate' ? 'fixed' : 'estimate')}
+                                        aria-pressed={feeMode === 'estimate'}
+                                        className={`group relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-all duration-300 border border-white/5 ${feeMode === 'estimate'
+                                            ? 'bg-orange-500/20'
+                                            : 'bg-white/5'
                                             }`}
                                     >
-                                        <Sparkles className="h-3 w-3" />
-                                    </span>
-                                </button>
-                            </div>
+                                        <span
+                                            className={`flex h-4 w-4 items-center justify-center rounded-full transition-all duration-300 shadow-lg ${feeMode === 'estimate'
+                                                ? 'translate-x-6 bg-gradient-to-br from-orange-400 to-amber-200 text-black'
+                                                : 'translate-x-1 bg-white/20 text-white/40'
+                                                }`}
+                                        >
+                                            <Sparkles className={`h-2.5 w-2.5 transition-transform duration-300 ${feeMode === 'estimate' ? 'scale-110' : 'scale-90 opacity-50 text-white/0'}`} />
+                                        </span>
+                                    </button>
+                                </div>
 
-                            <p className="mt-3 text-[11px] text-white/38">
-                                {feeMode === 'estimate'
-                                    ? 'Currently using live fee estimation with buffer.'
-                                    : `Currently using fixed ${(FIXED_FEE_MICROCREDITS / 1_000_000).toFixed(2)} credits.`}
-                            </p>
+                                <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3">
+                                    <p className="text-[10px] leading-normal text-white/50">
+                                        {feeMode === 'estimate'
+                                            ? 'Currently utilizing live network data with a safety buffer for reliable execution.'
+                                            : `Currently using a fixed rate of ${(FIXED_FEE_MICROCREDITS / 1_000_000).toFixed(2)} credits per transaction.`}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

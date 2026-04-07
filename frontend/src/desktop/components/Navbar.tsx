@@ -21,7 +21,7 @@ const Navbar = () => {
         { path: '/explorer', label: 'Explorer' },
         { path: '/create', label: 'Create Invoice' },
         { path: '/profile', label: 'Dashboard' },
-        { 
+        {
             label: 'Cards',
             dropdown: [
                 { path: '/cards', label: 'NullPay Card' },
@@ -106,9 +106,9 @@ const Navbar = () => {
                                 </button>
                                 <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 rounded-2xl bg-black/80 backdrop-blur-2xl border border-white/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 overflow-hidden flex flex-col z-50 shadow-2xl p-1.5 translate-y-2 group-hover:translate-y-0">
                                     {item.dropdown.map((drop: any) => (
-                                        <Link 
-                                            key={drop.path} 
-                                            to={drop.path} 
+                                        <Link
+                                            key={drop.path}
+                                            to={drop.path}
                                             className={cn(
                                                 "px-4 py-3 text-sm rounded-xl transition-all duration-300",
                                                 isActive(drop.path) ? "bg-white/10 text-white font-bold" : "text-white/50 hover:text-white hover:bg-white/5"

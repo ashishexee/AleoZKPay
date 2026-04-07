@@ -4,7 +4,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
-import { Terminal, Command, Key, Globe, BookOpen, ArrowRight, CheckCircle, Lock, Zap, Shield, Copy, Check, Activity, Bot } from 'lucide-react';
+import { Terminal, Command, Key, BookOpen, ArrowRight, CheckCircle, Lock, Shield, Copy, Check, Bot } from 'lucide-react';
 import { SdkDashboard } from './components/SdkDashboard';
 import { MerchantConsole } from './components/MerchantConsole';
 import { QuickStartGuide } from './components/QuickStartGuide';
@@ -86,7 +86,7 @@ export const DeveloperPortal = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [secretKey, setSecretKey] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState('console');
+    const [activeTab] = useState('console');
     const [commandCopied, setCommandCopied] = useState(false);
     const [cliCommandCopied, setCliCommandCopied] = useState(false);
     const [mcpCommandCopied, setMcpCommandCopied] = useState(false);
@@ -129,17 +129,6 @@ export const DeveloperPortal = () => {
             setLoading(false);
         }
     };
-
-    const tabs = [
-        { id: 'console', label: 'Console', icon: Activity },
-        { id: 'guide', label: 'Quick Start', icon: Zap },
-        { id: 'cli', label: 'CLI Tools', icon: Command },
-        { id: 'mcp', label: 'MCP Server', icon: Bot },
-        { id: 'hosted', label: 'Hosted Checkout', icon: Globe },
-        { id: 'methods', label: 'SDK Methods', icon: Terminal },
-        { id: 'delivery', label: 'Webhooks', icon: Shield },
-        { id: 'reference', label: 'SDK Reference', icon: BookOpen },
-    ];
 
     return (
         <motion.div
@@ -186,8 +175,8 @@ export const DeveloperPortal = () => {
                     >
                         Developers <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Page</span>
                     </motion.h1>
-                    <motion.p variants={fadeInUp} className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-                        Complete SDK and API reference for private ZK payments.
+                    <motion.p variants={fadeInUp} className="text-gray-400 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
+                        Merchant console for API keys, webhook setup, and SDK invoice operations. Full integration guides and technical reference now live in the Docs tab.
                     </motion.p>
 
                     <motion.div variants={fadeInUp} className="mt-8 mb-4 flex flex-col gap-4 items-center">
@@ -250,11 +239,50 @@ export const DeveloperPortal = () => {
                         >
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-6 select-none whitespace-nowrap opacity-50 group-hover/badge:opacity-100 transition-opacity duration-500">MCP Works Seamlessly With</span>
                             <div className="flex items-center justify-center gap-8">
-                                <motion.div 
+                                <motion.a 
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
                                     initial="initial"
+                                    title="OpenClaw - self-hosted gateway for AI agents"
+                                    href="/docs?tab=integrations&section=int-openclaw"
+                                >
+                                    <div className="relative flex items-center">
+                                        <div className="absolute inset-[-20%] bg-red-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
+                                        <motion.img 
+                                            layout
+                                            src="/assets/openclaw.svg" 
+                                            alt="OpenClaw" 
+                                            className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
+                                            variants={{
+                                                initial: { scale: 1, rotate: 0 },
+                                                hover: { scale: 1.15, rotate: -4 }
+                                            }}
+                                        />
+                                        <motion.span 
+                                            layout
+                                            variants={{
+                                                initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
+                                                hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
+                                            }}
+                                            transition={{ 
+                                                width: { type: "spring", stiffness: 100, damping: 20 },
+                                                opacity: { duration: 0.4 },
+                                                x: { type: "spring", stiffness: 100, damping: 20 }
+                                            }}
+                                            className="overflow-hidden whitespace-nowrap text-[12px] font-bold text-white relative z-10 tracking-tight"
+                                        >
+                                            OpenClaw
+                                        </motion.span>
+                                    </div>
+                                </motion.a>
+
+                                <motion.a 
+                                    layout
+                                    className="group/tool flex items-center cursor-pointer"
+                                    whileHover="hover"
+                                    initial="initial"
+                                    href="/docs?tab=integrations&section=int-claude"
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-orange-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
@@ -284,13 +312,14 @@ export const DeveloperPortal = () => {
                                             Claude
                                         </motion.span>
                                     </div>
-                                </motion.div>
+                                </motion.a>
 
-                                <motion.div 
+                                <motion.a 
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
                                     initial="initial"
+                                    href="/docs?tab=integrations&section=int-antigravity"
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-purple-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
@@ -320,13 +349,14 @@ export const DeveloperPortal = () => {
                                             Antigravity
                                         </motion.span>
                                     </div>
-                                </motion.div>
+                                </motion.a>
 
-                                <motion.div 
+                                <motion.a 
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
                                     initial="initial"
+                                    href="/docs?tab=integrations&section=int-cursor"
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-blue-500/10 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
@@ -356,13 +386,14 @@ export const DeveloperPortal = () => {
                                             Cursor
                                         </motion.span>
                                     </div>
-                                </motion.div>
+                                </motion.a>
 
-                                <motion.div 
+                                <motion.a 
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
                                     initial="initial"
+                                    href="/docs?tab=integrations&section=int-codex"
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-emerald-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
@@ -392,32 +423,14 @@ export const DeveloperPortal = () => {
                                             Codex
                                         </motion.span>
                                     </div>
-                                </motion.div>
+                                </motion.a>
                             </div>
                         </motion.div>
                     </motion.div>
                 </motion.div>
 
                 {/* ── Sticky Tab Nav ────────────────────────────────────── */}
-                <div className="sticky top-24 z-50 mb-12">
-                    <div className="overflow-x-auto scrollbar-thin">
-                        <div className="flex flex-nowrap gap-2 bg-black/60 backdrop-blur-2xl p-2 rounded-2xl border border-white/[0.06] w-max min-w-full">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 whitespace-nowrap ${activeTab === tab.id
-                                    ? 'bg-white text-black shadow-lg'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/[0.05]'
-                                    }`}
-                            >
-                                <tab.icon className="w-3.5 h-3.5" />
-                                {tab.label}
-                            </button>
-                        ))}
-                        </div>
-                    </div>
-                </div>
+
 
                 {/* ── Tab Content ───────────────────────────────────────── */}
                 <AnimatePresence mode="wait">

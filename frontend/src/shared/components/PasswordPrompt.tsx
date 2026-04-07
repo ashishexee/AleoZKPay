@@ -12,7 +12,7 @@ import { updateUserProfile } from '../services/api';
 export const PasswordPrompt: React.FC = () => {
     const { address } = useWallet();
     const { hasProfile, userProfileMainAddress, setAppPassword, setIsUnlocked, refreshProfile } = useBurnerWallet();
-    
+
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -65,7 +65,7 @@ export const PasswordPrompt: React.FC = () => {
                     address,
                     encryptedCheck
                 );
-                
+
                 setAppPassword(password);
                 setIsUnlocked(true);
                 toast.success('Password set successfully!');
@@ -140,8 +140,8 @@ export const PasswordPrompt: React.FC = () => {
                         }}
                     />
                 </div>
-            <div className="fixed top-[10%] left-[10%] h-40 w-40 rounded-full bg-orange-500/10 blur-[100px] pointer-events-none" />
-            <div className="fixed bottom-[5%] right-[12%] h-36 w-36 rounded-full bg-amber-400/10 blur-[100px] pointer-events-none" />
+                <div className="fixed top-[10%] left-[10%] h-40 w-40 rounded-full bg-orange-500/10 blur-[100px] pointer-events-none" />
+                <div className="fixed bottom-[5%] right-[12%] h-36 w-36 rounded-full bg-amber-400/10 blur-[100px] pointer-events-none" />
                 <div className="relative z-10 w-full max-w-md space-y-5">
                     <GlassCard className="w-full border border-orange-400/15 bg-[#080808]/85 p-8 text-center shadow-[0_0_60px_rgba(249,115,22,0.08)]">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-orange-400/20 bg-orange-500/10 text-orange-300">
@@ -157,56 +157,56 @@ export const PasswordPrompt: React.FC = () => {
                             Your account is from an older version of NullPay and now needs a password to protect private app data.
                         </p>
                         <form onSubmit={async (e) => {
-                         e.preventDefault();
-                         if (!address || password.length < 6) {
-                             toast.error("Password must be at least 6 characters");
-                             return;
-                         }
-                         if (passwordTooLong) {
-                             toast.error(`Password is too large for the Leo backup field. Keep it within ${LEO_PASSWORD_BACKUP_MAX_BYTES} bytes.`);
-                             return;
-                         }
-                         setLoading(true);
-                         try {
-                              const encryptedCheck = await encryptWithPassword(address, password);
-                              await updateUserProfile(address, encryptedCheck);
-                              setAppPassword(password);
-                              setIsUnlocked(true);
-                              toast.success('Password updated successfully!');
-                              await refreshProfile();
-                         } catch (err: any) {
-                              toast.error(err.message || "Failed to update profile");
-                         } finally {
-                              setLoading(false);
-                         }
-                    }} className="flex flex-col gap-4">
-                        <div className="relative">
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="New Secure Password"
-                                className={`w-full rounded-xl border bg-white/[0.04] px-4 py-3 pr-12 text-center text-white outline-none transition-colors focus:border-orange-400/50 ${passwordTooLong ? 'border-red-500/60' : 'border-white/10'}`}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
+                            e.preventDefault();
+                            if (!address || password.length < 6) {
+                                toast.error("Password must be at least 6 characters");
+                                return;
+                            }
+                            if (passwordTooLong) {
+                                toast.error(`Password is too large for the Leo backup field. Keep it within ${LEO_PASSWORD_BACKUP_MAX_BYTES} bytes.`);
+                                return;
+                            }
+                            setLoading(true);
+                            try {
+                                const encryptedCheck = await encryptWithPassword(address, password);
+                                await updateUserProfile(address, encryptedCheck);
+                                setAppPassword(password);
+                                setIsUnlocked(true);
+                                toast.success('Password updated successfully!');
+                                await refreshProfile();
+                            } catch (err: any) {
+                                toast.error(err.message || "Failed to update profile");
+                            } finally {
+                                setLoading(false);
+                            }
+                        }} className="flex flex-col gap-4">
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    placeholder="New Secure Password"
+                                    className={`w-full rounded-xl border bg-white/[0.04] px-4 py-3 pr-12 text-center text-white outline-none transition-colors focus:border-orange-400/50 ${passwordTooLong ? 'border-red-500/60' : 'border-white/10'}`}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((prev) => !prev)}
+                                    className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-white/45 transition-colors hover:text-orange-300"
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
+                            <p className={`text-left text-xs leading-relaxed ${passwordTooLong ? 'text-red-400' : 'text-white/55'}`}>
+                                Setup passwords should fit one Leo backup field: {passwordBytes}/{LEO_PASSWORD_BACKUP_MAX_BYTES} bytes. Regular letters usually count as 1 byte.
+                            </p>
                             <button
-                                type="button"
-                                onClick={() => setShowPassword((prev) => !prev)}
-                                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-white/45 transition-colors hover:text-orange-300"
-                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                type="submit"
+                                disabled={loading || passwordTooLong}
+                                className="w-full rounded-xl bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 py-3 font-bold text-black shadow-[0_10px_35px_rgba(249,115,22,0.22)] transition-all hover:brightness-110 disabled:opacity-50"
                             >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                {loading ? 'Securing...' : 'Set Password'}
                             </button>
-                        </div>
-                        <p className={`text-left text-xs leading-relaxed ${passwordTooLong ? 'text-red-400' : 'text-white/55'}`}>
-                            Setup passwords should fit one Leo backup field: {passwordBytes}/{LEO_PASSWORD_BACKUP_MAX_BYTES} bytes. Regular letters usually count as 1 byte.
-                        </p>
-                        <button
-                            type="submit"
-                            disabled={loading || passwordTooLong}
-                            className="w-full rounded-xl bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 py-3 font-bold text-black shadow-[0_10px_35px_rgba(249,115,22,0.22)] transition-all hover:brightness-110 disabled:opacity-50"
-                        >
-                            {loading ? 'Securing...' : 'Set Password'}
-                        </button>
                         </form>
                     </GlassCard>
 
@@ -260,7 +260,7 @@ export const PasswordPrompt: React.FC = () => {
                                 {isNewUser ? 'Create Password' : 'Enter Password'}
                             </h2>
                             <p className="text-sm text-white/60">
-                                {isNewUser 
+                                {isNewUser
                                     ? <>Set up a secure password to encrypt your <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-amber-200 to-orange-500">private platform data</span>.</>
                                     : <>Unlock your <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-amber-200 to-orange-500">private platform data</span> to continue.</>}
                             </p>
