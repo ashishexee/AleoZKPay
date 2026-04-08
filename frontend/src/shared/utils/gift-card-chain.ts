@@ -1,4 +1,5 @@
 import { fieldChunksToString, stringToFieldChunks } from './crypto';
+import { fieldToString, stringToField } from './aleo-utils';
 
 const GIFT_CARD_FIELD_CHUNK_SIZE = 15;
 const GIFT_CARD_PRIVATE_KEY_CHUNKS = 8;
@@ -6,6 +7,7 @@ const GIFT_CARD_PRIVATE_KEY_CHUNKS = 8;
 export interface GiftCardRecordData {
     giftCardAddress: string;
     giftPrivateKey: string;
+    label: string;
 }
 
 function normalizeLeoScalarString(value: unknown): string {
@@ -53,23 +55,30 @@ export function parseGiftCardRecord(record: { plaintext?: string | null }): Gift
 
     return {
         giftCardAddress,
-        giftPrivateKey: fieldChunksToString(giftPrivateKeyChunks)
+        giftPrivateKey: fieldChunksToString(giftPrivateKeyChunks),
+        label: (() => {
+            const labelField = readValueFromString(data, 'label');
+            return labelField ? fieldToString(labelField) : '';
+        })()
     };
 }
 
 export function buildCreateGiftCardRecordInputs(args: {
     giftCardAddress: string;
     giftPrivateKey: string;
+    label?: string;
 }): string[] {
     const giftPrivateKeyChunks = stringToFieldChunks(
         args.giftPrivateKey,
         GIFT_CARD_PRIVATE_KEY_CHUNKS,
         GIFT_CARD_FIELD_CHUNK_SIZE
     );
+    const labelField = args.label ? stringToField(args.label) : '0field';
 
     return [
         args.giftCardAddress,
-        buildLeoArray(giftPrivateKeyChunks)
+        buildLeoArray(giftPrivateKeyChunks),
+        labelField
     ];
 }
 

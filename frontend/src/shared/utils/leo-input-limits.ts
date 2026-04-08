@@ -8,6 +8,8 @@ export const LEO_FIELD_MAX_BYTES = 31;
 export const LEO_SAFE_FIELD_CHUNK_BYTES = 15;
 
 export const LEO_MEMO_MAX_BYTES = LEO_FIELD_MAX_BYTES;
+export const LEO_PAYMENT_NOTE_MAX_BYTES = LEO_FIELD_MAX_BYTES;
+export const GIFT_CARD_RECORD_LABEL_MAX_BYTES = LEO_FIELD_MAX_BYTES;
 export const LEO_PASSWORD_BACKUP_MAX_BYTES = LEO_SAFE_FIELD_CHUNK_BYTES;
 
 function toBase64Length(byteLength: number) {
@@ -56,4 +58,3 @@ export const CARD_HINT_MAX_BYTES = getMaxEncryptedPlaintextBytes(8);
 export function describeUtf8Limit(maxBytes: number) {
     return `${maxBytes} bytes max`;
 }
-

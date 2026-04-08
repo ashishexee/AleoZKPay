@@ -599,6 +599,10 @@ export const useSharedPayment = () => {
             setError('Invalid Gift Card format.');
             return;
         }
+        if (!publicKey) {
+            setError('Connect your main wallet first so NullPay can mint the payer receipt to it.');
+            return;
+        }
 
         try {
             setLoading(true);
@@ -690,9 +694,11 @@ export const useSharedPayment = () => {
             const inputs = [
                 payRecordStr,
                 invoice.merchant,
+                publicKey,
                 `${amountMicro}${typeSuffix}`,
                 invoice.salt || '',
                 paymentSecret || '',
+                '0field',
                 invoice.hash || ''
             ];
 
@@ -760,6 +766,9 @@ export const useSharedPayment = () => {
             }
             if (!cardProfile.encrypted_card_private_key || !cardProfile.card_kdf_salt) {
                 throw new Error('This card is missing encrypted key material.');
+            }
+            if (!cardProfile.mainOwner) {
+                throw new Error('This card is missing the linked main wallet address.');
             }
 
             setStatus('Unlocking your NullPay card locally...');
@@ -857,9 +866,11 @@ export const useSharedPayment = () => {
             const inputs = [
                 payRecordStr,
                 invoice.merchant,
+                cardProfile.mainOwner,
                 `${amountMicro}${typeSuffix}`,
                 invoice.salt || '',
                 paymentSecret || '',
+                '0field',
                 invoice.hash || ''
             ];
 

@@ -166,8 +166,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 setStatus('Requesting your approval to execute payment...');
             }
 
-            // 3. Construct Inputs (Standard Pay)
-            // pay_invoice(record input, address merchant, u64 amount, field salt, field payment_secret, field invoice_hash)
+            // 3. Construct Inputs for the invoice payment transition.
             const paymentSecret = generateSalt();
 
             if (!session.merchant_address) {
@@ -177,9 +176,11 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             const inputs = [
                 payRecord.plaintext || payRecord.ciphertext || payRecord,
                 session.merchant_address,
+                publicKey,
                 `${amountMicro}${typeSuffix}`,
                 session.salt,
                 paymentSecret,
+                '0field',
                 session.invoice_hash
             ];
 
@@ -569,6 +570,9 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             if (!cardProfile.encrypted_card_private_key || !cardProfile.card_kdf_salt) {
                 throw new Error('This card is missing encrypted key material.');
             }
+            if (!cardProfile.mainOwner) {
+                throw new Error('This card is missing the linked main wallet address.');
+            }
 
             setStatus('Unlocking your NullPay card locally...');
 
@@ -657,9 +661,11 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             const inputs = [
                 payRecordStr,
                 session.merchant_address,
+                cardProfile.mainOwner,
                 `${amountMicro}${typeSuffix}`,
                 session.salt,
                 paymentSecret,
+                '0field',
                 session.invoice_hash
             ];
 
@@ -696,6 +702,10 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         if (!session) return;
         if (!giftCode.startsWith('gift-')) {
             setError('Invalid Gift Card format.');
+            return;
+        }
+        if (!publicKey) {
+            setError('Connect your main wallet first so NullPay can mint the payer receipt to it.');
             return;
         }
 
@@ -786,9 +796,11 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             const inputs = [
                 payRecordStr,
                 session.merchant_address,
+                publicKey,
                 `${amountMicro}${typeSuffix}`,
                 session.salt,
                 paymentSecret,
+                '0field',
                 session.invoice_hash
             ];
 

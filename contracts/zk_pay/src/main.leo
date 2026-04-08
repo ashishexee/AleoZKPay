@@ -2,7 +2,7 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v24.aleo {
+program zk_pay_proofs_privacy_v25.aleo {
     
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     constructor() {
@@ -17,6 +17,13 @@ program zk_pay_proofs_privacy_v24.aleo {
         wallet_type: u8 // 0 = Main Wallet, 1 = Burner Wallet
     }
 
+    struct BatchCreditsPaymentInput {
+        merchant: address,
+        amount: u64,
+        salt: field,
+        payment_secret: field
+    }
+
     record PayerReceipt {
         owner: address,       // The Payer
         merchant: address,    // The Merchant
@@ -24,6 +31,7 @@ program zk_pay_proofs_privacy_v24.aleo {
         invoice_hash: field,  // Link to specific invoice
         amount: u64,          // Amount Paid (u64 for Credits/USDCx standard)
         token_type: u8,       // 0 = Credits, 1 = USDCx, 2 = USAD
+        note: field,          // Encoded payment note (max ~31 chars)
         timestamp: u64,       // Approximate block time or 0 if not available
     }
 
@@ -33,6 +41,7 @@ program zk_pay_proofs_privacy_v24.aleo {
         invoice_hash: field,  // Link to specific invoice
         amount: u64,          // Amount Received
         token_type: u8,       // 0 = Credits, 1 = USDCx, 2 = USAD
+        note: field,          // Encoded payment note (max ~31 chars)
     }
 
     record Invoice {
@@ -64,27 +73,8 @@ program zk_pay_proofs_privacy_v24.aleo {
 
     struct CardLookupData {
         main_owner: address,
-        card_address: address,
         card_status: u8,
-        profile_version: u8,
-        card_kdf_algorithm: u8,
-        card_kdf_iterations: u32,
-        card_kdf_opslimit: u64,
-        card_kdf_memlimit: u64,
-        card_kdf_alg: u8,
-        card_kdf_hash: u8,
-        card_kdf_version: u8,
-        encrypted_card_private_key_1: field,
-        encrypted_card_private_key_2: field,
-        encrypted_card_private_key_3: field,
-        encrypted_card_private_key_4: field,
-        encrypted_card_private_key_5: field,
-        encrypted_card_private_key_6: field,
-        encrypted_card_private_key_7: field,
-        encrypted_card_private_key_8: field,
-        card_kdf_salt_1: field,
-        card_kdf_salt_2: field,
-        card_kdf_salt_3: field
+        profile_version: u8
     }
 
     record CardProfileRecord {
@@ -100,7 +90,8 @@ program zk_pay_proofs_privacy_v24.aleo {
     record GiftCardRecord {
         owner: address,
         gift_card_address: address,
-        gift_private_key: [field; 8]
+        gift_private_key: [field; 8],
+        label: field          // Encoded gift-card label (max ~31 chars)
     }
 
     mapping invoices: field => InvoiceData;
@@ -161,18 +152,8 @@ program zk_pay_proofs_privacy_v24.aleo {
     }
 
     fn create_card_profile(
-        private card_address: address,
-        public card_number_hash: field,
+        private card_number_hash: field,
         public profile_version: u8,
-        public card_kdf_algorithm: u8,
-        public card_kdf_iterations: u32,
-        public card_kdf_opslimit: u64,
-        public card_kdf_memlimit: u64,
-        public card_kdf_alg: u8,
-        public card_kdf_hash: u8,
-        public card_kdf_version: u8,
-        private encrypted_card_private_key: [field; 8],
-        private card_kdf_salt: [field; 3],
         private encrypted_card_number: [field; 6],
         private encrypted_card_address: [field; 10],
         private encrypted_label: [field; 10],
@@ -194,27 +175,8 @@ program zk_pay_proofs_privacy_v24.aleo {
             final {
                 let lookup_data: CardLookupData = CardLookupData {
                     main_owner: caller,
-                    card_address: card_address,
                     card_status: 0u8,
-                    profile_version: profile_version,
-                    card_kdf_algorithm: card_kdf_algorithm,
-                    card_kdf_iterations: card_kdf_iterations,
-                    card_kdf_opslimit: card_kdf_opslimit,
-                    card_kdf_memlimit: card_kdf_memlimit,
-                    card_kdf_alg: card_kdf_alg,
-                    card_kdf_hash: card_kdf_hash,
-                    card_kdf_version: card_kdf_version,
-                    encrypted_card_private_key_1: encrypted_card_private_key[0u32],
-                    encrypted_card_private_key_2: encrypted_card_private_key[1u32],
-                    encrypted_card_private_key_3: encrypted_card_private_key[2u32],
-                    encrypted_card_private_key_4: encrypted_card_private_key[3u32],
-                    encrypted_card_private_key_5: encrypted_card_private_key[4u32],
-                    encrypted_card_private_key_6: encrypted_card_private_key[5u32],
-                    encrypted_card_private_key_7: encrypted_card_private_key[6u32],
-                    encrypted_card_private_key_8: encrypted_card_private_key[7u32],
-                    card_kdf_salt_1: card_kdf_salt[0u32],
-                    card_kdf_salt_2: card_kdf_salt[1u32],
-                    card_kdf_salt_3: card_kdf_salt[2u32]
+                    profile_version: profile_version
                 };
 
                 card_lookup.set(card_number_hash, lookup_data);
@@ -234,33 +196,12 @@ program zk_pay_proofs_privacy_v24.aleo {
 
             let current_lookup: CardLookupData = card_lookup.get(card_number_hash);
 
-            if caller != current_lookup.main_owner {
-                assert_eq(caller, current_lookup.card_address);
-            }
+            assert_eq(caller, current_lookup.main_owner);
 
             let updated_lookup: CardLookupData = CardLookupData {
                 main_owner: current_lookup.main_owner,
-                card_address: current_lookup.card_address,
                 card_status: next_status,
-                profile_version: current_lookup.profile_version,
-                card_kdf_algorithm: current_lookup.card_kdf_algorithm,
-                card_kdf_iterations: current_lookup.card_kdf_iterations,
-                card_kdf_opslimit: current_lookup.card_kdf_opslimit,
-                card_kdf_memlimit: current_lookup.card_kdf_memlimit,
-                card_kdf_alg: current_lookup.card_kdf_alg,
-                card_kdf_hash: current_lookup.card_kdf_hash,
-                card_kdf_version: current_lookup.card_kdf_version,
-                encrypted_card_private_key_1: current_lookup.encrypted_card_private_key_1,
-                encrypted_card_private_key_2: current_lookup.encrypted_card_private_key_2,
-                encrypted_card_private_key_3: current_lookup.encrypted_card_private_key_3,
-                encrypted_card_private_key_4: current_lookup.encrypted_card_private_key_4,
-                encrypted_card_private_key_5: current_lookup.encrypted_card_private_key_5,
-                encrypted_card_private_key_6: current_lookup.encrypted_card_private_key_6,
-                encrypted_card_private_key_7: current_lookup.encrypted_card_private_key_7,
-                encrypted_card_private_key_8: current_lookup.encrypted_card_private_key_8,
-                card_kdf_salt_1: current_lookup.card_kdf_salt_1,
-                card_kdf_salt_2: current_lookup.card_kdf_salt_2,
-                card_kdf_salt_3: current_lookup.card_kdf_salt_3
+                profile_version: current_lookup.profile_version
             };
 
             card_lookup.set(card_number_hash, updated_lookup);
@@ -269,12 +210,14 @@ program zk_pay_proofs_privacy_v24.aleo {
 
     fn create_gift_card_record(
         private gift_card_address: address,
-        private gift_private_key: [field; 8]
+        private gift_private_key: [field; 8],
+        private label: field
     ) -> GiftCardRecord {
         return GiftCardRecord {
             owner: self.caller,
             gift_card_address: gift_card_address,
-            gift_private_key: gift_private_key
+            gift_private_key: gift_private_key,
+            label: label
         };
     }
 
@@ -498,15 +441,17 @@ program zk_pay_proofs_privacy_v24.aleo {
             }
         );
     }
-
     fn pay_donation(
         pay_record: credits.aleo::credits,
         merchant: address,
+        public payer_owner: address,
         amount_to_donate: u64,
         salt: field,
         private payment_secret: field,
+        private payment_note: field,
         public message: field
     ) -> (credits.aleo::credits, credits.aleo::credits, PayerReceipt, MerchantReceipt, Final) {
+        assert(amount_to_donate > 0u64);
         let (r1, r2): (credits.aleo::credits, credits.aleo::credits) = 
             credits.aleo::transfer_private(pay_record, merchant, amount_to_donate);
         
@@ -528,12 +473,13 @@ program zk_pay_proofs_privacy_v24.aleo {
         let receipt_hash: field = BHP256::commit_to_field(combined_secret, salt_scalar);
 
         let payer_receipt: PayerReceipt = PayerReceipt {
-            owner: self.caller,
+            owner: payer_owner,
             merchant: merchant,
             receipt_hash: receipt_hash,
             invoice_hash: invoice_hash,
             amount: amount_to_donate, // Actual donated amount
             token_type: 0u8,
+            note: payment_note,
             timestamp: 0u64
         };
 
@@ -542,7 +488,8 @@ program zk_pay_proofs_privacy_v24.aleo {
             receipt_hash: receipt_hash,
             invoice_hash: invoice_hash,
             amount: amount_to_donate, // Actual donated amount
-            token_type: 0u8
+            token_type: 0u8,
+            note: payment_note
         };
 
         return (
@@ -573,9 +520,11 @@ program zk_pay_proofs_privacy_v24.aleo {
     fn pay_invoice(
         pay_record: credits.aleo::credits,
         merchant: address,
+        public payer_owner: address,
         amount: u64,
         salt: field,
         private payment_secret: field,
+        private payment_note: field,
         public message: field
     ) -> (credits.aleo::credits, credits.aleo::credits, PayerReceipt, MerchantReceipt, Final) {
         let (r1, r2): (credits.aleo::credits, credits.aleo::credits) = 
@@ -594,12 +543,13 @@ program zk_pay_proofs_privacy_v24.aleo {
         let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
 
         let payer_receipt: PayerReceipt = PayerReceipt {
-            owner: self.caller,
+            owner: payer_owner,
             merchant: merchant,
             receipt_hash: receipt_hash,
             invoice_hash: invoice_hash,
             amount: amount,
             token_type: 0u8,
+            note: payment_note,
             timestamp: 0u64 // Placeholder as block.timestamp is not available in transition
         };
 
@@ -608,7 +558,8 @@ program zk_pay_proofs_privacy_v24.aleo {
             receipt_hash: receipt_hash,
             invoice_hash: invoice_hash,
             amount: amount,
-            token_type: 0u8
+            token_type: 0u8,
+            note: payment_note
         };
 
         return (
@@ -621,7 +572,9 @@ program zk_pay_proofs_privacy_v24.aleo {
                 assert_eq(invoice_hash, stored_hash);
 
                 let invoice_data: InvoiceData = invoices.get(stored_hash);
-                assert_eq(invoice_data.token_type, 0u8);
+                if invoice_data.token_type != 3u8 {
+                    assert_eq(invoice_data.token_type, 0u8);
+                }
 
                 if invoice_data.expiry_height != 0u32 {
                     assert(block.height <= invoice_data.expiry_height);
@@ -643,9 +596,346 @@ program zk_pay_proofs_privacy_v24.aleo {
         );
     }
 
+    fn batch_pay_2_credits(
+        pay_record_1: credits.aleo::credits,
+        pay_record_2: credits.aleo::credits,
+        payment_1: BatchCreditsPaymentInput,
+        payment_2: BatchCreditsPaymentInput,
+        public payer_owner: address,
+        public message: field
+    ) -> (
+        credits.aleo::credits,
+        credits.aleo::credits,
+        credits.aleo::credits,
+        credits.aleo::credits,
+        PayerReceipt,
+        MerchantReceipt,
+        PayerReceipt,
+        MerchantReceipt,
+        Final
+    ) {
+        let (merchant_record_1, change_record_1): (credits.aleo::credits, credits.aleo::credits) =
+            credits.aleo::transfer_private(pay_record_1, payment_1.merchant, payment_1.amount);
+        let (merchant_record_2, change_record_2): (credits.aleo::credits, credits.aleo::credits) =
+            credits.aleo::transfer_private(pay_record_2, payment_2.merchant, payment_2.amount);
+
+        let merchant_hash_1: field = BHP256::hash_to_field(payment_1.merchant as field);
+        let amount_hash_1: field = BHP256::hash_to_field(payment_1.amount as field);
+        let salt_hash_1: field = BHP256::hash_to_field(payment_1.salt);
+        let invoice_hash_1: field = merchant_hash_1 + amount_hash_1 + salt_hash_1;
+
+        let merchant_hash_2: field = BHP256::hash_to_field(payment_2.merchant as field);
+        let amount_hash_2: field = BHP256::hash_to_field(payment_2.amount as field);
+        let salt_hash_2: field = BHP256::hash_to_field(payment_2.salt);
+        let invoice_hash_2: field = merchant_hash_2 + amount_hash_2 + salt_hash_2;
+
+        let receipt_hash_1: field = BHP256::commit_to_field(payment_1.payment_secret, BHP256::hash_to_scalar(payment_1.salt));
+        let receipt_hash_2: field = BHP256::commit_to_field(payment_2.payment_secret, BHP256::hash_to_scalar(payment_2.salt));
+
+        let payer_receipt_1: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: payment_1.merchant,
+            receipt_hash: receipt_hash_1,
+            invoice_hash: invoice_hash_1,
+            amount: payment_1.amount,
+            token_type: 0u8,
+            note: 0field,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt_1: MerchantReceipt = MerchantReceipt {
+            owner: payment_1.merchant,
+            receipt_hash: receipt_hash_1,
+            invoice_hash: invoice_hash_1,
+            amount: payment_1.amount,
+            token_type: 0u8,
+            note: 0field
+        };
+
+        let payer_receipt_2: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: payment_2.merchant,
+            receipt_hash: receipt_hash_2,
+            invoice_hash: invoice_hash_2,
+            amount: payment_2.amount,
+            token_type: 0u8,
+            note: 0field,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt_2: MerchantReceipt = MerchantReceipt {
+            owner: payment_2.merchant,
+            receipt_hash: receipt_hash_2,
+            invoice_hash: invoice_hash_2,
+            amount: payment_2.amount,
+            token_type: 0u8,
+            note: 0field
+        };
+
+        return (
+            merchant_record_1,
+            change_record_1,
+            merchant_record_2,
+            change_record_2,
+            payer_receipt_1,
+            merchant_receipt_1,
+            payer_receipt_2,
+            merchant_receipt_2,
+            final {
+                let stored_hash_1: field = salt_to_invoice.get(payment_1.salt);
+                assert_eq(invoice_hash_1, stored_hash_1);
+
+                let invoice_data_1: InvoiceData = invoices.get(stored_hash_1);
+                if invoice_data_1.token_type != 3u8 {
+                    assert_eq(invoice_data_1.token_type, 0u8);
+                }
+                if invoice_data_1.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data_1.expiry_height);
+                }
+                assert_eq(invoice_data_1.status, 0u8);
+                assert(invoice_data_1.invoice_type != 2u8);
+
+                if invoice_data_1.invoice_type == 0u8 {
+                    let updated_data_1: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data_1.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data_1.invoice_type,
+                        token_type: invoice_data_1.token_type,
+                        wallet_type: invoice_data_1.wallet_type
+                    };
+                    invoices.set(stored_hash_1, updated_data_1);
+                }
+
+                let stored_hash_2: field = salt_to_invoice.get(payment_2.salt);
+                assert_eq(invoice_hash_2, stored_hash_2);
+
+                let invoice_data_2: InvoiceData = invoices.get(stored_hash_2);
+                if invoice_data_2.token_type != 3u8 {
+                    assert_eq(invoice_data_2.token_type, 0u8);
+                }
+                if invoice_data_2.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data_2.expiry_height);
+                }
+                assert_eq(invoice_data_2.status, 0u8);
+                assert(invoice_data_2.invoice_type != 2u8);
+
+                if invoice_data_2.invoice_type == 0u8 {
+                    let updated_data_2: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data_2.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data_2.invoice_type,
+                        token_type: invoice_data_2.token_type,
+                        wallet_type: invoice_data_2.wallet_type
+                    };
+                    invoices.set(stored_hash_2, updated_data_2);
+                }
+            }
+        );
+    }
+
+    fn batch_pay_3_credits(
+        pay_record_1: credits.aleo::credits,
+        pay_record_2: credits.aleo::credits,
+        pay_record_3: credits.aleo::credits,
+        payment_1: BatchCreditsPaymentInput,
+        payment_2: BatchCreditsPaymentInput,
+        payment_3: BatchCreditsPaymentInput,
+        public payer_owner: address,
+        public message: field
+    ) -> (
+        credits.aleo::credits,
+        credits.aleo::credits,
+        credits.aleo::credits,
+        credits.aleo::credits,
+        credits.aleo::credits,
+        credits.aleo::credits,
+        PayerReceipt,
+        MerchantReceipt,
+        PayerReceipt,
+        MerchantReceipt,
+        PayerReceipt,
+        MerchantReceipt,
+        Final
+    ) {
+        let (merchant_record_1, change_record_1): (credits.aleo::credits, credits.aleo::credits) =
+            credits.aleo::transfer_private(pay_record_1, payment_1.merchant, payment_1.amount);
+        let (merchant_record_2, change_record_2): (credits.aleo::credits, credits.aleo::credits) =
+            credits.aleo::transfer_private(pay_record_2, payment_2.merchant, payment_2.amount);
+        let (merchant_record_3, change_record_3): (credits.aleo::credits, credits.aleo::credits) =
+            credits.aleo::transfer_private(pay_record_3, payment_3.merchant, payment_3.amount);
+
+        let merchant_hash_1: field = BHP256::hash_to_field(payment_1.merchant as field);
+        let amount_hash_1: field = BHP256::hash_to_field(payment_1.amount as field);
+        let salt_hash_1: field = BHP256::hash_to_field(payment_1.salt);
+        let invoice_hash_1: field = merchant_hash_1 + amount_hash_1 + salt_hash_1;
+
+        let merchant_hash_2: field = BHP256::hash_to_field(payment_2.merchant as field);
+        let amount_hash_2: field = BHP256::hash_to_field(payment_2.amount as field);
+        let salt_hash_2: field = BHP256::hash_to_field(payment_2.salt);
+        let invoice_hash_2: field = merchant_hash_2 + amount_hash_2 + salt_hash_2;
+
+        let merchant_hash_3: field = BHP256::hash_to_field(payment_3.merchant as field);
+        let amount_hash_3: field = BHP256::hash_to_field(payment_3.amount as field);
+        let salt_hash_3: field = BHP256::hash_to_field(payment_3.salt);
+        let invoice_hash_3: field = merchant_hash_3 + amount_hash_3 + salt_hash_3;
+
+        let receipt_hash_1: field = BHP256::commit_to_field(payment_1.payment_secret, BHP256::hash_to_scalar(payment_1.salt));
+        let receipt_hash_2: field = BHP256::commit_to_field(payment_2.payment_secret, BHP256::hash_to_scalar(payment_2.salt));
+        let receipt_hash_3: field = BHP256::commit_to_field(payment_3.payment_secret, BHP256::hash_to_scalar(payment_3.salt));
+
+        let payer_receipt_1: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: payment_1.merchant,
+            receipt_hash: receipt_hash_1,
+            invoice_hash: invoice_hash_1,
+            amount: payment_1.amount,
+            token_type: 0u8,
+            note: 0field,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt_1: MerchantReceipt = MerchantReceipt {
+            owner: payment_1.merchant,
+            receipt_hash: receipt_hash_1,
+            invoice_hash: invoice_hash_1,
+            amount: payment_1.amount,
+            token_type: 0u8,
+            note: 0field
+        };
+
+        let payer_receipt_2: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: payment_2.merchant,
+            receipt_hash: receipt_hash_2,
+            invoice_hash: invoice_hash_2,
+            amount: payment_2.amount,
+            token_type: 0u8,
+            note: 0field,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt_2: MerchantReceipt = MerchantReceipt {
+            owner: payment_2.merchant,
+            receipt_hash: receipt_hash_2,
+            invoice_hash: invoice_hash_2,
+            amount: payment_2.amount,
+            token_type: 0u8,
+            note: 0field
+        };
+
+        let payer_receipt_3: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: payment_3.merchant,
+            receipt_hash: receipt_hash_3,
+            invoice_hash: invoice_hash_3,
+            amount: payment_3.amount,
+            token_type: 0u8,
+            note: 0field,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt_3: MerchantReceipt = MerchantReceipt {
+            owner: payment_3.merchant,
+            receipt_hash: receipt_hash_3,
+            invoice_hash: invoice_hash_3,
+            amount: payment_3.amount,
+            token_type: 0u8,
+            note: 0field
+        };
+
+        return (
+            merchant_record_1,
+            change_record_1,
+            merchant_record_2,
+            change_record_2,
+            merchant_record_3,
+            change_record_3,
+            payer_receipt_1,
+            merchant_receipt_1,
+            payer_receipt_2,
+            merchant_receipt_2,
+            payer_receipt_3,
+            merchant_receipt_3,
+            final {
+                let stored_hash_1: field = salt_to_invoice.get(payment_1.salt);
+                assert_eq(invoice_hash_1, stored_hash_1);
+
+                let invoice_data_1: InvoiceData = invoices.get(stored_hash_1);
+                if invoice_data_1.token_type != 3u8 {
+                    assert_eq(invoice_data_1.token_type, 0u8);
+                }
+                if invoice_data_1.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data_1.expiry_height);
+                }
+                assert_eq(invoice_data_1.status, 0u8);
+                assert(invoice_data_1.invoice_type != 2u8);
+
+                if invoice_data_1.invoice_type == 0u8 {
+                    let updated_data_1: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data_1.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data_1.invoice_type,
+                        token_type: invoice_data_1.token_type,
+                        wallet_type: invoice_data_1.wallet_type
+                    };
+                    invoices.set(stored_hash_1, updated_data_1);
+                }
+
+                let stored_hash_2: field = salt_to_invoice.get(payment_2.salt);
+                assert_eq(invoice_hash_2, stored_hash_2);
+
+                let invoice_data_2: InvoiceData = invoices.get(stored_hash_2);
+                if invoice_data_2.token_type != 3u8 {
+                    assert_eq(invoice_data_2.token_type, 0u8);
+                }
+                if invoice_data_2.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data_2.expiry_height);
+                }
+                assert_eq(invoice_data_2.status, 0u8);
+                assert(invoice_data_2.invoice_type != 2u8);
+
+                if invoice_data_2.invoice_type == 0u8 {
+                    let updated_data_2: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data_2.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data_2.invoice_type,
+                        token_type: invoice_data_2.token_type,
+                        wallet_type: invoice_data_2.wallet_type
+                    };
+                    invoices.set(stored_hash_2, updated_data_2);
+                }
+
+                let stored_hash_3: field = salt_to_invoice.get(payment_3.salt);
+                assert_eq(invoice_hash_3, stored_hash_3);
+
+                let invoice_data_3: InvoiceData = invoices.get(stored_hash_3);
+                if invoice_data_3.token_type != 3u8 {
+                    assert_eq(invoice_data_3.token_type, 0u8);
+                }
+                if invoice_data_3.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data_3.expiry_height);
+                }
+                assert_eq(invoice_data_3.status, 0u8);
+                assert(invoice_data_3.invoice_type != 2u8);
+
+                if invoice_data_3.invoice_type == 0u8 {
+                    let updated_data_3: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data_3.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data_3.invoice_type,
+                        token_type: invoice_data_3.token_type,
+                        wallet_type: invoice_data_3.wallet_type
+                    };
+                    invoices.set(stored_hash_3, updated_data_3);
+                }
+            }
+        );
+    }
+
     fn pay_invoice_usdcx(
         pay_record: test_usdcx_stablecoin.aleo::Token,
         merchant: address,
+        public payer_owner: address,
         amount: u128,
         salt: field,
         private payment_secret: field,
@@ -669,7 +959,7 @@ program zk_pay_proofs_privacy_v24.aleo {
         let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
         
         let payer_receipt: PayerReceipt = PayerReceipt {
-            owner: self.caller,
+            owner: payer_owner,
             merchant: merchant,
             receipt_hash: receipt_hash,
             invoice_hash: invoice_hash,
@@ -699,7 +989,9 @@ program zk_pay_proofs_privacy_v24.aleo {
                 assert_eq(invoice_hash, stored_hash);
 
                 let invoice_data: InvoiceData = invoices.get(stored_hash);
-                assert_eq(invoice_data.token_type, 1u8);
+                if invoice_data.token_type != 3u8 {
+                    assert_eq(invoice_data.token_type, 1u8);
+                }
 
                 if invoice_data.expiry_height != 0u32 {
                     assert(block.height <= invoice_data.expiry_height);
@@ -724,6 +1016,7 @@ program zk_pay_proofs_privacy_v24.aleo {
     fn pay_invoice_usad(
         pay_record: test_usad_stablecoin.aleo::Token,
         merchant: address,
+        public payer_owner: address,
         amount: u128,
         salt: field,
         private payment_secret: field,
@@ -747,7 +1040,7 @@ program zk_pay_proofs_privacy_v24.aleo {
         let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
         
         let payer_receipt: PayerReceipt = PayerReceipt {
-            owner: self.caller,
+            owner: payer_owner,
             merchant: merchant,
             receipt_hash: receipt_hash,
             invoice_hash: invoice_hash,
@@ -777,7 +1070,9 @@ program zk_pay_proofs_privacy_v24.aleo {
                 assert_eq(invoice_hash, stored_hash);
 
                 let invoice_data: InvoiceData = invoices.get(stored_hash);
-                assert_eq(invoice_data.token_type, 2u8);
+                if invoice_data.token_type != 3u8 {
+                    assert_eq(invoice_data.token_type, 2u8);
+                }
 
                 if invoice_data.expiry_height != 0u32 {
                     assert(block.height <= invoice_data.expiry_height);
@@ -802,13 +1097,14 @@ program zk_pay_proofs_privacy_v24.aleo {
     fn pay_donation_usdcx(
         pay_record: test_usdcx_stablecoin.aleo::Token,
         merchant: address,
+        public payer_owner: address,
         amount_to_donate: u128,
         salt: field,
         private payment_secret: field,
         public message: field,
         private proofs: [test_usdcx_stablecoin.aleo::MerkleProof; 2]
     ) -> (test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
-        
+        assert(amount_to_donate > 0u128);
         let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usdcx_stablecoin.aleo::ComplianceRecord, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, Final) = 
             test_usdcx_stablecoin.aleo::transfer_private(merchant, amount_to_donate, pay_record, proofs);
 
@@ -830,7 +1126,7 @@ program zk_pay_proofs_privacy_v24.aleo {
         let receipt_hash: field = BHP256::commit_to_field(combined_secret, salt_scalar);
         
         let payer_receipt: PayerReceipt = PayerReceipt {
-            owner: self.caller,
+            owner: payer_owner,
             merchant: merchant,
             receipt_hash: receipt_hash,
             invoice_hash: invoice_hash,
@@ -878,13 +1174,14 @@ program zk_pay_proofs_privacy_v24.aleo {
     fn pay_donation_usad(
         pay_record: test_usad_stablecoin.aleo::Token,
         merchant: address,
+        public payer_owner: address,
         amount_to_donate: u128,
         salt: field,
         private payment_secret: field,
         public message: field,
         private proofs: [test_usad_stablecoin.aleo::MerkleProof; 2]
     ) -> (test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
-        
+        assert(amount_to_donate > 0u128);
         let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usad_stablecoin.aleo::ComplianceRecord, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, Final) = 
             test_usad_stablecoin.aleo::transfer_private(merchant, amount_to_donate, pay_record, proofs);
 
@@ -906,7 +1203,7 @@ program zk_pay_proofs_privacy_v24.aleo {
         let receipt_hash: field = BHP256::commit_to_field(combined_secret, salt_scalar);
         
         let payer_receipt: PayerReceipt = PayerReceipt {
-            owner: self.caller,
+            owner: payer_owner,
             merchant: merchant,
             receipt_hash: receipt_hash,
             invoice_hash: invoice_hash,
@@ -990,4 +1287,3 @@ program zk_pay_proofs_privacy_v24.aleo {
         };
     }
 }
-

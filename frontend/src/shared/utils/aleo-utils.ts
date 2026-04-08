@@ -1,6 +1,6 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
 import { FIXED_FEE_MICROCREDITS, getFeePreferenceMode } from './feePreference';
-export const PROGRAM_ID = "zk_pay_proofs_privacy_v24.aleo";
+export const PROGRAM_ID = "zk_pay_proofs_privacy_v25.aleo";
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
 const PROVABLE_HOST = 'https://api.explorer.provable.com/v1';
 const PROVABLE_PROGRAM_API = 'https://api.provable.com/v1/testnet/program';

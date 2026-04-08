@@ -4,6 +4,7 @@ import { pageVariants } from '../../../shared/utils/animations';
 import { usePayment, PaymentStep } from '../../../shared/hooks/usePayment';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
+import { useSearchParams } from 'react-router-dom';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
 import { Button } from '../../../shared/components/ui/Button';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
@@ -11,10 +12,11 @@ import { Input } from '../../../shared/components/ui/Input';
 import { GiftCodeInput } from '../../../shared/components/ui/GiftCodeInput';
 import { GiftCardRedeemPrompt } from '../../../shared/components/ui/GiftCardRedeemPrompt';
 import { NullPayCardPaymentPanel } from '../../../shared/components/payments/NullPayCardPaymentPanel';
+import { BatchPayPage } from '../../../shared/pages/BatchPay';
 import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 import { TokenCode, getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/tokens';
 
-const PaymentPage = () => {
+const SingleInvoicePaymentPage = () => {
     const {
         step,
         status,
@@ -585,6 +587,17 @@ const PaymentPage = () => {
             )}
         </motion.div>
     );
+};
+
+const PaymentPage = () => {
+    const [searchParams] = useSearchParams();
+    const hasParams = (searchParams.get('merchant') && searchParams.get('salt')) || searchParams.get('hash');
+
+    if (!hasParams) {
+        return <BatchPayPage />;
+    }
+
+    return <SingleInvoicePaymentPage />;
 };
 
 export default PaymentPage;

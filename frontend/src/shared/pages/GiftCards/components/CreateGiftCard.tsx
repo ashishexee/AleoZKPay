@@ -9,17 +9,21 @@ import { estimateExecutionFee, PROGRAM_ID } from '../../../utils/aleo-utils';
 import { buildCreateGiftCardRecordInputs, privateKeyToGiftCode } from '../../../utils/gift-card-chain';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
+import { getUtf8ByteLength, GIFT_CARD_RECORD_LABEL_MAX_BYTES } from '../../../utils/leo-input-limits';
 
 export const CreateGiftCard: React.FC = () => {
     const { address, executeTransaction, transactionStatus, requestRecords, decrypt } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
     const [amounts, setAmounts] = useState({ ALEO: '', USDCx: '', USAD: '' });
+    const [label, setLabel] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [step, setStep] = useState<'INPUT' | 'FUNDING' | 'SUCCESS'>('INPUT');
     const [fundingStatus, setFundingStatus] = useState<string>('');
     const [giftCode, setGiftCode] = useState<string>('');
     const [copied, setCopied] = useState(false);
     const [historySaved, setHistorySaved] = useState(false);
+    const labelBytes = getUtf8ByteLength(label.trim());
+    const labelTooLong = labelBytes > GIFT_CARD_RECORD_LABEL_MAX_BYTES;
 
     const waitForFinalization = async (transactionId: string, failureMessage: string) => {
         if (!transactionStatus) {
@@ -59,6 +63,10 @@ export const CreateGiftCard: React.FC = () => {
 
         if (aleoAmt <= 0 && usdcxAmt <= 0 && usadAmt <= 0) {
             toast.error('Please enter an amount for at least one asset.');
+            return;
+        }
+        if (labelTooLong) {
+            toast.error(`Keep the gift-card label within ${GIFT_CARD_RECORD_LABEL_MAX_BYTES} bytes.`);
             return;
         }
 
@@ -193,7 +201,8 @@ export const CreateGiftCard: React.FC = () => {
             try {
                 const historyInputs = buildCreateGiftCardRecordInputs({
                     giftCardAddress: newAddress,
-                    giftPrivateKey: rawPk
+                    giftPrivateKey: rawPk,
+                    label: label.trim()
                 });
                 const estimatedHistoryFee = await estimateExecutionFee({
                     programName: PROGRAM_ID,
@@ -245,6 +254,7 @@ export const CreateGiftCard: React.FC = () => {
 
     const reset = () => {
         setAmounts({ ALEO: '', USDCx: '', USAD: '' });
+        setLabel('');
         setGiftCode('');
         setHistorySaved(false);
         setStep('INPUT');
@@ -269,6 +279,22 @@ export const CreateGiftCard: React.FC = () => {
 
                         {/* Amount inputs */}
                         <div className="space-y-3">
+                            <div className="relative flex items-center bg-white/[0.02] rounded-2xl overflow-hidden group h-14">
+                                <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent group-focus-within:via-orange-500/50 transition-all duration-500" />
+                                <span className="pl-5 text-xs font-semibold text-white/30 uppercase tracking-[0.2em] w-24 shrink-0 transition-colors group-focus-within:text-white/50">
+                                    Label
+                                </span>
+                                <input
+                                    type="text"
+                                    value={label}
+                                    onChange={(e) => setLabel(e.target.value)}
+                                    className="flex-1 h-full bg-transparent px-5 text-right text-sm text-white font-light focus:outline-none placeholder-white/10"
+                                    placeholder="Birthday card"
+                                />
+                            </div>
+                            <div className={`-mt-1 text-right text-[10px] ${labelTooLong ? 'text-red-400' : 'text-white/25'}`}>
+                                Gift-card label lives in one Leo field: {labelBytes}/{GIFT_CARD_RECORD_LABEL_MAX_BYTES} bytes.
+                            </div>
                             {(['ALEO', 'USDCx', 'USAD'] as const).map((token) => (
                                 <div
                                     key={token}
@@ -298,7 +324,7 @@ export const CreateGiftCard: React.FC = () => {
                             </p>
                             <button
                                 type="submit"
-                                disabled={isGenerating || !address || (!amounts.ALEO && !amounts.USDCx && !amounts.USAD)}
+                                disabled={isGenerating || !address || (!amounts.ALEO && !amounts.USDCx && !amounts.USAD) || labelTooLong}
                                 className="px-6 py-4 text-sm font-semibold bg-white text-black rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] shrink-0 group relative overflow-hidden"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

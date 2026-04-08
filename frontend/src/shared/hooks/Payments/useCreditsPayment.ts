@@ -155,6 +155,7 @@ export const createCreditsPayment = (deps: CreditsPaymentDeps) => {
             const inputs = [
                 recordInput,
                 invoice.merchant,
+                publicKey,
                 `${amountMicro}u64`,
                 invoice.salt,
                 paymentSecret || '0field',

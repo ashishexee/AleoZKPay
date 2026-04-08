@@ -161,6 +161,7 @@ export const createUSADPayment = (deps: USADPaymentDeps) => {
             const inputs = [
                 recordInput,
                 invoice.merchant,
+                publicKey,
                 `${amountMicro}u128`,
                 invoice.salt,
                 paymentSecret || '0field',

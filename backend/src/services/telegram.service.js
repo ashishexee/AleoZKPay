@@ -488,7 +488,7 @@ async function resolvePayTargetWithOverrides(invoice, user, overrides = {}) {
 
 async function waitForInvoiceHash(salt, attempts = 60, delayMs = 2000) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-        const response = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v24.aleo/mapping/salt_to_invoice/${salt}`);
+        const response = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v25.aleo/mapping/salt_to_invoice/${salt}`);
         if (response.ok) {
             const value = await response.json();
             const invoiceHash = value ? String(value).replace(/['"]/g, '') : '';

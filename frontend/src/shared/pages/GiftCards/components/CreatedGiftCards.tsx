@@ -12,6 +12,7 @@ interface CreatedGiftCardEntry {
     giftCardAddress: string;
     giftPrivateKey: string;
     giftCode: string;
+    label: string;
     balances: PrivateBalances | null;
     isLoadingBalances: boolean;
 }
@@ -36,6 +37,7 @@ export const CreatedGiftCards: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const fetchIdRef = React.useRef(0);
 
     const loadCreatedGiftCards = useCallback(async () => {
         if (!address || !requestRecords) {
@@ -44,9 +46,13 @@ export const CreatedGiftCards: React.FC = () => {
             return;
         }
 
+        const currentFetchId = ++fetchIdRef.current;
+
         try {
             setIsLoading(true);
             const records = await requestRecords(PROGRAM_ID, true);
+            if (currentFetchId !== fetchIdRef.current) return;
+            
             const nextEntries: CreatedGiftCardEntry[] = [];
 
             for (const record of (records as any[]) || []) {
@@ -70,6 +76,7 @@ export const CreatedGiftCards: React.FC = () => {
                     giftCardAddress: parsed.giftCardAddress,
                     giftPrivateKey: parsed.giftPrivateKey,
                     giftCode: privateKeyToGiftCode(parsed.giftPrivateKey),
+                    label: parsed.label,
                     balances: null,
                     isLoadingBalances: true
                 });
@@ -81,12 +88,14 @@ export const CreatedGiftCards: React.FC = () => {
             for (const entry of nextEntries) {
                 try {
                     const balances = await fetchAllPrivateBalances(entry.giftPrivateKey);
+                    if (currentFetchId !== fetchIdRef.current) return;
                     setEntries((current) => current.map((item) => (
                         item.id === entry.id
                             ? { ...item, balances, isLoadingBalances: false }
                             : item
                     )));
                 } catch {
+                    if (currentFetchId !== fetchIdRef.current) return;
                     setEntries((current) => current.map((item) => (
                         item.id === entry.id
                             ? { ...item, balances: { ALEO: 0, USDCx: 0, USAD: 0 }, isLoadingBalances: false }
@@ -95,12 +104,15 @@ export const CreatedGiftCards: React.FC = () => {
                 }
             }
         } catch (error: any) {
+            if (currentFetchId !== fetchIdRef.current) return;
             console.error('Failed to load created gift cards', error);
             toast.error(error?.message || 'Failed to load created gift cards.');
             setEntries([]);
             setHasLoaded(true);
         } finally {
-            setIsLoading(false);
+            if (currentFetchId === fetchIdRef.current) {
+                setIsLoading(false);
+            }
         }
     }, [address, requestRecords, decrypt]);
 
@@ -134,26 +146,30 @@ export const CreatedGiftCards: React.FC = () => {
             <div className="flex items-center justify-between gap-4">
                 <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-white/30">On-Chain History</p>
-                    <p className="mt-1 text-sm text-orange-100/90">
-                        {hasLoaded ? `${totalCount} created card${totalCount === 1 ? '' : 's'} / ${usedCount} used` : 'Loading created cards...'}
+                    <p className="mt-1 text-sm font-medium text-orange-100/90">
+                        {hasLoaded ? (
+                            <>
+                                <span className="text-white">{totalCount}</span> created card{totalCount === 1 ? '' : 's'} / <span className="text-white">{usedCount}</span> used
+                            </>
+                        ) : 'Loading created cards...'}
                     </p>
                 </div>
                 <button
                     type="button"
                     onClick={() => loadCreatedGiftCards()}
                     disabled={isLoading}
-                    className="inline-flex items-center gap-2 rounded-xl border border-orange-400/10 bg-orange-500/[0.06] px-3.5 py-2.5 text-xs font-semibold text-orange-100/80 transition-all hover:border-orange-300/20 hover:bg-orange-500/[0.1] hover:text-white disabled:opacity-50"
+                    className="group inline-flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] backdrop-blur-md px-3.5 py-2.5 text-xs font-semibold text-white/70 transition-all duration-300 hover:border-orange-500/30 hover:bg-orange-500/10 hover:text-orange-300 disabled:opacity-50 hover:shadow-[0_0_15px_rgba(249,115,22,0.15)]"
                 >
-                    {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 transition-transform duration-500 group-hover:rotate-180" />}
                     Refresh
                 </button>
             </div>
 
             {!isLoading && hasLoaded && entries.length === 0 ? (
-                <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-5 py-10 text-center">
-                    <p className="text-sm text-white/75">No gift-card history found yet.</p>
-                    <p className="mt-2 text-xs text-white/35">
-                        Newly created cards saved with the updated contract will appear here.
+                <div className="rounded-[1.8rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl px-5 py-12 text-center shadow-inner">
+                    <p className="text-sm font-medium text-white/75">No gift-card history found yet.</p>
+                    <p className="mt-2 text-xs text-white/40">
+                        Newly created cards will appear here securely.
                     </p>
                 </div>
             ) : null}
@@ -165,51 +181,64 @@ export const CreatedGiftCards: React.FC = () => {
                     return (
                         <div
                             key={entry.id}
-                            className="rounded-[1.8rem] border border-orange-400/12 bg-[linear-gradient(180deg,rgba(249,115,22,0.06),rgba(255,255,255,0.02))] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.2)] backdrop-blur-xl"
+                            className="group relative overflow-hidden rounded-[1.8rem] border border-white/5 bg-white/[0.02] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/20 hover:bg-white/[0.03] hover:shadow-[0_20px_40px_rgba(249,115,22,0.08)]"
                         >
+                            {/* Subtle top glare/gradient */}
+                            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                            
                             <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
-                                    <div className="mb-3 flex items-center gap-2">
-                                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${
-                                            entry.isLoadingBalances
-                                                ? 'border border-white/8 bg-white/8 text-white/55'
-                                                : isUsed
-                                                    ? 'border border-white/8 bg-white/8 text-white/55'
-                                                    : 'border border-orange-400/10 bg-orange-500/15 text-orange-300'
-                                        }`}>
-                                            {entry.isLoadingBalances ? 'Checking' : isUsed ? 'Used' : 'Has Balance'}
-                                        </span>
-                                    </div>
-                                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/28">Card address</p>
-                                    <p className="mt-2 font-mono text-sm text-white/76">{shortenAddress(entry.giftCardAddress)}</p>
+                                    {(entry.isLoadingBalances || isUsed) && (
+                                        <div className="mb-4 flex items-center gap-2">
+                                            {entry.isLoadingBalances ? (
+                                                <div className="h-[26px] w-[68px] animate-pulse rounded-full bg-white/[0.05]" />
+                                            ) : (
+                                                <span className="inline-flex items-center rounded-full border border-white/5 bg-white/5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40 backdrop-blur-md">
+                                                    Used
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                    <p className="text-[10px] uppercase tracking-[0.22em] text-white/30">Card address</p>
+                                    <p className="mt-1.5 font-mono text-sm font-medium text-white/80">{shortenAddress(entry.giftCardAddress)}</p>
+                                    {entry.label && (
+                                        <>
+                                            <p className="mt-3 text-[10px] uppercase tracking-[0.22em] text-white/30">Label</p>
+                                            <p className="mt-1 text-sm text-orange-100/85">{entry.label}</p>
+                                        </>
+                                    )}
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => copyGiftCode(entry.giftCode, entry.id)}
-                                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-orange-400/10 bg-orange-500/[0.06] px-3.5 py-2.5 text-xs font-semibold text-orange-100/80 transition-all hover:border-orange-300/20 hover:bg-orange-500/[0.1] hover:text-white"
+                                    className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] backdrop-blur-md px-3.5 py-2.5 text-xs font-semibold text-white/70 transition-all duration-300 hover:border-orange-500/30 hover:bg-orange-500/10 hover:text-orange-300 hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] active:scale-95"
                                 >
-                                    <Copy className="h-3.5 w-3.5" />
+                                    <Copy className={`h-3.5 w-3.5 transition-transform duration-300 ${copiedId === entry.id ? 'scale-110 text-orange-400' : 'group-hover:scale-110'}`} />
                                     {copiedId === entry.id ? 'Copied' : 'Copy code'}
                                 </button>
                             </div>
 
-                            <div className="mt-5 grid grid-cols-3 gap-3 rounded-[1.4rem] border border-orange-400/10 bg-orange-500/[0.04] px-4 py-4">
-                                {(['ALEO', 'USDCx', 'USAD'] as const).map((token) => (
-                                    <div key={token} className="px-2 py-1">
-                                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-orange-100/55">
-                                            {token === 'ALEO' ? 'Credits' : token}
-                                        </p>
-                                        <p className={`mt-3 text-[1.9rem] font-semibold leading-none tracking-tight ${
-                                            token === 'ALEO' && !entry.isLoadingBalances && (entry.balances?.[token] || 0) > 0
-                                                ? 'text-orange-200'
-                                                : 'text-white'
-                                        }`}>
-                                            {entry.isLoadingBalances
-                                                ? '...'
-                                                : (entry.balances?.[token] || 0).toFixed(2)}
-                                        </p>
-                                    </div>
-                                ))}
+                            <div className="mt-5 border-t border-white/5 pt-5 pb-1">
+                                <div className="grid grid-cols-3 gap-3">
+                                    {(['ALEO', 'USDCx', 'USAD'] as const).map((token) => (
+                                        <div key={token} className="px-1">
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/40">
+                                                {token === 'ALEO' ? 'Credits' : token}
+                                            </p>
+                                            {entry.isLoadingBalances ? (
+                                                <div className="mt-3.5 h-7 w-16 animate-pulse rounded-md bg-white/[0.05]" />
+                                            ) : (
+                                                <p className={`mt-2.5 text-2xl font-bold tracking-tight transition-colors duration-300 ${
+                                                    token === 'ALEO' && (entry.balances?.[token] || 0) > 0
+                                                        ? 'text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]'
+                                                        : 'text-white/90'
+                                                }`}>
+                                                    {(entry.balances?.[token] || 0).toFixed(2)}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     );

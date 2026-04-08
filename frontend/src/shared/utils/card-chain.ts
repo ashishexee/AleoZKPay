@@ -273,6 +273,8 @@ export async function resolveCardLookupByHashHex(cardNumberHashHex: string): Pro
     if (lookup) {
         return {
             address_hash: '',
+            main_owner: lookup.mainOwner,
+            mainOwner: lookup.mainOwner,
             card_address: lookup.cardAddress,
             encrypted_card_private_key: lookup.encryptedCardPrivateKey,
             card_kdf_salt: lookup.cardKdfSalt,

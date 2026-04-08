@@ -129,6 +129,8 @@ export interface CardTokenLimits {
 
 export interface CardWalletProfile {
     address_hash: string;
+    main_owner?: string | null;
+    mainOwner?: string | null;
     card_address: string;
     encrypted_card_address?: string | null;
     card_number?: string | null;
