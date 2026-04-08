@@ -15,13 +15,13 @@ import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TokenCode, getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/tokens';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../shared/utils/leo-input-limits';
 
 const MobilePaymentPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const hasParams = (searchParams.get('merchant') && searchParams.get('salt')) || searchParams.get('hash');
     const [manualLink, setManualLink] = useState('');
-    const [copiedSecret, setCopiedSecret] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
     const [customConvertAmount, setCustomConvertAmount] = useState<string>('');
     const [showConvertModal, setShowConvertModal] = useState(false);
@@ -32,6 +32,9 @@ const MobilePaymentPage = () => {
     const [cardPin, setCardPin] = useState<string>('');
     const [cardSecret, setCardSecret] = useState<string>('');
     const [showCardOverlay, setShowCardOverlay] = useState(false);
+    const [payerNote, setPayerNote] = useState('');
+    const [shareMerchantNote, setShareMerchantNote] = useState(false);
+    const [merchantNote, setMerchantNote] = useState('');
 
     const {
         step,
@@ -46,7 +49,6 @@ const MobilePaymentPage = () => {
         payWithGiftCard,
         convertPublicToPrivate,
         programId,
-        paymentSecret,
         receiptHash,
         receiptSearchFailed,
         donationAmount,
@@ -85,20 +87,29 @@ const MobilePaymentPage = () => {
         if (step === 'CONVERT') {
             setShowConvertModal(true);
         } else {
-            await payInvoice(invoice?.tokenType === 3 ? selectedToken : undefined);
+            await payInvoice(invoice?.tokenType === 3 ? selectedToken : undefined, {
+                payerNote,
+                merchantNote: shareMerchantNote ? merchantNote : null
+            });
         }
     };
 
     const handleGiftCardPay = async () => {
         if (!giftCode) return;
-        await payWithGiftCard(giftCode, invoice?.tokenType === 3 ? selectedToken : undefined);
+        await payWithGiftCard(giftCode, invoice?.tokenType === 3 ? selectedToken : undefined, {
+            payerNote,
+            merchantNote: shareMerchantNote ? merchantNote : null
+        });
     };
 
     const handleCardPay = async () => {
         if (!cardNumber || !cardPin || !cardSecret) return;
         resetPaymentFeedback();
         setShowCardOverlay(true);
-        await payWithCard(cardNumber, cardPin, cardSecret, invoice?.tokenType === 3 ? selectedToken : undefined);
+        await payWithCard(cardNumber, cardPin, cardSecret, invoice?.tokenType === 3 ? selectedToken : undefined, {
+            payerNote,
+            merchantNote: shareMerchantNote ? merchantNote : null
+        });
     };
 
     const handleCardOverlayOpen = () => {
@@ -163,6 +174,10 @@ const MobilePaymentPage = () => {
     const activeTokenType = invoice?.tokenType === 3 ? selectedToken : (invoice?.tokenType ?? 0);
     const currencyLabel = getTokenLabel(activeTokenType);
     const paymentAmountLabel = `${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`;
+    const payerNoteBytes = getUtf8ByteLength(payerNote);
+    const merchantNoteBytes = getUtf8ByteLength(merchantNote);
+    const payerNoteTooLong = payerNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
+    const merchantNoteTooLong = merchantNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
 
     if (!hasParams) {
         return (
@@ -238,13 +253,13 @@ const MobilePaymentPage = () => {
             >
                 {/* STATUS HEADER */}
                 <div className="text-center mb-6">
-                    <h1 className="text-3xl font-bold mb-4 tracking-tighter text-white">
-                        {step === 'SUCCESS' ? 'Null Payment' : step === 'ALREADY_PAID' ? 'Null Invoice' : 'Make'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Null Payment'}</span>
-                    </h1>
+                        <h1 className="text-3xl font-bold mb-4 tracking-tighter text-white">
+                            {step === 'SUCCESS' ? 'Null Payment' : step === 'ALREADY_PAID' ? 'Null Invoice' : 'Make'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-amber-400 drop-shadow-[0_0_18px_rgba(249,115,22,0.22)]">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Null Payment'}</span>
+                        </h1>
 
                     {invoice && !error && (
-                        <div className="inline-flex items-center gap-2 bg-neon-primary/10 px-4 py-2 rounded-full border border-neon-primary/20 shadow-[0_0_15px_rgba(0,243,255,0.15)]">
-                            <span className="text-sm font-bold text-neon-primary tracking-wide uppercase">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 shadow-[0_0_18px_rgba(249,115,22,0.14)]">
+                            <span className="text-sm font-bold text-orange-200 tracking-wide uppercase">
                                 Verified On-Chain
                             </span>
                         </div>
@@ -264,7 +279,7 @@ const MobilePaymentPage = () => {
                             return (
                                 <div key={s.key} className="relative z-10 flex flex-col items-center gap-2">
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isActive
-                                        ? 'bg-neon-primary border-neon-primary text-black shadow-[0_0_10px_rgba(0,243,255,0.5)]'
+                                        ? 'bg-orange-400 border-orange-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.28)]'
                                         : 'bg-black border-gray-700 text-gray-500'
                                         }`}>
                                         {isActive ? (
@@ -273,7 +288,7 @@ const MobilePaymentPage = () => {
                                             <span className="text-[10px] font-bold">{index + 1}</span>
                                         )}
                                     </div>
-                                    <span className={`text-[10px] font-bold tracking-wider uppercase transition-colors ${isActive ? 'text-neon-primary' : 'text-gray-600'}`}>
+                                    <span className={`text-[10px] font-bold tracking-wider uppercase transition-colors ${isActive ? 'text-orange-200' : 'text-gray-600'}`}>
                                         {s.label}
                                     </span>
                                 </div>
@@ -305,7 +320,7 @@ const MobilePaymentPage = () => {
                                                 <span className="text-sm text-white block truncate">{item.name || 'Unnamed'}</span>
                                                 <span className="text-[10px] text-gray-500">{item.quantity} × {item.unitPrice}</span>
                                             </div>
-                                            <span className="text-sm text-neon-primary font-mono ml-3">{item.total.toFixed(2)}</span>
+                                            <span className="text-sm text-amber-300 font-mono ml-3">{item.total.toFixed(2)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -374,31 +389,6 @@ const MobilePaymentPage = () => {
                             </div>
                         )}
 
-                        {/* MULTI PAY EXTRA INPUTS */}
-                        {isMultiPay && step !== 'SUCCESS' && step !== 'CONNECT' && step !== 'ALREADY_PAID' && (
-                            <div className="pt-4 border-t border-white/5 space-y-4">
-                                <div>
-                                    <span className="text-xs font-bold text-neon-primary uppercase tracking-widest block mb-1">Your Payment Secret</span>
-                                    <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded-lg break-all font-mono text-xs text-neon-primary relative hover:bg-neon-primary/20 transition-colors cursor-copy" onClick={() => {
-                                        if (paymentSecret) {
-                                            navigator.clipboard.writeText(paymentSecret);
-                                            setCopiedSecret(true);
-                                            setTimeout(() => setCopiedSecret(false), 2000);
-                                        }
-                                    }}>
-                                        {paymentSecret || 'Generating...'}
-                                        <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedSecret ? 'text-neon-primary' : 'opacity-70 text-gray-400'}`}>
-                                            {copiedSecret ? 'COPIED!' : 'COPY'}
-                                        </div>
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 mt-1">
-                                        Save this secret! You'll need it to prove payment to the merchant.
-                                    </p>
-                                </div>
-
-                            </div>
-                        )}
-
                     </div>
 
                     {/* ACTION AREA */}
@@ -410,8 +400,8 @@ const MobilePaymentPage = () => {
                         )}
 
                         {status && !status.startsWith('at1') && !error && step !== 'ALREADY_PAID' && step !== 'SUCCESS' && (
-                            <div className="text-center p-3 bg-neon-primary/10 rounded-xl border border-neon-primary/20">
-                                <p className="text-neon-primary text-xs font-mono animate-pulse">{status}</p>
+                            <div className="text-center rounded-xl border border-orange-400/20 bg-orange-500/10 p-3">
+                                <p className="text-orange-200 text-xs font-mono animate-pulse">{status}</p>
                             </div>
                         )}
 
@@ -423,17 +413,17 @@ const MobilePaymentPage = () => {
                                         : 'The transaction has been settled on-chain.'}
                                 </p>
                                 {isMultiPay && step !== 'ALREADY_PAID' && (
-                                    <div className="bg-black/40 border border-neon-primary/30 p-4 rounded-xl text-left space-y-3">
-                                        <p className="text-xs text-neon-primary uppercase font-bold mb-1">Your Receipt Hash</p>
+                                    <div className="bg-black/40 border border-orange-400/20 p-4 rounded-xl text-left space-y-3">
+                                        <p className="text-xs text-orange-300 uppercase font-bold mb-1">Your Receipt Hash</p>
 
                                         {receiptHash ? (
-                                            <div className="bg-neon-primary/10 border border-neon-primary/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-neon-primary/20 transition-colors" onClick={() => {
+                                            <div className="bg-orange-500/10 border border-orange-400/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-orange-500/15 transition-colors" onClick={() => {
                                                 navigator.clipboard.writeText(receiptHash);
                                                 setCopiedHash(true);
                                                 setTimeout(() => setCopiedHash(false), 2000);
                                             }}>
                                                 {receiptHash}
-                                                <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-neon-primary' : 'opacity-70 text-gray-400'}`}>
+                                                <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-orange-300' : 'opacity-70 text-gray-400'}`}>
                                                     {copiedHash ? 'COPIED!' : 'COPY'}
                                                 </div>
                                             </div>
@@ -445,7 +435,7 @@ const MobilePaymentPage = () => {
                                                     </p>
                                                 ) : (
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <div className="w-3 h-3 border-2 border-neon-primary border-t-transparent rounded-full animate-spin"></div>
+                                                        <div className="w-3 h-3 border-2 border-orange-300 border-t-transparent rounded-full animate-spin"></div>
                                                         <span className="text-xs text-gray-400">Syncing Receipt...</span>
                                                     </div>
                                                 )}
@@ -456,12 +446,6 @@ const MobilePaymentPage = () => {
                                             <p className="text-[10px] text-gray-500 mt-1">Provide this Hash to the merchant for verification.</p>
                                         )}
 
-                                        {paymentSecret && (
-                                            <div className="opacity-50 hover:opacity-100 transition-opacity mt-3">
-                                                <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Payment Secret (Ref)</p>
-                                                <p className="font-mono text-gray-500 text-[10px] break-all">{paymentSecret}</p>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
                                 {txId && (
@@ -475,6 +459,53 @@ const MobilePaymentPage = () => {
                             </div>
                         ) : (
                             <>
+                                <div className="rounded-2xl border border-white/10 bg-black/25 p-4 space-y-4 mb-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Payer Note</label>
+                                        <textarea
+                                            value={payerNote}
+                                            onChange={(e) => setPayerNote(e.target.value)}
+                                            rows={3}
+                                            placeholder="Private note for your own paid-invoice history"
+                                            className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${payerNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-neon-primary/40'}`}
+                                        />
+                                        <p className={`mt-2 text-[11px] ${payerNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                                            Payer note: {payerNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-semibold text-white">Share note with merchant</p>
+                                                <p className="text-[11px] text-gray-500">Optional note the merchant can see in their dashboard.</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShareMerchantNote((current) => !current)}
+                                                aria-pressed={shareMerchantNote}
+                                                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-white/10 transition-colors ${shareMerchantNote ? 'bg-neon-primary/90 justify-end' : 'bg-white/10 justify-start'}`}
+                                            >
+                                                <span className="mx-1 h-5 w-5 rounded-full bg-white shadow-[0_2px_10px_rgba(255,255,255,0.25)] transition-transform" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {shareMerchantNote && (
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Merchant Note</label>
+                                            <textarea
+                                                value={merchantNote}
+                                                onChange={(e) => setMerchantNote(e.target.value)}
+                                                rows={3}
+                                                placeholder="Optional note visible to the merchant"
+                                                className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${merchantNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-neon-primary/40'}`}
+                                            />
+                                            <p className={`mt-2 text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                                                Merchant note: {merchantNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="grid grid-cols-3 bg-black/40 p-1 rounded-xl mb-4 border border-white/5 gap-1">
                                     <button
                                         onClick={() => handleSelectPaymentMethod('wallet')}
@@ -521,7 +552,7 @@ const MobilePaymentPage = () => {
                                         <Button
                                             variant="primary"
                                             onClick={handleGiftCardPay}
-                                            disabled={isProcess || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
+                                            disabled={isProcess || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
                                             className="w-full text-lg h-14"
                                             glow
                                         >
@@ -554,6 +585,8 @@ const MobilePaymentPage = () => {
                                         onSubmit={handleCardPay}
                                         submitDisabled={
                                             isProcess ||
+                                            payerNoteTooLong ||
+                                            (shareMerchantNote && merchantNoteTooLong) ||
                                             cardNumber.replace(/\D/g, '').length !== 16 ||
                                             cardPin.length !== 6 ||
                                             !cardSecret ||
@@ -581,7 +614,7 @@ const MobilePaymentPage = () => {
                                             <Button
                                                 variant="primary"
                                                 onClick={handlePay}
-                                                disabled={isProcess || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
+                                                disabled={isProcess || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
                                                 className="w-full"
                                                 glow
                                             >

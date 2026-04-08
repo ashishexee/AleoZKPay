@@ -360,16 +360,28 @@ const Profile: React.FC = () => {
         // 3. Aggregate receipt-derived earnings from merchant-visible records
         const allReceipts = [...merchantReceipts, ...burnerMerchantReceipts];
         const receiptTotals = new Map<string, { credits: number, usdcx: number, usad: number }>();
+        const receiptNotes = new Map<string, string[]>();
         allReceipts.forEach(receipt => {
             const hash = receipt.invoiceHash.replace('field', '');
             if (!receiptTotals.has(hash)) {
                 receiptTotals.set(hash, { credits: 0, usdcx: 0, usad: 0 });
+            }
+            if (!receiptNotes.has(hash)) {
+                receiptNotes.set(hash, []);
             }
             const totals = receiptTotals.get(hash)!;
             const amt = receipt.amount / 1_000_000;
             if (receipt.tokenType === 0) totals.credits += amt;
             else if (receipt.tokenType === 1) totals.usdcx += amt;
             else if (receipt.tokenType === 2) totals.usad += amt;
+
+            const note = (receipt.merchantNote || '').trim();
+            if (note) {
+                const currentNotes = receiptNotes.get(hash)!;
+                if (!currentNotes.includes(note)) {
+                    currentNotes.push(note);
+                }
+            }
         });
 
         // Attach receipt-derived earnings to every invoice, and use them as
@@ -377,7 +389,10 @@ const Profile: React.FC = () => {
         merged.forEach((inv, hash) => {
             const normalizedHash = hash.replace('field', '');
             const totals = receiptTotals.get(normalizedHash);
+            const notes = receiptNotes.get(normalizedHash) || [];
             inv.earnings = totals || { credits: 0, usdcx: 0, usad: 0 };
+            inv.merchantNotes = notes;
+            inv.latestMerchantNote = notes[notes.length - 1] || '';
 
             if (inv.invoiceType === 2 || !inv.amount) {
                 if (totals) {

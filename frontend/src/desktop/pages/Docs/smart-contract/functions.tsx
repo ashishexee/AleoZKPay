@@ -9,12 +9,12 @@ export const functionsSection: DocsSection = {
     eyebrow: 'Smart Contract',
     title: 'Function groups in main.leo',
     summary:
-        'The Leo program is organized around four concerns: invoice creation, payments, settlement or reads, and auxiliary wallet or profile helpers.',
+        'The core Leo program is organized around invoice creation, payments, settlement, and batch-credit experiments, while wallet helpers live in the separate wallets program.',
     content: (
         <div className="space-y-6">
             <Callout title="Program name" tone="blue">
-                The current contract file defines <code className="rounded bg-white/10 px-1.5 py-0.5">zk_pay_proofs_privacy_v25.aleo</code>
-                and imports token programs for Credits, test USDCx, and test USAD.
+                The current core contract file defines <code className="rounded bg-white/10 px-1.5 py-0.5">zk_pay_proofs_privacy_v26.aleo</code>.
+                Wallet artifacts now live in <code className="rounded bg-white/10 px-1.5 py-0.5">zk_pay_proofs_privacy_wallet_v1.aleo</code>.
             </Callout>
             <CodeBlock title="Transition summary" language="text" code={contractFunctionSummary} />
         </div>

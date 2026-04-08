@@ -732,13 +732,20 @@ const InvoiceDetailsPage: React.FC = () => {
                                                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.13)'; e.currentTarget.style.borderColor = 'rgba(74,222,128,0.4)'; }}
                                                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(74,222,128,0.07)'; e.currentTarget.style.borderColor = 'rgba(74,222,128,0.25)'; }}
                                             >
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <span className="text-[11px] font-bold w-6 text-center flex-shrink-0" style={{ color: 'rgba(74,222,128,0.6)' }}>#{idx + 1}</span>
-                                                    <div className="w-px h-4 flex-shrink-0" style={{ background: 'rgba(74,222,128,0.25)' }} />
-                                                    <span className="font-mono text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                                                        {r.receiptHash.slice(0, 22)}...{r.receiptHash.slice(-14)}
-                                                    </span>
-                                                    <CopyBtn text={r.receiptHash} small />
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <span className="text-[11px] font-bold w-6 text-center flex-shrink-0" style={{ color: 'rgba(74,222,128,0.6)' }}>#{idx + 1}</span>
+                                                        <div className="w-px h-4 flex-shrink-0" style={{ background: 'rgba(74,222,128,0.25)' }} />
+                                                        <span className="font-mono text-xs truncate" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                                                            {r.receiptHash.slice(0, 22)}...{r.receiptHash.slice(-14)}
+                                                        </span>
+                                                        <CopyBtn text={r.receiptHash} small />
+                                                    </div>
+                                                    {r.merchantNote && (
+                                                        <p className="mt-2 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                                                            Merchant note: <span style={{ color: 'rgba(255,255,255,0.78)' }}>{r.merchantNote}</span>
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                                                     <span className="font-black text-sm text-white">{(r.amount / 1_000_000)}</span>

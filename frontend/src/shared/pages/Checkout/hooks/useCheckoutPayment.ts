@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { PROGRAM_ID, estimateExecutionFee, generateSalt } from '../../../utils/aleo-utils';
+import { PROGRAM_ID, estimateExecutionFee, generateSalt, stringToField } from '../../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 import { CheckoutSession } from '../types';
 import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
@@ -11,6 +11,7 @@ import { TokenCode } from '../../../utils/tokens';
 import { decryptCardPrivateKey } from '../../../utils/card-crypto';
 import { hashAddress } from '../../../utils/crypto';
 import { resolveCardLookupByHashHex } from '../../../utils/card-chain';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/leo-input-limits';
 
 // Convert Hex back to String
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
@@ -22,6 +23,11 @@ interface GiftCardRedeemOption {
     tokenProgram: string;
     tokenLabel: string;
     isCredits: boolean;
+}
+
+interface PaymentNoteInput {
+    payerNote?: string;
+    merchantNote?: string | null;
 }
 
 const resolveCheckoutToken = (selectedTokenOverride?: string): TokenCode => {
@@ -44,6 +50,15 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const [step, setStep] = useState<'PAY' | 'CONVERT'>('PAY');
     const [giftCardRedeemOption, setGiftCardRedeemOption] = useState<GiftCardRedeemOption | null>(null);
 
+    const encodePaymentNote = (value?: string | null, label: string = 'Payment note') => {
+        const normalized = (value || '').trim();
+        if (!normalized) return '0field';
+        if (getUtf8ByteLength(normalized) > LEO_PAYMENT_NOTE_MAX_BYTES) {
+            throw new Error(`${label} must stay within ${LEO_PAYMENT_NOTE_MAX_BYTES} bytes for one Leo field.`);
+        }
+        return stringToField(normalized);
+    };
+
     const getBalance = (record: any, tokenType: string): number => {
         try {
             const fieldName = tokenType === 'CREDITS' ? 'microcredits' : 'amount';
@@ -65,7 +80,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         return 0;
     };
 
-    const pay = async (donationAmount?: number, selectedTokenOverride?: string) => {
+    const pay = async (donationAmount?: number, selectedTokenOverride?: string, notes?: PaymentNoteInput) => {
         if (!session || !publicKey || !executeTransaction || !wallet?.adapter) return;
 
         try {
@@ -168,6 +183,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
 
             // 3. Construct Inputs for the invoice payment transition.
             const paymentSecret = generateSalt();
+            const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
+            const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
 
             if (!session.merchant_address) {
                 throw new Error("Merchant address is missing from session details.");
@@ -180,7 +197,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 `${amountMicro}${typeSuffix}`,
                 session.salt,
                 paymentSecret,
-                '0field',
+                payerNoteField,
+                merchantNoteField,
                 session.invoice_hash
             ];
 
@@ -543,7 +561,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         pin: string,
         cardSecret: string,
         donationAmount?: number,
-        selectedTokenOverride?: string
+        selectedTokenOverride?: string,
+        notes?: PaymentNoteInput
     ) => {
         if (!session) {
             return;
@@ -654,6 +673,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             }
 
             const paymentSecret = generateSalt();
+            const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
+            const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
             if (!session.merchant_address) {
                 throw new Error('Merchant address is missing from session details.');
             }
@@ -665,7 +686,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 `${amountMicro}${typeSuffix}`,
                 session.salt,
                 paymentSecret,
-                '0field',
+                payerNoteField,
+                merchantNoteField,
                 session.invoice_hash
             ];
 
@@ -698,7 +720,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         }
     };
 
-    const payWithGiftCard = async (giftCode: string, donationAmount?: number, selectedTokenOverride?: string) => {
+    const payWithGiftCard = async (giftCode: string, donationAmount?: number, selectedTokenOverride?: string, notes?: PaymentNoteInput) => {
         if (!session) return;
         if (!giftCode.startsWith('gift-')) {
             setError('Invalid Gift Card format.');
@@ -791,6 +813,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             }
 
             const paymentSecret = generateSalt();
+            const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
+            const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
             if (!session.merchant_address) throw new Error("Merchant address is missing from session details.");
 
             const inputs = [
@@ -800,7 +824,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 `${amountMicro}${typeSuffix}`,
                 session.salt,
                 paymentSecret,
-                '0field',
+                payerNoteField,
+                merchantNoteField,
                 session.invoice_hash
             ];
 

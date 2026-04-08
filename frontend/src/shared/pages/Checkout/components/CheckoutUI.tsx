@@ -8,6 +8,7 @@ import { Shimmer } from '../../../components/ui/Shimmer';
 import { CheckoutSession } from '../types';
 import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPrompt';
 import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../utils/tokens';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/leo-input-limits';
 
 interface CheckoutUIProps {
     session: CheckoutSession | null;
@@ -18,9 +19,9 @@ interface CheckoutUIProps {
     paymentLoading: boolean;
     txId: string | null;
     success: boolean;
-    onPay: (donationAmount?: number, selectedToken?: string) => void;
-    onPayWithCard: (cardNumber: string, pin: string, cardSecret: string, donationAmount?: number, selectedToken?: string) => void;
-    onPayWithGiftCard: (giftCode: string, donationAmount?: number, selectedToken?: string) => void;
+    onPay: (donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }) => void;
+    onPayWithCard: (cardNumber: string, pin: string, cardSecret: string, donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }) => void;
+    onPayWithGiftCard: (giftCode: string, donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }) => void;
     giftCardRedeemOption?: { giftCode: string; availableAmount: number; tokenLabel: string } | null;
     onRedeemGiftCardBalance: () => void;
 }
@@ -49,6 +50,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     const [cardNumber, setCardNumber] = useState<string>('');
     const [cardPin, setCardPin] = useState<string>('');
     const [cardSecret, setCardSecret] = useState<string>('');
+    const [payerNote, setPayerNote] = useState('');
+    const [shareMerchantNote, setShareMerchantNote] = useState(false);
+    const [merchantNote, setMerchantNote] = useState('');
 
     const isDonation = session?.amount === 0;
     const allowedTokens = session
@@ -83,32 +87,49 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
 
     const handlePayClick = () => {
         const tokenToPass = session?.token_type === 'ANY' ? selectedPayerToken : undefined;
+        const notes = {
+            payerNote,
+            merchantNote: shareMerchantNote ? merchantNote : null
+        };
         if (isDonation) {
-            onPay(parseFloat(donationAmount || '0'), tokenToPass);
+            onPay(parseFloat(donationAmount || '0'), tokenToPass, notes);
         } else {
-            onPay(undefined, tokenToPass);
+            onPay(undefined, tokenToPass, notes);
         }
     };
 
     const handleGiftCardPayClick = () => {
         if (!giftCode) return;
         const tokenToPass = session?.token_type === 'ANY' ? selectedPayerToken : undefined;
+        const notes = {
+            payerNote,
+            merchantNote: shareMerchantNote ? merchantNote : null
+        };
         if (isDonation) {
-            onPayWithGiftCard(giftCode, parseFloat(donationAmount || '0'), tokenToPass);
+            onPayWithGiftCard(giftCode, parseFloat(donationAmount || '0'), tokenToPass, notes);
         } else {
-            onPayWithGiftCard(giftCode, undefined, tokenToPass);
+            onPayWithGiftCard(giftCode, undefined, tokenToPass, notes);
         }
     };
 
     const handleCardPayClick = () => {
         if (!cardNumber || !cardPin || !cardSecret) return;
         const tokenToPass = session?.token_type === 'ANY' ? selectedPayerToken : undefined;
+        const notes = {
+            payerNote,
+            merchantNote: shareMerchantNote ? merchantNote : null
+        };
         if (isDonation) {
-            onPayWithCard(cardNumber, cardPin, cardSecret, parseFloat(donationAmount || '0'), tokenToPass);
+            onPayWithCard(cardNumber, cardPin, cardSecret, parseFloat(donationAmount || '0'), tokenToPass, notes);
         } else {
-            onPayWithCard(cardNumber, cardPin, cardSecret, undefined, tokenToPass);
+            onPayWithCard(cardNumber, cardPin, cardSecret, undefined, tokenToPass, notes);
         }
     };
+
+    const payerNoteBytes = getUtf8ByteLength(payerNote);
+    const merchantNoteBytes = getUtf8ByteLength(merchantNote);
+    const payerNoteTooLong = payerNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
+    const merchantNoteTooLong = merchantNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[85vh]">
@@ -120,7 +141,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
             >
                 <div className="text-center mb-6">
                     <h1 className="text-3xl font-bold tracking-tighter text-white">
-                        NullPay <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Checkout</span>
+                        NullPay <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-amber-400 drop-shadow-[0_0_18px_rgba(249,115,22,0.24)]">Checkout</span>
                     </h1>
                 </div>
 
@@ -140,9 +161,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                             <motion.div
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
-                                className="w-16 h-16 bg-neon-primary/20 border-2 border-neon-primary rounded-full flex items-center justify-center mx-auto mb-4"
+                                className="w-16 h-16 bg-orange-500/15 border-2 border-orange-400/40 rounded-full flex items-center justify-center mx-auto mb-4"
                             >
-                                <svg className="w-8 h-8 text-neon-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-8 h-8 text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                 </svg>
                             </motion.div>
@@ -248,19 +269,19 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 setTimeout(() => setCopiedHash(false), 2000);
                                             }
                                         }}
-                                        className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-neon-primary/30 transition-colors group cursor-pointer active:scale-95"
+                                        className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-orange-400/30 transition-colors group cursor-pointer active:scale-95"
                                     >
                                         <div className="flex justify-between items-center mb-1">
                                             <span className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Hash</span>
                                             {copiedHash ? (
-                                                <span className="text-[9px] text-neon-primary font-bold">Copied!</span>
+                                                <span className="text-[9px] text-orange-300 font-bold">Copied!</span>
                                             ) : (
-                                                <svg className="w-3 h-3 text-gray-600 group-hover:text-neon-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg className="w-3 h-3 text-gray-600 group-hover:text-orange-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                                 </svg>
                                             )}
                                         </div>
-                                        <span className="font-mono text-neon-accent truncate block text-[10px] group-hover:text-neon-primary transition-colors" title={session.invoice_hash}>
+                                        <span className="font-mono text-amber-200 truncate block text-[10px] group-hover:text-orange-300 transition-colors" title={session.invoice_hash}>
                                             {session.invoice_hash ? `${session.invoice_hash.slice(0, 6)}...${session.invoice_hash.slice(-6)}` : 'Generating...'}
                                         </span>
                                     </div>
@@ -293,6 +314,53 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
 
                             {/* Status and Action */}
                             <div className="space-y-4 pt-2">
+                                <div className="rounded-2xl border border-white/10 bg-black/30 p-4 space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payer Note</label>
+                                        <textarea
+                                            value={payerNote}
+                                            onChange={(e) => setPayerNote(e.target.value)}
+                                            rows={3}
+                                            placeholder="Private note for your own records"
+                                            className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${payerNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-orange-400/40'}`}
+                                        />
+                                        <p className={`mt-2 text-[11px] ${payerNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                                            Stored in one Leo field: {payerNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div>
+                                                <p className="text-sm font-semibold text-white">Share note with merchant</p>
+                                                <p className="text-[11px] text-gray-500">Turn this on only if you want the merchant to see an extra note in their dashboard.</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShareMerchantNote((current) => !current)}
+                                                aria-pressed={shareMerchantNote}
+                                                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-white/10 transition-colors ${shareMerchantNote ? 'bg-orange-400 justify-end' : 'bg-white/10 justify-start'}`}
+                                            >
+                                                <span className="mx-1 h-5 w-5 rounded-full bg-white shadow-[0_2px_10px_rgba(255,255,255,0.25)] transition-transform" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {shareMerchantNote && (
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Merchant Note</label>
+                                            <textarea
+                                                value={merchantNote}
+                                                onChange={(e) => setMerchantNote(e.target.value)}
+                                                rows={3}
+                                                placeholder="Optional note visible to the merchant"
+                                                className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${merchantNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-orange-400/40'}`}
+                                            />
+                                            <p className={`mt-2 text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                                                Merchant note: {merchantNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {error && (
                                     <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center animate-fade-in">
                                         <p className="text-red-400 text-sm">{error}</p>
@@ -417,6 +485,8 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         }
                                         disabled={
                                             paymentLoading ||
+                                            payerNoteTooLong ||
+                                            (shareMerchantNote && merchantNoteTooLong) ||
                                             (isDonation && (!donationAmount || parseFloat(donationAmount) <= 0)) ||
                                             (paymentMethod === 'giftcard' && !giftCode) ||
                                             (paymentMethod === 'card' && (!cardNumber || !cardPin || !cardSecret))

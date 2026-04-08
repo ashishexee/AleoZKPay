@@ -1,5 +1,5 @@
 {
-  "program": "zk_pay_proofs_privacy_v25.aleo",
+  "program": "zk_pay_proofs_privacy_v26.aleo",
   "structs": [
     {
       "path": [
@@ -80,163 +80,6 @@
           }
         }
       ]
-    },
-    {
-      "path": [
-        "CardLookupData"
-      ],
-      "fields": [
-        {
-          "name": "main_owner",
-          "ty": {
-            "Primitive": "Address"
-          }
-        },
-        {
-          "name": "card_address",
-          "ty": {
-            "Primitive": "Address"
-          }
-        },
-        {
-          "name": "card_status",
-          "ty": {
-            "Primitive": {
-              "UInt": "U8"
-            }
-          }
-        },
-        {
-          "name": "profile_version",
-          "ty": {
-            "Primitive": {
-              "UInt": "U8"
-            }
-          }
-        },
-        {
-          "name": "card_kdf_algorithm",
-          "ty": {
-            "Primitive": {
-              "UInt": "U8"
-            }
-          }
-        },
-        {
-          "name": "card_kdf_iterations",
-          "ty": {
-            "Primitive": {
-              "UInt": "U32"
-            }
-          }
-        },
-        {
-          "name": "card_kdf_opslimit",
-          "ty": {
-            "Primitive": {
-              "UInt": "U64"
-            }
-          }
-        },
-        {
-          "name": "card_kdf_memlimit",
-          "ty": {
-            "Primitive": {
-              "UInt": "U64"
-            }
-          }
-        },
-        {
-          "name": "card_kdf_alg",
-          "ty": {
-            "Primitive": {
-              "UInt": "U8"
-            }
-          }
-        },
-        {
-          "name": "card_kdf_hash",
-          "ty": {
-            "Primitive": {
-              "UInt": "U8"
-            }
-          }
-        },
-        {
-          "name": "card_kdf_version",
-          "ty": {
-            "Primitive": {
-              "UInt": "U8"
-            }
-          }
-        },
-        {
-          "name": "encrypted_card_private_key_1",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "encrypted_card_private_key_2",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "encrypted_card_private_key_3",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "encrypted_card_private_key_4",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "encrypted_card_private_key_5",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "encrypted_card_private_key_6",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "encrypted_card_private_key_7",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "encrypted_card_private_key_8",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "card_kdf_salt_1",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "card_kdf_salt_2",
-          "ty": {
-            "Primitive": "Field"
-          }
-        },
-        {
-          "name": "card_kdf_salt_3",
-          "ty": {
-            "Primitive": "Field"
-          }
-        }
-      ]
     }
   ],
   "records": [
@@ -292,7 +135,7 @@
           "mode": "None"
         },
         {
-          "name": "note",
+          "name": "payer_note",
           "ty": {
             "Primitive": "Field"
           },
@@ -354,7 +197,7 @@
           "mode": "None"
         },
         {
-          "name": "note",
+          "name": "merchant_note",
           "ty": {
             "Primitive": "Field"
           },
@@ -432,222 +275,6 @@
           "mode": "None"
         }
       ]
-    },
-    {
-      "path": [
-        "BurnerWalletRecord"
-      ],
-      "fields": [
-        {
-          "name": "owner",
-          "ty": {
-            "Primitive": "Address"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "burner_address",
-          "ty": {
-            "Primitive": "Address"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "password_part",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_1",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_2",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_3",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_4",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_5",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_6",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_7",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_8",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_9",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pk_part_10",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "path": [
-        "CardProfileRecord"
-      ],
-      "fields": [
-        {
-          "name": "owner",
-          "ty": {
-            "Primitive": "Address"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "card_number_hash",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "profile_version",
-          "ty": {
-            "Primitive": {
-              "UInt": "U8"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "encrypted_card_number",
-          "ty": {
-            "Array": {
-              "element": {
-                "Primitive": "Field"
-              },
-              "length": 6
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "encrypted_card_address",
-          "ty": {
-            "Array": {
-              "element": {
-                "Primitive": "Field"
-              },
-              "length": 10
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "encrypted_label",
-          "ty": {
-            "Array": {
-              "element": {
-                "Primitive": "Field"
-              },
-              "length": 10
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "encrypted_hint",
-          "ty": {
-            "Array": {
-              "element": {
-                "Primitive": "Field"
-              },
-              "length": 8
-            }
-          },
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "path": [
-        "GiftCardRecord"
-      ],
-      "fields": [
-        {
-          "name": "owner",
-          "ty": {
-            "Primitive": "Address"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "gift_card_address",
-          "ty": {
-            "Primitive": "Address"
-          },
-          "mode": "None"
-        },
-        {
-          "name": "gift_private_key",
-          "ty": {
-            "Array": {
-              "element": {
-                "Primitive": "Field"
-              },
-              "length": 8
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "label",
-          "ty": {
-            "Primitive": "Field"
-          },
-          "mode": "None"
-        }
-      ]
     }
   ],
   "mappings": [
@@ -661,7 +288,7 @@
           "path": [
             "InvoiceData"
           ],
-          "program": "zk_pay_proofs_privacy_v25.aleo"
+          "program": "zk_pay_proofs_privacy_v26.aleo"
         }
       }
     },
@@ -673,475 +300,10 @@
       "value": {
         "Primitive": "Field"
       }
-    },
-    {
-      "name": "card_lookup",
-      "key": {
-        "Primitive": "Field"
-      },
-      "value": {
-        "Struct": {
-          "path": [
-            "CardLookupData"
-          ],
-          "program": "zk_pay_proofs_privacy_v25.aleo"
-        }
-      }
     }
   ],
   "storage_variables": [],
   "functions": [
-    {
-      "name": "backup_password",
-      "is_final": false,
-      "inputs": [
-        {
-          "name": "password_part",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "BurnerWalletRecord"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "backup_burner_wallet",
-      "is_final": false,
-      "inputs": [
-        {
-          "name": "burner_address",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "password_part",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_1",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_2",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_3",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_4",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_5",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_6",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_7",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_8",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_9",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "pk_part_10",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "BurnerWalletRecord"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "create_card_profile",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "card_address",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "card_number_hash",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "profile_version",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U8"
-              }
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "card_kdf_algorithm",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U8"
-              }
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "card_kdf_iterations",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U32"
-              }
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "card_kdf_opslimit",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U64"
-              }
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "card_kdf_memlimit",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U64"
-              }
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "card_kdf_alg",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U8"
-              }
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "card_kdf_hash",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U8"
-              }
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "card_kdf_version",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U8"
-              }
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "encrypted_card_private_key",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Primitive": "Field"
-                },
-                "length": 8
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "card_kdf_salt",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Primitive": "Field"
-                },
-                "length": 3
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "encrypted_card_number",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Primitive": "Field"
-                },
-                "length": 6
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "encrypted_card_address",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Primitive": "Field"
-                },
-                "length": 10
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "encrypted_label",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Primitive": "Field"
-                },
-                "length": 10
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "encrypted_hint",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Primitive": "Field"
-                },
-                "length": 8
-              }
-            }
-          },
-          "mode": "Private"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "CardProfileRecord"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "set_card_status",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "card_number_hash",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "next_status",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U8"
-              }
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "create_gift_card_record",
-      "is_final": false,
-      "inputs": [
-        {
-          "name": "gift_card_address",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "gift_private_key",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Primitive": "Field"
-                },
-                "length": 8
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "label",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "GiftCardRecord"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        }
-      ]
-    },
     {
       "name": "create_invoice",
       "is_final": true,
@@ -1225,7 +387,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1327,7 +489,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1429,7 +591,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1531,7 +693,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1614,7 +776,16 @@
           "mode": "Private"
         },
         {
-          "name": "payment_note",
+          "name": "payer_note",
+          "ty": {
+            "Plaintext": {
+              "Primitive": "Field"
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "merchant_note",
           "ty": {
             "Plaintext": {
               "Primitive": "Field"
@@ -1661,7 +832,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1672,7 +843,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1747,7 +918,16 @@
           "mode": "Private"
         },
         {
-          "name": "payment_note",
+          "name": "payer_note",
+          "ty": {
+            "Plaintext": {
+              "Primitive": "Field"
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "merchant_note",
           "ty": {
             "Plaintext": {
               "Primitive": "Field"
@@ -1794,7 +974,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1805,7 +985,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1852,7 +1032,7 @@
                 "path": [
                   "BatchCreditsPaymentInput"
                 ],
-                "program": "zk_pay_proofs_privacy_v25.aleo"
+                "program": "zk_pay_proofs_privacy_v26.aleo"
               }
             }
           },
@@ -1866,7 +1046,7 @@
                 "path": [
                   "BatchCreditsPaymentInput"
                 ],
-                "program": "zk_pay_proofs_privacy_v25.aleo"
+                "program": "zk_pay_proofs_privacy_v26.aleo"
               }
             }
           },
@@ -1942,7 +1122,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1953,7 +1133,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1964,7 +1144,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -1975,247 +1155,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "batch_pay_3_credits",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "pay_record_1",
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pay_record_2",
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "pay_record_3",
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payment_1",
-          "ty": {
-            "Plaintext": {
-              "Struct": {
-                "path": [
-                  "BatchCreditsPaymentInput"
-                ],
-                "program": "zk_pay_proofs_privacy_v25.aleo"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payment_2",
-          "ty": {
-            "Plaintext": {
-              "Struct": {
-                "path": [
-                  "BatchCreditsPaymentInput"
-                ],
-                "program": "zk_pay_proofs_privacy_v25.aleo"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payment_3",
-          "ty": {
-            "Plaintext": {
-              "Struct": {
-                "path": [
-                  "BatchCreditsPaymentInput"
-                ],
-                "program": "zk_pay_proofs_privacy_v25.aleo"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payer_owner",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "message",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "PayerReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "MerchantReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "PayerReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "MerchantReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "PayerReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "MerchantReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -2290,7 +1230,16 @@
           "mode": "Private"
         },
         {
-          "name": "payment_note",
+          "name": "payer_note",
+          "ty": {
+            "Plaintext": {
+              "Primitive": "Field"
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "merchant_note",
           "ty": {
             "Plaintext": {
               "Primitive": "Field"
@@ -2367,7 +1316,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -2378,7 +1327,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -2453,7 +1402,16 @@
           "mode": "Private"
         },
         {
-          "name": "payment_note",
+          "name": "payer_note",
+          "ty": {
+            "Plaintext": {
+              "Primitive": "Field"
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "merchant_note",
           "ty": {
             "Plaintext": {
               "Primitive": "Field"
@@ -2530,7 +1488,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -2541,7 +1499,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -2616,7 +1574,16 @@
           "mode": "Private"
         },
         {
-          "name": "payment_note",
+          "name": "payer_note",
+          "ty": {
+            "Plaintext": {
+              "Primitive": "Field"
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "merchant_note",
           "ty": {
             "Plaintext": {
               "Primitive": "Field"
@@ -2693,7 +1660,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -2704,7 +1671,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -2779,7 +1746,16 @@
           "mode": "Private"
         },
         {
-          "name": "payment_note",
+          "name": "payer_note",
+          "ty": {
+            "Plaintext": {
+              "Primitive": "Field"
+            }
+          },
+          "mode": "Private"
+        },
+        {
+          "name": "merchant_note",
           "ty": {
             "Plaintext": {
               "Primitive": "Field"
@@ -2856,7 +1832,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"
@@ -2867,7 +1843,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v25.aleo"
+              "program": "zk_pay_proofs_privacy_v26.aleo"
             }
           },
           "mode": "None"

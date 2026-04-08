@@ -8,6 +8,7 @@ import {
 import { Network } from "@provablehq/aleo-types";
 import "@provablehq/aleo-wallet-adaptor-react-ui/dist/styles.css";
 import { WalletErrorBoundary } from "./WalletErrorBoundary";
+import { CORE_PROGRAM_ID, WALLET_PROGRAM_ID } from "../../utils/aleo-utils";
 
 interface AleoWalletProviderProps {
     children: React.ReactNode;
@@ -29,7 +30,7 @@ export const AleoWalletProvider = ({ children }: AleoWalletProviderProps) => {
             decryptPermission={DecryptPermission.AutoDecrypt}
             network={Network.TESTNET}
             autoConnect
-            programs={['zk_pay_proofs_privacy_v25.aleo', 'credits.aleo', 'test_usdcx_stablecoin.aleo', 'test_usad_stablecoin.aleo']}
+            programs={[CORE_PROGRAM_ID, WALLET_PROGRAM_ID, 'credits.aleo', 'test_usdcx_stablecoin.aleo', 'test_usad_stablecoin.aleo']}
             onError={(error) => {
                 console.error('[NullPay] Wallet adapter error:', error.message);
             }}

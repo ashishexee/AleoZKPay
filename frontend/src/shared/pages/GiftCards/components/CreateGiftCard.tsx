@@ -5,7 +5,7 @@ import { PrivateKey } from '@provablehq/sdk';
 import { Copy, CheckCircle2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FloatingGiftCard } from './FloatingGiftCard';
-import { estimateExecutionFee, PROGRAM_ID } from '../../../utils/aleo-utils';
+import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../../utils/aleo-utils';
 import { buildCreateGiftCardRecordInputs, privateKeyToGiftCode } from '../../../utils/gift-card-chain';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
@@ -205,14 +205,14 @@ export const CreateGiftCard: React.FC = () => {
                     label: label.trim()
                 });
                 const estimatedHistoryFee = await estimateExecutionFee({
-                    programName: PROGRAM_ID,
+                    programName: WALLET_PROGRAM_ID,
                     functionName: 'create_gift_card_record',
                     inputs: historyInputs,
                     fallbackMicrocredits: 100_000
                 });
                 const historyTx = await executeWithShieldRetry(
                     () => executeTransaction({
-                        program: PROGRAM_ID,
+                        program: WALLET_PROGRAM_ID,
                         function: 'create_gift_card_record',
                         inputs: historyInputs,
                         fee: estimatedHistoryFee,

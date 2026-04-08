@@ -37,6 +37,27 @@ function readFieldArrayFromString(source: string, key: string): string[] {
         .filter(Boolean);
 }
 
+function readStructBodyFromString(source: string, key: string): string | null {
+    const match = source.match(new RegExp(`${key}:\\s*\\{([\\s\\S]*?)\\}`));
+    return match?.[1] || null;
+}
+
+function readFieldStructValuesFromString(source: string, key: string, count: number): string[] {
+    const body = readStructBodyFromString(source, key);
+    if (!body) {
+        return [];
+    }
+
+    const chunks: string[] = [];
+    for (let index = 1; index <= count; index += 1) {
+        const value = readValueFromString(body, `part_${index}`);
+        if (value) {
+            chunks.push(value);
+        }
+    }
+    return chunks;
+}
+
 function buildLeoArray(values: string[]): string {
     return `[${values.join(', ')}]`;
 }
@@ -49,13 +70,20 @@ export function parseGiftCardRecord(record: { plaintext?: string | null }): Gift
 
     const giftCardAddress = readValueFromString(data, 'gift_card_address');
     const giftPrivateKeyChunks = readFieldArrayFromString(data, 'gift_private_key');
-    if (!giftCardAddress || giftPrivateKeyChunks.length === 0) {
+    const giftPrivateKeyStructChunks = readFieldStructValuesFromString(data, 'gift_private_key', GIFT_CARD_PRIVATE_KEY_CHUNKS);
+    const giftPrivateKeyFlatChunks = Array.from({ length: GIFT_CARD_PRIVATE_KEY_CHUNKS }, (_, index) => readValueFromString(data, `gift_private_key_${index + 1}`)).filter(Boolean) as string[];
+    const resolvedGiftPrivateKeyChunks = giftPrivateKeyChunks.length > 0
+        ? giftPrivateKeyChunks
+        : giftPrivateKeyStructChunks.length > 0
+            ? giftPrivateKeyStructChunks
+            : giftPrivateKeyFlatChunks;
+    if (!giftCardAddress || resolvedGiftPrivateKeyChunks.length === 0) {
         return null;
     }
 
     return {
         giftCardAddress,
-        giftPrivateKey: fieldChunksToString(giftPrivateKeyChunks),
+        giftPrivateKey: fieldChunksToString(resolvedGiftPrivateKeyChunks),
         label: (() => {
             const labelField = readValueFromString(data, 'label');
             return labelField ? fieldToString(labelField) : '';

@@ -161,12 +161,13 @@ Payments:
 - pay_donation
 - pay_donation_usdcx
 - pay_donation_usad
+- batch_pay_2_credits
 
 Settlement and reads:
 - settle_invoice
 - get_invoice_status
 
-Wallet and profile helpers:
+Wallet program helpers:
 - backup_password
 - backup_burner_wallet
 - create_card_profile

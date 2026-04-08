@@ -1,6 +1,8 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
 import { FIXED_FEE_MICROCREDITS, getFeePreferenceMode } from './feePreference';
-export const PROGRAM_ID = "zk_pay_proofs_privacy_v25.aleo";
+export const CORE_PROGRAM_ID = "zk_pay_proofs_privacy_v26.aleo";
+export const WALLET_PROGRAM_ID = "zk_pay_proofs_privacy_wallet_v1.aleo";
+export const PROGRAM_ID = CORE_PROGRAM_ID;
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
 const PROVABLE_HOST = 'https://api.explorer.provable.com/v1';
 const PROVABLE_PROGRAM_API = 'https://api.provable.com/v1/testnet/program';
@@ -520,6 +522,7 @@ export interface PayerReceipt {
     invoiceHash: string;
     amount: number;
     tokenType: number;
+    payerNote: string;
     timestamp: number;
 }
 
@@ -540,6 +543,7 @@ export const parsePayerReceipt = (record: any): PayerReceipt | null => {
         const invoiceHash = getVal('invoice_hash') || getVal('invoiceHash');
         const owner = getVal('owner');
         const merchant = getVal('merchant');
+        const payerNoteField = getVal('payer_note') || getVal('note');
 
         if (!receiptHash || !merchant) return null;
 
@@ -551,6 +555,7 @@ export const parsePayerReceipt = (record: any): PayerReceipt | null => {
                 invoiceHash: invoiceHash,
                 amount: parseInt((getVal('amount') || '0').replace('u64', '')),
                 tokenType: parseInt((getVal('token_type') || getVal('tokenType') || '0').replace('u8', '')),
+                payerNote: payerNoteField ? fieldToString(payerNoteField) : '',
                 timestamp: 0 // Placeholder
             };
         }
@@ -564,6 +569,7 @@ export interface MerchantReceipt {
     invoiceHash: string;
     amount: number;
     tokenType: number;
+    merchantNote: string;
     timestamp?: number;
 }
 
@@ -584,6 +590,7 @@ export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
         const receiptHash = getVal('receipt_hash') || getVal('receiptHash');
         const owner = getVal('owner');
         const merchant = getVal('merchant');
+        const merchantNoteField = getVal('merchant_note') || getVal('note');
 
         if (merchant) return null;
 
@@ -598,7 +605,8 @@ export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
                 receiptHash: receiptHash,
                 invoiceHash: invoiceHash,
                 amount: amount,
-                tokenType: tokenType
+                tokenType: tokenType,
+                merchantNote: merchantNoteField ? fieldToString(merchantNoteField) : ''
             };
         }
     } catch (e) { console.error("Error parsing MerchantReceipt record:", e); }

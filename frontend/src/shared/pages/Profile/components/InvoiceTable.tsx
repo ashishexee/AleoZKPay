@@ -118,7 +118,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Wallet</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Tx IDs</th>
-                        <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-left">Memo</th>
+                        <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-left">Memo / Latest Note</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
                     </tr>
                 </thead>
@@ -232,7 +232,18 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                         </div>
                                     </td>
                                     <td className="py-4 px-6 text-left">
-                                        <span className="text-sm text-gray-400 truncate max-w-[150px] block" title={inv.memo}>{inv.memo || '-'}</span>
+                                        <div className="space-y-1 max-w-[220px]">
+                                            <span className="text-sm text-gray-400 truncate block" title={inv.memo}>
+                                                {inv.memo || '-'}
+                                            </span>
+                                            {inv.latestMerchantNote ? (
+                                                <span className="block truncate text-xs text-orange-300/80" title={inv.latestMerchantNote}>
+                                                    Note: {inv.latestMerchantNote}
+                                                </span>
+                                            ) : (
+                                                <span className="block truncate text-xs text-gray-600">No merchant note</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="py-4 px-6 text-right">
                                         <div className="flex gap-2 justify-end w-full">

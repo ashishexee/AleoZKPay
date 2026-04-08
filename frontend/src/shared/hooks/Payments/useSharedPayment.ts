@@ -5,7 +5,7 @@ import { TransactionOptions } from '@provablehq/aleo-types';
 import { estimateExecutionFee, getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
 import { useWalletErrorHandler } from '../Wallet/WalletErrorBoundary';
-import type { PaymentStep, InvoiceState } from './types';
+import type { PaymentStep, InvoiceState, PaymentNoteInput } from './types';
 import { createClient } from '@supabase/supabase-js';
 import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
@@ -13,6 +13,8 @@ import { getAllowedTokensForInvoice, getTokenTypeFromCode } from '../../utils/to
 import { decryptCardPrivateKey } from '../../utils/card-crypto';
 import { hashAddress } from '../../utils/crypto';
 import { resolveCardLookupByHashHex } from '../../utils/card-chain';
+import { stringToField } from '../../utils/aleo-utils';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/leo-input-limits';
 
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
 
@@ -52,6 +54,17 @@ export const useSharedPayment = () => {
         if (selectedTokenOverride !== undefined) return selectedTokenOverride;
         const allowedTokens = getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType);
         return getTokenTypeFromCode(allowedTokens[0]);
+    };
+
+    const encodePaymentNote = (value?: string | null, label: string = 'Payment note') => {
+        const normalized = (value || '').trim();
+        if (!normalized) {
+            return '0field';
+        }
+        if (getUtf8ByteLength(normalized) > LEO_PAYMENT_NOTE_MAX_BYTES) {
+            throw new Error(`${label} must stay within ${LEO_PAYMENT_NOTE_MAX_BYTES} bytes for one Leo field.`);
+        }
+        return stringToField(normalized);
     };
 
     useEffect(() => {
@@ -593,7 +606,7 @@ export const useSharedPayment = () => {
         }
     };
 
-    const payWithGiftCard = async (giftCode: string, selectedTokenOverride?: number) => {
+    const payWithGiftCard = async (giftCode: string, selectedTokenOverride?: number, notes?: PaymentNoteInput) => {
         if (!invoice) return;
         if (!giftCode.startsWith('gift-')) {
             setError('Invalid Gift Card format.');
@@ -690,6 +703,8 @@ export const useSharedPayment = () => {
             }
 
             if (!invoice.merchant) throw new Error("Merchant address is missing from invoice details.");
+            const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
+            const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
 
             const inputs = [
                 payRecordStr,
@@ -698,7 +713,8 @@ export const useSharedPayment = () => {
                 `${amountMicro}${typeSuffix}`,
                 invoice.salt || '',
                 paymentSecret || '',
-                '0field',
+                payerNoteField,
+                merchantNoteField,
                 invoice.hash || ''
             ];
 
@@ -740,7 +756,8 @@ export const useSharedPayment = () => {
         cardNumber: string,
         pin: string,
         cardSecret: string,
-        selectedTokenOverride?: number
+        selectedTokenOverride?: number,
+        notes?: PaymentNoteInput
     ) => {
         if (!invoice) return;
 
@@ -861,6 +878,8 @@ export const useSharedPayment = () => {
             if (!invoice.merchant) {
                 throw new Error('Merchant address is missing from invoice details.');
             }
+            const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
+            const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
 
             setStatus('Authorizing secure card payment...');
             const inputs = [
@@ -870,7 +889,8 @@ export const useSharedPayment = () => {
                 `${amountMicro}${typeSuffix}`,
                 invoice.salt || '',
                 paymentSecret || '',
-                '0field',
+                payerNoteField,
+                merchantNoteField,
                 invoice.hash || ''
             ];
 

@@ -6,9 +6,10 @@ function getProvableCredentials() {
 
 let cachedProgramSource = null;
 const cachedImportSources = new Map();
+const CORE_PROGRAM_NAME = 'zk_pay_proofs_privacy_v26.aleo';
 
-async function getProgramSource(programName = 'zk_pay_proofs_privacy_v25.aleo') {
-    if (programName === 'zk_pay_proofs_privacy_v25.aleo' && cachedProgramSource) return cachedProgramSource;
+async function getProgramSource(programName = CORE_PROGRAM_NAME) {
+    if (programName === CORE_PROGRAM_NAME && cachedProgramSource) return cachedProgramSource;
 
     const response = await fetch(`https://api.provable.com/v1/testnet/program/${encodeURIComponent(programName)}`);
     if (!response.ok) {
@@ -24,7 +25,7 @@ async function getProgramSource(programName = 'zk_pay_proofs_privacy_v25.aleo') 
         throw new Error(`Program source missing from Provable v1 response for ${programName}`);
     }
 
-    if (programName === 'zk_pay_proofs_privacy_v25.aleo') {
+    if (programName === CORE_PROGRAM_NAME) {
         cachedProgramSource = programSource;
     }
 
@@ -104,7 +105,7 @@ async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, 
     const pm = new sdk.ProgramManager(host, keyProvider, undefined);
     pm.setAccount(relayerAccount);
 
-    const programName = 'zk_pay_proofs_privacy_v25.aleo';
+    const programName = CORE_PROGRAM_NAME;
     const programSource = await getProgramSource(programName);
     const programImports = await getProgramImports(programName, programSource);
 

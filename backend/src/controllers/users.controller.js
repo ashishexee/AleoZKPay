@@ -1,6 +1,11 @@
 const crypto = require('crypto');
 const supabase = require('../config/supabase');
-const { encryptMerchantValue, readMerchantStoredValue } = require('../utils/crypto');
+const {
+    decryptStoredValue,
+    encryptMerchantValue,
+    encryptStoredValue,
+    readMerchantStoredValue
+} = require('../utils/crypto');
 const { parseAleoSignature } = require('../utils/aleo-signature');
 
 const LIMIT_CHANGE_MESSAGE_TYPE = 'nullpay_card_limit_change_v1';
@@ -109,6 +114,23 @@ function hasStoredCardWallet(row) {
     );
 }
 
+function parseStoredCardKdfParams(value) {
+    if (!value) {
+        return null;
+    }
+
+    const decrypted = decryptStoredValue(value, { label: 'card KDF params' });
+    if (!decrypted) {
+        return null;
+    }
+
+    if (typeof decrypted === 'object') {
+        return decrypted;
+    }
+
+    return JSON.parse(decrypted);
+}
+
 function buildCardResponse(row) {
     if (!hasStoredCardWallet(row)) {
         return null;
@@ -120,6 +142,19 @@ function buildCardResponse(row) {
     const clientEncryptedCardNumber = row.encrypted_card_number
         ? readMerchantStoredValue(row.encrypted_card_number)
         : null;
+    const clientEncryptedCardPrivateKey = row.encrypted_card_private_key
+        ? decryptStoredValue(row.encrypted_card_private_key, { label: 'card encrypted private key' })
+        : null;
+    const cardKdfSalt = row.card_kdf_salt
+        ? decryptStoredValue(row.card_kdf_salt, { label: 'card KDF salt' })
+        : null;
+    const cardKdfParams = parseStoredCardKdfParams(row.card_kdf_params);
+    const cardLabel = row.card_label
+        ? decryptStoredValue(row.card_label, { label: 'card label' })
+        : null;
+    const cardHint = row.card_hint
+        ? decryptStoredValue(row.card_hint, { label: 'card hint' })
+        : null;
 
     return {
         address_hash: row.address_hash,
@@ -128,13 +163,13 @@ function buildCardResponse(row) {
         encrypted_card_number: clientEncryptedCardNumber,
         card_number_hash: row.card_number_hash || null,
         card_last4: row.card_last4 || null,
-        encrypted_card_private_key: row.encrypted_card_private_key || null,
-        card_kdf_salt: row.card_kdf_salt || null,
+        encrypted_card_private_key: clientEncryptedCardPrivateKey,
+        card_kdf_salt: cardKdfSalt,
         card_kdf_algorithm: row.card_kdf_algorithm || null,
-        card_kdf_params: row.card_kdf_params || null,
+        card_kdf_params: cardKdfParams,
         card_status: row.card_status || 'ACTIVE',
-        card_label: row.card_label || null,
-        card_hint: row.card_hint || null,
+        card_label: cardLabel,
+        card_hint: cardHint,
         card_limits_updated_at: row.card_limits_updated_at || null,
         limits: buildCardLimits(row)
     };
@@ -168,13 +203,35 @@ function applyCardPayload(updates, body) {
     }
     if (body.card_number_hash !== undefined) updates.card_number_hash = validateCardNumberHash(body.card_number_hash);
     if (body.card_last4 !== undefined) updates.card_last4 = validateCardLast4(body.card_last4);
-    if (body.encrypted_card_private_key !== undefined) updates.encrypted_card_private_key = body.encrypted_card_private_key;
-    if (body.card_kdf_salt !== undefined) updates.card_kdf_salt = body.card_kdf_salt;
+    if (body.encrypted_card_private_key !== undefined) {
+        updates.encrypted_card_private_key = body.encrypted_card_private_key
+            ? encryptStoredValue(body.encrypted_card_private_key, { label: 'card encrypted private key' })
+            : null;
+    }
+    if (body.card_kdf_salt !== undefined) {
+        updates.card_kdf_salt = body.card_kdf_salt
+            ? encryptStoredValue(body.card_kdf_salt, { label: 'card KDF salt' })
+            : null;
+    }
     if (body.card_kdf_algorithm !== undefined) updates.card_kdf_algorithm = body.card_kdf_algorithm;
-    if (body.card_kdf_params !== undefined) updates.card_kdf_params = body.card_kdf_params;
+    if (body.card_kdf_params !== undefined) {
+        updates.card_kdf_params = body.card_kdf_params
+            ? encryptStoredValue(JSON.stringify(body.card_kdf_params), { label: 'card KDF params' })
+            : null;
+    }
     if (body.card_status !== undefined) updates.card_status = body.card_status;
-    if (body.card_label !== undefined) updates.card_label = validateCardLabel(body.card_label);
-    if (body.card_hint !== undefined) updates.card_hint = validateCardHint(body.card_hint);
+    if (body.card_label !== undefined) {
+        const label = validateCardLabel(body.card_label);
+        updates.card_label = label
+            ? encryptStoredValue(label, { label: 'card label' })
+            : null;
+    }
+    if (body.card_hint !== undefined) {
+        const hint = validateCardHint(body.card_hint);
+        updates.card_hint = hint
+            ? encryptStoredValue(hint, { label: 'card hint' })
+            : null;
+    }
 
     const limits = body.limits || {};
 

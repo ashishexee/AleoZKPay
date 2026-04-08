@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { getUserProfile } from '../services/api';
-import { PROGRAM_ID, parseBurnerBackupRecord } from '../utils/aleo-utils';
+import { WALLET_PROGRAM_ID, parseBurnerBackupRecord } from '../utils/aleo-utils';
 import { fieldChunksToString, decryptWithPassword } from '../utils/crypto';
 import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
 
@@ -89,8 +89,8 @@ export const BurnerWalletProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             setIsAutoUnlocking(true);
             try {
-                console.log('🔍 Fetching on-chain records for', PROGRAM_ID);
-                const records = await requestRecords(PROGRAM_ID, true);
+                console.log('🔍 Fetching on-chain records for', WALLET_PROGRAM_ID);
+                const records = await requestRecords(WALLET_PROGRAM_ID, true);
                 console.log('📦 Records found:', records ? (records as any[]).length : 0);
                 if (!records || (records as any[]).length === 0) {
                     setIsAutoUnlocking(false);

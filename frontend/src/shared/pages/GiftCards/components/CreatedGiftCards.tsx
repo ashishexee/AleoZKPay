@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { fetchAllPrivateBalances } from '../../Profile/components/BurnerWallet/scanner';
 import type { PrivateBalances } from '../../Profile/components/BurnerWallet/types';
 import { parseGiftCardRecord, privateKeyToGiftCode } from '../../../utils/gift-card-chain';
-import { PROGRAM_ID } from '../../../utils/aleo-utils';
+import { WALLET_PROGRAM_ID } from '../../../utils/aleo-utils';
 
 interface CreatedGiftCardEntry {
     id: string;
@@ -50,7 +50,7 @@ export const CreatedGiftCards: React.FC = () => {
 
         try {
             setIsLoading(true);
-            const records = await requestRecords(PROGRAM_ID, true);
+            const records = await requestRecords(WALLET_PROGRAM_ID, true);
             if (currentFetchId !== fetchIdRef.current) return;
             
             const nextEntries: CreatedGiftCardEntry[] = [];

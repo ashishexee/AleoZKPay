@@ -1,17 +1,13 @@
-import type { CardKdfAlgorithm, CardKdfParams } from './card-crypto';
 import { fieldChunksToString, stringToFieldChunks } from './crypto';
-import type { CardTokenCode, CardWalletProfile } from '../services/api';
+import type { CardWalletProfile } from '../services/api';
 import { lookupCardWalletByNumberHash } from '../services/api';
-import { PROGRAM_ID } from './aleo-utils';
+import { WALLET_PROGRAM_ID } from './aleo-utils';
 
 export const CARD_PROFILE_VERSION = 1;
 export const CARD_STATUS_ACTIVE = 'ACTIVE';
 export const CARD_STATUS_FROZEN = 'FROZEN';
 export const CARD_STATUS_ACTIVE_CODE = 0;
 export const CARD_STATUS_FROZEN_CODE = 1;
-export const CARD_KDF_PBKDF2_CODE = 0;
-export const CARD_KDF_ARGON2ID_CODE = 1;
-export const CARD_KDF_HASH_SHA256_CODE = 1;
 export const CARD_FIELD_CHUNK_SIZE = 15;
 
 export const CARD_CHAIN_CHUNKS = {
@@ -34,13 +30,8 @@ export interface CardProfileRecordData {
 
 export interface OnChainCardLookupData {
     mainOwner: string;
-    cardAddress: string;
     cardStatus: string;
     profileVersion: number;
-    encryptedCardPrivateKey: string;
-    cardKdfSalt: string;
-    cardKdfAlgorithm: CardKdfAlgorithm;
-    cardKdfParams: CardKdfParams;
 }
 
 function parseIntegerValue(value: unknown): number {
@@ -69,17 +60,6 @@ function normalizeLeoScalarString(value: unknown): string {
         .trim()
         .replace(/['"]/g, '')
         .replace(/\.(private|public)\s*$/i, '');
-}
-
-function readFieldChunkFromObject(source: Record<string, unknown>, prefix: string, count: number): string[] {
-    const chunks: string[] = [];
-    for (let index = 1; index <= count; index += 1) {
-        const raw = readValueFromObject(source, `${prefix}_${index}`, `${prefix}${index}`);
-        if (raw !== undefined && raw !== null) {
-            chunks.push(normalizeLeoScalarString(raw));
-        }
-    }
-    return chunks;
 }
 
 function readValueFromString(source: string, ...keys: string[]): string | null {
@@ -115,26 +95,32 @@ function readFieldArrayFromString(source: string, key: string): string[] {
         .filter(Boolean);
 }
 
+function readStructBodyFromString(source: string, key: string): string | null {
+    const match = source.match(new RegExp(`${key}:\\s*\\{([\\s\\S]*?)\\}`));
+    return match?.[1] || null;
+}
+
+function readFieldStructValuesFromString(source: string, key: string, count: number): string[] {
+    const body = readStructBodyFromString(source, key);
+    if (!body) {
+        return [];
+    }
+
+    const chunks: string[] = [];
+    for (let index = 1; index <= count; index += 1) {
+        const value = readValueFromString(body, `part_${index}`);
+        if (value) {
+            chunks.push(value);
+        }
+    }
+    return chunks;
+}
+
 function normalizeCardStatus(codeOrStatus: unknown): string {
     if (typeof codeOrStatus === 'string' && !/^\d/.test(codeOrStatus)) {
         return codeOrStatus.toUpperCase() === CARD_STATUS_FROZEN ? CARD_STATUS_FROZEN : CARD_STATUS_ACTIVE;
     }
     return parseIntegerValue(codeOrStatus) === CARD_STATUS_FROZEN_CODE ? CARD_STATUS_FROZEN : CARD_STATUS_ACTIVE;
-}
-
-function normalizeCardKdfAlgorithm(codeOrName: unknown): CardKdfAlgorithm {
-    if (typeof codeOrName === 'string' && !/^\d/.test(codeOrName)) {
-        return codeOrName === 'argon2id' ? 'argon2id' : 'pbkdf2-sha256';
-    }
-    return parseIntegerValue(codeOrName) === CARD_KDF_ARGON2ID_CODE ? 'argon2id' : 'pbkdf2-sha256';
-}
-
-function buildEmptyLimits(): Record<CardTokenCode, { max_balance: number }> {
-    return {
-        CREDITS: { max_balance: 0 },
-        USDCX: { max_balance: 0 },
-        USAD: { max_balance: 0 }
-    };
 }
 
 function buildLeoArray(values: string[]): string {
@@ -151,10 +137,6 @@ export function sha256HexToField(hashHex: string): string {
 
 export function cardStatusToCode(status: string): number {
     return status === CARD_STATUS_FROZEN ? CARD_STATUS_FROZEN_CODE : CARD_STATUS_ACTIVE_CODE;
-}
-
-export function cardKdfAlgorithmToCode(algorithm: CardKdfAlgorithm): number {
-    return algorithm === 'argon2id' ? CARD_KDF_ARGON2ID_CODE : CARD_KDF_PBKDF2_CODE;
 }
 
 export function toSizedFieldChunks(value: string | null | undefined, count: number): string[] {
@@ -175,15 +157,21 @@ export function parseCardProfileRecord(record: { plaintext?: string | null }): C
     const encryptedCardNumber = fieldChunksToString(
         readFieldArrayFromString(data, 'encrypted_card_number').length > 0
             ? readFieldArrayFromString(data, 'encrypted_card_number')
+            : readFieldStructValuesFromString(data, 'encrypted_card_number', CARD_CHAIN_CHUNKS.encryptedCardNumber).length > 0
+                ? readFieldStructValuesFromString(data, 'encrypted_card_number', CARD_CHAIN_CHUNKS.encryptedCardNumber)
             : readFieldChunkFromString(data, 'encrypted_card_number', CARD_CHAIN_CHUNKS.encryptedCardNumber)
     );
     const encryptedCardAddress = fieldChunksToString(
         readFieldArrayFromString(data, 'encrypted_card_address').length > 0
             ? readFieldArrayFromString(data, 'encrypted_card_address')
+            : readFieldStructValuesFromString(data, 'encrypted_card_address', CARD_CHAIN_CHUNKS.encryptedCardAddress).length > 0
+                ? readFieldStructValuesFromString(data, 'encrypted_card_address', CARD_CHAIN_CHUNKS.encryptedCardAddress)
             : readFieldChunkFromString(data, 'encrypted_card_address', CARD_CHAIN_CHUNKS.encryptedCardAddress)
     );
     const encryptedLabelChunks = readFieldArrayFromString(data, 'encrypted_label');
     const encryptedHintChunks = readFieldArrayFromString(data, 'encrypted_hint');
+    const encryptedLabelStructChunks = readFieldStructValuesFromString(data, 'encrypted_label', CARD_CHAIN_CHUNKS.encryptedLabel);
+    const encryptedHintStructChunks = readFieldStructValuesFromString(data, 'encrypted_hint', CARD_CHAIN_CHUNKS.encryptedHint);
 
     return {
         cardNumberHashField,
@@ -193,11 +181,15 @@ export function parseCardProfileRecord(record: { plaintext?: string | null }): C
         encryptedLabel: fieldChunksToString(
             encryptedLabelChunks.length > 0
                 ? encryptedLabelChunks
+                : encryptedLabelStructChunks.length > 0
+                    ? encryptedLabelStructChunks
                 : readFieldChunkFromString(data, 'encrypted_label', CARD_CHAIN_CHUNKS.encryptedLabel)
         ) || null,
         encryptedHint: fieldChunksToString(
             encryptedHintChunks.length > 0
                 ? encryptedHintChunks
+                : encryptedHintStructChunks.length > 0
+                    ? encryptedHintStructChunks
                 : readFieldChunkFromString(data, 'encrypted_hint', CARD_CHAIN_CHUNKS.encryptedHint)
         ) || null
     };
@@ -205,7 +197,7 @@ export function parseCardProfileRecord(record: { plaintext?: string | null }): C
 
 export async function fetchOnChainCardLookup(cardNumberHashField: string): Promise<OnChainCardLookupData | null> {
     try {
-        const url = `https://api.provable.com/v2/testnet/program/${PROGRAM_ID}/mapping/card_lookup/${encodeURIComponent(cardNumberHashField)}`;
+        const url = `https://api.provable.com/v2/testnet/program/${WALLET_PROGRAM_ID}/mapping/card_lookup/${encodeURIComponent(cardNumberHashField)}`;
         const response = await fetch(url);
         if (!response.ok) {
             return null;
@@ -226,41 +218,15 @@ export async function fetchOnChainCardLookup(cardNumberHashField: string): Promi
             return stringPayload ? readValueFromString(stringPayload, ...keys) : null;
         };
 
-        const readChunks = (prefix: string, count: number) => {
-            if (objectPayload) {
-                return readFieldChunkFromObject(objectPayload, prefix, count);
-            }
-            return stringPayload ? readFieldChunkFromString(stringPayload, prefix, count) : [];
-        };
-
         const mainOwner = String(readScalar('main_owner', 'mainOwner') || '');
-        const cardAddress = String(readScalar('card_address', 'cardAddress') || '');
-        if (!mainOwner || !cardAddress) {
+        if (!mainOwner) {
             return null;
         }
 
         return {
             mainOwner,
-            cardAddress,
             cardStatus: normalizeCardStatus(readScalar('card_status', 'cardStatus')),
-            profileVersion: parseIntegerValue(readScalar('profile_version', 'profileVersion')),
-            encryptedCardPrivateKey: fieldChunksToString(
-                readChunks('encrypted_card_private_key', CARD_CHAIN_CHUNKS.encryptedPrivateKey)
-            ),
-            cardKdfSalt: fieldChunksToString(
-                readChunks('card_kdf_salt', CARD_CHAIN_CHUNKS.kdfSalt)
-            ),
-            cardKdfAlgorithm: normalizeCardKdfAlgorithm(
-                readScalar('card_kdf_algorithm', 'cardKdfAlgorithm')
-            ),
-            cardKdfParams: {
-                iterations: parseIntegerValue(readScalar('card_kdf_iterations', 'cardKdfIterations')) || undefined,
-                opslimit: parseIntegerValue(readScalar('card_kdf_opslimit', 'cardKdfOpslimit')) || undefined,
-                memlimit: parseIntegerValue(readScalar('card_kdf_memlimit', 'cardKdfMemlimit')) || undefined,
-                alg: parseIntegerValue(readScalar('card_kdf_alg', 'cardKdfAlg')) || undefined,
-                hash: parseIntegerValue(readScalar('card_kdf_hash', 'cardKdfHash')) === CARD_KDF_HASH_SHA256_CODE ? 'SHA-256' : undefined,
-                version: parseIntegerValue(readScalar('card_kdf_version', 'cardKdfVersion')) || 1
-            }
+            profileVersion: parseIntegerValue(readScalar('profile_version', 'profileVersion'))
         };
     } catch (error) {
         console.warn('Failed to fetch on-chain card lookup', error);
@@ -269,32 +235,11 @@ export async function fetchOnChainCardLookup(cardNumberHashField: string): Promi
 }
 
 export async function resolveCardLookupByHashHex(cardNumberHashHex: string): Promise<CardWalletProfile | null> {
-    const lookup = await fetchOnChainCardLookup(sha256HexToField(cardNumberHashHex));
-    if (lookup) {
-        return {
-            address_hash: '',
-            main_owner: lookup.mainOwner,
-            mainOwner: lookup.mainOwner,
-            card_address: lookup.cardAddress,
-            encrypted_card_private_key: lookup.encryptedCardPrivateKey,
-            card_kdf_salt: lookup.cardKdfSalt,
-            card_kdf_algorithm: lookup.cardKdfAlgorithm,
-            card_kdf_params: lookup.cardKdfParams as unknown as Record<string, unknown>,
-            card_status: lookup.cardStatus,
-            limits: buildEmptyLimits()
-        };
-    }
-
     return lookupCardWalletByNumberHash(cardNumberHashHex);
 }
 
 export function buildCreateCardRecordInputs(args: {
-    cardAddress: string;
     cardNumberHashField: string;
-    encryptedCardPrivateKey: string;
-    cardKdfSalt: string;
-    cardKdfAlgorithm: CardKdfAlgorithm;
-    cardKdfParams: CardKdfParams;
     encryptedCardNumber: string;
     encryptedCardAddress: string;
     encryptedLabel: string | null;
@@ -302,26 +247,13 @@ export function buildCreateCardRecordInputs(args: {
     profileVersion?: number;
 }): string[] {
     const version = args.profileVersion ?? CARD_PROFILE_VERSION;
-    const encryptedPrivateKeyChunks = toSizedFieldChunks(args.encryptedCardPrivateKey, CARD_CHAIN_CHUNKS.encryptedPrivateKey);
-    const kdfSaltChunks = toSizedFieldChunks(args.cardKdfSalt, CARD_CHAIN_CHUNKS.kdfSalt);
     const encryptedCardNumberChunks = toSizedFieldChunks(args.encryptedCardNumber, CARD_CHAIN_CHUNKS.encryptedCardNumber);
     const encryptedCardAddressChunks = toSizedFieldChunks(args.encryptedCardAddress, CARD_CHAIN_CHUNKS.encryptedCardAddress);
     const encryptedLabelChunks = toSizedFieldChunks(args.encryptedLabel, CARD_CHAIN_CHUNKS.encryptedLabel);
     const encryptedHintChunks = toSizedFieldChunks(args.encryptedHint, CARD_CHAIN_CHUNKS.encryptedHint);
-
     return [
-        args.cardAddress,
         args.cardNumberHashField,
         `${version}u8`,
-        `${cardKdfAlgorithmToCode(args.cardKdfAlgorithm)}u8`,
-        `${Number(args.cardKdfParams.iterations || 0)}u32`,
-        `${Number(args.cardKdfParams.opslimit || 0)}u64`,
-        `${Number(args.cardKdfParams.memlimit || 0)}u64`,
-        `${Number(args.cardKdfParams.alg || 0)}u8`,
-        `${args.cardKdfParams.hash === 'SHA-256' ? CARD_KDF_HASH_SHA256_CODE : 0}u8`,
-        `${Number(args.cardKdfParams.version || 1)}u8`,
-        buildLeoArray(encryptedPrivateKeyChunks),
-        buildLeoArray(kdfSaltChunks),
         buildLeoArray(encryptedCardNumberChunks),
         buildLeoArray(encryptedCardAddressChunks),
         buildLeoArray(encryptedLabelChunks),

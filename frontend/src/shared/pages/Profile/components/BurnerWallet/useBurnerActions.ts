@@ -4,7 +4,7 @@ import { PrivateKey } from '@provablehq/sdk';
 import { AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 import { useBurnerWallet } from '../../../../hooks/BurnerWalletProvider';
 import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '../../../../utils/crypto';
-import { estimateExecutionFee, PROGRAM_ID } from '../../../../utils/aleo-utils';
+import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../../../utils/aleo-utils';
 import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../../../utils/leo-input-limits';
 import { executeWithShieldRetry } from '../../../../utils/shieldRetry';
 import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from './scanner';
@@ -179,7 +179,7 @@ export function useBurnerActions() {
             }
 
             const estimatedBackupFee = await estimateExecutionFee({
-                programName: PROGRAM_ID,
+                programName: WALLET_PROGRAM_ID,
                 functionName,
                 inputs,
                 fallbackMicrocredits: 500_000
@@ -187,7 +187,7 @@ export function useBurnerActions() {
 
             const result = await executeWithShieldRetry(
                 () => executeTransaction({
-                    program: PROGRAM_ID,
+                    program: WALLET_PROGRAM_ID,
                     function: functionName,
                     inputs,
                     fee: estimatedBackupFee,

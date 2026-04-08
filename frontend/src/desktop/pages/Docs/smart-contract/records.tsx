@@ -9,7 +9,7 @@ export const recordsSection: DocsSection = {
     eyebrow: 'Smart Contract',
     title: 'Records defined in the Leo contract',
     summary:
-        'The contract stores invoice context and payment outputs through records that split merchant state, payer proof of payment, burner recovery, cards, and gift-card helpers into clear units.',
+        'The protocol now splits core payment records from wallet artifacts. Core owns invoices and receipts, while the wallets program owns burner, card, and gift-card records.',
     content: (
         <div className="grid gap-5 md:grid-cols-2">
             <MetricCard
@@ -30,17 +30,17 @@ export const recordsSection: DocsSection = {
             <MetricCard
                 icon={Sparkles}
                 title="BurnerWalletRecord"
-                description="Supports password backup and burner wallet recovery by storing encrypted wallet fragments in separate fields."
+                description="Lives in the wallets program and supports password backup plus burner wallet recovery by storing encrypted wallet fragments in separate fields."
             />
             <MetricCard
                 icon={Wallet}
                 title="CardProfileRecord"
-                description="Stores encrypted card profile material, label, hint, and card-number hash for the card subsystem."
+                description="Lives in the wallets program and stores encrypted card profile material, label, hint, and card-number hash for the card subsystem."
             />
             <MetricCard
                 icon={Sparkles}
                 title="GiftCardRecord"
-                description="Stores a generated gift card address plus the encrypted private key material for later redemption flows."
+                description="Lives in the wallets program and stores a generated gift card address plus the encrypted private key material for later redemption flows."
             />
         </div>
     ),

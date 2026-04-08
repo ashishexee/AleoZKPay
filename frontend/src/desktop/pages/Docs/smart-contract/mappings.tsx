@@ -8,7 +8,7 @@ export const mappingsSection: DocsSection = {
     eyebrow: 'Smart Contract',
     title: 'Mappings and what they index',
     summary:
-        'The contract keeps public lookups intentionally small. They exist to validate invoice state, connect salts to hashes, and support card status lookups without publishing the entire payment relationship.',
+        'The core contract keeps only invoice mappings. Wallet-specific lookup state now lives in the wallets program so the invoice core stays leaner.',
     content: (
         <div className="space-y-5">
             <GlassCard className="p-6">
@@ -26,10 +26,10 @@ export const mappingsSection: DocsSection = {
                 </p>
             </GlassCard>
             <GlassCard className="p-6">
-                <h3 className="mb-2 text-xl font-bold text-white">card_lookup: field =&gt; CardLookupData</h3>
+                <h3 className="mb-2 text-xl font-bold text-white">wallets/card_lookup: field =&gt; CardLookupData</h3>
                 <p className="text-sm leading-relaxed text-gray-400">
-                    Stores the card status and encrypted key metadata keyed by card number hash so the card profile and status
-                    flow can be resolved on-chain.
+                    This mapping now lives in the wallets program. It keeps only minimal card lookup state keyed by card number
+                    hash while sensitive recovery material stays off-chain in the encrypted card vault.
                 </p>
             </GlassCard>
         </div>

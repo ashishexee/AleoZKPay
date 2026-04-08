@@ -1,5 +1,5 @@
 {
-  "program": "zk_pay_proofs_privacy_v26.aleo",
+  "program": "zk_pay_proofs_privacy_wallet_v1.aleo",
   "version": "0.1.0",
   "description": "NullPay",
   "license": "MIT",
@@ -16,7 +16,7 @@
       "location": "network",
       "path": null,
       "edition": null
-    }, 
+    },
     {
       "name": "test_usad_stablecoin.aleo",
       "location": "network",

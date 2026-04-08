@@ -11,3 +11,8 @@ export interface InvoiceState {
     items?: { name: string; quantity: number; unitPrice: number; total: number }[];
     sessionId?: string;
 }
+
+export interface PaymentNoteInput {
+    payerNote?: string;
+    merchantNote?: string | null;
+}

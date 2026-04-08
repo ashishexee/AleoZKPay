@@ -9,6 +9,7 @@ import {
     MessageSquare, 
     ShieldCheck, 
     Terminal, 
+    Trash2,
     User, 
     Zap 
 } from 'lucide-react';
@@ -89,11 +90,44 @@ const getEffectiveTokenType = (row: BatchInvoiceRow) => {
     return row.tokenType;
 };
 
+const buildBatchCreditsInput = (row: BatchInvoiceRow) => {
+    const amountMicros = Math.round(getEffectiveAmount(row) * 1_000_000);
+    return `{ merchant: ${row.merchant}, amount: ${amountMicros}u64, salt: ${row.salt}, payment_secret: ${generateSalt()} }`;
+};
+
 const formatExecutionState = (row: BatchInvoiceRow) => {
     if (row.executionState === 'paid') return 'PAID';
     if (row.executionState === 'processing') return 'PROCESSING';
     if (row.executionState === 'failed') return 'FAILED';
     return row.status;
+};
+
+const extractErrorDetails = (error: unknown) => {
+    if (!error) return 'Unknown error';
+    if (typeof error === 'string') return error;
+
+    const err = error as Record<string, any>;
+    const candidates = [
+        err.message,
+        err.reason,
+        err.details,
+        err.data?.message,
+        err.data?.reason,
+        err.data?.details,
+        err.error?.message,
+        err.error?.reason,
+        err.error?.details,
+    ].filter((value) => typeof value === 'string' && value.trim().length > 0);
+
+    if (candidates.length > 0) {
+        return candidates.join(' | ');
+    }
+
+    try {
+        return JSON.stringify(error);
+    } catch {
+        return 'Unknown error';
+    }
 };
 
 const isConfigComplete = (row: BatchInvoiceRow) => {
@@ -175,7 +209,7 @@ export const BatchPayPage = () => {
         if (burnerAddress?.startsWith('aleo1')) return burnerAddress;
         return null;
     }, [burnerAddress, decryptedBurnerAddress]);
-    const entryRequirementMessage = useMemo(() => {
+    const burnerRequirementMessage = useMemo(() => {
         if (!publicKey) return 'Connect your main wallet first. Batch receipts mint back to your main wallet.';
         if (isAutoUnlocking) return 'Checking your encrypted profile and burner wallet state...';
         if (!hasProfile) return 'Create and unlock your NullPay profile first so the batch page can use your burner wallet.';
@@ -185,7 +219,10 @@ export const BatchPayPage = () => {
         if (!decryptedBurnerKey) return 'Restore your burner wallet key on this device first. The batch runner needs the decrypted burner key.';
         return null;
     }, [burnerAddress, burnerExecutionAddress, decryptedBurnerKey, hasProfile, isAutoUnlocking, isUnlocked, publicKey]);
-    const showPasswordPrompt = Boolean(publicKey && !isAutoUnlocking && !isUnlocked);
+    const activeRequirementMessage = executionMode === 'burner'
+        ? burnerRequirementMessage
+        : (!publicKey ? 'Connect your main wallet first. Batch receipts mint back to your main wallet.' : null);
+    const showPasswordPrompt = Boolean(executionMode === 'burner' && publicKey && !isAutoUnlocking && !isUnlocked);
 
     const totals = useMemo(() => {
         return readyRows.reduce(
@@ -203,8 +240,8 @@ export const BatchPayPage = () => {
 
     const contractBatchEligibility = useMemo(() => {
         const issues: string[] = [];
-        if (readyRows.length !== 2 && readyRows.length !== 3) {
-            issues.push('Contract batching currently supports exactly 2 or 3 ready invoices.');
+        if (readyRows.length !== 2) {
+            issues.push('Contract batching currently supports exactly 2 ready invoices.');
         }
 
         const nonCreditsRows = readyRows.filter((row) => getEffectiveTokenType(row) !== 0);
@@ -229,6 +266,120 @@ export const BatchPayPage = () => {
 
     const updateFundingRequirement = (tokenType: number, patch: Partial<FundingRequirement>) => {
         setFundingRequirements((current) => current.map((item) => item.tokenType === tokenType ? { ...item, ...patch } : item));
+    };
+
+    const removeRow = (rowId: string) => {
+        setRows((current) => current.filter((row) => row.id !== rowId));
+        if (activeDropdownId === rowId) {
+            setActiveDropdownId(null);
+        }
+    };
+
+    const listMainWalletCreditRecords = async () => {
+        if (!requestRecords) {
+            throw new Error('Wallet record access is unavailable.');
+        }
+
+        const records = await requestRecords('credits.aleo', false);
+        const entries: Array<{ plaintext: string; micros: number }> = [];
+
+        for (const record of (records as any[])) {
+            if (record.spent) continue;
+
+            let plaintext = String(record.plaintext || '').trim();
+            const cipher = record.recordCiphertext || record.ciphertext;
+            if (!plaintext && cipher && decrypt) {
+                try {
+                    plaintext = String(await decrypt(cipher)).trim();
+                } catch {
+                    plaintext = '';
+                }
+            }
+
+            if (!plaintext || !/microcredits\s*:\s*\d+u64/.test(plaintext)) continue;
+            entries.push({ plaintext, micros: extractRecordMicros(plaintext, 0) });
+        }
+
+        return entries.sort((a, b) => b.micros - a.micros);
+    };
+
+    const assignCreditsRecords = (
+        entries: Array<{ plaintext: string; micros: number }>,
+        amountOne: number,
+        amountTwo: number
+    ) => {
+        for (let firstIndex = 0; firstIndex < entries.length; firstIndex += 1) {
+            for (let secondIndex = 0; secondIndex < entries.length; secondIndex += 1) {
+                if (firstIndex === secondIndex) continue;
+                const first = entries[firstIndex];
+                const second = entries[secondIndex];
+                if (first.micros >= amountOne && second.micros >= amountTwo) {
+                    return [first.plaintext, second.plaintext] as const;
+                }
+            }
+        }
+        return null;
+    };
+
+    const prepareContractMainWalletCreditsRecords = async (
+        amountOne: number,
+        amountTwo: number
+    ) => {
+        const spendableRecords = await listMainWalletCreditRecords();
+        const existingPair = assignCreditsRecords(spendableRecords, amountOne, amountTwo);
+        if (existingPair) {
+            return { payRecordOne: existingPair[0], payRecordTwo: existingPair[1] };
+        }
+
+        const combinedRequired = amountOne + amountTwo + 10_000;
+        const sourceRecord = spendableRecords.find((entry) => entry.micros >= combinedRequired);
+        if (!sourceRecord) {
+            throw new Error('Contract batch needs either two spendable Credits records or one larger Credits record that can be split from the main wallet.');
+        }
+
+        if (!executeTransaction) {
+            throw new Error('Main-wallet execution is not available in this wallet adapter.');
+        }
+
+        const splitAmount = Math.min(amountOne, amountTwo);
+        pushBatchLog('Splitting a main-wallet Credits record so the contract batch can pay both invoices.');
+        setBatchStatus('Splitting main-wallet Credits record for contract batch...');
+        const splitFee = await estimateExecutionFee({
+            programName: 'credits.aleo',
+            functionName: 'split',
+            inputs: [sourceRecord.plaintext, `${splitAmount}u64`],
+            fallbackMicrocredits: 100_000,
+        });
+        const splitResult = await executeWithShieldRetry<any>(
+            () => executeTransaction({
+                program: 'credits.aleo',
+                function: 'split',
+                inputs: [sourceRecord.plaintext, `${splitAmount}u64`],
+                fee: splitFee,
+                privateFee: false,
+            }),
+            { onRetry: () => setBatchStatus('Retrying main-wallet split request...') }
+        );
+        const splitTxId = splitResult?.transactionId || '';
+        if (!splitTxId) {
+            throw new Error('Main-wallet split did not return a transaction id.');
+        }
+        const finalizedSplitTxId = await pollTransaction(splitTxId);
+        pushBatchLog(`Credits split confirmed: ${finalizedSplitTxId}`);
+
+        let splitPair: readonly [string, string] | null = null;
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+            await new Promise((resolve) => setTimeout(resolve, attempt === 0 ? 1800 : 1200));
+            const refreshedRecords = await listMainWalletCreditRecords();
+            splitPair = assignCreditsRecords(refreshedRecords, amountOne, amountTwo);
+            if (splitPair) break;
+        }
+
+        if (!splitPair) {
+            throw new Error('Credits split completed, but the expected spendable main-wallet records were not found.');
+        }
+
+        return { payRecordOne: splitPair[0], payRecordTwo: splitPair[1] };
     };
 
     const pushBatchLog = (message: string) => {
@@ -544,6 +695,7 @@ export const BatchPayPage = () => {
         const keyProvider = new AleoKeyProvider();
         keyProvider.useCache(true);
         const networkClient = new AleoNetworkClient(PROVABLE_HOST);
+        networkClient.setVerboseErrors(true);
         const recordProvider = new NetworkRecordProvider(session.account, networkClient);
         const programManager = new ProgramManager(PROVABLE_HOST, keyProvider, recordProvider);
         programManager.setAccount(session.account);
@@ -594,6 +746,7 @@ export const BatchPayPage = () => {
                     `${amountMicros}${tokenMeta.typeSuffix}`,
                     row.salt,
                     generateSalt(),
+                    '0field',
                     '0field',
                     row.hash,
                 ];
@@ -675,9 +828,96 @@ export const BatchPayPage = () => {
         pushBatchLog('Batch payment complete. Every queued invoice was submitted from the burner wallet.');
     };
 
+    const runContractBatchExecution = async (payerOwner: string) => {
+        if (!contractBatchEligibility.supported) {
+            throw new Error(contractBatchEligibility.issues[0] || 'Contract batch is not ready for this cart.');
+        }
+
+        if (!executeTransaction) {
+            throw new Error('Main-wallet execution is not available in this wallet adapter.');
+        }
+
+        const [firstRow, secondRow] = readyRows;
+        const firstAmountMicros = Math.round(getEffectiveAmount(firstRow) * 1_000_000);
+        const secondAmountMicros = Math.round(getEffectiveAmount(secondRow) * 1_000_000);
+
+        updateRow(firstRow.id, { executionState: 'processing', executionMessage: 'Preparing contract batch...', txId: null });
+        updateRow(secondRow.id, { executionState: 'processing', executionMessage: 'Preparing contract batch...', txId: null });
+
+        const { payRecordOne, payRecordTwo } = await prepareContractMainWalletCreditsRecords(
+            firstAmountMicros,
+            secondAmountMicros
+        );
+
+        setBatchStatus('Submitting contract batch payment from the main wallet...');
+        pushBatchLog('Submitting batch_pay_2_credits from the main wallet.');
+
+        const batchInputs = [
+            payRecordOne,
+            payRecordTwo,
+            buildBatchCreditsInput(firstRow),
+            buildBatchCreditsInput(secondRow),
+            payerOwner,
+            '0field',
+        ];
+        const batchFee = await estimateExecutionFee({
+            programName: PROGRAM_ID,
+            functionName: 'batch_pay_2_credits',
+            inputs: batchInputs,
+            fallbackMicrocredits: 150_000,
+        });
+        const batchResult = await executeWithShieldRetry<any>(
+            () => executeTransaction({
+                program: PROGRAM_ID,
+                function: 'batch_pay_2_credits',
+                inputs: batchInputs,
+                fee: batchFee,
+                privateFee: false,
+            }),
+            { onRetry: () => setBatchStatus('Retrying contract batch request from the main wallet...') }
+        );
+        const transactionId = batchResult?.transactionId || '';
+        if (!transactionId) {
+            throw new Error('Contract batch execution did not return a transaction id.');
+        }
+
+        updateRow(firstRow.id, { executionState: 'processing', executionMessage: 'Broadcasted. Waiting for confirmation...', txId: transactionId });
+        updateRow(secondRow.id, { executionState: 'processing', executionMessage: 'Broadcasted. Waiting for confirmation...', txId: transactionId });
+        setBatchStatus('Waiting for contract batch transaction to finalize...');
+        pushBatchLog(`Contract batch broadcasted: ${transactionId}`);
+
+        const finalizedTransactionId = await pollTransaction(transactionId);
+
+        for (const row of [firstRow, secondRow]) {
+            try {
+                const updatePayload: Record<string, unknown> = {
+                    payment_tx_ids: [finalizedTransactionId],
+                    payer_address: payerOwner,
+                };
+
+                if (row.invoiceType !== 1 && row.invoiceType !== 2) {
+                    updatePayload.status = 'SETTLED';
+                }
+
+                await updateInvoiceStatus(row.hash, updatePayload);
+            } catch (syncError: any) {
+                throw new Error(`Contract batch confirmed on-chain, but invoice ${shorten(row.hash)} failed to sync in the database: ${syncError?.message || 'Unknown error'}`);
+            }
+        }
+
+        updateRow(firstRow.id, { executionState: 'paid', executionMessage: 'Paid successfully through contract batch.', txId: finalizedTransactionId });
+        updateRow(secondRow.id, { executionState: 'paid', executionMessage: 'Paid successfully through contract batch.', txId: finalizedTransactionId });
+        setBatchStatus('Contract batch payment complete.');
+        pushBatchLog('Contract batch payment complete.');
+    };
+
     const handlePayAll = async () => {
-        if (entryRequirementMessage) {
-            setError(entryRequirementMessage);
+        if (executionMode === 'burner' && burnerRequirementMessage) {
+            setError(burnerRequirementMessage);
+            return;
+        }
+        if (executionMode === 'contract' && !publicKey) {
+            setError('Connect your main wallet first. Batch receipts mint back to your main wallet.');
             return;
         }
         const payerOwner: string = publicKey!;
@@ -689,19 +929,30 @@ export const BatchPayPage = () => {
             setError('Finish the donation amount and token selection for every open invoice before paying.');
             return;
         }
+        if (executionMode === 'contract' && !contractBatchEligibility.supported) {
+            setError(contractBatchEligibility.issues[0] || 'Contract batch is not ready for this cart.');
+            return;
+        }
 
         try {
             setLoading(true);
             setError(null);
             setFundingRequirements([]);
-            setBatchStatus('Preparing burner wallet session...');
             setBatchLogs([]);
-            pushBatchLog('Preparing burner wallet session.');
             setRows((current) => current.map((row) => row.status === 'OPEN' ? { ...row, executionState: 'queued', executionMessage: null } : row));
 
-            const session = await getScannerSession(decryptedBurnerKey!);
+            if (executionMode === 'contract') {
+                setBatchStatus('Preparing main-wallet contract batch...');
+                pushBatchLog('Using the main wallet contract-batch flow.');
+                await runContractBatchExecution(payerOwner);
+                return;
+            }
+
+            setBatchStatus('Preparing burner wallet session...');
+            pushBatchLog('Preparing burner wallet session.');
+            let activeSession = await getScannerSession(decryptedBurnerKey!);
             pushBatchLog('Burner wallet session ready. Checking balances.');
-            const requirements = await checkFundingRequirements(session);
+            const requirements = await checkFundingRequirements(activeSession);
             const insufficientRequirements = requirements.filter((item) => item.reason === 'insufficient_combined_balance');
             if (insufficientRequirements.length > 0) {
                 setBatchStatus('NullPay checked both wallets. The combined main-wallet private balance and burner private balance are still not enough for this cart.');
@@ -788,6 +1039,7 @@ export const BatchPayPage = () => {
                     const rescannedSession = await getScannerSession(decryptedBurnerKey!);
                     postFundingRequirements = await checkFundingRequirements(rescannedSession);
                     if (postFundingRequirements.length === 0) {
+                        activeSession = rescannedSession;
                         synced = true;
                         break;
                     }
@@ -803,17 +1055,17 @@ export const BatchPayPage = () => {
                     return;
                 }
 
-                setBatchStatus('Burner wallet synced. Click Pay All with Burner to start the payments.');
-                pushBatchLog('Burner wallet synced. Ready for payment execution.');
-                return;
+                setBatchStatus('Burner wallet synced. Starting payment execution...');
+                pushBatchLog('Burner wallet synced. Starting payment execution.');
             }
 
             pushBatchLog(`Starting payment execution for ${readyRows.length} invoice(s).`);
-            await runBatchExecution(payerOwner, session);
+            await runBatchExecution(payerOwner, activeSession);
         } catch (err: any) {
+            const detailedError = extractErrorDetails(err);
             console.error('Batch payment failed', err);
-            setError(err.message || 'Batch payment failed.');
-            pushBatchLog(`Batch payment failed: ${err.message || 'Unknown error'}`);
+            setError(detailedError || 'Batch payment failed.');
+            pushBatchLog(`Batch payment failed: ${detailedError}`);
             setBatchStatus('');
         } finally {
             setFundingLoadingToken(null);
@@ -902,19 +1154,26 @@ export const BatchPayPage = () => {
                             <span className="text-sm font-semibold">Contract Batch Flow</span>
                         </div>
                         <p className="mt-2 text-sm text-gray-400">
-                            Fixed-size on-chain batching for 2 or 3 Credits invoice payments, with receipts still minted to the payer main wallet.
+                            Fixed-size on-chain batching for exactly 2 Credits invoice payments, with receipts still minted to the payer main wallet.
                         </p>
                     </button>
                 </div>
 
-                {entryRequirementMessage && (
-                    <GlassCard className="border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-4 mx-auto max-w-3xl">
-                        <div className="mt-1 shrink-0 rounded-full bg-amber-500/20 p-2 text-amber-400">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-sm font-semibold tracking-wide text-amber-300">Action Required</p>
-                            <p className="text-sm text-amber-100/70">{entryRequirementMessage}</p>
+                {activeRequirementMessage && (
+                    <GlassCard className="mx-auto max-w-3xl border border-red-500/25 bg-[linear-gradient(135deg,rgba(239,68,68,0.12),rgba(127,29,29,0.08))] p-5 sm:p-6">
+                        <div className="flex items-start gap-4">
+                            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/12 text-red-300 shadow-[0_10px_30px_rgba(127,29,29,0.22)]">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-3">
+                                    <p className="text-sm font-semibold tracking-[0.2em] text-red-300 uppercase">Action Required</p>
+                                    <span className="h-px flex-1 bg-gradient-to-r from-red-400/30 to-transparent" />
+                                </div>
+                                <p className="mt-2 text-sm leading-7 text-red-50/88">{activeRequirementMessage}</p>
+                            </div>
                         </div>
                     </GlassCard>
                 )}
@@ -945,7 +1204,7 @@ export const BatchPayPage = () => {
                                         <input type="file" accept="image/*" className="hidden" onChange={handleQrUpload} />
                                     </label>
                                 </div>
-                                {error && !entryRequirementMessage && <p className="mt-3 text-sm text-red-400">{error}</p>}
+                                {error && !activeRequirementMessage && <p className="mt-3 text-sm text-red-400">{error}</p>}
                             </div>
                         </GlassCard>
 
@@ -1014,8 +1273,20 @@ export const BatchPayPage = () => {
                                                         {formatExecutionState(row)}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-gray-600">
-                                                    <span className="flex items-center gap-1"><Hash className="h-2.5 w-2.5" /> {row.hash.slice(0, 8)}</span>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-[10px] font-bold uppercase tracking-widest text-gray-600">
+                                                        <span className="flex items-center gap-1"><Hash className="h-2.5 w-2.5" /> {row.hash.slice(0, 8)}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeRow(row.id)}
+                                                        disabled={loading}
+                                                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] text-gray-500 transition-all hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        title="Remove invoice from cart"
+                                                        aria-label="Remove invoice from cart"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -1224,7 +1495,7 @@ export const BatchPayPage = () => {
                                     <div className="rounded-xl border border-orange-400/20 bg-orange-500/10 p-4 text-sm text-orange-100">
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-orange-300">Current Limits</p>
                                         <p className="mt-2">
-                                            This path is for the new fixed-size Credits contract batches only. Use exactly 2 or 3 ready Credits invoices.
+                                            This path is for the new fixed-size Credits contract batches only. Use exactly 2 ready Credits invoices.
                                         </p>
                                         {contractBatchEligibility.issues.length > 0 && (
                                             <div className="mt-3 space-y-1 text-orange-100/80">
@@ -1235,7 +1506,7 @@ export const BatchPayPage = () => {
                                         )}
                                         {contractBatchEligibility.supported && (
                                             <p className="mt-3 text-emerald-300">
-                                                This cart matches the contract-batch constraints. Frontend execution wiring is the next step.
+                                                This cart matches the contract-batch constraints. NullPay can execute this batch now.
                                             </p>
                                         )}
                                     </div>
@@ -1253,7 +1524,7 @@ export const BatchPayPage = () => {
                                 <Button
                                     variant="primary"
                                     onClick={handlePayAll}
-                                    disabled={loading || openRows.length === 0 || batchCompleted || executionMode === 'contract'}
+                                    disabled={loading || openRows.length === 0 || batchCompleted}
                                     className="w-full py-3.5 text-sm"
                                 >
                                     {loading
@@ -1263,7 +1534,7 @@ export const BatchPayPage = () => {
                                             : executionMode === 'burner'
                                                 ? `Pay All with Burner${readyRows.length ? ` (${readyRows.length})` : ''}`
                                                 : contractBatchEligibility.supported
-                                                    ? 'Contract Batch Wiring Next'
+                                                    ? 'Pay 2 Credits Invoices'
                                                     : 'Contract Batch Not Ready'}
                                 </Button>
                                 

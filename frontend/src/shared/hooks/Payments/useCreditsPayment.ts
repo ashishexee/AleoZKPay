@@ -1,7 +1,8 @@
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { estimateExecutionFee, PROGRAM_ID } from '../../utils/aleo-utils';
+import { estimateExecutionFee, PROGRAM_ID, stringToField } from '../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
-import type { InvoiceState } from './types';
+import type { InvoiceState, PaymentNoteInput } from './types';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/leo-input-limits';
 
 interface CreditsPaymentDeps {
     invoice: InvoiceState | null;
@@ -55,7 +56,16 @@ export const createCreditsPayment = (deps: CreditsPaymentDeps) => {
         pollTransaction
     } = deps;
 
-    const payInvoiceCredits = async () => {
+    const encodePaymentNote = (value?: string | null, label: string = 'Payment note') => {
+        const normalized = (value || '').trim();
+        if (!normalized) return '0field';
+        if (getUtf8ByteLength(normalized) > LEO_PAYMENT_NOTE_MAX_BYTES) {
+            throw new Error(`${label} must stay within ${LEO_PAYMENT_NOTE_MAX_BYTES} bytes for one Leo field.`);
+        }
+        return stringToField(normalized);
+    };
+
+    const payInvoiceCredits = async (notes?: PaymentNoteInput) => {
         if (!invoice || !publicKey || !executeTransaction || !requestRecords || !programId) return;
 
         try {
@@ -151,6 +161,8 @@ export const createCreditsPayment = (deps: CreditsPaymentDeps) => {
             setStatus('Requesting Payment Signature...');
 
             const funcName = isDonation ? 'pay_donation' : 'pay_invoice';
+            const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
+            const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
 
             const inputs = [
                 recordInput,
@@ -159,6 +171,8 @@ export const createCreditsPayment = (deps: CreditsPaymentDeps) => {
                 `${amountMicro}u64`,
                 invoice.salt,
                 paymentSecret || '0field',
+                payerNoteField,
+                merchantNoteField,
                 invoice.hash
             ];
 

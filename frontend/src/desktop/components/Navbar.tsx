@@ -21,6 +21,7 @@ const Navbar = () => {
         { path: '/explorer', label: 'Explorer' },
         { path: '/create', label: 'Create Invoice' },
         { path: '/profile', label: 'Dashboard' },
+        { path: '/pay', label: 'Pay' },
         {
             label: 'Cards',
             dropdown: [
@@ -34,8 +35,7 @@ const Navbar = () => {
                 { path: '/developer', label: 'SDK / Developers' },
                 { path: '/telegram-bot', label: 'Telegram Bot' }
             ]
-        },
-        { path: '/docs', label: 'Docs' }
+        }
     ];
 
     const navItems = isLanding ? landingNavItems : appNavItems;

@@ -1,7 +1,8 @@
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { estimateExecutionFee, PROGRAM_ID } from '../../utils/aleo-utils';
+import { estimateExecutionFee, PROGRAM_ID, stringToField } from '../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
-import type { InvoiceState } from './types';
+import type { InvoiceState, PaymentNoteInput } from './types';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/leo-input-limits';
 
 interface USADPaymentDeps {
     invoice: InvoiceState | null;
@@ -38,7 +39,16 @@ export const createUSADPayment = (deps: USADPaymentDeps) => {
         pollTransaction
     } = deps;
 
-    const payInvoiceUSAD = async () => {
+    const encodePaymentNote = (value?: string | null, label: string = 'Payment note') => {
+        const normalized = (value || '').trim();
+        if (!normalized) return '0field';
+        if (getUtf8ByteLength(normalized) > LEO_PAYMENT_NOTE_MAX_BYTES) {
+            throw new Error(`${label} must stay within ${LEO_PAYMENT_NOTE_MAX_BYTES} bytes for one Leo field.`);
+        }
+        return stringToField(normalized);
+    };
+
+    const payInvoiceUSAD = async (notes?: PaymentNoteInput) => {
         if (!invoice || !publicKey || !executeTransaction || !requestRecords || !programId) return;
 
         try {
@@ -157,6 +167,8 @@ export const createUSADPayment = (deps: USADPaymentDeps) => {
             }
 
             setStatus('Requesting USAD Payment Signature...');
+            const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
+            const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
 
             const inputs = [
                 recordInput,
@@ -165,6 +177,8 @@ export const createUSADPayment = (deps: USADPaymentDeps) => {
                 `${amountMicro}u128`,
                 invoice.salt,
                 paymentSecret || '0field',
+                payerNoteField,
+                merchantNoteField,
                 invoice.hash,
                 proofsInput
             ];
