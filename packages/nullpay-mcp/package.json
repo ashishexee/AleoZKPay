@@ -24,9 +24,11 @@
     },
     "dependencies": {
         "@provablehq/sdk": "^0.9.18",
-        "@provablehq/wasm": "^0.9.18"
+        "@provablehq/wasm": "^0.9.18",
+        "libsodium-wrappers": "^0.8.2"
     },
     "devDependencies": {
+        "@types/libsodium-wrappers": "^0.8.2",
         "@types/node": "^25.4.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3"

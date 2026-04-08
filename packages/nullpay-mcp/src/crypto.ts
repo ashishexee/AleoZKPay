@@ -1,4 +1,16 @@
 import crypto from 'crypto';
+import sodium from 'libsodium-wrappers';
+
+export type CardKdfAlgorithm = 'argon2id' | 'pbkdf2-sha256';
+
+export interface CardKdfParams {
+    opslimit?: number;
+    memlimit?: number;
+    alg?: number;
+    iterations?: number;
+    hash?: 'SHA-256';
+    version: number;
+}
 
 const ITERATIONS = 100000;
 const KEY_LENGTH = 32;
@@ -60,5 +72,76 @@ export async function decryptWithPassword(payload: string, password: string): Pr
         return plaintext.toString('utf8');
     } catch {
         throw new Error('Incorrect password or corrupted data');
+    }
+}
+
+function combineSecrets(pin: string, cardSecret: string): string {
+    return `${pin}:${cardSecret}`;
+}
+
+async function deriveWrappingKey(
+    algorithm: CardKdfAlgorithm,
+    pin: string,
+    cardSecret: string,
+    salt: Buffer,
+    params?: CardKdfParams
+): Promise<Buffer> {
+    await sodium.ready;
+
+    if (algorithm === 'argon2id') {
+        const opslimit = params?.opslimit ?? sodium.crypto_pwhash_OPSLIMIT_MODERATE;
+        const memlimit = params?.memlimit ?? sodium.crypto_pwhash_MEMLIMIT_MODERATE;
+        const alg = params?.alg ?? sodium.crypto_pwhash_ALG_ARGON2ID13;
+        
+        const combined = combineSecrets(pin, cardSecret);
+        const keyBytes = sodium.crypto_pwhash(
+            32,
+            combined,
+            salt,
+            opslimit,
+            memlimit,
+            alg,
+            'uint8array'
+        );
+        return Buffer.from(keyBytes);
+    }
+
+    const iterations = params?.iterations ?? 600000;
+    const combined = combineSecrets(pin, cardSecret);
+    return await new Promise<Buffer>((resolve, reject) => {
+        crypto.pbkdf2(combined, salt, iterations, 32, 'sha256', (err, derivedKey) => {
+            if (err) reject(err);
+            else resolve(derivedKey);
+        });
+    });
+}
+
+export async function decryptCardPrivateKey(
+    encryptedPrivateKey: string,
+    pin: string,
+    cardSecret: string,
+    saltBase64: string,
+    algorithm: CardKdfAlgorithm,
+    params: CardKdfParams
+): Promise<string> {
+    const salt = fromBase64(saltBase64);
+    const packed = fromBase64(encryptedPrivateKey);
+    const iv = packed.subarray(0, 12);
+    const ciphertext = packed.subarray(12);
+
+    const key = await deriveWrappingKey(algorithm, pin, cardSecret, salt, params);
+
+    try {
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        // Note: SubtleCrypto AES-GCM appends the 16-byte authentication tag at the end of the ciphertext.
+        // Node's crypto library requires setting it explicitly.
+        const actualCiphertext = ciphertext.subarray(0, ciphertext.length - 16);
+        const tag = ciphertext.subarray(ciphertext.length - 16);
+        
+        decipher.setAuthTag(tag);
+        const decrypted = Buffer.concat([decipher.update(actualCiphertext), decipher.final()]);
+        return decrypted.toString('utf8');
+    } catch {
+        throw new Error('Incorrect PIN or card secret.');
     }
 }

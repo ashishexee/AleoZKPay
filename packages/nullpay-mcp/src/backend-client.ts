@@ -1,4 +1,4 @@
-import { InvoiceRecord, UserProfile } from './types';
+import { CardWalletProfile, InvoiceRecord, UserProfile } from './types';
 
 function mapBackendError(path: string, text: string): string {
     return text;
@@ -97,5 +97,13 @@ export class NullPayBackendClient {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
+    }
+
+    async lookupCardWallet(cardNumberHash: string): Promise<CardWalletProfile | null> {
+        return await this.request<CardWalletProfile | null>('/users/card/lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ card_number_hash: cardNumberHash }),
+        }).catch(() => null);
     }
 }

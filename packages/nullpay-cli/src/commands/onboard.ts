@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 
 const BACKEND_URL = process.env.NULLPAY_BACKEND_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
-const ALEO_PROGRAM = 'zk_pay_proofs_privacy_v25.aleo';
+const ALEO_PROGRAM = 'zk_pay_proofs_privacy_26.aleo';
 const ALEO_MAP_BASE = `https://api.provable.com/v2/testnet/program/${ALEO_PROGRAM}/mapping/salt_to_invoice`;
 const W = 56;
 

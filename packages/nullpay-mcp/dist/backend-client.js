@@ -77,5 +77,12 @@ class NullPayBackendClient {
             body: JSON.stringify(body),
         });
     }
+    async lookupCardWallet(cardNumberHash) {
+        return await this.request('/users/card/lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ card_number_hash: cardNumberHash }),
+        }).catch(() => null);
+    }
 }
 exports.NullPayBackendClient = NullPayBackendClient;
