@@ -200,10 +200,10 @@ export function useBurnerActions() {
                     await new Promise((resolve) => setTimeout(resolve, 1000));
 
                     try {
-                        const statusResponse = await transactionStatus(txId);
-                        const currentStatus: string = typeof statusResponse === 'string'
+                        const statusResponse: any = await transactionStatus(txId);
+                        const currentStatus = typeof statusResponse === 'string'
                             ? statusResponse.toLowerCase()
-                            : String((statusResponse as any)?.status || '').toLowerCase();
+                            : String(statusResponse?.status || '').toLowerCase();
 
                         if (currentStatus !== 'pending' && currentStatus !== 'processing' && currentStatus !== 'submitted') {
                             isPending = false;
