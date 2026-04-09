@@ -201,9 +201,9 @@ export function useBurnerActions() {
 
                     try {
                         const statusResponse = await transactionStatus(txId);
-                        const currentStatus = typeof statusResponse === 'string'
+                        const currentStatus: string = typeof statusResponse === 'string'
                             ? statusResponse.toLowerCase()
-                            : (statusResponse as any)?.status?.toLowerCase();
+                            : String((statusResponse as any)?.status || '').toLowerCase();
 
                         if (currentStatus !== 'pending' && currentStatus !== 'processing' && currentStatus !== 'submitted') {
                             isPending = false;

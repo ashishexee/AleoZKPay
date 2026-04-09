@@ -55,6 +55,11 @@ type PendingAction =
     }
     | null;
 
+type SweepReplyParseResult =
+    | { cancelled: true }
+    | { error: string }
+    | { currency: BurnerSweepCurrency; amount: number };
+
 type BotBalanceView = {
     token: 'Credits' | 'USDCx' | 'USAD';
     publicBalance: string;
@@ -119,7 +124,10 @@ const truncateAddress = (value: string | null | undefined) => (
     value ? `${value.slice(0, 10)}...${value.slice(-6)}` : 'Not connected'
 );
 
-const parseSweepReply = (message: string, availableByCurrency: Record<BurnerSweepCurrency, number>) => {
+const parseSweepReply = (
+    message: string,
+    availableByCurrency: Record<BurnerSweepCurrency, number>
+): SweepReplyParseResult => {
     const trimmed = message.trim();
     const normalized = trimmed.toLowerCase();
 
@@ -560,13 +568,13 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
             if (pendingAction?.type === 'sweep_burner_to_main') {
                 const parsed = parseSweepReply(trimmed, availableBurnerBalances);
 
-                if (parsed.cancelled) {
+                if ('cancelled' in parsed) {
                     setPendingAction(null);
                     appendAssistantMessage('Sweep cancelled.');
                     return;
                 }
 
-                if (parsed.error) {
+                if ('error' in parsed) {
                     appendAssistantMessage(parsed.error);
                     return;
                 }

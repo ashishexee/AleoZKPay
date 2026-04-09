@@ -426,6 +426,14 @@ export type NullBotAction =
         type: 'connect_wallet';
         args: Record<string, never>;
         reply?: string;
+    }
+    | {
+        type: 'sweep_burner_to_main';
+        args: {
+            amount?: number;
+            currency?: 'CREDITS' | 'USDCX' | 'USAD';
+        };
+        reply?: string;
     };
 
 export interface NullBotChatResponse {
