@@ -264,6 +264,10 @@ async function generateDashboardAssistantReply(message, context) {
         'You are NullBot, the NullPay Dashboard Assistant.',
         'Answer only from the provided dashboard context. Do not invent details.',
         'If the dashboard context includes wallet addresses such as main or burner wallet addresses, you may return them directly.',
+        'The dashboard context can contain separate `mainWalletBalances` and `burnerWalletBalances` arrays. Treat them as different wallets.',
+        'If the user asks about burner wallet funds, balances, invoices, or receipts, use only burner wallet data. Never substitute main wallet balances for burner wallet balances.',
+        'If burner data is missing or still loading, say that clearly instead of guessing from the main wallet.',
+        'Use recentConversation when it helps preserve continuity, but prefer the latest dashboard state over older chat messages.',
         'Format your responses using clean Markdown. Use **bold** for emphasis, bullet lists for multiple items, and tables if useful.',
         'IMPORTANT: NEVER WRAP your entire response in a ```markdown code block. Output raw markdown text directly.',
         'When returning hashes (invoice or receipt), wrap them in `code blocks` to make them easy to read.',
@@ -322,6 +326,119 @@ async function generateDeveloperAssistantReply(message, context) {
     });
 
     return result.text;
+}
+
+function normalizePromptCurrency(rawValue) {
+    const value = String(rawValue || '').toLowerCase();
+    if (value.includes('usdcx')) return 'USDCX';
+    if (value.includes('usad')) return 'USAD';
+    if (value.includes('any')) return 'ANY';
+    return 'CREDITS';
+}
+
+function detectNullBotAction(message) {
+    const rawMessage = String(message || '').trim();
+    const normalizedMessage = rawMessage.toLowerCase();
+
+    if (!rawMessage) {
+        return null;
+    }
+
+    if (/(connect wallet|connect my wallet|link wallet)/i.test(rawMessage)) {
+        return {
+            type: 'connect_wallet',
+            args: {},
+            reply: 'Connect your wallet first, then I can run NullPay actions from your prompts.'
+        };
+    }
+
+    const sweepIntent =
+        /\bsweep\b[\s\S]{0,40}\b(burner|funds?|wallet)\b/i.test(rawMessage) ||
+        /\bmove\b[\s\S]{0,40}\bfrom burner\b/i.test(rawMessage) ||
+        /\btransfer\b[\s\S]{0,50}\bfrom burner\b/i.test(rawMessage);
+
+    if (sweepIntent && normalizedMessage.includes('burner')) {
+        const amountMatch = rawMessage.match(/(\d+(?:\.\d+)?)\s*(aleo|credits?|credit|usdcx|usad)\b/i);
+        const currency = amountMatch ? normalizePromptCurrency(amountMatch[2]) : null;
+
+        return {
+            type: 'sweep_burner_to_main',
+            args: {
+                ...(amountMatch ? { amount: Number(amountMatch[1]) } : {}),
+                ...(currency ? { currency } : {})
+            },
+            reply: amountMatch
+                ? `I can sweep ${amountMatch[1]} ${currency} from your burner wallet to your connected main wallet using the usual sponsored burner sweep flow.`
+                : 'I can sweep your available burner-wallet funds to your connected main wallet using the usual sponsored burner sweep flow.'
+        };
+    }
+
+    const createInvoiceIntent =
+        /\b(create|make|generate)\b[\s\S]{0,40}\b(invoice|invocie|bill|payment link)\b/i.test(rawMessage) ||
+        /\binvoice\b[\s\S]{0,30}\b(of|for)\b/i.test(rawMessage);
+
+    if (createInvoiceIntent) {
+        const amountMatch = rawMessage.match(/(\d+(?:\.\d+)?)\s*(credits?|credit|usdcx|usad|any token|any)\b/i);
+        const invoiceTypeMatch = rawMessage.match(/\b(donation|multipay|multi-pay|standard)\b/i);
+        const walletMatch = rawMessage.match(/\b(main|burner)\b/);
+        const memoMatch = rawMessage.match(/(?:memo|note)\s+(?:as|to|is)?\s*["']([^"']+)["']/i);
+
+        if (amountMatch) {
+            const amount = Number(amountMatch[1]);
+            const currency = normalizePromptCurrency(amountMatch[2]);
+            const invoiceTypeRaw = String(invoiceTypeMatch?.[1] || 'standard').toLowerCase();
+            const invoiceType = invoiceTypeRaw === 'multi-pay' ? 'multipay' : invoiceTypeRaw;
+            const wallet = walletMatch?.[1] === 'burner' ? 'burner' : 'main';
+            const memo = memoMatch?.[1]?.trim();
+
+            return {
+                type: 'create_invoice',
+                args: {
+                    amount,
+                    currency,
+                    invoice_type: invoiceType,
+                    wallet,
+                    ...(memo ? { memo } : {})
+                },
+                reply: `I can create a ${invoiceType} invoice for ${amount} ${currency} from your ${wallet} wallet. Approve the wallet popup when it opens.`
+            };
+        }
+    }
+
+    const paymentLinkMatch = rawMessage.match(/https?:\/\/[^\s]+/i);
+    const payIntent = /\b(pay|open|use)\b[\s\S]{0,30}\b(invoice|link|payment)\b/i.test(rawMessage);
+    if (payIntent && paymentLinkMatch) {
+        return {
+            type: 'open_payment_link',
+            args: {
+                url: paymentLinkMatch[0]
+            },
+            reply: 'I found a NullPay payment link. I can open the in-app payment flow so you can approve it with your wallet popup.'
+        };
+    }
+
+    return null;
+}
+
+async function generateNullBotChat(message, context) {
+    const action = detectNullBotAction(message);
+
+    if (action) {
+        return {
+            reply: action.reply,
+            action
+        };
+    }
+
+    const mode = context?.mode === 'developer' || context?.mode === 'docs'
+        ? context.mode
+        : 'dashboard';
+
+    const reply = mode === 'dashboard'
+        ? await generateDashboardAssistantReply(message, context)
+        : await generateDeveloperAssistantReply(message, context);
+
+    return { reply };
 }
 
 const getAIModels = async (req, res) => {
@@ -402,8 +519,29 @@ const developerAssistantChat = async (req, res) => {
     }
 };
 
+const nullBotChat = async (req, res) => {
+    const { message, context } = req.body || {};
+
+    if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'message is required.' });
+    }
+
+    if (!context || typeof context !== 'object') {
+        return res.status(400).json({ error: 'context is required.' });
+    }
+
+    try {
+        const payload = await generateNullBotChat(message.trim(), context);
+        return res.json(payload);
+    } catch (error) {
+        console.error('NullBot chat error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to generate NullBot reply.' });
+    }
+};
+
 module.exports = {
     getAIModels,
     dashboardAssistantChat,
-    developerAssistantChat
+    developerAssistantChat,
+    nullBotChat
 };

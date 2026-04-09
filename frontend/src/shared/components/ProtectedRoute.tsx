@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
+import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { useBurnerWallet } from '../hooks/BurnerWalletProvider';
 import { PasswordPrompt } from './PasswordPrompt';
 
@@ -25,6 +26,9 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
                 </p>
 
                 {/* Desktop-only Shield Extension Link */}
+                <div className="wallet-adapter-wrapper w-full max-w-xs mb-4 [&>button]:!w-full [&>button]:!justify-center [&>button]:!rounded-2xl [&>button]:!h-12 [&>button]:!bg-white [&>button]:!text-black [&>button]:!font-bold">
+                    <WalletMultiButton />
+                </div>
                 <a
                     href="https://chromewebstore.google.com/detail/shield/hhddpjpacfjaakjioinajgmhlbhfchao?pli=1"
                     target="_blank"

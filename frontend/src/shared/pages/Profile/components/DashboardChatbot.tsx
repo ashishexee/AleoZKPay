@@ -1,13 +1,20 @@
 import { createPortal } from 'react-dom';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bot, MessageCircle, SendHorizonal, Sparkles, X, Copy, Check } from 'lucide-react';
-import { GlassCard } from '../../../components/ui/GlassCard';
-import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
-import type { MerchantReceipt, PayerReceipt } from '../../../utils/aleo-utils';
-import { chatWithDashboardAssistant } from '../../../services/api';
+import { Bot, MessageCircle, SendHorizonal, Sparkles, X, Copy, Check, Wallet, Expand, Minimize2 } from 'lucide-react';
+import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
+import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
+import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { GlassCard } from '../../../components/ui/GlassCard';
+import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
+import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
+import type { MerchantReceipt, PayerReceipt } from '../../../utils/aleo-utils';
+import { chatWithNullBot } from '../../../services/api';
+import { createInvoiceViaWallet } from '../../../utils/invoiceCreation';
+import { sweepBurnerFundsToDestination, type BurnerSweepCurrency } from '../../../utils/burnerSweep';
+import { fetchAllPrivateBalances } from './BurnerWallet/scanner';
 
 type DashboardInvoice = {
     invoiceHash: string;
@@ -42,6 +49,28 @@ type ChatMessage = {
     content: string;
 };
 
+type PendingAction =
+    | {
+        type: 'sweep_burner_to_main';
+    }
+    | null;
+
+type BotBalanceView = {
+    token: 'Credits' | 'USDCx' | 'USAD';
+    publicBalance: string;
+    privateBalance: string;
+    loading: boolean;
+};
+
+const NULLBOT_HISTORY_KEY = 'nullbot-dashboard-history';
+const MAX_HISTORY_MESSAGES = 20;
+const INITIAL_ASSISTANT_MESSAGE: ChatMessage = {
+    id: 1,
+    role: 'assistant',
+    content:
+        'I can answer dashboard questions and now trigger browser-side NullPay tools. Try something like `Make an invoice of 1 credit` and I will open the normal Shield signing flow instead of asking for any private key.',
+};
+
 interface DashboardChatbotProps {
     mainWalletAddress: string | null;
     burnerWalletAddress: string | null;
@@ -57,10 +86,18 @@ interface DashboardChatbotProps {
 }
 
 const QUICK_PROMPTS = [
+    'Make an invoice of 1 credit',
     'Give me a full dashboard summary',
-    'What is my total balance right now?',
     'Show all my invoices',
     'List all receipt hashes',
+];
+
+const TOOL_PILLS = [
+    'create_invoice',
+    'pay_invoice',
+    'get_transaction_info',
+    'get_analytics',
+    'check_burner_balance',
 ];
 
 const tokenLabel = (tokenType: number) => {
@@ -78,53 +115,59 @@ const invoiceTypeLabel = (invoiceType: number) => {
 
 const walletLabel = (walletType: number) => (walletType === 1 ? 'Burner' : 'Main');
 
-const isSettled = (status: string | number) => status === 'SETTLED' || status === 1;
+const truncateAddress = (value: string | null | undefined) => (
+    value ? `${value.slice(0, 10)}...${value.slice(-6)}` : 'Not connected'
+);
 
-const formatFallbackSummary = (
-    balances: WalletTokenBalance[],
-    merchantStats: MerchantStats,
-    invoices: DashboardInvoice[],
-    mainMerchantReceipts: MerchantReceipt[],
-    burnerMerchantReceipts: MerchantReceipt[],
-    payerReceipts: PayerReceipt[]
-) => {
-    const balanceLines = balances
-        .map((balance) => `${balance.name}: public ${balance.public}, private ${balance.private}`)
-        .join('\n');
+const parseSweepReply = (message: string, availableByCurrency: Record<BurnerSweepCurrency, number>) => {
+    const trimmed = message.trim();
+    const normalized = trimmed.toLowerCase();
 
-    const sampleInvoices = invoices
-        .slice(0, 5)
-        .map((invoice, index) => {
-            const status = isSettled(invoice.status) ? 'Settled' : 'Pending';
-            return `${index + 1}. ${invoice.invoiceHash} | ${status} | ${invoiceTypeLabel(invoice.invoiceType)} | ${walletLabel(invoice.walletType)} | ${tokenLabel(invoice.tokenType)} | ${invoice.amount.toFixed(2)}`;
-        })
-        .join('\n');
+    if (!trimmed) {
+        return { error: 'Tell me the amount and token to sweep, like `1 credit`, `0.5 usdcx`, or `all usad`.' };
+    }
 
-    return [
-        'AI chat is temporarily unavailable, so here is a live dashboard snapshot instead.',
-        '',
-        'Balances:',
-        balanceLines || 'No balance data loaded yet.',
-        '',
-        'Merchant volume:',
-        `Main wallet -> Credits ${merchantStats.mainCredits}, USDCx ${merchantStats.mainUSDCx}, USAD ${merchantStats.mainUSAD}`,
-        `Burner wallet -> Credits ${merchantStats.burnerCredits}, USDCx ${merchantStats.burnerUSDCx}, USAD ${merchantStats.burnerUSAD}`,
-        '',
-        `Invoices: ${merchantStats.invoices}`,
-        `Pending: ${merchantStats.pending}`,
-        `Settled: ${merchantStats.settled}`,
-        `Merchant receipt hashes: ${mainMerchantReceipts.length + burnerMerchantReceipts.length}`,
-        `Payer receipt hashes: ${payerReceipts.length}`,
-        '',
-        'Recent invoices:',
-        sampleInvoices || 'No invoices found.',
-    ].join('\n');
+    if (/^(cancel|stop|nevermind|never mind)$/i.test(trimmed)) {
+        return { cancelled: true };
+    }
+
+    const detectCurrency = (): BurnerSweepCurrency | null => {
+        if (/\busdcx\b/i.test(trimmed)) return 'USDCx';
+        if (/\busad\b/i.test(trimmed)) return 'USAD';
+        if (/\b(aleo|credit|credits)\b/i.test(trimmed)) return 'ALEO';
+        return null;
+    };
+
+    const currency = detectCurrency();
+    if (!currency) {
+        return { error: 'Mention which token to sweep: `Credits`, `USDCx`, or `USAD`.' };
+    }
+
+    if (/\ball\b/i.test(normalized)) {
+        const amount = availableByCurrency[currency];
+        if (!amount || amount <= 0) {
+            return { error: `Your burner wallet does not currently show any private ${currency} balance to sweep.` };
+        }
+
+        return { currency, amount };
+    }
+
+    const amountMatch = trimmed.match(/(\d+(?:\.\d+)?)/);
+    if (!amountMatch) {
+        return { error: 'Tell me the amount to sweep, like `1 credit` or `0.5 usdcx`.' };
+    }
+
+    const amount = Number(amountMatch[1]);
+    if (!Number.isFinite(amount) || amount <= 0) {
+        return { error: 'Sweep amount must be a positive number.' };
+    }
+
+    return { currency, amount };
 };
 
 const TruncatedHashComponent = ({ children, className }: any) => {
     const [copied, setCopied] = useState(false);
     const text = String(children).replace(/\n$/, '');
-    // Consider as a hash if it's longer than 30 chars without spaces
     const isLongHash = !text.includes(' ') && text.length > 30;
 
     const handleCopy = () => {
@@ -149,11 +192,7 @@ const TruncatedHashComponent = ({ children, className }: any) => {
         );
     }
 
-    return (
-        <code className={className}>
-            {children}
-        </code>
-    );
+    return <code className={className}>{children}</code>;
 };
 
 export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
@@ -165,34 +204,183 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
     mainMerchantReceipts,
     burnerMerchantReceipts,
     payerReceipts,
-    loadingInvoices,
-    loadingReceipts,
-    loadingPayerReceipts,
 }) => {
+    const navigate = useNavigate();
+    const { connected, address, executeTransaction, transactionStatus, requestTransactionHistory } = useWallet();
+    const { appPassword, decryptedBurnerAddress, decryptedBurnerKey } = useBurnerWallet();
     const [isOpen, setIsOpen] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        {
-            id: 1,
-            role: 'assistant',
-            content:
-                'Welcome back. I can help you analyze your merchant volume, find specific invoices, and track your token settlements. How can I assist you today?',
-        },
+    const [actionStatus, setActionStatus] = useState('');
+    const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+    const [burnerBalances, setBurnerBalances] = useState<BotBalanceView[]>([
+        { token: 'Credits', publicBalance: '0.00', privateBalance: '0.00', loading: true },
+        { token: 'USDCx', publicBalance: '0.00', privateBalance: '0.00', loading: true },
+        { token: 'USAD', publicBalance: '0.00', privateBalance: '0.00', loading: true },
     ]);
+    const [messages, setMessages] = useState<ChatMessage[]>(() => {
+        if (typeof window === 'undefined') {
+            return [INITIAL_ASSISTANT_MESSAGE];
+        }
+
+        try {
+            const stored = window.sessionStorage.getItem(NULLBOT_HISTORY_KEY);
+            if (!stored) {
+                return [INITIAL_ASSISTANT_MESSAGE];
+            }
+
+            const parsed = JSON.parse(stored);
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+                return [INITIAL_ASSISTANT_MESSAGE];
+            }
+
+            return parsed.slice(-MAX_HISTORY_MESSAGES);
+        } catch {
+            return [INITIAL_ASSISTANT_MESSAGE];
+        }
+    });
     const endRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        window.sessionStorage.setItem(
+            NULLBOT_HISTORY_KEY,
+            JSON.stringify(messages.slice(-MAX_HISTORY_MESSAGES))
+        );
+    }, [messages]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const initialBurnerBalances: BotBalanceView[] = [
+            { token: 'Credits', publicBalance: '0.00', privateBalance: '0.00', loading: true },
+            { token: 'USDCx', publicBalance: '0.00', privateBalance: '0.00', loading: true },
+            { token: 'USAD', publicBalance: '0.00', privateBalance: '0.00', loading: true },
+        ];
+
+        const updatePublicBalance = async (walletAddress: string, programId: string, mappingName: string, suffix: string) => {
+            try {
+                const response = await fetch(`https://api.explorer.aleo.org/v1/testnet/program/${programId}/mapping/${mappingName}/${walletAddress}`);
+                if (!response.ok) {
+                    return '0.00';
+                }
+                const data = await response.json();
+                const value = String(data).replace(suffix, '').replace(/"/g, '');
+                return (Number(value) / 1_000_000).toFixed(2);
+            } catch {
+                return '0.00';
+            }
+        };
+
+        const fetchBurnerBalanceContext = async () => {
+            if (!decryptedBurnerAddress) {
+                if (!cancelled) {
+                    setBurnerBalances(initialBurnerBalances.map((entry) => ({ ...entry, loading: false })));
+                }
+                return;
+            }
+
+            if (!cancelled) {
+                setBurnerBalances(initialBurnerBalances);
+            }
+
+            try {
+                const [creditsPublic, usdcxPublic, usadPublic] = await Promise.all([
+                    updatePublicBalance(decryptedBurnerAddress, 'credits.aleo', 'account', 'u64'),
+                    updatePublicBalance(decryptedBurnerAddress, 'test_usdcx_stablecoin.aleo', 'balances', 'u128'),
+                    updatePublicBalance(decryptedBurnerAddress, 'test_usad_stablecoin.aleo', 'balances', 'u128'),
+                ]);
+
+                let privateBalances = { ALEO: 0, USDCx: 0, USAD: 0 };
+                if (decryptedBurnerKey) {
+                    try {
+                        privateBalances = await fetchAllPrivateBalances(decryptedBurnerKey);
+                    } catch (error) {
+                        console.warn('Failed to fetch burner private balances for NullBot context:', error);
+                    }
+                }
+
+                if (!cancelled) {
+                    setBurnerBalances([
+                        {
+                            token: 'Credits',
+                            publicBalance: creditsPublic,
+                            privateBalance: privateBalances.ALEO.toFixed(2),
+                            loading: false,
+                        },
+                        {
+                            token: 'USDCx',
+                            publicBalance: usdcxPublic,
+                            privateBalance: privateBalances.USDCx.toFixed(2),
+                            loading: false,
+                        },
+                        {
+                            token: 'USAD',
+                            publicBalance: usadPublic,
+                            privateBalance: privateBalances.USAD.toFixed(2),
+                            loading: false,
+                        },
+                    ]);
+                }
+            } catch (error) {
+                console.error('Failed to build burner balance context for NullBot:', error);
+                if (!cancelled) {
+                    setBurnerBalances(initialBurnerBalances.map((entry) => ({ ...entry, loading: false })));
+                }
+            }
+        };
+
+        fetchBurnerBalanceContext();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [decryptedBurnerAddress, decryptedBurnerKey]);
+
+    const appendMessage = (message: ChatMessage) => {
+        setMessages((current) => [...current, message].slice(-MAX_HISTORY_MESSAGES));
+    };
+
+    const appendAssistantMessage = (content: string) => {
+        appendMessage({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            role: 'assistant',
+            content,
+        });
+    };
+
+    const availableBurnerBalances = useMemo<Record<BurnerSweepCurrency, number>>(() => ({
+        ALEO: Number(burnerBalances.find((entry) => entry.token === 'Credits')?.privateBalance || '0'),
+        USDCx: Number(burnerBalances.find((entry) => entry.token === 'USDCx')?.privateBalance || '0'),
+        USAD: Number(burnerBalances.find((entry) => entry.token === 'USAD')?.privateBalance || '0'),
+    }), [burnerBalances]);
 
     const dashboardContext = useMemo(() => {
         return {
+            mode: 'dashboard',
+            route: window.location.pathname,
+            wallet: {
+                connected,
+                address: address || mainWalletAddress,
+                burnerAddress: decryptedBurnerAddress || burnerWalletAddress,
+                hasAppPassword: Boolean(appPassword),
+                burnerUnlocked: Boolean(decryptedBurnerKey),
+            },
             walletAddresses: {
                 main: mainWalletAddress,
                 burner: burnerWalletAddress,
             },
-            balances: balances.map((balance) => ({
+            mainWalletBalances: balances.map((balance) => ({
                 token: balance.name,
                 publicBalance: balance.public,
                 privateBalance: balance.private,
+                loading: balance.loading,
             })),
+            burnerWalletBalances: burnerBalances,
             stats: {
                 totalInvoices: merchantStats.invoices,
                 pendingInvoices: merchantStats.pending,
@@ -214,7 +402,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                 token: tokenLabel(invoice.tokenType),
                 invoiceType: invoiceTypeLabel(invoice.invoiceType),
                 wallet: walletLabel(invoice.walletType),
-                status: isSettled(invoice.status) ? 'SETTLED' : 'PENDING',
+                status: invoice.status === 'SETTLED' || invoice.status === 1 ? 'SETTLED' : 'PENDING',
                 memo: invoice.memo || '',
                 donations: invoice.donations || null,
             })),
@@ -234,6 +422,10 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                     wallet: 'Burner',
                 })),
             },
+            recentConversation: messages.slice(-8).map((message) => ({
+                role: message.role,
+                content: message.content,
+            })),
             payerReceipts: payerReceipts.map((receipt) => ({
                 receiptHash: receipt.receiptHash,
                 invoiceHash: receipt.invoiceHash,
@@ -242,76 +434,189 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                 merchant: receipt.merchant,
             })),
         };
-    }, [mainWalletAddress, burnerWalletAddress, balances, merchantStats, invoices, mainMerchantReceipts, burnerMerchantReceipts, payerReceipts]);
+    }, [
+        connected,
+        address,
+        appPassword,
+        decryptedBurnerAddress,
+        decryptedBurnerKey,
+        mainWalletAddress,
+        burnerWalletAddress,
+        balances,
+        burnerBalances,
+        merchantStats,
+        invoices,
+        mainMerchantReceipts,
+        burnerMerchantReceipts,
+        messages,
+        payerReceipts,
+    ]);
 
     useEffect(() => {
         if (isOpen) {
             endRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [messages, isOpen, isThinking]);
+    }, [messages, isOpen, isThinking, actionStatus]);
+
+    const executePlannedAction = async (action: any) => {
+        if (action.type === 'connect_wallet') {
+            appendAssistantMessage('Use the wallet button below to connect Shield. Once connected, I will use that browser wallet directly.');
+            return;
+        }
+
+        if (action.type === 'open_payment_link') {
+            const url = new URL(action.args.url);
+            navigate(`/pay${url.search}`);
+            appendAssistantMessage('I opened the in-app payment flow. Continue there and approve the payment with your wallet popup.');
+            return;
+        }
+
+        if (action.type === 'sweep_burner_to_main') {
+            if (!connected || !address) {
+                appendAssistantMessage('Connect your main wallet first, then I can sweep burner funds into it.');
+                return;
+            }
+
+            if (!decryptedBurnerKey) {
+                appendAssistantMessage('Your burner wallet is not unlocked right now. Unlock it first, then I can sweep funds from burner to main.');
+                return;
+            }
+
+            setPendingAction({ type: 'sweep_burner_to_main' });
+            appendAssistantMessage([
+                'Your burner wallet private balances are:',
+                '',
+                `- Credits: ${availableBurnerBalances.ALEO.toFixed(2)}`,
+                `- USDCx: ${availableBurnerBalances.USDCx.toFixed(2)}`,
+                `- USAD: ${availableBurnerBalances.USAD.toFixed(2)}`,
+                '',
+                'Tell me how much you want to sweep and which token.',
+                'Examples: `1 credit`, `0.5 usdcx`, `all usad`.',
+                'You can also say `cancel`.'
+            ].join('\n'));
+            return;
+        }
+
+        if (action.type !== 'create_invoice') {
+            return;
+        }
+
+        if (!connected || !address || !executeTransaction || !transactionStatus) {
+            appendAssistantMessage('Connect your wallet first, then I can create the invoice through the normal Shield popup flow.');
+            return;
+        }
+
+        if (!appPassword) {
+            appendAssistantMessage('Your NullPay app layer is locked right now. Unlock it first, then I can create invoices from prompts.');
+            return;
+        }
+
+        const currencyToTokenType: Record<string, number> = {
+            CREDITS: 0,
+            USDCX: 1,
+            USAD: 2,
+            ANY: 3,
+        };
+        const walletType = action.args.wallet === 'burner' ? 1 : 0;
+
+        const result = await createInvoiceViaWallet({
+            publicKey: address,
+            executeTransaction,
+            transactionStatus,
+            requestTransactionHistory,
+            amount: Number(action.args.amount),
+            memo: action.args.memo || '',
+            invoiceType: action.args.invoice_type || 'standard',
+            tokenType: currencyToTokenType[action.args.currency || 'CREDITS'] ?? 0,
+            walletType,
+            appPassword,
+            decryptedBurnerAddress,
+            onStatus: setActionStatus
+        });
+
+        appendAssistantMessage([
+            `Invoice created successfully from your ${walletType === 1 ? 'burner' : 'main'} wallet.`,
+            '',
+            `Hash: \`${result.hash}\``,
+            `Transaction: \`${result.txId}\``,
+            `Payment link: ${result.invoiceData.link}`,
+        ].join('\n'));
+    };
 
     const sendMessage = async (message: string) => {
         const trimmed = message.trim();
         if (!trimmed || isThinking) return;
 
-        const loadingData =
-            balances.some((balance) => balance.loading) ||
-            loadingInvoices ||
-            loadingReceipts ||
-            loadingPayerReceipts;
-
-        const userMessage: ChatMessage = {
+        appendMessage({
             id: Date.now(),
             role: 'user',
             content: trimmed,
-        };
-
-        setMessages((current) => [...current, userMessage]);
+        });
         setInput('');
-
-        if (loadingData) {
-            setMessages((current) => [
-                ...current,
-                {
-                    id: Date.now() + 1,
-                    role: 'assistant',
-                    content: 'Your dashboard is still syncing. Give it a second and ask again so I can answer with the latest balances, invoices, and receipts.',
-                },
-            ]);
-            return;
-        }
-
         setIsThinking(true);
-        try {
-            const reply = await chatWithDashboardAssistant(trimmed, dashboardContext);
-            setMessages((current) => [
-                ...current,
-                {
-                    id: Date.now() + 2,
-                    role: 'assistant',
-                    content: reply,
-                },
-            ]);
-        } catch (error) {
-            const fallback = formatFallbackSummary(
-                balances,
-                merchantStats,
-                invoices,
-                mainMerchantReceipts,
-                burnerMerchantReceipts,
-                payerReceipts
-            );
+        setActionStatus('');
 
+        try {
+            if (pendingAction?.type === 'sweep_burner_to_main') {
+                const parsed = parseSweepReply(trimmed, availableBurnerBalances);
+
+                if (parsed.cancelled) {
+                    setPendingAction(null);
+                    appendAssistantMessage('Sweep cancelled.');
+                    return;
+                }
+
+                if (parsed.error) {
+                    appendAssistantMessage(parsed.error);
+                    return;
+                }
+
+                if (!connected || !address) {
+                    setPendingAction(null);
+                    appendAssistantMessage('Connect your main wallet first, then I can sweep burner funds into it.');
+                    return;
+                }
+
+                if (!decryptedBurnerKey) {
+                    setPendingAction(null);
+                    appendAssistantMessage('Your burner wallet is not unlocked right now. Unlock it first, then I can sweep funds from burner to main.');
+                    return;
+                }
+
+                if (parsed.amount > availableBurnerBalances[parsed.currency]) {
+                    appendAssistantMessage(`That exceeds your available private ${parsed.currency} burner balance of ${availableBurnerBalances[parsed.currency].toFixed(2)}.`);
+                    return;
+                }
+
+                const txId = await sweepBurnerFundsToDestination({
+                    decryptedBurnerKey,
+                    amount: parsed.amount,
+                    currency: parsed.currency,
+                    destination: address,
+                    onStatus: setActionStatus
+                });
+
+                setPendingAction(null);
+                appendAssistantMessage([
+                    'Burner sweep submitted to your main wallet.',
+                    '',
+                    `- ${parsed.amount.toFixed(2)} ${parsed.currency} -> \`${txId}\``
+                ].join('\n'));
+                return;
+            }
+
+            const response = await chatWithNullBot(trimmed, dashboardContext);
+            if (response.reply && response.action?.type !== 'sweep_burner_to_main') {
+                appendAssistantMessage(response.reply);
+            }
+            if (response.action) {
+                await executePlannedAction(response.action);
+            }
+        } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            setMessages((current) => [
-                ...current,
-                {
-                    id: Date.now() + 3,
-                    role: 'assistant',
-                    content: `${fallback}\n\nAssistant error: ${errorMessage}`,
-                },
-            ]);
+            appendAssistantMessage(`NullBot error: ${errorMessage}`);
         } finally {
+            setActionStatus('');
             setIsThinking(false);
         }
     };
@@ -325,14 +630,14 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 18, scale: 0.96 }}
                         transition={{ duration: 0.22, ease: 'easeOut' }}
-                        className="w-[min(92vw,24rem)] origin-bottom-right"
+                        className={isExpanded ? 'w-[min(96vw,56rem)] origin-bottom-right' : 'w-[min(92vw,26rem)] origin-bottom-right'}
                     >
                         <GlassCard
                             variant="heavy"
                             hoverEffect={false}
                             className="border border-orange-400/20 shadow-[0_25px_80px_rgba(0,0,0,0.45)]"
                         >
-                            <div className="relative flex h-[min(32rem,calc(100vh-7rem))] flex-col overflow-hidden">
+                            <div className={`relative flex flex-col overflow-hidden ${isExpanded ? 'h-[min(85vh,48rem)]' : 'h-[min(35rem,calc(100vh-7rem))]'}`}>
                                 <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-br from-orange-400/18 via-cyan-400/10 to-transparent pointer-events-none" />
 
                                 <div className="relative p-4 border-b border-white/8 flex items-start justify-between gap-4">
@@ -346,19 +651,47 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                                 <Sparkles size={14} className="text-orange-300" />
                                             </div>
                                             <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                                                Your intelligent copilot for managing NullPay merchant data.
+                                                Browser-native NullPay tools with Shield popup signing.
                                             </p>
                                         </div>
                                     </div>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsOpen(false)}
-                                        className="text-gray-400 hover:text-white transition-colors"
-                                        aria-label="Close dashboard assistant"
-                                    >
-                                        <X size={18} />
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsExpanded((current) => !current)}
+                                            className="text-gray-400 hover:text-white transition-colors"
+                                            aria-label={isExpanded ? 'Collapse dashboard assistant' : 'Expand dashboard assistant'}
+                                            title={isExpanded ? 'Collapse chat' : 'Expand chat'}
+                                        >
+                                            {isExpanded ? <Minimize2 size={18} /> : <Expand size={18} />}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsOpen(false)}
+                                            className="text-gray-400 hover:text-white transition-colors"
+                                            aria-label="Close dashboard assistant"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="px-4 pt-3 pb-2 border-b border-white/5 bg-black/10">
+                                    <div className="flex items-center gap-2 text-[11px] text-gray-300">
+                                        <Wallet size={12} className="text-orange-300" />
+                                        <span>{connected ? `Main ${truncateAddress(address || mainWalletAddress)}` : 'Wallet not connected'}</span>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {TOOL_PILLS.map((tool) => (
+                                            <span
+                                                key={tool}
+                                                className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-wider text-gray-300"
+                                            >
+                                                {tool}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 <div className="flex-1 min-h-0 px-4 pb-0">
@@ -381,18 +714,18 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                                     className={`max-w-[88%] rounded-2xl px-5 py-3.5 text-[13.5px] sm:text-[14px] leading-relaxed whitespace-pre-wrap break-words shadow-sm ${
                                                         message.role === 'user'
                                                             ? 'bg-gradient-to-r from-orange-500 to-amber-400 text-black shadow-orange-500/20 rounded-br-sm font-medium'
-                                                            : 'bg-[#18181A] text-gray-200 border border-white/10 rounded-bl-sm [&_h1]:text-white [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-white [&_h2]:text-[15px] [&_h2]:font-bold [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-white [&_h3]:text-[14px] [&_h3]:font-bold [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:mb-1 [&_p]:last:mb-0 [&_strong]:text-white [&_strong]:font-semibold [&_ul]:list-inside [&_ul]:pl-1 [&_ul]:mb-1 [&_ul]:last:mb-0 [&_ul]:space-y-1 [&_ul_ul]:mt-1 [&_ul_ul]:mb-0 [&_ul_ul]:ml-4 [&_ol]:list-inside [&_ol]:pl-1 [&_ol]:mb-1 [&_ol]:last:mb-0 [&_ol]:space-y-1 [&_ol_ol]:mt-1 [&_ol_ol]:mb-0 [&_ol_ol]:ml-4 [&_li]:pl-0 [&_li]:mt-0 [&_li_p]:inline [&_li_p]:!m-0 [&_li_p]:!leading-snug [&_li_ul]:mt-1 [&_li_ol]:mt-1 [&_a]:text-orange-400 [&_a]:underline [&_a]:underline-offset-2 [&_table]:w-full [&_table]:my-2 [&_table]:border-collapse [&_th]:text-left [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:text-white/60 [&_th]:uppercase [&_th]:tracking-wider [&_th]:border-b [&_th]:border-white/10 [&_td]:px-3 [&_td]:py-1.5 [&_td]:border-b [&_td]:border-white/5 [&_td]:whitespace-normal [&_code]:bg-white/10 [&_code]:text-orange-200 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:text-[12px] [&_code]:font-mono [&_code]:break-all [&_pre]:bg-black/50 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-gray-300 [&_pre_code]:break-normal [&_pre_code]:whitespace-pre'
+                                                            : 'bg-[#18181A] text-gray-200 border border-white/10 rounded-bl-sm [&_h1]:text-white [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-white [&_p]:mb-1 [&_p]:last:mb-0 [&_strong]:text-white [&_ul]:list-inside [&_ul]:space-y-1 [&_a]:text-orange-400 [&_a]:underline [&_code]:bg-white/10 [&_code]:text-orange-200 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:text-[12px] [&_code]:font-mono [&_pre]:bg-black/50 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:my-2 [&_pre]:overflow-x-auto'
                                                     }`}
                                                 >
                                                     {message.role === 'user' ? (
                                                         message.content
                                                     ) : (
-                                                        <ReactMarkdown 
+                                                        <ReactMarkdown
                                                             remarkPlugins={[remarkGfm]}
                                                             components={{
                                                                 code(props) {
-                                                                    const {children, className} = props;
-                                                                    return <TruncatedHashComponent className={className}>{children}</TruncatedHashComponent>
+                                                                    const { children, className } = props;
+                                                                    return <TruncatedHashComponent className={className}>{children}</TruncatedHashComponent>;
                                                                 }
                                                             }}
                                                         >
@@ -403,8 +736,8 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                             </div>
                                         ))}
 
-                                        {messages.length === 1 && (
-                                            <motion.div 
+                                        {messages.length <= 1 && (
+                                            <motion.div
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: 0.2, duration: 0.3 }}
@@ -435,10 +768,15 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                                         NullBot
                                                     </span>
                                                 </div>
-                                                <div className="rounded-2xl rounded-bl-sm px-4 py-3 text-sm bg-white/5 backdrop-blur-md border border-white/10 flex items-center gap-1.5 h-[46px]">
-                                                    <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0 }} className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                                                    <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }} className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                                                    <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }} className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                                <div className="rounded-2xl rounded-bl-sm px-4 py-3 text-sm bg-white/5 backdrop-blur-md border border-white/10 flex flex-col gap-2 min-h-[46px]">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0 }} className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }} className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                                        <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }} className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                                    </div>
+                                                    {actionStatus && (
+                                                        <p className="text-xs text-orange-200 whitespace-pre-wrap">{actionStatus}</p>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -446,30 +784,36 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                     </div>
                                 </div>
 
-                                <form
-                                    onSubmit={(event) => {
-                                        event.preventDefault();
-                                        void sendMessage(input);
-                                    }}
-                                    className="p-4 bg-white/[0.02] border-t border-white/8 mt-auto shrink-0"
-                                >
-                                    <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/40 px-3 py-2.5 focus-within:border-orange-500/40 focus-within:bg-black/60 transition-all shadow-inner">
-                                        <input
-                                            value={input}
-                                            onChange={(event) => setInput(event.target.value)}
-                                            placeholder="Ask about balances, invoices, or receipt hashes..."
-                                            className="flex-1 bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none"
-                                        />
-                                        <button
-                                            type="submit"
-                                            disabled={!input.trim() || isThinking}
-                                            className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-400 to-amber-300 text-black flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                            aria-label="Send message"
-                                        >
-                                            <SendHorizonal size={16} />
-                                        </button>
-                                    </div>
-                                </form>
+                                <div className="p-4 bg-white/[0.02] border-t border-white/8 mt-auto shrink-0 space-y-3">
+                                    {!connected && (
+                                        <div className="wallet-adapter-wrapper w-full [&>button]:!w-full [&>button]:!justify-center [&>button]:!rounded-xl [&>button]:!h-11 [&>button]:!bg-white [&>button]:!text-black [&>button]:!font-bold">
+                                            <WalletMultiButton />
+                                        </div>
+                                    )}
+                                    <form
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            void sendMessage(input);
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/40 px-3 py-2.5 focus-within:border-orange-500/40 focus-within:bg-black/60 transition-all shadow-inner">
+                                            <input
+                                                value={input}
+                                                onChange={(event) => setInput(event.target.value)}
+                                                placeholder="Ask about invoices, balances, or say: sweep funds from burner to main wallet"
+                                                className="flex-1 bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none"
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={!input.trim() || isThinking}
+                                                className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-400 to-amber-300 text-black flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                                aria-label="Send message"
+                                            >
+                                                <SendHorizonal size={16} />
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </GlassCard>
                     </motion.div>

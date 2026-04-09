@@ -403,6 +403,54 @@ export const chatWithDashboardAssistant = async (
     return payload.reply;
 };
 
+export type NullBotAction =
+    | {
+        type: 'create_invoice';
+        args: {
+            amount: number;
+            currency: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
+            invoice_type?: 'standard' | 'multipay' | 'donation';
+            wallet?: 'main' | 'burner';
+            memo?: string;
+        };
+        reply?: string;
+    }
+    | {
+        type: 'open_payment_link';
+        args: {
+            url: string;
+        };
+        reply?: string;
+    }
+    | {
+        type: 'connect_wallet';
+        args: Record<string, never>;
+        reply?: string;
+    };
+
+export interface NullBotChatResponse {
+    reply: string;
+    action?: NullBotAction;
+}
+
+export const chatWithNullBot = async (
+    message: string,
+    context: Record<string, unknown>
+): Promise<NullBotChatResponse> => {
+    const response = await fetch(`${API_URL}/nullbot/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, context })
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to chat with NullBot');
+    }
+
+    return payload;
+};
+
 export const chatWithDeveloperAssistant = async (
     message: string,
     context: Record<string, unknown>
