@@ -254,7 +254,7 @@ const MobilePaymentPage = () => {
                 {/* STATUS HEADER */}
                 <div className="text-center mb-6">
                         <h1 className="text-3xl font-bold mb-4 tracking-tighter text-white">
-                            {step === 'SUCCESS' ? 'Null Payment' : step === 'ALREADY_PAID' ? 'Null Invoice' : 'Make'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-amber-400 drop-shadow-[0_0_18px_rgba(249,115,22,0.22)]">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Null Payment'}</span>
+                            {step === 'SUCCESS' ? 'Null Payment' : step === 'ALREADY_PAID' ? 'Null Invoice' : 'Make'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-amber-400 drop-shadow-[0_0_20px_rgba(249,115,22,0.22)]">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Null Payment'}</span>
                         </h1>
 
                     {invoice && !error && (
@@ -269,7 +269,7 @@ const MobilePaymentPage = () => {
                 <GlassCard variant="heavy" className="p-8 relative overflow-hidden">
                     {/* Progress Bar */}
                     <div className="flex justify-between mb-8 relative">
-                        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-white/10 -z-0" />
+                        <div className="absolute top-3 left-0 w-full h-0.5 bg-white/10 -z-0" />
                         {steps.map((s, index) => {
                             let isActive = s.key === step ||
                                 (step === 'CONVERT' && s.key === 'PAY') ||
@@ -279,7 +279,7 @@ const MobilePaymentPage = () => {
                             return (
                                 <div key={s.key} className="relative z-10 flex flex-col items-center gap-2">
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isActive
-                                        ? 'bg-orange-400 border-orange-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.28)]'
+                                        ? 'bg-white border-white text-black shadow-[0_0_15px_rgba(255,255,255,0.4)]'
                                         : 'bg-black border-gray-700 text-gray-500'
                                         }`}>
                                         {isActive ? (
@@ -288,7 +288,7 @@ const MobilePaymentPage = () => {
                                             <span className="text-[10px] font-bold">{index + 1}</span>
                                         )}
                                     </div>
-                                    <span className={`text-[10px] font-bold tracking-wider uppercase transition-colors ${isActive ? 'text-orange-200' : 'text-gray-600'}`}>
+                                    <span className={`text-[10px] font-bold tracking-wider uppercase transition-colors ${isActive ? 'text-white' : 'text-gray-600'}`}>
                                         {s.label}
                                     </span>
                                 </div>
@@ -400,8 +400,8 @@ const MobilePaymentPage = () => {
                         )}
 
                         {status && !status.startsWith('at1') && !error && step !== 'ALREADY_PAID' && step !== 'SUCCESS' && (
-                            <div className="text-center rounded-xl border border-orange-400/20 bg-orange-500/10 p-3">
-                                <p className="text-orange-200 text-xs font-mono animate-pulse">{status}</p>
+                            <div className="text-center rounded-xl border border-white/20 bg-white/10 p-3">
+                                <p className="text-white text-xs font-mono animate-pulse">{status}</p>
                             </div>
                         )}
 
@@ -414,16 +414,16 @@ const MobilePaymentPage = () => {
                                 </p>
                                 {isMultiPay && step !== 'ALREADY_PAID' && (
                                     <div className="bg-black/40 border border-orange-400/20 p-4 rounded-xl text-left space-y-3">
-                                        <p className="text-xs text-orange-300 uppercase font-bold mb-1">Your Receipt Hash</p>
+                                        <p className="text-xs text-white uppercase font-bold mb-1">Your Receipt Hash</p>
 
                                         {receiptHash ? (
-                                            <div className="bg-orange-500/10 border border-orange-400/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-orange-500/15 transition-colors" onClick={() => {
+                                            <div className="bg-white/10 border border-white/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-white/15 transition-colors" onClick={() => {
                                                 navigator.clipboard.writeText(receiptHash);
                                                 setCopiedHash(true);
                                                 setTimeout(() => setCopiedHash(false), 2000);
                                             }}>
                                                 {receiptHash}
-                                                <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-orange-300' : 'opacity-70 text-gray-400'}`}>
+                                                <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-white' : 'opacity-70 text-gray-400'}`}>
                                                     {copiedHash ? 'COPIED!' : 'COPY'}
                                                 </div>
                                             </div>
@@ -518,7 +518,7 @@ const MobilePaymentPage = () => {
                                     <button
                                         onClick={() => handleSelectPaymentMethod('card')}
                                         className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
-                                            paymentMethod === 'card' ? 'bg-white/10 text-orange-300 shadow-md' : 'text-gray-500 hover:text-white/80'
+                                            paymentMethod === 'card' ? 'bg-white/10 text-white shadow-md' : 'text-gray-500 hover:text-white/80'
                                         }`}
                                     >
                                         Card

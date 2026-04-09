@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { ArrowUpRight, Copy, LoaderCircle, Settings2, Sparkles } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -16,6 +17,7 @@ const ProfileQrNavButton = () => {
     const [feeMode, setFeeMode] = useState<FeePreferenceMode>(() => getFeePreferenceMode());
     const [settingsOpen, setSettingsOpen] = useState(false);
     const settingsRef = useRef<HTMLDivElement | null>(null);
+    const settingsCloseTimeoutRef = useRef<number | null>(null);
 
     const hasBurnerWallet = !!burnerAddress;
 
@@ -49,12 +51,24 @@ const ProfileQrNavButton = () => {
         const handleOutsideClick = (event: MouseEvent) => {
             if (!settingsRef.current) return;
             if (!settingsRef.current.contains(event.target as Node)) {
+                if (settingsCloseTimeoutRef.current !== null) {
+                    window.clearTimeout(settingsCloseTimeoutRef.current);
+                    settingsCloseTimeoutRef.current = null;
+                }
                 setSettingsOpen(false);
             }
         };
 
         document.addEventListener('mousedown', handleOutsideClick);
         return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (settingsCloseTimeoutRef.current !== null) {
+                window.clearTimeout(settingsCloseTimeoutRef.current);
+            }
+        };
     }, []);
 
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -90,6 +104,24 @@ const ProfileQrNavButton = () => {
                 ? 'Dynamic fee estimation enabled.'
                 : `Fixed fee mode enabled at ${(FIXED_FEE_MICROCREDITS / 1_000_000).toFixed(2)} credits.`
         );
+    };
+
+    const openSettings = () => {
+        if (settingsCloseTimeoutRef.current !== null) {
+            window.clearTimeout(settingsCloseTimeoutRef.current);
+            settingsCloseTimeoutRef.current = null;
+        }
+        setSettingsOpen(true);
+    };
+
+    const closeSettingsSoon = () => {
+        if (settingsCloseTimeoutRef.current !== null) {
+            window.clearTimeout(settingsCloseTimeoutRef.current);
+        }
+        settingsCloseTimeoutRef.current = window.setTimeout(() => {
+            setSettingsOpen(false);
+            settingsCloseTimeoutRef.current = null;
+        }, 140);
     };
 
     const renderContent = () => {
@@ -159,10 +191,9 @@ const ProfileQrNavButton = () => {
                 </button>
 
                 <div className="pointer-events-none absolute right-0 top-full z-50 pt-3 opacity-0 invisible translate-y-2 transition-all duration-200 group-hover:pointer-events-auto group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
-                    <div className="w-[320px] rounded-[30px] border border-white/10 bg-black/80 p-4 backdrop-blur-[32px] shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+                    <div className="w-[320px] rounded-[30px] border border-white/10 bg-[#0A0A0A]/95 p-4 backdrop-blur-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)]">
                         <div className="mb-4 flex items-start justify-between gap-4">
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-300/80">Profile QR</p>
                                 <h3 className="mt-2 text-lg font-bold tracking-tight text-white">Share your payment QR</h3>
                             </div>
                             <Link
@@ -222,10 +253,25 @@ const ProfileQrNavButton = () => {
                 </div>
             </div>
 
-            <div ref={settingsRef} className="relative">
+            <div
+                ref={settingsRef}
+                className="relative"
+                onMouseEnter={openSettings}
+                onMouseLeave={closeSettingsSoon}
+            >
                 <button
                     type="button"
-                    onClick={() => setSettingsOpen((open) => !open)}
+                    onClick={() => {
+                        if (settingsOpen) {
+                            if (settingsCloseTimeoutRef.current !== null) {
+                                window.clearTimeout(settingsCloseTimeoutRef.current);
+                                settingsCloseTimeoutRef.current = null;
+                            }
+                            setSettingsOpen(false);
+                            return;
+                        }
+                        openSettings();
+                    }}
                     aria-expanded={settingsOpen}
                     aria-label="Fee settings"
                     className={`flex h-[50px] w-[50px] items-center justify-center rounded-full border text-white/70 backdrop-blur-[24px] transition-all duration-300 ${settingsOpen
@@ -236,53 +282,59 @@ const ProfileQrNavButton = () => {
                     <Settings2 className="h-4 w-4" />
                 </button>
 
-                {settingsOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-3 w-[260px] overflow-hidden rounded-[24px] border border-white/[0.1] bg-[#0A0A0A]/95 p-1.5 backdrop-blur-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)]">
-                        <div className="rounded-[20px] bg-white/[0.03] p-4">
-                            <div className="mb-4 text-left">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Transaction Fees</p>
-                                <h4 className="mt-1 text-sm font-bold text-white">Auto estimate</h4>
-                            </div>
-
-                            <div className="space-y-4 text-left">
-                                <div className="flex items-center justify-between gap-4">
-                                    <div className="flex-1">
-                                        <p className="text-[13px] font-semibold text-white/95">Use estimation</p>
-                                        <p className="mt-1 text-[11px] leading-relaxed text-white/60">
-                                            Enable dynamic fee calculation based on network load.
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleFeeModeChange(feeMode === 'estimate' ? 'fixed' : 'estimate')}
-                                        aria-pressed={feeMode === 'estimate'}
-                                        className={`group relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-all duration-300 border border-white/5 ${feeMode === 'estimate'
-                                            ? 'bg-orange-500/20'
-                                            : 'bg-white/5'
-                                            }`}
-                                    >
-                                        <span
-                                            className={`flex h-4 w-4 items-center justify-center rounded-full transition-all duration-300 shadow-lg ${feeMode === 'estimate'
-                                                ? 'translate-x-6 bg-gradient-to-br from-orange-400 to-amber-200 text-black'
-                                                : 'translate-x-1 bg-white/20 text-white/40'
+                <AnimatePresence>
+                    {settingsOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 15, scale: 0.95, filter: 'blur(4px)' }}
+                            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                            exit={{ opacity: 0, y: 15, scale: 0.95, filter: 'blur(4px)' }}
+                            transition={{
+                                duration: 0.45,
+                                ease: [0.16, 1, 0.3, 1], // fluid easeOutQuart
+                            }}
+                            className="absolute right-0 top-full z-50 mt-3 w-[260px] overflow-hidden rounded-[24px] border border-white/[0.1] bg-[#0A0A0A]/95 p-1.5 backdrop-blur-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] origin-top-right"
+                        >
+                            <div className="rounded-[20px] bg-white/[0.03] p-4">
+                                <div className="space-y-4 text-left">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex-1">
+                                            <p className="text-[17px] font-semibold tracking-[-0.02em] text-white">Use Estimation</p>
+                                            <p className="mt-1.5 text-[13px] leading-6 text-white/70">
+                                                Match fees to current network conditions.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleFeeModeChange(feeMode === 'estimate' ? 'fixed' : 'estimate')}
+                                            aria-pressed={feeMode === 'estimate'}
+                                            className={`group relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-all duration-300 border border-white/5 ${feeMode === 'estimate'
+                                                ? 'bg-orange-500/20'
+                                                : 'bg-white/5'
                                                 }`}
                                         >
-                                            <Sparkles className={`h-2.5 w-2.5 transition-transform duration-300 ${feeMode === 'estimate' ? 'scale-110' : 'scale-90 opacity-50 text-white/0'}`} />
-                                        </span>
-                                    </button>
-                                </div>
+                                            <span
+                                                className={`flex h-4 w-4 items-center justify-center rounded-full transition-all duration-300 shadow-lg ${feeMode === 'estimate'
+                                                    ? 'translate-x-6 bg-gradient-to-br from-orange-400 to-amber-200 text-black'
+                                                    : 'translate-x-1 bg-white/20 text-white/40'
+                                                    }`}
+                                            >
+                                                <Sparkles className={`h-2.5 w-2.5 transition-transform duration-300 ${feeMode === 'estimate' ? 'scale-110' : 'scale-90 opacity-50 text-white/0'}`} />
+                                            </span>
+                                        </button>
+                                    </div>
 
-                                <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3">
-                                    <p className="text-[10px] leading-normal text-white/50">
-                                        {feeMode === 'estimate'
-                                            ? 'Currently utilizing live network data with a safety buffer for reliable execution.'
-                                            : `Currently using a fixed rate of ${(FIXED_FEE_MICROCREDITS / 1_000_000).toFixed(2)} credits per transaction.`}
-                                    </p>
+                                    <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3.5">
+                                        <p className="text-[12px] leading-5 text-white/60">
+                                            {feeMode === 'estimate'
+                                                ? 'Live fee estimation is active with a safety buffer.'
+                                                : `Fixed fee: ${(FIXED_FEE_MICROCREDITS / 1_000_000).toFixed(2)} credits per transaction.`}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

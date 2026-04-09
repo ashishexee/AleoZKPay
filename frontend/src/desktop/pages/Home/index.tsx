@@ -15,11 +15,6 @@ const fadeInUp = {
     show: { opacity: 1, y: 0, transition: { duration: 1.1, ease: easePremium } }
 };
 
-// const fadeInLeft = {
-//     hidden: { opacity: 0, x: -40 },
-//     show: { opacity: 1, x: 0, transition: { duration: 1, ease: easePremium } }
-// };
-
 const fadeInScale = {
     hidden: { opacity: 0, scale: 0.9, y: 30 },
     show: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.8, ease: easePremium } },
@@ -82,23 +77,23 @@ const FeatureCard = ({
     <motion.div variants={fadeInScale} className={`relative group ${className}`}>
         {/* Animated border glow */}
         <div
-            className={`absolute -inset-[1px] rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-sm ${glowColor}`}
+            className={`absolute -inset-[1px] rounded-2xl opacity-100 transition-all duration-700 blur-sm ${glowColor}`}
         />
 
-        <div className="relative p-6 lg:p-7 rounded-2xl bg-[#080808]/80 backdrop-blur-sm border border-white/[0.06] group-hover:border-white/[0.12] transition-all duration-700 h-full overflow-hidden">
+        <div className="relative p-6 lg:p-7 rounded-2xl bg-[#080808]/80 backdrop-blur-sm border border-white/[0.12] transition-all duration-700 h-full overflow-hidden">
             {/* Top shimmer line */}
-            <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${accentColor} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
+            <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${accentColor} to-transparent opacity-100 transition-opacity duration-700`} />
 
             {/* Corner glow */}
-            <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full ${glowColor} opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-3xl`} />
+            <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full ${glowColor} opacity-100 transition-opacity duration-700 blur-3xl`} />
 
             {/* Icon */}
-            <div className={`w-11 h-11 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mb-5 group-hover:scale-110 group-hover:border-opacity-40 transition-all duration-500`}>
+            <div className={`w-11 h-11 rounded-xl bg-white/[0.03] border border-white/[0.15] flex items-center justify-center mb-5 group-hover:scale-110 transition-all duration-500`}>
                 <Icon className={`w-5 h-5 ${accentColor.replace('/50', '').replace('/40', '')}`} />
             </div>
 
-            <h3 className="text-[15px] font-bold mb-2.5 text-white/90 tracking-tight group-hover:text-white transition-colors">{title}</h3>
-            <p className="text-white/30 text-[13px] leading-relaxed group-hover:text-white/50 transition-colors duration-500">{desc}</p>
+            <h3 className="text-[15px] font-bold mb-2.5 text-white tracking-tight transition-colors">{title}</h3>
+            <p className="text-white/50 text-[13px] leading-relaxed transition-colors duration-500">{desc}</p>
         </div>
     </motion.div>
 );
@@ -402,7 +397,7 @@ const Home = () => {
                             className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
                         >
                             <div className="absolute right-[-18rem] top-1/2 -translate-y-1/2 opacity-80 sm:right-[-12rem] md:right-[-12%] lg:right-[-8%] xl:right-[-4%]">
-                              <DottedGlobe className="w-[26rem] max-w-none sm:w-[30rem] md:w-[34rem] lg:w-[38rem] xl:w-[42rem]" />
+                                <DottedGlobe className="w-[26rem] max-w-none sm:w-[30rem] md:w-[34rem] lg:w-[38rem] xl:w-[42rem]" />
                             </div>
                         </motion.div>
 
@@ -554,17 +549,17 @@ const Home = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {/* Large featured card — spans 2 columns */}
                                 <motion.div variants={fadeInScale} className="lg:col-span-2 relative group">
-                                    <div className="absolute -inset-[1px] rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-sm bg-orange-500/10" />
-                                    <div className="relative p-8 rounded-2xl bg-[#080808]/80 backdrop-blur-sm border border-white/[0.06] group-hover:border-orange-500/20 transition-all duration-700 h-full overflow-hidden">
-                                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-400/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                        <div className="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-orange-500/8 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                    <div className="absolute -inset-[1px] rounded-2xl opacity-100 transition-all duration-700 blur-sm bg-orange-500/10" />
+                                    <div className="relative p-8 rounded-2xl bg-[#080808]/80 backdrop-blur-sm border border-orange-500/20 transition-all duration-700 h-full overflow-hidden">
+                                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-400/50 to-transparent opacity-100 transition-opacity duration-700" />
+                                        <div className="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-orange-500/8 blur-3xl opacity-100 transition-opacity duration-700" />
                                         <div className="flex flex-col md:flex-row gap-8 items-start">
                                             <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-500">
                                                 <Shield className="w-6 h-6 text-orange-400" />
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-bold mb-3 text-white tracking-tight">Zero-Knowledge Invoices</h3>
-                                                <p className="text-white/30 text-sm leading-relaxed max-w-lg">
+                                                <p className="text-white/50 text-sm leading-relaxed max-w-lg">
                                                     Invoice details are hashed on-chain using BHP256 cryptography. Only the hash is public — merchant address, amount, and metadata remain completely private. No one can see what you're being billed for or how much you owe.
                                                 </p>
                                             </div>
@@ -606,9 +601,9 @@ const Home = () => {
 
                                 {/* Large featured card — spans 3 columns (full width) */}
                                 <motion.div variants={fadeInScale} className="lg:col-span-3 relative group">
-                                    <div className="absolute -inset-[1px] rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-sm bg-cyan-500/8" />
-                                    <div className="relative p-8 rounded-2xl bg-[#080808]/80 backdrop-blur-sm border border-white/[0.06] group-hover:border-cyan-500/15 transition-all duration-700 h-full overflow-hidden">
-                                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                    <div className="absolute -inset-[1px] rounded-2xl opacity-100 transition-all duration-700 blur-sm bg-cyan-500/8" />
+                                    <div className="relative p-8 rounded-2xl bg-[#080808]/80 backdrop-blur-sm border border-cyan-500/15 transition-all duration-700 h-full overflow-hidden">
+                                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent opacity-100 transition-opacity duration-700" />
                                         <div className="flex flex-col md:flex-row gap-8 items-center md:items-start justify-between">
                                             <div className="flex flex-col md:flex-row gap-8 items-start">
                                                 <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-500">
@@ -616,7 +611,7 @@ const Home = () => {
                                                 </div>
                                                 <div>
                                                     <h3 className="text-xl font-bold mb-3 text-white tracking-tight">AES-256 Encrypted Metadata</h3>
-                                                    <p className="text-white/30 text-sm leading-relaxed max-w-lg">
+                                                    <p className="text-white/50 text-sm leading-relaxed max-w-lg">
                                                         Off-chain data is encrypted with AES-256. We don't store amounts or memos in plaintext. Even if our database were compromised, your financial data stays completely safe and unreadable.
                                                     </p>
                                                 </div>
@@ -641,6 +636,144 @@ const Home = () => {
                     </section>
 
                     <GlowDivider />
+
+                    {/* ══════════════════════════════════════ */}
+                    {/* WORKS WITH EVERYTHING                  */}
+                    {/* ══════════════════════════════════════ */}
+                    <section className="py-12 md:py-16 px-6 md:px-12 lg:px-24 relative overflow-hidden">
+                        {/* Background glow */}
+                        <div className="absolute inset-0 pointer-events-none">
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[60vh] bg-orange-500/[0.02] rounded-full blur-[200px]" />
+                        </div>
+
+                        <motion.div
+                            variants={staggerSlow}
+                            initial="hidden"
+                            whileInView="show"
+                            viewport={{ once: true, margin: '-100px' }}
+                            className="max-w-7xl mx-auto relative"
+                        >
+                            {/* Center Branding */}
+                            <motion.div variants={fadeInUp} className="text-center mb-10">
+                                <SectionLabel color="text-orange-400/60">Ecosystem</SectionLabel>
+                                <div className="mt-8 mb-4 flex flex-col items-center gap-4">
+                                    {/* NullPay in the Space × OpenClaw */}
+                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 md:gap-8 w-full max-w-5xl mx-auto group/eco">
+                                        <div className="flex items-center justify-end gap-3">
+                                            <img src="/assets/nullpay_logo.png" alt="NullPay" className="w-12 md:w-16 h-12 md:h-16 object-contain" />
+                                            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-[-0.04em]">
+                                                NullPay
+                                            </h2>
+                                        </div>
+                                        <motion.div
+                                            className="flex items-center justify-center mx-1 md:mx-4"
+                                            initial={{ rotate: 0 }}
+                                            whileHover={{ rotate: 15 }}
+                                            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                                        >
+                                            <svg className="w-6 h-6 md:w-8 md:h-8 drop-shadow-[0_0_12px_rgba(249,115,22,0.4)] transition-all duration-700 group-hover/eco:rotate-[15deg]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <defs>
+                                                    <linearGradient id="cross-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                                                        <stop offset="0%" stopColor="#fcd34d" />
+                                                        <stop offset="50%" stopColor="#f97316" />
+                                                        <stop offset="100%" stopColor="#fbbf24" />
+                                                    </linearGradient>
+                                                </defs>
+                                                <path d="M6 6L18 18M6 18L18 6" stroke="url(#cross-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        </motion.div>
+                                        <div className="flex items-center justify-start gap-3 cursor-default">
+                                            <img src="/assets/openclaw.svg" alt="OpenClaw" className="w-12 md:w-16 h-12 md:h-16 object-contain" />
+                                            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-[-0.04em] text-white">OpenClaw</h2>
+                                        </div>
+                                    </div>
+                                    <p className="text-white/30 text-sm md:text-base max-w-2xl leading-relaxed font-light">
+                                        NullPay MCP powers seamless private payments inside every tool you already love — from messaging apps to AI assistants.
+                                    </p>
+                                </div>
+                            </motion.div>
+
+                            {/* Apps Grid — Row 1 */}
+                            <motion.div variants={fadeInUp} className="mt-8">
+                                <div className="flex flex-wrap justify-center gap-3">
+                                    {[
+                                        { name: 'WhatsApp', color: '#25D366', icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M11.999 2C6.477 2 2 6.484 2 12.017c0 1.99.564 3.846 1.544 5.419L2 22l4.654-1.518C8.197 21.47 10.047 22 12.001 22c5.522 0 9.999-4.484 9.999-10.017C21.998 6.48 17.52 2 11.999 2z" /></svg> },
+                                        { name: 'Telegram', color: '#2AABEE', icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" /></svg> },
+                                        { name: 'Discord', color: '#5865F2', icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.09.12 18.12.143 18.14a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" /></svg> },
+                                        { name: 'Slack', color: '#4A154B', icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.122 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.122a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" /></svg> },
+                                        { name: 'Signal', color: '#3A76F0', icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 4a8 8 0 1 1 0 16A8 8 0 0 1 12 4zm-.5 3.5v5.207l3.646 3.647-1.06 1.06-3.94-3.94A.5.5 0 0 1 10 13V7.5h1.5z" /></svg> },
+                                        { name: 'iMessage', color: '#34C759', icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.383 0 0 4.975 0 11.111c0 3.497 1.744 6.615 4.472 8.652V24l4.086-2.242C9.635 21.967 10.8 22.222 12 22.222c6.617 0 12-4.975 12-11.111S18.617 0 12 0z" /></svg> },
+                                    ].map(({ name, color, icon }) => (
+                                        <div
+                                            key={name}
+                                            className="group flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#080808] border border-white/[0.07] hover:border-orange-500/30 hover:bg-[#0f0f0f] hover:shadow-[0_0_20px_rgba(249,115,22,0.15)] transition-all duration-300 cursor-default"
+                                        >
+                                            <span style={{ color }} className="transition-transform group-hover:scale-110 duration-300">{icon}</span>
+                                            <span className="text-sm font-medium text-white/60 group-hover:text-white/90 transition-colors">{name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </motion.div>
+
+                            {/* MCP + AI Tools Banner */}
+                            <motion.div variants={fadeInUp} className="mt-10">
+                                <div className="relative p-8 md:p-10 rounded-3xl bg-gradient-to-br from-white/[0.03] via-[#080808]/80 to-[#080808] border border-white/[0.07] hover:border-orange-500/20 transition-all duration-700 overflow-hidden group">
+                                    {/* Animated top shimmer */}
+                                    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-orange-400/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                    {/* Background glow */}
+                                    <div className="absolute -top-24 right-0 w-[500px] h-[500px] bg-orange-500/[0.04] rounded-full blur-[140px] pointer-events-none" />
+
+                                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-10 relative z-10">
+                                        <div className="max-w-lg">
+                                            <h3 className="text-2xl md:text-3xl font-black tracking-tight text-white mb-3">
+                                                Works Seamlessly with{' '}
+                                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 to-amber-400">
+                                                    AI Assistants
+                                                </span>
+                                            </h3>
+                                            <p className="text-white/35 text-sm leading-relaxed font-light mb-4">
+                                                The NullPay MCP lets AI agents create invoices, verify payments, and settle transactions — all with zero-knowledge privacy. Compatible with any tool that supports the stdio MCP package.
+                                            </p>
+                                            <span className="inline-flex items-center gap-1.5 text-[11px] text-orange-400/70 font-mono tracking-wide">
+                                                <span className="w-3 h-px bg-orange-400/40" />
+                                                + any other agent that supports <code className="text-orange-300/80">@nullpay/mcp</code>
+                                                <span className="w-3 h-px bg-orange-400/40" />
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-6 md:gap-10 shrink-0 px-4">
+                                            {[
+                                                { name: 'Antigravity', img: '/assets/antigravity.svg' },
+                                                { name: 'Claude', img: '/assets/claude.svg' },
+                                                { name: 'Codex', img: '/assets/codex.svg' },
+                                                { name: 'Cursor', img: '/assets/cursor-ide.png' },
+                                            ].map(({ name, img }, i) => (
+                                                <motion.div
+                                                    key={name}
+                                                    initial={{ opacity: 0, scale: 0.8 }}
+                                                    whileInView={{ opacity: 1, scale: 1 }}
+                                                    viewport={{ once: true }}
+                                                    transition={{ delay: i * 0.1, duration: 0.5, ease: 'easeOut' }}
+                                                    whileHover={{ scale: 1.15 }}
+                                                    title={name}
+                                                    className="cursor-default"
+                                                >
+                                                    <img
+                                                        src={img}
+                                                        alt={name}
+                                                        className={`w-10 h-10 md:w-12 md:h-12 object-contain transition-all duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:drop-shadow-[0_0_20px_rgba(249,115,22,0.3)] ${name === 'Cursor' ? 'scale-[1.2]' : ''}`}
+                                                    />
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    </section>
+
+                    <GlowDivider />
+
 
                     {/* ══════════════════════════════════════ */}
                     {/* MOBILE SUITE                          */}
@@ -684,15 +817,15 @@ const Home = () => {
                                     </p>
 
                                     <div className="pt-3 pb-2 flex flex-wrap gap-4">
-                                        <a 
-                                            href="https://play.google.com/store/apps/details?id=com.provable.shieldmobile" 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
+                                        <a
+                                            href="https://play.google.com/store/apps/details?id=com.provable.shieldmobile"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
                                             className="group inline-flex items-center gap-3 bg-[#060606] border border-white/[0.08] hover:border-orange-500/40 hover:bg-[#111] transition-all rounded-xl px-5 py-2.5 shadow-2xl overflow-hidden relative cursor-pointer"
                                         >
                                             <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                             <svg viewBox="0 0 24 24" className="w-[22px] h-[22px] shrink-0 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M5 3.5V20.5C5 21.05 5.51 21.41 6 21.14L19.45 12.64C19.9 12.35 19.9 11.65 19.45 11.36L6 2.86C5.51 2.59 5 2.95 5 3.5Z" fill="url(#play-grad)"/>
+                                                <path d="M5 3.5V20.5C5 21.05 5.51 21.41 6 21.14L19.45 12.64C19.9 12.35 19.9 11.65 19.45 11.36L6 2.86C5.51 2.59 5 2.95 5 3.5Z" fill="url(#play-grad)" />
                                                 <defs>
                                                     <linearGradient id="play-grad" x1="5" y1="3" x2="20" y2="12" gradientUnits="userSpaceOnUse">
                                                         <stop stopColor="#4ADE80" />
@@ -707,15 +840,15 @@ const Home = () => {
                                             </div>
                                         </a>
 
-                                        <a 
-                                            href="https://apps.apple.com/us/app/shield-aleo-wallet/id6757471699" 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
+                                        <a
+                                            href="https://apps.apple.com/us/app/shield-aleo-wallet/id6757471699"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
                                             className="group inline-flex items-center gap-3 bg-[#060606] border border-white/[0.08] hover:border-orange-500/40 hover:bg-[#111] transition-all rounded-xl px-5 py-2.5 shadow-2xl overflow-hidden relative cursor-pointer"
                                         >
                                             <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                             <svg viewBox="0 0 24 24" className="w-[22px] h-[22px] shrink-0 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M18.71,19.5C17.88,20.74,17,21.95,15.66,21.97C14.32,22,13.89,21.18,12.37,21.18C10.84,21.18,10.37,21.95,9.1,22C7.79,22.05,6.8,20.68,5.96,19.47C4.25,17,2.94,12.45,4.7,9.39C5.57,7.87,7.13,6.91,8.82,6.88C10.1,6.86,11.32,7.75,12.11,7.75C12.89,7.75,14.37,6.68,15.92,6.84C16.57,6.87,18.39,7.1,19.56,8.82C19.47,8.88,17.39,10.1,17.41,12.63C17.44,15.65,20.06,16.66,20.09,16.67C20.06,16.74,19.67,18.11,18.71,19.5M13,3.5C13.73,2.67,14.94,2.04,15.94,2C16.07,3.17,15.6,4.35,14.9,5.19C14.21,6.04,13.07,6.7,11.95,6.61C11.8,5.46,12.36,4.26,13,3.5Z" fill="url(#apple-grad)"/>
+                                                <path d="M18.71,19.5C17.88,20.74,17,21.95,15.66,21.97C14.32,22,13.89,21.18,12.37,21.18C10.84,21.18,10.37,21.95,9.1,22C7.79,22.05,6.8,20.68,5.96,19.47C4.25,17,2.94,12.45,4.7,9.39C5.57,7.87,7.13,6.91,8.82,6.88C10.1,6.86,11.32,7.75,12.11,7.75C12.89,7.75,14.37,6.68,15.92,6.84C16.57,6.87,18.39,7.1,19.56,8.82C19.47,8.88,17.39,10.1,17.41,12.63C17.44,15.65,20.06,16.66,20.09,16.67C20.06,16.74,19.67,18.11,18.71,19.5M13,3.5C13.73,2.67,14.94,2.04,15.94,2C16.07,3.17,15.6,4.35,14.9,5.19C14.21,6.04,13.07,6.7,11.95,6.61C11.8,5.46,12.36,4.26,13,3.5Z" fill="url(#apple-grad)" />
                                                 <defs>
                                                     <linearGradient id="apple-grad" x1="5" y1="3" x2="20" y2="12" gradientUnits="userSpaceOnUse">
                                                         <stop stopColor="#FFFFFF" />

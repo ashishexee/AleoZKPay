@@ -152,7 +152,7 @@ async function submitToRelayer(
     secretKey: string,
     invoice: InvoiceConfig,
     salt: string,
-): Promise<void> {
+): Promise<string> {
     const invoiceTypeNum = invoice.type === 'multipay' ? 1 : 2;
     const res = await fetch(`${BACKEND_URL}/dps/relayer/create-invoice`, {
         method: 'POST',
@@ -173,6 +173,13 @@ async function submitToRelayer(
         const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
         throw new Error(err.error ?? `Relayer error (${res.status})`);
     }
+
+    const data = await res.json() as { tx_id?: string };
+    if (!data.tx_id) {
+        throw new Error('Relayer response did not include a creation transaction id.');
+    }
+
+    return data.tx_id;
 }
 
 async function pollForHash(salt: string, maxRetries = 60): Promise<string | null> {
@@ -197,7 +204,8 @@ async function saveInvoiceToDashboard(
     merchantAddress: string,
     invoice: InvoiceConfig,
     hash: string,
-    salt: string
+    salt: string,
+    invoiceTransactionId: string
 ): Promise<void> {
     const invoiceTypeNum = invoice.type === 'multipay' ? 1 : 2;
     const res = await fetch(`${BACKEND_URL}/invoices`, {
@@ -213,6 +221,7 @@ async function saveInvoiceToDashboard(
             memo: invoice.label ?? '',
             invoice_type: invoiceTypeNum,
             salt,
+            invoice_transaction_id: invoiceTransactionId,
             for_sdk: true,
             status: 'PENDING'
         }),
@@ -542,7 +551,7 @@ export async function onboard(): Promise<void> {
         const sp = spin(`${prefix.toString()} Submitting "${C.brand(inv.name)}" to Aleo network...`);
 
         try {
-            await submitToRelayer(secretKey, inv, salt);
+            const creationTxId = await submitToRelayer(secretKey, inv, salt);
             sp.text = `${prefix.toString()} Waiting for block confirmation -> "${C.brand(inv.name)}"`;
 
             const hash = await pollForHash(salt);
@@ -561,7 +570,7 @@ export async function onboard(): Promise<void> {
 
             // 📢 Sync with Dashboard
             try {
-                await saveInvoiceToDashboard(secretKey, resolvedAddress, inv, hash, salt);
+                await saveInvoiceToDashboard(secretKey, resolvedAddress, inv, hash, salt, creationTxId);
             } catch (syncErr) {
                 line(`  ${C.gold('!')}  ${C.slate(`Dashboard sync failed for "${inv.name}", but Aleo tx succeeded.`)}`);
             }

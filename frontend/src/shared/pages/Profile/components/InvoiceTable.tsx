@@ -236,7 +236,17 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                             <span className="text-sm text-gray-400 truncate block" title={inv.memo}>
                                                 {inv.memo || '-'}
                                             </span>
-                                            {inv.latestMerchantNote ? (
+                                            {inv.merchantNotes && inv.merchantNotes.length > 1 ? (
+                                                <div 
+                                                    className="inline-flex items-center gap-1 text-xs text-orange-400 font-medium hover:text-orange-300 transition-colors"
+                                                    title={inv.merchantNotes.join('\n')}
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                    </svg>
+                                                    {inv.merchantNotes.length} Notes <span className="opacity-60 text-[10px] ml-1"></span>
+                                                </div>
+                                            ) : inv.latestMerchantNote ? (
                                                 <span className="block truncate text-xs text-orange-300/80" title={inv.latestMerchantNote}>
                                                     Note: {inv.latestMerchantNote}
                                                 </span>

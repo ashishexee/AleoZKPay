@@ -141,7 +141,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
             >
                 <div className="text-center mb-6">
                     <h1 className="text-3xl font-bold tracking-tighter text-white">
-                        NullPay <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-amber-400 drop-shadow-[0_0_18px_rgba(249,115,22,0.24)]">Checkout</span>
+                        NullPay <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-amber-400 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">Checkout</span>
                     </h1>
                 </div>
 
@@ -161,9 +161,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                             <motion.div
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
-                                className="w-16 h-16 bg-orange-500/15 border-2 border-orange-400/40 rounded-full flex items-center justify-center mx-auto mb-4"
+                                className="w-16 h-16 bg-white/15 border-2 border-white/40 rounded-full flex items-center justify-center mx-auto mb-4"
                             >
-                                <svg className="w-8 h-8 text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                 </svg>
                             </motion.div>
@@ -269,19 +269,19 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 setTimeout(() => setCopiedHash(false), 2000);
                                             }
                                         }}
-                                        className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-orange-400/30 transition-colors group cursor-pointer active:scale-95"
+                                        className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-white/30 transition-colors group cursor-pointer active:scale-95"
                                     >
                                         <div className="flex justify-between items-center mb-1">
                                             <span className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Hash</span>
                                             {copiedHash ? (
-                                                <span className="text-[9px] text-orange-300 font-bold">Copied!</span>
+                                                <span className="text-[9px] text-white font-bold">Copied!</span>
                                             ) : (
-                                                <svg className="w-3 h-3 text-gray-600 group-hover:text-orange-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg className="w-3 h-3 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                                 </svg>
                                             )}
                                         </div>
-                                        <span className="font-mono text-amber-200 truncate block text-[10px] group-hover:text-orange-300 transition-colors" title={session.invoice_hash}>
+                                        <span className="font-mono text-white truncate block text-[10px] group-hover:text-white transition-colors" title={session.invoice_hash}>
                                             {session.invoice_hash ? `${session.invoice_hash.slice(0, 6)}...${session.invoice_hash.slice(-6)}` : 'Generating...'}
                                         </span>
                                     </div>
@@ -322,7 +322,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             onChange={(e) => setPayerNote(e.target.value)}
                                             rows={3}
                                             placeholder="Private note for your own records"
-                                            className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${payerNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-orange-400/40'}`}
+                                            className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${payerNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-white/40'}`}
                                         />
                                         <p className={`mt-2 text-[11px] ${payerNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
                                             Stored in one Leo field: {payerNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
@@ -338,7 +338,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 type="button"
                                                 onClick={() => setShareMerchantNote((current) => !current)}
                                                 aria-pressed={shareMerchantNote}
-                                                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-white/10 transition-colors ${shareMerchantNote ? 'bg-orange-400 justify-end' : 'bg-white/10 justify-start'}`}
+                                                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-white/10 transition-colors ${shareMerchantNote ? 'bg-white justify-end' : 'bg-white/10 justify-start'}`}
                                             >
                                                 <span className="mx-1 h-5 w-5 rounded-full bg-white shadow-[0_2px_10px_rgba(255,255,255,0.25)] transition-transform" />
                                             </button>
@@ -352,7 +352,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 onChange={(e) => setMerchantNote(e.target.value)}
                                                 rows={3}
                                                 placeholder="Optional note visible to the merchant"
-                                                className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${merchantNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-orange-400/40'}`}
+                                                className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${merchantNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-white/40'}`}
                                             />
                                             <p className={`mt-2 text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
                                                 Merchant note: {merchantNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
@@ -385,7 +385,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     <button
                                         onClick={() => setPaymentMethod('card')}
                                         className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
-                                            paymentMethod === 'card' ? 'bg-white/10 text-orange-300 shadow-md flex items-center justify-center gap-2' : 'text-gray-500 hover:text-white/80'
+                                            paymentMethod === 'card' ? 'bg-white/10 text-white shadow-md flex items-center justify-center gap-2' : 'text-gray-500 hover:text-white/80'
                                         }`}
                                     >
                                         NullPay Card
@@ -414,7 +414,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                     setCardNumber(grouped);
                                                 }}
                                                 placeholder="4123 4567 8910 1112"
-                                                className="w-full bg-black/40 border border-white/10 focus:border-orange-400/50 outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors tracking-[0.22em] text-center"
+                                                className="w-full bg-black/40 border border-white/10 focus:border-white/50 outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors tracking-[0.22em] text-center"
                                             />
                                         </div>
                                         <div>
@@ -425,7 +425,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 value={cardPin}
                                                 onChange={(e) => setCardPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                                 placeholder="6-digit PIN"
-                                                className="w-full bg-black/40 border border-white/10 focus:border-orange-400/50 outline-none rounded-xl text-sm text-white p-4 transition-colors tracking-[0.3em] text-center"
+                                                className="w-full bg-black/40 border border-white/10 focus:border-white/50 outline-none rounded-xl text-sm text-white p-4 transition-colors tracking-[0.3em] text-center"
                                             />
                                         </div>
                                         <div>
@@ -435,13 +435,13 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 value={cardSecret}
                                                 onChange={(e) => setCardSecret(e.target.value)}
                                                 placeholder="Longer card secret"
-                                                className="w-full bg-black/40 border border-white/10 focus:border-orange-400/50 outline-none rounded-xl text-sm text-white p-4 transition-colors text-center"
+                                                className="w-full bg-black/40 border border-white/10 focus:border-white/50 outline-none rounded-xl text-sm text-white p-4 transition-colors text-center"
                                             />
                                         </div>
                                         <p className="text-xs text-gray-500 text-center">
                                             The card key is decrypted in-memory on this device, used to generate the payment authorization locally, and never sent to NullPay.
                                         </p>
-                                        <p className="text-xs text-orange-300/80 text-center">
+                                        <p className="text-xs text-white/80 text-center">
                                             No Shield connection needed. Card lookup uses the card number, while PIN and secret unlock the key locally on this device before the relayer-backed payment flow begins.
                                         </p>
                                     </div>

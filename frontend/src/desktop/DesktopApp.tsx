@@ -1,6 +1,5 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Explorer from './pages/Explorer';
@@ -21,31 +20,7 @@ import TelegramBotPage from '../shared/pages/TelegramBot';
 import AuditVerifyPage from '../shared/pages/AuditVerify';
 import CardsPage from './pages/CardsPage';
 import { ProtectedRoute } from '../shared/components/ProtectedRoute';
-
-const DOCS_BASE_URL = 'https://docs.nullpay.app';
-
-const ExternalDocsRedirect = () => {
-    const location = useLocation();
-
-    useEffect(() => {
-        const redirectedPath = location.pathname.startsWith('/docs')
-            ? location.pathname.slice('/docs'.length) || '/'
-            : location.pathname;
-        const targetUrl = new URL(DOCS_BASE_URL);
-
-        targetUrl.pathname = redirectedPath;
-        targetUrl.search = location.search;
-        targetUrl.hash = location.hash;
-
-        window.location.replace(targetUrl.toString());
-    }, [location]);
-
-    return (
-        <div className="flex min-h-[40vh] items-center justify-center text-sm text-white/50">
-            Redirecting to docs.nullpay.app...
-        </div>
-    );
-};
+import Docs from './pages/Docs';
 
 const DesktopAnimatedRoutes = () => {
     const location = useLocation();
@@ -60,8 +35,7 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
                 <Route path="/profile-qr" element={<ProtectedRoute><ProfileQRPage /></ProtectedRoute>} />
                 <Route path="/vision" element={<Vision />} />
-                <Route path="/docs" element={<ExternalDocsRedirect />} />
-                <Route path="/docs/*" element={<ExternalDocsRedirect />} />
+                <Route path="/docs" element={<Docs />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/verify" element={<Verification />} />
                 <Route path="/developer" element={<DeveloperPortal />} />

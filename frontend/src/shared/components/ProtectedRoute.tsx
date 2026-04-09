@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
+import { Link } from 'react-router-dom';
 import { useBurnerWallet } from '../hooks/BurnerWalletProvider';
 import { PasswordPrompt } from './PasswordPrompt';
 
@@ -33,6 +34,19 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
                 >
                     <span className="font-semibold tracking-wide text-[15px]">Get Shield Wallet Extension</span>
                 </a>
+
+                <div className="mt-6 max-w-md rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-left backdrop-blur-xl">
+                    <p className="text-sm font-semibold text-white">Auditor access</p>
+                    <p className="mt-2 text-sm leading-relaxed text-white/60">
+                        If you are an auditor, you can verify audit bundles without connecting a wallet.
+                    </p>
+                    <Link
+                        to="/audit/verify"
+                        className="mt-4 inline-flex items-center text-sm font-medium text-cyan-300 transition hover:text-cyan-200"
+                    >
+                        Open the auditor verification page
+                    </Link>
+                </div>
             </div>
         );
     }

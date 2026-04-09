@@ -1,6 +1,6 @@
 {
     "name": "@nullpay/mcp",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "description": "NullPay MCP server and Claude setup wizard for conversational payment flows",
     "type": "commonjs",
     "main": "dist/server.js",

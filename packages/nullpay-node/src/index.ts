@@ -205,8 +205,9 @@ export class NullPay {
                         throw new Error(`NullPay Relayer Pre-gen Error: ${relayerRes.status} - ${errorData.error || relayerRes.statusText}`);
                     }
 
-                    const relayerData = await relayerRes.json() as { merchant_address: string };
+                    const relayerData = await relayerRes.json() as { merchant_address: string; tx_id?: string };
                     const merchantAddress = relayerData.merchant_address;
+                    const creationTxId = relayerData.tx_id;
 
                     let hashStr: string | null = null;
                     let retries = 0;
@@ -246,6 +247,7 @@ export class NullPay {
                                 amount: isDonation ? 0 : resolvedParams.amount,
                                 currency: resolvedParams.currency || 'CREDITS',
                                 salt: finalSalt,
+                                invoice_transaction_id: creationTxId || null,
                                 invoice_type: invoiceTypeNum,
                                 for_sdk: true,
                                 status: 'PENDING'

@@ -6,6 +6,14 @@ export const PROGRAM_ID = CORE_PROGRAM_ID;
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
 const PROVABLE_HOST = 'https://api.explorer.provable.com/v1';
 const PROVABLE_PROGRAM_API = 'https://api.provable.com/v1/testnet/program';
+const PAYMENT_FUNCTION_FALLBACKS = new Set([
+    'pay_invoice',
+    'pay_invoice_usdcx',
+    'pay_invoice_usad',
+    'pay_donation',
+    'pay_donation_usdcx',
+    'pay_donation_usad',
+]);
 
 let feeEstimatorManagerPromise: Promise<any> | null = null;
 const programSourceCache = new Map<string, string>();
@@ -62,6 +70,24 @@ const extractImportIds = (programSource: string): string[] => {
     return Array.from(importMatches, (match) => match[1]).filter(Boolean);
 };
 
+const looksLikeRecordInput = (input: string) => {
+    const value = String(input || '').trim();
+    return /^record1/i.test(value)
+        || /^ciphertext1/i.test(value)
+        || (/^\{/.test(value) && /owner:\s*[A-Za-z0-9]+/.test(value) && /_nonce:/.test(value));
+};
+
+const getEffectiveFallbackMicrocredits = (
+    programName: string,
+    functionName: string,
+    fallbackMicrocredits: number
+) => {
+    if (programName === PROGRAM_ID && PAYMENT_FUNCTION_FALLBACKS.has(functionName)) {
+        return FIXED_FEE_MICROCREDITS;
+    }
+    return fallbackMicrocredits;
+};
+
 const getProgramImports = async (programName: string, programSource?: string): Promise<Record<string, string>> => {
     const cached = programImportsCache.get(programName);
     if (cached) return cached;
@@ -94,6 +120,12 @@ export const estimateExecutionFee = async ({
     fallbackMicrocredits?: number;
     bufferPercent?: number;
 }): Promise<number> => {
+    const effectiveFallbackMicrocredits = getEffectiveFallbackMicrocredits(
+        programName,
+        functionName,
+        fallbackMicrocredits
+    );
+
     try {
         const feeMode = getFeePreferenceMode();
         if (feeMode === 'fixed') {
@@ -110,9 +142,19 @@ export const estimateExecutionFee = async ({
             programName,
             functionName,
             inputCount: inputs.length,
-            fallbackMicrocredits,
+            fallbackMicrocredits: effectiveFallbackMicrocredits,
             bufferPercent
         });
+
+        if (inputs.some(looksLikeRecordInput)) {
+            console.log('[fee-estimation] signer-owned record input detected, skipping exact authorization-based estimation', {
+                programName,
+                functionName,
+                fallbackMicrocredits: effectiveFallbackMicrocredits
+            });
+            return effectiveFallbackMicrocredits;
+        }
+
         const programManager = await getFeeEstimatorProgramManager();
         const authorizationParams: {
             programName: string;
@@ -165,11 +207,11 @@ export const estimateExecutionFee = async ({
         });
         return Number(safeFee);
     } catch (error) {
-        console.warn(`[fee-estimation] Falling back to ${fallbackMicrocredits} microcredits for ${programName}/${functionName}`, {
+        console.warn(`[fee-estimation] Falling back to ${effectiveFallbackMicrocredits} microcredits for ${programName}/${functionName}`, {
             error,
             inputs
         });
-        return fallbackMicrocredits;
+        return effectiveFallbackMicrocredits;
     }
 };
 

@@ -163,6 +163,9 @@ class NullPay {
                             const errorData = await relayerRes.json().catch(() => ({}));
                             throw new Error(`NullPay Relayer Pre-gen Error: ${relayerRes.status} - ${errorData.error || relayerRes.statusText}`);
                         }
+                        const relayerData = await relayerRes.json();
+                        const merchantAddress = relayerData.merchant_address;
+                        const creationTxId = relayerData.tx_id;
                         let hashStr = null;
                         let retries = 0;
                         const MAX_RETRIES = 60;
@@ -185,6 +188,30 @@ class NullPay {
                             throw new Error("Timed out waiting for Aleo network blockchain confirmation. Invoice was sent, but hash was not resolved.");
                         }
                         finalInvoiceHash = hashStr;
+                        // 📢 Sync with Dashboard
+                        try {
+                            await (0, node_fetch_1.default)(`${this.baseURL}/invoices`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${this.secretKey}`
+                                },
+                                body: JSON.stringify({
+                                    invoice_hash: finalInvoiceHash,
+                                    merchant_address: merchantAddress,
+                                    amount: isDonation ? 0 : resolvedParams.amount,
+                                    currency: resolvedParams.currency || 'CREDITS',
+                                    salt: finalSalt,
+                                    invoice_transaction_id: creationTxId || null,
+                                    invoice_type: invoiceTypeNum,
+                                    for_sdk: true,
+                                    status: 'PENDING'
+                                })
+                            });
+                        }
+                        catch (syncErr) {
+                            console.error("NullPay Dashboard Sync Warning (Non-fatal):", syncErr);
+                        }
                     }
                     const sessionPayload = {
                         ...resolvedParams,

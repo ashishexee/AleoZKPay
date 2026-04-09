@@ -161,7 +161,6 @@ Payments:
 - pay_donation
 - pay_donation_usdcx
 - pay_donation_usad
-- batch_pay_2_credits
 
 Settlement and reads:
 - settle_invoice
