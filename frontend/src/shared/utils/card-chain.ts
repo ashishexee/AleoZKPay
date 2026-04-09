@@ -1,13 +1,8 @@
 import { fieldChunksToString, stringToFieldChunks } from './crypto';
 import type { CardWalletProfile } from '../services/api';
 import { lookupCardWalletByNumberHash } from '../services/api';
-import { WALLET_PROGRAM_ID } from './aleo-utils';
 
 export const CARD_PROFILE_VERSION = 1;
-export const CARD_STATUS_ACTIVE = 'ACTIVE';
-export const CARD_STATUS_FROZEN = 'FROZEN';
-export const CARD_STATUS_ACTIVE_CODE = 0;
-export const CARD_STATUS_FROZEN_CODE = 1;
 export const CARD_FIELD_CHUNK_SIZE = 15;
 
 export const CARD_CHAIN_CHUNKS = {
@@ -28,12 +23,6 @@ export interface CardProfileRecordData {
     encryptedHint: string | null;
 }
 
-export interface OnChainCardLookupData {
-    mainOwner: string;
-    cardStatus: string;
-    profileVersion: number;
-}
-
 function parseIntegerValue(value: unknown): number {
     if (typeof value === 'number') {
         return value;
@@ -44,15 +33,6 @@ function parseIntegerValue(value: unknown): number {
         return Number.isFinite(parsed) ? parsed : 0;
     }
     return 0;
-}
-
-function readValueFromObject(source: Record<string, unknown>, ...keys: string[]): unknown {
-    for (const key of keys) {
-        if (key in source) {
-            return source[key];
-        }
-    }
-    return undefined;
 }
 
 function normalizeLeoScalarString(value: unknown): string {
@@ -116,13 +96,6 @@ function readFieldStructValuesFromString(source: string, key: string, count: num
     return chunks;
 }
 
-function normalizeCardStatus(codeOrStatus: unknown): string {
-    if (typeof codeOrStatus === 'string' && !/^\d/.test(codeOrStatus)) {
-        return codeOrStatus.toUpperCase() === CARD_STATUS_FROZEN ? CARD_STATUS_FROZEN : CARD_STATUS_ACTIVE;
-    }
-    return parseIntegerValue(codeOrStatus) === CARD_STATUS_FROZEN_CODE ? CARD_STATUS_FROZEN : CARD_STATUS_ACTIVE;
-}
-
 function buildLeoArray(values: string[]): string {
     return `[${values.join(', ')}]`;
 }
@@ -133,10 +106,6 @@ export function sha256HexToField(hashHex: string): string {
         throw new Error('Card number hash is invalid.');
     }
     return `${BigInt(`0x${normalized}`).toString()}field`;
-}
-
-export function cardStatusToCode(status: string): number {
-    return status === CARD_STATUS_FROZEN ? CARD_STATUS_FROZEN_CODE : CARD_STATUS_ACTIVE_CODE;
 }
 
 export function toSizedFieldChunks(value: string | null | undefined, count: number): string[] {
@@ -195,45 +164,6 @@ export function parseCardProfileRecord(record: { plaintext?: string | null }): C
     };
 }
 
-export async function fetchOnChainCardLookup(cardNumberHashField: string): Promise<OnChainCardLookupData | null> {
-    try {
-        const url = `https://api.provable.com/v2/testnet/program/${WALLET_PROGRAM_ID}/mapping/card_lookup/${encodeURIComponent(cardNumberHashField)}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-            return null;
-        }
-
-        const payload = await response.json();
-        if (!payload) {
-            return null;
-        }
-
-        const objectPayload = typeof payload === 'object' ? payload as Record<string, unknown> : null;
-        const stringPayload = typeof payload === 'string' ? payload : null;
-
-        const readScalar = (...keys: string[]) => {
-            if (objectPayload) {
-                return readValueFromObject(objectPayload, ...keys);
-            }
-            return stringPayload ? readValueFromString(stringPayload, ...keys) : null;
-        };
-
-        const mainOwner = String(readScalar('main_owner', 'mainOwner') || '');
-        if (!mainOwner) {
-            return null;
-        }
-
-        return {
-            mainOwner,
-            cardStatus: normalizeCardStatus(readScalar('card_status', 'cardStatus')),
-            profileVersion: parseIntegerValue(readScalar('profile_version', 'profileVersion'))
-        };
-    } catch (error) {
-        console.warn('Failed to fetch on-chain card lookup', error);
-        return null;
-    }
-}
-
 export async function resolveCardLookupByHashHex(cardNumberHashHex: string): Promise<CardWalletProfile | null> {
     return lookupCardWalletByNumberHash(cardNumberHashHex);
 }
@@ -259,8 +189,4 @@ export function buildCreateCardRecordInputs(args: {
         buildLeoArray(encryptedLabelChunks),
         buildLeoArray(encryptedHintChunks)
     ];
-}
-
-export function buildCardStatusInputs(cardNumberHashField: string, nextStatus: string): string[] {
-    return [cardNumberHashField, `${cardStatusToCode(nextStatus)}u8`];
 }

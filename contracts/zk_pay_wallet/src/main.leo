@@ -2,7 +2,7 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_wallet_v1.aleo {
+program zk_pay_proofs_privacy_wallet_v2.aleo {
 
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     constructor() {
@@ -25,12 +25,6 @@ program zk_pay_proofs_privacy_wallet_v1.aleo {
         pk_part_10: field
     }
 
-    struct CardLookupData {
-        main_owner: address,
-        card_status: u8,
-        profile_version: u8
-    }
-
     record CardProfileRecord {
         owner: address,
         card_number_hash: field,
@@ -47,8 +41,6 @@ program zk_pay_proofs_privacy_wallet_v1.aleo {
         gift_private_key: [field; 8],
         label: field
     }
-
-    mapping card_lookup: field => CardLookupData;
 
     fn backup_password(
         private password_part: field
@@ -108,7 +100,7 @@ program zk_pay_proofs_privacy_wallet_v1.aleo {
         private encrypted_card_address: [field; 10],
         private encrypted_label: [field; 10],
         private encrypted_hint: [field; 8]
-    ) -> (CardProfileRecord, Final) {
+    ) -> CardProfileRecord {
         let caller: address = self.caller;
         let card_profile_record: CardProfileRecord = CardProfileRecord {
             owner: caller,
@@ -120,42 +112,7 @@ program zk_pay_proofs_privacy_wallet_v1.aleo {
             encrypted_hint: encrypted_hint
         };
 
-        return (
-            card_profile_record,
-            final {
-                let lookup_data: CardLookupData = CardLookupData {
-                    main_owner: caller,
-                    card_status: 0u8,
-                    profile_version: profile_version
-                };
-
-                card_lookup.set(card_number_hash, lookup_data);
-            }
-        );
-    }
-
-    fn set_card_status(
-        public card_number_hash: field,
-        public next_status: u8
-    ) -> Final {
-        let caller: address = self.caller;
-        return final {
-            if next_status != 0u8 {
-                assert_eq(next_status, 1u8);
-            }
-
-            let current_lookup: CardLookupData = card_lookup.get(card_number_hash);
-
-            assert_eq(caller, current_lookup.main_owner);
-
-            let updated_lookup: CardLookupData = CardLookupData {
-                main_owner: current_lookup.main_owner,
-                card_status: next_status,
-                profile_version: current_lookup.profile_version
-            };
-
-            card_lookup.set(card_number_hash, updated_lookup);
-        };
+        return card_profile_record;
     }
 
     fn create_gift_card_record(

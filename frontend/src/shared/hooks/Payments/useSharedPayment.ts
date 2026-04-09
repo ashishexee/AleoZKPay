@@ -13,6 +13,7 @@ import { getAllowedTokensForInvoice, getTokenTypeFromCode } from '../../utils/to
 import { decryptCardPrivateKey } from '../../utils/card-crypto';
 import { hashAddress } from '../../utils/crypto';
 import { resolveCardLookupByHashHex } from '../../utils/card-chain';
+import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../utils/card-input-limits';
 import { stringToField } from '../../utils/aleo-utils';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/leo-input-limits';
 
@@ -771,15 +772,19 @@ export const useSharedPayment = () => {
             if (normalizedCardNumber.length !== 16) {
                 throw new Error('Enter a valid 16-digit card number.');
             }
+            if (pin.replace(/\D/g, '').length !== CARD_PIN_LENGTH) {
+                throw new Error(`Enter a valid ${CARD_PIN_LENGTH}-digit card PIN.`);
+            }
+            const normalizedCardSecret = cardSecret.trim();
+            if (normalizedCardSecret.length < CARD_SECRET_MIN_LENGTH) {
+                throw new Error(`Card secret must be at least ${CARD_SECRET_MIN_LENGTH} characters.`);
+            }
 
             const cardNumberHash = await hashAddress(normalizedCardNumber);
             const cardProfile = await resolveCardLookupByHashHex(cardNumberHash);
 
             if (!cardProfile) {
                 throw new Error('Card not found. Check the card number and try again.');
-            }
-            if (cardProfile.card_status !== 'ACTIVE') {
-                throw new Error('This NullPay card is not active.');
             }
             if (!cardProfile.encrypted_card_private_key || !cardProfile.card_kdf_salt) {
                 throw new Error('This card is missing encrypted key material.');

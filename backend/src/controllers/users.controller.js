@@ -222,9 +222,11 @@ function applyCardPayload(updates, body) {
     if (body.card_status !== undefined) updates.card_status = body.card_status;
     if (body.card_label !== undefined) {
         const label = validateCardLabel(body.card_label);
-        updates.card_label = label
-            ? encryptStoredValue(label, { label: 'card label' })
-            : null;
+        // Keep the DB mirror label in plaintext so it satisfies the existing
+        // column length constraint. Reads remain backward-compatible because
+        // decryptStoredValue returns raw values unchanged when they are not
+        // stored in encrypted form.
+        updates.card_label = label || null;
     }
     if (body.card_hint !== undefined) {
         const hint = validateCardHint(body.card_hint);

@@ -6,6 +6,7 @@ import { GlassCard } from '../../../components/ui/GlassCard';
 import { Shimmer } from '../../../components/ui/Shimmer';
 import { useCardWallet } from '../../../hooks/CardWalletProvider';
 import type { CardTokenCode } from '../../../services/api';
+import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../../utils/card-input-limits';
 import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../../../utils/leo-input-limits';
 
 interface CardWalletPanelProps {
@@ -153,14 +154,12 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
         isUnlocked,
         cardBalances,
         isRefreshingBalances,
-        isStatusChangePending,
         createCard,
         unlockCard,
         lockCard,
         refreshCardBalances,
         topUpCard,
-        requestCardLimitChange,
-        updateCardStatus
+        requestCardLimitChange
     } = useCardWallet();
 
     const [pin, setPin] = useState('');
@@ -194,8 +193,6 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
     const maskedCardNumber = card?.card_last4 ? `**** **** **** ${card.card_last4}` : '**** **** **** ****';
     const fullCardNumber = formatCardNumber(card?.card_number);
     const cardAddress = card?.card_address || '';
-    const isCardFrozen = card?.card_status === 'FROZEN';
-    const statusLabel = isCardFrozen ? 'Frozen' : 'Active';
     const labelBytes = getUtf8ByteLength(label.trim());
     const hintBytes = getUtf8ByteLength(hint.trim());
     const labelTooLong = labelBytes > CARD_LABEL_MAX_BYTES;
@@ -209,8 +206,8 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
 
     const handleUnlock = async (event: React.FormEvent) => {
         event.preventDefault();
-        if (!pin || pin.length !== 6 || !secret) {
-            toast.error('PIN (6 digits) and secret required');
+        if (!pin || pin.length !== CARD_PIN_LENGTH || !secret) {
+            toast.error(`PIN (${CARD_PIN_LENGTH} digits) and secret required`);
             return;
         }
 
@@ -242,8 +239,8 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
             toast.error(`Card hint must stay within ${CARD_HINT_MAX_BYTES} bytes.`);
             return;
         }
-        if (!pin || pin.length !== 6 || !secret) {
-            toast.error('PIN (6 digits) and secret required');
+        if (!pin || pin.length !== CARD_PIN_LENGTH || !secret) {
+            toast.error(`PIN (${CARD_PIN_LENGTH} digits) and secret required`);
             return;
         }
 
@@ -264,10 +261,6 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
 
     const handleTopUp = async (event: React.FormEvent) => {
         event.preventDefault();
-        if (isCardFrozen) {
-            toast.error('This card is frozen. Unfreeze it before topping up.');
-            return;
-        }
         const amount = Number(topUpAmount);
         if (!amount || amount <= 0) {
             toast.error('Enter a valid amount');
@@ -283,18 +276,6 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
             toast.error(err.message || 'Top-up failed');
         } finally {
             setIsTopUpPending(false);
-        }
-    };
-
-    const handleStatusToggle = async () => {
-        if (!card) return;
-
-        const nextStatus = isCardFrozen ? 'ACTIVE' : 'FROZEN';
-        try {
-            await updateCardStatus(nextStatus);
-            toast.success(isCardFrozen ? 'Card unfrozen on-chain' : 'Card frozen on-chain');
-        } catch (err: any) {
-            toast.error(err.message || 'Status update failed');
         }
     };
 
@@ -388,10 +369,18 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                 value={pin}
                                 onChange={(value) => setPin(value.replace(/\D/g, ''))}
                                 placeholder="000000"
-                                maxLength={6}
+                                maxLength={CARD_PIN_LENGTH}
                                 className="text-center tracking-[0.35em]"
                             />
-                            <Field label="Card Secret" type="password" revealable value={secret} onChange={setSecret} placeholder="Recovery secret" />
+                            <Field
+                                label="Card Secret"
+                                type="password"
+                                revealable
+                                value={secret}
+                                onChange={setSecret}
+                                placeholder="Recovery secret"
+                                helper={`Use at least ${CARD_SECRET_MIN_LENGTH} characters.`}
+                            />
                         </div>
                         <p className="text-xs leading-relaxed text-gray-500">
                             Your hint should never contain the actual PIN or secret. NullPay waits for the on-chain card record to confirm before treating setup as complete.
@@ -476,22 +465,9 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                             </div>
                         </div>
 
-                        <div className="mt-6 flex flex-wrap items-center gap-3">
-                            <div className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${isCardFrozen ? 'border-red-400/30 bg-red-500/10 text-red-200' : 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'}`}>
-                                {statusLabel}
-                            </div>
-                            <button
-                                type="button"
-                                onClick={handleStatusToggle}
-                                disabled={isStatusChangePending}
-                                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-200 transition-colors hover:bg-white/[0.08] disabled:opacity-60"
-                            >
-                                {isStatusChangePending ? 'Updating...' : isCardFrozen ? 'Unfreeze Card' : 'Freeze Card'}
-                            </button>
-                        </div>
                     </div>
                     <p className="mt-6 text-sm leading-relaxed text-gray-500">
-                        Unlock this card with its PIN and secret to scan private balances and use the wallet locally. If the card is locked, freeze and unfreeze will use your connected main wallet.
+                        Unlock this card with its PIN and secret to scan private balances and use the wallet locally.
                     </p>
                 </GlassCard>
 
@@ -510,10 +486,18 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                 value={pin}
                                 onChange={(value) => setPin(value.replace(/\D/g, ''))}
                                 placeholder="000000"
-                                maxLength={6}
+                                maxLength={CARD_PIN_LENGTH}
                                 className="text-center tracking-[0.35em]"
                             />
-                            <Field label="Card Secret" type="password" revealable value={secret} onChange={setSecret} placeholder="Card secret" />
+                            <Field
+                                label="Card Secret"
+                                type="password"
+                                revealable
+                                value={secret}
+                                onChange={setSecret}
+                                placeholder="Card secret"
+                                helper={`Use at least ${CARD_SECRET_MIN_LENGTH} characters.`}
+                            />
                         </div>
                         <PrimaryAction
                             type="submit"
@@ -604,17 +588,6 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                     <span className={`h-2 w-2 rounded-full ${isRefreshingBalances ? 'bg-orange-400 animate-pulse' : 'bg-emerald-400'}`} />
                                     {isRefreshingBalances ? 'Scanning Records' : 'Ready'}
                                 </div>
-                                <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] ${isCardFrozen ? 'border-red-400/30 bg-red-500/10 text-red-200' : 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200'}`}>
-                                    {statusLabel}
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={handleStatusToggle}
-                                    disabled={isStatusChangePending}
-                                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-200 transition-colors hover:bg-white/[0.08] disabled:opacity-60"
-                                >
-                                    {isStatusChangePending ? 'Updating...' : isCardFrozen ? 'Unfreeze Card' : 'Freeze Card'}
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -625,9 +598,7 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                         <span className="mb-3 block text-[10px] font-bold uppercase tracking-widest text-gray-400">Add Balance</span>
                         <h3 className="text-xl font-bold tracking-tighter text-gradient-gold drop-shadow-gold">Top up one token at a time</h3>
                         <p className="mt-2 text-sm leading-relaxed text-gray-500">
-                            {isCardFrozen
-                                ? 'This card is frozen on-chain, so top-ups are disabled until you unfreeze it.'
-                                : 'Move only what you need onto the card and keep everyday spending separated by token.'}
+                            Move only what you need onto the card and keep everyday spending separated by token.
                         </p>
 
                         <div className="mt-6 grid grid-cols-3 gap-3">
@@ -636,11 +607,10 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                     key={token.code}
                                     type="button"
                                     onClick={() => setSelectedTopUpToken(token.code)}
-                                    disabled={isCardFrozen}
                                     className={`rounded-2xl border px-3 py-3 text-left transition-colors ${selectedTopUpToken === token.code
                                             ? 'border-white/20 bg-white/10'
                                             : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06]'
-                                        } ${isCardFrozen ? 'opacity-60' : ''}`}
+                                        }`}
                                 >
                                     <div className={`text-[10px] font-bold uppercase tracking-widest ${token.tint}`}>{token.label}</div>
                                     <div className="mt-2 text-lg font-bold tracking-tighter text-white">
@@ -664,13 +634,7 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                 label={`Top Up ${TOKEN_OPTIONS.find((token) => token.code === selectedTopUpToken)?.label}`}
                                 loading={isTopUpPending}
                                 loadingLabel="Submitting"
-                                disabled={isCardFrozen}
                             />
-                            {isCardFrozen && (
-                                <p className="text-xs leading-relaxed text-red-200/80">
-                                    On-chain freeze is active, so new funds cannot be moved onto this card until it is unfrozen.
-                                </p>
-                            )}
                         </form>
                     </GlassCard>
                 </div>

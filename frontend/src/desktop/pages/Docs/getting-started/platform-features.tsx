@@ -36,7 +36,7 @@ const explorerExample = `// The NullPay Explorer (Transaction Explorer) lets you
 //   into the Explorer to confirm it on the public Aleo ledger.`;
 
 const giftCardExample = `// Gift Cards on NullPay are on-chain records created by
-// the wallet program (zk_pay_proofs_privacy_wallet_v1.aleo).
+// the wallet program (zk_pay_proofs_privacy_wallet_v2.aleo).
 //
 // How gift cards work:
 //   1. The merchant calls create_card_profile on-chain

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Terminal, X } from 'lucide-react';
+import { CARD_PIN_LENGTH } from '../../utils/card-input-limits';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
@@ -119,8 +120,9 @@ export const NullPayCardPaymentPanel = ({
                                             label="PIN"
                                             type="password"
                                             inputMode="numeric"
+                                            maxLength={CARD_PIN_LENGTH}
                                             value={cardPin}
-                                            onChange={(e) => onCardPinChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            onChange={(e) => onCardPinChange(e.target.value.replace(/\D/g, '').slice(0, CARD_PIN_LENGTH))}
                                             placeholder="6-digit PIN"
                                             className={`text-center tracking-[0.3em] ${compact ? 'text-base h-12' : ''}`}
                                         />

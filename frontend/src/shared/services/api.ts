@@ -142,7 +142,7 @@ export interface CardWalletProfile {
     card_kdf_salt: string;
     card_kdf_algorithm: string;
     card_kdf_params: Record<string, unknown> | null;
-    card_status: string;
+    card_status?: string;
     card_label?: string | null;
     card_hint?: string | null;
     card_limits_updated_at?: string | null;

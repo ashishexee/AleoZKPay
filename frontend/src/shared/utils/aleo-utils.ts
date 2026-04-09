@@ -1,7 +1,7 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
 import { FIXED_FEE_MICROCREDITS, getFeePreferenceMode } from './feePreference';
 export const CORE_PROGRAM_ID = "zk_pay_proofs_privacy_v26.aleo";
-export const WALLET_PROGRAM_ID = "zk_pay_proofs_privacy_wallet_v1.aleo";
+export const WALLET_PROGRAM_ID = "zk_pay_proofs_privacy_wallet_v2.aleo";
 export const PROGRAM_ID = CORE_PROGRAM_ID;
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
 const PROVABLE_HOST = 'https://api.explorer.provable.com/v1';

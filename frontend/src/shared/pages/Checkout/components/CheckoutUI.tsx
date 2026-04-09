@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { Shimmer } from '../../../components/ui/Shimmer';
 import { CheckoutSession } from '../types';
 import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPrompt';
+import { CARD_PIN_LENGTH } from '../../../utils/card-input-limits';
 import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../utils/tokens';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/leo-input-limits';
 
@@ -422,8 +423,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             <input
                                                 type="password"
                                                 inputMode="numeric"
+                                                maxLength={CARD_PIN_LENGTH}
                                                 value={cardPin}
-                                                onChange={(e) => setCardPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                onChange={(e) => setCardPin(e.target.value.replace(/\D/g, '').slice(0, CARD_PIN_LENGTH))}
                                                 placeholder="6-digit PIN"
                                                 className="w-full bg-black/40 border border-white/10 focus:border-white/50 outline-none rounded-xl text-sm text-white p-4 transition-colors tracking-[0.3em] text-center"
                                             />

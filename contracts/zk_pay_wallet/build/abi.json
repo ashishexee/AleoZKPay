@@ -1,36 +1,6 @@
 {
-  "program": "zk_pay_proofs_privacy_wallet_v1.aleo",
-  "structs": [
-    {
-      "path": [
-        "CardLookupData"
-      ],
-      "fields": [
-        {
-          "name": "main_owner",
-          "ty": {
-            "Primitive": "Address"
-          }
-        },
-        {
-          "name": "card_status",
-          "ty": {
-            "Primitive": {
-              "UInt": "U8"
-            }
-          }
-        },
-        {
-          "name": "profile_version",
-          "ty": {
-            "Primitive": {
-              "UInt": "U8"
-            }
-          }
-        }
-      ]
-    }
-  ],
+  "program": "zk_pay_proofs_privacy_wallet_v2.aleo",
+  "structs": [],
   "records": [
     {
       "path": [
@@ -249,22 +219,7 @@
       ]
     }
   ],
-  "mappings": [
-    {
-      "name": "card_lookup",
-      "key": {
-        "Primitive": "Field"
-      },
-      "value": {
-        "Struct": {
-          "path": [
-            "CardLookupData"
-          ],
-          "program": "zk_pay_proofs_privacy_wallet_v1.aleo"
-        }
-      }
-    }
-  ],
+  "mappings": [],
   "storage_variables": [],
   "functions": [
     {
@@ -288,7 +243,7 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v1.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v2.aleo"
             }
           },
           "mode": "None"
@@ -415,7 +370,7 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v1.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v2.aleo"
             }
           },
           "mode": "None"
@@ -424,7 +379,7 @@
     },
     {
       "name": "create_card_profile",
-      "is_final": true,
+      "is_final": false,
       "inputs": [
         {
           "name": "card_number_hash",
@@ -510,45 +465,9 @@
               "path": [
                 "CardProfileRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v1.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v2.aleo"
             }
           },
-          "mode": "None"
-        },
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "set_card_status",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "card_number_hash",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "next_status",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U8"
-              }
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": "Final",
           "mode": "None"
         }
       ]
@@ -597,7 +516,7 @@
               "path": [
                 "GiftCardRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v1.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v2.aleo"
             }
           },
           "mode": "None"
