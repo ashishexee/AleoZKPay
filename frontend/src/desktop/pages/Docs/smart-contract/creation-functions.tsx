@@ -146,7 +146,7 @@ export const creationFunctionsSection: DocsSection = {
                     <div className="mt-4 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
                         <p className="mb-2 text-sm font-bold text-white">ANY token enforces invoice_type = 2 (Donation)</p>
                         <p className="text-xs leading-relaxed text-gray-400">
-                            The contract does not enforce on-chain that <code className="rounded bg-white/5 px-1 py-0.5">invoice_type</code> must be 2 when <code className="rounded bg-white/5 px-1 py-0.5">token_type</code> is 3 — this is a platform-level convention enforced by the CLI and SDK. In the payment finalizers, token-type-3 invoices bypass the <code className="rounded bg-white/5 px-1 py-0.5">assert_eq(invoice_data.token_type, ...)</code> assertion by checking <code className="rounded bg-white/5 px-1 py-0.5">if invoice_data.token_type != 3u8 { assert_eq(...) }</code> — effectively allowing any pay_* function to settle a token_type=3 invoice.
+                            The contract does not enforce on-chain that <code className="rounded bg-white/5 px-1 py-0.5">invoice_type</code> must be 2 when <code className="rounded bg-white/5 px-1 py-0.5">token_type</code> is 3 — this is a platform-level convention enforced by the CLI and SDK. In the payment finalizers, token-type-3 invoices bypass the <code className="rounded bg-white/5 px-1 py-0.5">assert_eq(invoice_data.token_type, ...)</code> assertion by checking <code className="rounded bg-white/5 px-1 py-0.5">if invoice_data.token_type != 3u8 {"{"} assert_eq(...) {"}"}</code> — effectively allowing any pay_* function to settle a token_type=3 invoice.
                         </p>
                     </div>
                 </div>

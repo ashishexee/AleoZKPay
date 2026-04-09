@@ -86,7 +86,7 @@ export const structsSection: DocsSection = {
                             {
                                 field: 'token_type: u8',
                                 vals: '0 = Credits\n1 = USDCx\n2 = USAD\n3 = ANY',
-                                desc: 'Controls which pay_* transition is allowed. Token type 3 (ANY) is only valid for Donation invoices and allows any token's payment path to succeed.',
+                                desc: 'Controls which pay_* transition is allowed. Token type 3 (ANY) is only valid for Donation invoices and allows any token\'s payment path to succeed.',
                             },
                         ].map(({ field, vals, desc }) => (
                             <div key={field} className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
