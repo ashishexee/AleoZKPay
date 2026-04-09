@@ -3,7 +3,7 @@ import { Currency, InvoiceRecord, InvoiceStatusData, InvoiceType, ParsedOwnedInv
 import { dynamicImport } from './esm';
 import { getProvableConfig } from './env';
 
-export const PROGRAM_ID = 'zk_pay_proofs_privacy_v25.aleo';
+export const PROGRAM_ID = 'zk_pay_proofs_privacy_v26.aleo';
 const USDCX_FREEZELIST_PROGRAM_ID = 'test_usdcx_freezelist.aleo';
 const USAD_FREEZELIST_PROGRAM_ID = 'test_usad_freezelist.aleo';
 const EXPLORER_BASE = 'https://api.explorer.provable.com/v1';
@@ -255,7 +255,7 @@ function resolvePaymentMode(invoice: InvoiceRecord, fallbackAmount?: number, fal
     };
 }
 
-interface ScannerSession {
+export interface ScannerSession {
     scannerHeaders: Record<string, string>;
     scannerUuid: string;
     account: any;
@@ -276,7 +276,7 @@ export interface RecoveredOnChainWalletBackup {
     source: 'password_only' | 'full_burner';
 }
 
-async function getScannerSession(privateKey: string): Promise<ScannerSession> {
+export async function getScannerSession(privateKey: string): Promise<ScannerSession> {
     const { apiKey: provableApiKey, consumerId } = getProvableConfig();
 
     if (!provableApiKey || !consumerId) {
@@ -583,7 +583,7 @@ export async function enrichInvoiceWithRecordAmount(invoice: InvoiceRecord, priv
 
     return invoice;
 }
-async function findSpendableRecord(
+export async function findSpendableRecord(
     session: ScannerSession,
     programFilter: string,
     recordName: string,
@@ -643,6 +643,70 @@ async function findSpendableRecord(
     return null;
 }
 
+export async function getWalletBalances(session: ScannerSession): Promise<{ credits: number, usdcx: number, usad: number }> {
+    const programs = [
+        { name: 'credits.aleo', field: 'microcredits' },
+        { name: 'test_usdcx_stablecoin.aleo', field: 'amount' },
+        { name: 'test_usad_stablecoin.aleo', field: 'amount' }
+    ];
+
+    let credits = 0n;
+    let usdcx = 0n;
+    let usad = 0n;
+
+    for (const prog of programs) {
+        try {
+            const response = await fetch(`${SCANNER_BASE}/records/owned`, {
+                method: 'POST',
+                headers: session.scannerHeaders,
+                body: JSON.stringify({
+                    uuid: session.scannerUuid,
+                    unspent: true,
+                    decrypt: true,
+                    filter: { program: prog.name }
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json() as { data?: any[] } | any[];
+                const records = Array.isArray(data) ? data : (data.data || []);
+
+                for (const record of records) {
+                    let plaintext = record.record_plaintext || '';
+                    if (!plaintext && record.record_ciphertext) {
+                        try {
+                            const { RecordCiphertext } = await dynamicImport<any>('@provablehq/sdk');
+                            const ciphertext = RecordCiphertext.fromString(record.record_ciphertext);
+                            plaintext = ciphertext.decrypt(session.account.viewKey()).toString();
+                        } catch {
+                            // ignore decrypt fail
+                        }
+                    }
+
+                    if (plaintext && !/invoice_hash/.test(plaintext)) {
+                        const regex = prog.field === 'microcredits' ? /microcredits\s*:\s*([\d_]+)u64/ : /amount\s*:\s*([\d_]+)u128/;
+                        const match = plaintext.match(regex);
+                        if (match) {
+                            const value = BigInt(match[1].replace(/_/g, ''));
+                            if (prog.name === 'credits.aleo') credits += value;
+                            else if (prog.name === 'test_usdcx_stablecoin.aleo') usdcx += value;
+                            else if (prog.name === 'test_usad_stablecoin.aleo') usad += value;
+                        }
+                    }
+                }
+            }
+        } catch {
+            // fail silently on single program error to keep accumulating others
+        }
+    }
+
+    return {
+        credits: Number(credits) / 1_000_000,
+        usdcx: Number(usdcx) / 1_000_000,
+        usad: Number(usad) / 1_000_000
+    };
+}
+
 function getFreezeListProgramId(tokenProgram: string): string | null {
     if (tokenProgram === 'test_usdcx_stablecoin.aleo') {
         return USDCX_FREEZELIST_PROGRAM_ID;
@@ -675,7 +739,7 @@ async function getFreezeListCount(programId: string): Promise<number> {
     return Number.isFinite(parsed) ? parsed + 1 : 0;
 }
 
-async function generateFreezeListProof(ownerAddress: string, tokenProgram: string): Promise<string> {
+export async function generateFreezeListProof(ownerAddress: string, tokenProgram: string): Promise<string> {
     const freezeListProgramId = getFreezeListProgramId(tokenProgram);
     if (!freezeListProgramId) {
         throw new Error(`Unsupported freeze list program for ${tokenProgram}`);
@@ -753,9 +817,12 @@ export async function createSponsoredPaymentAuthorization(args: {
     const inputs = [
         record,
         merchantAddress,
+        session.account.address().toString(),
         `${paymentMode.amountMicro}${paymentMode.amountSuffix}`,
         args.invoice.salt,
         paymentSecret,
+        '0field',
+        '0field',
         args.invoice.invoice_hash,
     ];
 
@@ -770,6 +837,82 @@ export async function createSponsoredPaymentAuthorization(args: {
     });
 
     return { authorization: authorization.toString() };
+}
+
+export async function createSweepAuthorization(args: {
+    walletPrivateKey: string;
+    amountMicro: bigint;
+    currency: Currency;
+    destination: string;
+}): Promise<{ authorization: string; programName: string }> {
+    const session = await getScannerSession(args.walletPrivateKey);
+
+    let tokenProgram = 'credits.aleo';
+    let recordName = 'credits';
+    let functionName = 'transfer_private';
+    let amountSuffix = 'u64';
+
+    if (args.currency === 'USDCX') {
+        tokenProgram = 'test_usdcx_stablecoin.aleo';
+        recordName = 'Token';
+        amountSuffix = 'u128';
+    } else if (args.currency === 'USAD') {
+        tokenProgram = 'test_usad_stablecoin.aleo';
+        recordName = 'Token';
+        amountSuffix = 'u128';
+    }
+
+    const record = await findSpendableRecord(
+        session,
+        tokenProgram,
+        recordName,
+        args.amountMicro,
+        tokenProgram === 'credits.aleo'
+    );
+
+    if (!record) {
+        throw new Error(`No spendable private record found for ${tokenProgram} with sufficient balance.`);
+    }
+
+    let proofsInput: string | undefined;
+    if (tokenProgram !== 'credits.aleo') {
+        const ownerMatch = record.match(/owner\s*:\s*([a-z0-9]+)/i);
+        const ownerAddress = ownerMatch?.[1];
+        if (!ownerAddress || !ownerAddress.startsWith('aleo')) {
+            throw new Error(`Failed to read token record owner for ${tokenProgram}.`);
+        }
+        proofsInput = await generateFreezeListProof(ownerAddress, tokenProgram);
+    }
+
+    const { AleoKeyProvider, AleoNetworkClient, NetworkRecordProvider, ProgramManager } = await dynamicImport<any>('@provablehq/sdk');
+    const keyProvider = new AleoKeyProvider();
+    keyProvider.useCache(true);
+    const networkClient = new AleoNetworkClient(EXPLORER_BASE);
+    const recordProvider = new NetworkRecordProvider(session.account, networkClient);
+    const programManager = new ProgramManager(EXPLORER_BASE, keyProvider, recordProvider);
+    programManager.setAccount(session.account);
+
+    const inputs = [
+        args.destination,
+        `${args.amountMicro}${amountSuffix}`
+    ];
+
+    if (tokenProgram === 'credits.aleo') {
+        inputs.unshift(record); // For credits, record goes first: [record, destination, amount]
+    } else {
+        inputs.push(record);    // For Token, record goes last: [destination, amount, record]
+        if (proofsInput) {
+            inputs.push(proofsInput); // [destination, amount, record, proofs]
+        }
+    }
+
+    const authorization = await programManager.buildAuthorization({
+        programName: tokenProgram,
+        functionName,
+        inputs,
+    });
+
+    return { authorization: authorization.toString(), programName: tokenProgram };
 }
 
 

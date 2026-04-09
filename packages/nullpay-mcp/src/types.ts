@@ -1,7 +1,7 @@
 export type WalletPreference = 'main' | 'burner';
 export type InvoiceType = 'standard' | 'multipay' | 'donation';
 export type Currency = 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
-
+ 
 export interface UserProfile {
     address_hash: string;
     main_address?: string | null;
@@ -10,6 +10,34 @@ export interface UserProfile {
     profile_main_invoice_hash?: string | null;
     profile_burner_invoice_hash?: string | null;
     updated_at?: string;
+}
+
+export type CardTokenCode = 'CREDITS' | 'USDCX' | 'USAD';
+
+export interface CardTokenLimits {
+    max_balance: number;
+}
+
+export interface CardWalletProfile {
+    address_hash: string;
+    main_owner?: string | null;
+    mainOwner?: string | null;
+    card_address: string;
+    encrypted_card_address?: string | null;
+    card_number?: string | null;
+    encrypted_card_number?: string | null;
+    card_number_hash?: string | null;
+    card_number_hash_field?: string | null;
+    card_last4?: string | null;
+    encrypted_card_private_key: string;
+    card_kdf_salt: string;
+    card_kdf_algorithm: string;
+    card_kdf_params: Record<string, unknown> | null;
+    card_status: string;
+    card_label?: string | null;
+    card_hint?: string | null;
+    card_limits_updated_at?: string | null;
+    limits: Record<CardTokenCode, CardTokenLimits>;
 }
 
 export interface InvoiceRecord {
@@ -80,6 +108,38 @@ export interface GetTransactionInfoArgs {
     invoice_hash?: string;
     wallet?: WalletPreference;
     limit?: number;
+}
+
+export interface SweepFundsArgs {
+    amount: number;
+    destination: string;
+    currency?: Currency;
+    wallet?: WalletPreference;
+}
+
+export interface PayWithGiftcardArgs {
+    gift_code: string;
+    payment_link?: string;
+    invoice_hash?: string;
+    amount?: number;
+    currency?: Exclude<Currency, 'ANY'>;
+    session_id?: string;
+}
+
+export interface PayWithCardArgs {
+    card_number: string;
+    pin: string;
+    card_secret: string;
+    payment_link?: string;
+    invoice_hash?: string;
+    amount?: number;
+    currency?: Exclude<Currency, 'ANY'>;
+    session_id?: string;
+}
+
+export interface GetAnalyticsArgs {
+    wallet?: WalletPreference;
+    days?: number;
 }
 
 export interface InvoiceStatusData {

@@ -12,6 +12,7 @@ exports.getInvoiceStatusData = getInvoiceStatusData;
 exports.invoiceTypeToNumber = invoiceTypeToNumber;
 exports.buildPaymentLink = buildPaymentLink;
 exports.createInvoiceDbRecord = createInvoiceDbRecord;
+exports.getScannerSession = getScannerSession;
 exports.parseOwnedInvoiceRecord = parseOwnedInvoiceRecord;
 exports.parseBurnerBackupRecord = parseBurnerBackupRecord;
 exports.fetchOwnedInvoiceRecords = fetchOwnedInvoiceRecords;
@@ -19,11 +20,15 @@ exports.fetchOwnedBurnerBackupRecords = fetchOwnedBurnerBackupRecords;
 exports.recoverOnChainWalletBackup = recoverOnChainWalletBackup;
 exports.fetchOwnedInvoiceRecordByHash = fetchOwnedInvoiceRecordByHash;
 exports.enrichInvoiceWithRecordAmount = enrichInvoiceWithRecordAmount;
+exports.findSpendableRecord = findSpendableRecord;
+exports.getWalletBalances = getWalletBalances;
+exports.generateFreezeListProof = generateFreezeListProof;
 exports.createSponsoredPaymentAuthorization = createSponsoredPaymentAuthorization;
+exports.createSweepAuthorization = createSweepAuthorization;
 const crypto_1 = __importDefault(require("crypto"));
 const esm_1 = require("./esm");
 const env_1 = require("./env");
-exports.PROGRAM_ID = 'zk_pay_proofs_privacy_v25.aleo';
+exports.PROGRAM_ID = 'zk_pay_proofs_privacy_v26.aleo';
 const USDCX_FREEZELIST_PROGRAM_ID = 'test_usdcx_freezelist.aleo';
 const USAD_FREEZELIST_PROGRAM_ID = 'test_usad_freezelist.aleo';
 const EXPLORER_BASE = 'https://api.explorer.provable.com/v1';
@@ -549,6 +554,68 @@ async function findSpendableRecord(session, programFilter, recordName, amountReq
     }
     return null;
 }
+async function getWalletBalances(session) {
+    const programs = [
+        { name: 'credits.aleo', field: 'microcredits' },
+        { name: 'test_usdcx_stablecoin.aleo', field: 'amount' },
+        { name: 'test_usad_stablecoin.aleo', field: 'amount' }
+    ];
+    let credits = 0n;
+    let usdcx = 0n;
+    let usad = 0n;
+    for (const prog of programs) {
+        try {
+            const response = await fetch(`${SCANNER_BASE}/records/owned`, {
+                method: 'POST',
+                headers: session.scannerHeaders,
+                body: JSON.stringify({
+                    uuid: session.scannerUuid,
+                    unspent: true,
+                    decrypt: true,
+                    filter: { program: prog.name }
+                })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                const records = Array.isArray(data) ? data : (data.data || []);
+                for (const record of records) {
+                    let plaintext = record.record_plaintext || '';
+                    if (!plaintext && record.record_ciphertext) {
+                        try {
+                            const { RecordCiphertext } = await (0, esm_1.dynamicImport)('@provablehq/sdk');
+                            const ciphertext = RecordCiphertext.fromString(record.record_ciphertext);
+                            plaintext = ciphertext.decrypt(session.account.viewKey()).toString();
+                        }
+                        catch {
+                            // ignore decrypt fail
+                        }
+                    }
+                    if (plaintext && !/invoice_hash/.test(plaintext)) {
+                        const regex = prog.field === 'microcredits' ? /microcredits\s*:\s*([\d_]+)u64/ : /amount\s*:\s*([\d_]+)u128/;
+                        const match = plaintext.match(regex);
+                        if (match) {
+                            const value = BigInt(match[1].replace(/_/g, ''));
+                            if (prog.name === 'credits.aleo')
+                                credits += value;
+                            else if (prog.name === 'test_usdcx_stablecoin.aleo')
+                                usdcx += value;
+                            else if (prog.name === 'test_usad_stablecoin.aleo')
+                                usad += value;
+                        }
+                    }
+                }
+            }
+        }
+        catch {
+            // fail silently on single program error to keep accumulating others
+        }
+    }
+    return {
+        credits: Number(credits) / 1000000,
+        usdcx: Number(usdcx) / 1000000,
+        usad: Number(usad) / 1000000
+    };
+}
 function getFreezeListProgramId(tokenProgram) {
     if (tokenProgram === 'test_usdcx_stablecoin.aleo') {
         return USDCX_FREEZELIST_PROGRAM_ID;
@@ -632,9 +699,12 @@ async function createSponsoredPaymentAuthorization(args) {
     const inputs = [
         record,
         merchantAddress,
+        session.account.address().toString(),
         `${paymentMode.amountMicro}${paymentMode.amountSuffix}`,
         args.invoice.salt,
         paymentSecret,
+        '0field',
+        '0field',
         args.invoice.invoice_hash,
     ];
     if (proofsInput) {
@@ -646,4 +716,60 @@ async function createSponsoredPaymentAuthorization(args) {
         inputs,
     });
     return { authorization: authorization.toString() };
+}
+async function createSweepAuthorization(args) {
+    const session = await getScannerSession(args.walletPrivateKey);
+    let tokenProgram = 'credits.aleo';
+    let recordName = 'credits';
+    let functionName = 'transfer_private';
+    let amountSuffix = 'u64';
+    if (args.currency === 'USDCX') {
+        tokenProgram = 'test_usdcx_stablecoin.aleo';
+        recordName = 'Token';
+        amountSuffix = 'u128';
+    }
+    else if (args.currency === 'USAD') {
+        tokenProgram = 'test_usad_stablecoin.aleo';
+        recordName = 'Token';
+        amountSuffix = 'u128';
+    }
+    const record = await findSpendableRecord(session, tokenProgram, recordName, args.amountMicro, tokenProgram === 'credits.aleo');
+    if (!record) {
+        throw new Error(`No spendable private record found for ${tokenProgram} with sufficient balance.`);
+    }
+    let proofsInput;
+    if (tokenProgram !== 'credits.aleo') {
+        const ownerMatch = record.match(/owner\s*:\s*([a-z0-9]+)/i);
+        const ownerAddress = ownerMatch?.[1];
+        if (!ownerAddress || !ownerAddress.startsWith('aleo')) {
+            throw new Error(`Failed to read token record owner for ${tokenProgram}.`);
+        }
+        proofsInput = await generateFreezeListProof(ownerAddress, tokenProgram);
+    }
+    const { AleoKeyProvider, AleoNetworkClient, NetworkRecordProvider, ProgramManager } = await (0, esm_1.dynamicImport)('@provablehq/sdk');
+    const keyProvider = new AleoKeyProvider();
+    keyProvider.useCache(true);
+    const networkClient = new AleoNetworkClient(EXPLORER_BASE);
+    const recordProvider = new NetworkRecordProvider(session.account, networkClient);
+    const programManager = new ProgramManager(EXPLORER_BASE, keyProvider, recordProvider);
+    programManager.setAccount(session.account);
+    const inputs = [
+        args.destination,
+        `${args.amountMicro}${amountSuffix}`
+    ];
+    if (tokenProgram === 'credits.aleo') {
+        inputs.unshift(record); // For credits, record goes first: [record, destination, amount]
+    }
+    else {
+        inputs.push(record); // For Token, record goes last: [destination, amount, record]
+        if (proofsInput) {
+            inputs.push(proofsInput); // [destination, amount, record, proofs]
+        }
+    }
+    const authorization = await programManager.buildAuthorization({
+        programName: tokenProgram,
+        functionName,
+        inputs,
+    });
+    return { authorization: authorization.toString(), programName: tokenProgram };
 }

@@ -43,6 +43,12 @@ export declare class NullPayMcpService {
                 invoice_hash?: undefined;
                 session_id?: undefined;
                 limit?: undefined;
+                destination?: undefined;
+                gift_code?: undefined;
+                card_number?: undefined;
+                pin?: undefined;
+                card_secret?: undefined;
+                days?: undefined;
             };
             required?: undefined;
         };
@@ -102,6 +108,12 @@ export declare class NullPayMcpService {
                 invoice_hash?: undefined;
                 session_id?: undefined;
                 limit?: undefined;
+                destination?: undefined;
+                gift_code?: undefined;
+                card_number?: undefined;
+                pin?: undefined;
+                card_secret?: undefined;
+                days?: undefined;
             };
             required: string[];
         };
@@ -145,6 +157,12 @@ export declare class NullPayMcpService {
                 invoice_type?: undefined;
                 line_items?: undefined;
                 limit?: undefined;
+                destination?: undefined;
+                gift_code?: undefined;
+                card_number?: undefined;
+                pin?: undefined;
+                card_secret?: undefined;
+                days?: undefined;
             };
             required?: undefined;
         };
@@ -177,8 +195,224 @@ export declare class NullPayMcpService {
                 line_items?: undefined;
                 payment_link?: undefined;
                 session_id?: undefined;
+                destination?: undefined;
+                gift_code?: undefined;
+                card_number?: undefined;
+                pin?: undefined;
+                card_secret?: undefined;
+                days?: undefined;
             };
             required?: undefined;
+        };
+    } | {
+        name: string;
+        description: string;
+        inputSchema: {
+            type: string;
+            properties: {
+                amount: {
+                    type: string;
+                    description: string;
+                };
+                destination: {
+                    type: string;
+                    description: string;
+                };
+                currency: {
+                    type: string;
+                    enum: string[];
+                    description?: undefined;
+                };
+                wallet: {
+                    type: string;
+                    enum: string[];
+                };
+                address?: undefined;
+                password?: undefined;
+                main_private_key?: undefined;
+                create_burner_wallet?: undefined;
+                wallet_preference?: undefined;
+                memo?: undefined;
+                invoice_type?: undefined;
+                line_items?: undefined;
+                payment_link?: undefined;
+                invoice_hash?: undefined;
+                session_id?: undefined;
+                limit?: undefined;
+                gift_code?: undefined;
+                card_number?: undefined;
+                pin?: undefined;
+                card_secret?: undefined;
+                days?: undefined;
+            };
+            required: string[];
+        };
+    } | {
+        name: string;
+        description: string;
+        inputSchema: {
+            type: string;
+            properties: {
+                gift_code: {
+                    type: string;
+                    description: string;
+                };
+                payment_link: {
+                    type: string;
+                    description: string;
+                };
+                invoice_hash: {
+                    type: string;
+                    description: string;
+                };
+                amount: {
+                    type: string;
+                    description?: undefined;
+                };
+                currency: {
+                    type: string;
+                    enum: string[];
+                    description?: undefined;
+                };
+                session_id: {
+                    type: string;
+                    description?: undefined;
+                };
+                address?: undefined;
+                password?: undefined;
+                main_private_key?: undefined;
+                create_burner_wallet?: undefined;
+                wallet_preference?: undefined;
+                memo?: undefined;
+                invoice_type?: undefined;
+                wallet?: undefined;
+                line_items?: undefined;
+                limit?: undefined;
+                destination?: undefined;
+                card_number?: undefined;
+                pin?: undefined;
+                card_secret?: undefined;
+                days?: undefined;
+            };
+            required: string[];
+        };
+    } | {
+        name: string;
+        description: string;
+        inputSchema: {
+            type: string;
+            properties: {
+                card_number: {
+                    type: string;
+                };
+                pin: {
+                    type: string;
+                };
+                card_secret: {
+                    type: string;
+                };
+                payment_link: {
+                    type: string;
+                    description?: undefined;
+                };
+                invoice_hash: {
+                    type: string;
+                    description?: undefined;
+                };
+                amount: {
+                    type: string;
+                    description?: undefined;
+                };
+                currency: {
+                    type: string;
+                    enum: string[];
+                    description?: undefined;
+                };
+                session_id: {
+                    type: string;
+                    description?: undefined;
+                };
+                address?: undefined;
+                password?: undefined;
+                main_private_key?: undefined;
+                create_burner_wallet?: undefined;
+                wallet_preference?: undefined;
+                memo?: undefined;
+                invoice_type?: undefined;
+                wallet?: undefined;
+                line_items?: undefined;
+                limit?: undefined;
+                destination?: undefined;
+                gift_code?: undefined;
+                days?: undefined;
+            };
+            required: string[];
+        };
+    } | {
+        name: string;
+        description: string;
+        inputSchema: {
+            type: string;
+            properties: {
+                wallet: {
+                    type: string;
+                    enum: string[];
+                };
+                days: {
+                    type: string;
+                    description: string;
+                };
+                address?: undefined;
+                password?: undefined;
+                main_private_key?: undefined;
+                create_burner_wallet?: undefined;
+                wallet_preference?: undefined;
+                amount?: undefined;
+                currency?: undefined;
+                memo?: undefined;
+                invoice_type?: undefined;
+                line_items?: undefined;
+                payment_link?: undefined;
+                invoice_hash?: undefined;
+                session_id?: undefined;
+                limit?: undefined;
+                destination?: undefined;
+                gift_code?: undefined;
+                card_number?: undefined;
+                pin?: undefined;
+                card_secret?: undefined;
+            };
+            required?: undefined;
+        };
+    } | {
+        name: string;
+        description: string;
+        inputSchema: {
+            type: string;
+            properties: {
+                address?: undefined;
+                password?: undefined;
+                main_private_key?: undefined;
+                create_burner_wallet?: undefined;
+                wallet_preference?: undefined;
+                amount?: undefined;
+                currency?: undefined;
+                memo?: undefined;
+                invoice_type?: undefined;
+                wallet?: undefined;
+                line_items?: undefined;
+                payment_link?: undefined;
+                invoice_hash?: undefined;
+                session_id?: undefined;
+                limit?: undefined;
+                destination?: undefined;
+                gift_code?: undefined;
+                card_number?: undefined;
+                pin?: undefined;
+                card_secret?: undefined;
+                days?: undefined;
+            };
+            required: never[];
         };
     })[];
     callTool(name: string, args: Record<string, unknown>): Promise<ToolResult>;
@@ -194,4 +428,9 @@ export declare class NullPayMcpService {
     private resolvePayInvoiceContext;
     private enrichInvoiceIfPossible;
     private getEnrichedInvoice;
+    private checkBurnerBalance;
+    private sweepFunds;
+    private payWithGiftcard;
+    private payWithCard;
+    private getAnalytics;
 }

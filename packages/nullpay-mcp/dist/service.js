@@ -119,7 +119,7 @@ function buildAmountLookupHint(invoice, hasInvoiceLookupKey) {
     if (hasInvoiceLookupKey) {
         return ' | amount_source=missing | record_lookup=not_found_or_unreadable_for_selected_wallet';
     }
-    return ' | amount_source=db_only (private key missing to fetch record-backed amount)';
+    return ' | amount_source=db_only (amount could not be loaded because private key is not provided)';
 }
 function readEnvTrimmed(name) {
     const value = process.env[name]?.trim();
@@ -208,6 +208,74 @@ class NullPayMcpService {
                         limit: { type: 'number' }
                     }
                 }
+            },
+            {
+                name: 'sweep_funds',
+                description: 'Transfer funds from the active private wallet to a specified Aleo destination address without revealing your private key.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        amount: { type: 'number', description: 'Amount to sweep/transfer' },
+                        destination: { type: 'string', description: 'Aleo destination address' },
+                        currency: { type: 'string', enum: ['CREDITS', 'USDCX', 'USAD'] },
+                        wallet: { type: 'string', enum: ['main', 'burner'] }
+                    },
+                    required: ['amount', 'destination']
+                }
+            },
+            {
+                name: 'pay_with_giftcard',
+                description: 'Redeem or pay an invoice using a NullPay Gift Card code without needing a wallet private key. Provides gasless ZK Proof execution via the NullPay backend relayer.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        gift_code: { type: 'string', description: 'The gift card code starting with gift-' },
+                        payment_link: { type: 'string', description: 'Full NullPay payment link (optional if invoice_hash is provided)' },
+                        invoice_hash: { type: 'string', description: 'Invoice hash (optional if payment_link is provided)' },
+                        amount: { type: 'number' },
+                        currency: { type: 'string', enum: ['CREDITS', 'USDCX', 'USAD'] },
+                        session_id: { type: 'string' }
+                    },
+                    required: ['gift_code']
+                }
+            },
+            {
+                name: 'pay_with_card',
+                description: 'Pay an invoice using your NullPay Card without sharing the main wallet private key. Needs the 16-digit card number, PIN, and Card Secret.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        card_number: { type: 'string' },
+                        pin: { type: 'string' },
+                        card_secret: { type: 'string' },
+                        payment_link: { type: 'string' },
+                        invoice_hash: { type: 'string' },
+                        amount: { type: 'number' },
+                        currency: { type: 'string', enum: ['CREDITS', 'USDCX', 'USAD'] },
+                        session_id: { type: 'string' }
+                    },
+                    required: ['card_number', 'pin', 'card_secret']
+                }
+            },
+            {
+                name: 'get_analytics',
+                description: 'Get comprehensive spending analytics and timeline metrics from your recent transactions.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        wallet: { type: 'string', enum: ['main', 'burner'] },
+                        days: { type: 'number', description: 'Number of past days to include in the analytics' }
+                    }
+                }
+            },
+            {
+                name: 'check_burner_balance',
+                description: 'Check the available private record balances (CREDITS, USDCX, USAD) in the burner wallet. Useful to check before sweeping funds.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {},
+                    required: []
+                }
             }
         ];
     }
@@ -221,6 +289,16 @@ class NullPayMcpService {
                 return await this.payInvoice(args);
             if (name === 'get_transaction_info')
                 return await this.getTransactionInfo(args);
+            if (name === 'sweep_funds')
+                return await this.sweepFunds(args);
+            if (name === 'pay_with_giftcard')
+                return await this.payWithGiftcard(args);
+            if (name === 'pay_with_card')
+                return await this.payWithCard(args);
+            if (name === 'get_analytics')
+                return await this.getAnalytics(args);
+            if (name === 'check_burner_balance')
+                return await this.checkBurnerBalance();
             throw new Error(`Unknown tool: ${name}`);
         }
         catch (error) {
@@ -473,7 +551,7 @@ class NullPayMcpService {
         });
         const sponsored = await this.backend.sponsorExecution({
             execution_authorization_string: authorization,
-            programName: 'zk_pay_proofs_privacy_v25.aleo',
+            programName: 'zk_pay_proofs_privacy_v26.aleo',
         });
         const txId = sponsored.transaction?.id;
         if (!txId) {
@@ -525,7 +603,7 @@ class NullPayMcpService {
             const onChainStatus = onChain ? ` | on_chain_status=${onChain.status} | on_chain_token=${tokenTypeLabel(onChain.tokenType)} | on_chain_type=${invoiceTypeLabel(onChain.invoiceType)}` : '';
             const amountHint = buildAmountLookupHint(invoice, Boolean(invoiceLookupPrivateKey));
             const missingAmountNote = getAmountSource(invoice) === 'missing'
-                ? ' | note=invoice_amount_not_recovered_automatically; multipay invoices may still have a fixed amount; missing amount here indicates lookup failure, not a donation-style free amount'
+                ? (!invoiceLookupPrivateKey ? ' | note=Amount could not be loaded because private key is not provided.' : ' | note=invoice_amount_not_recovered_automatically; multipay invoices may still have a fixed amount; missing amount here indicates lookup failure, not a donation-style free amount')
                 : '';
             return {
                 content: [{
@@ -710,6 +788,215 @@ class NullPayMcpService {
     async getEnrichedInvoice(invoiceHash, walletPrivateKey) {
         const invoice = await this.backend.getInvoice(invoiceHash);
         return await this.enrichInvoiceIfPossible(invoice, walletPrivateKey);
+    }
+    async checkBurnerBalance() {
+        let walletPrivateKey;
+        try {
+            walletPrivateKey = await this.resolveWalletPrivateKey('burner');
+        }
+        catch (e) {
+            throw new Error('Burner wallet private key not found. Make sure burner wallet is created and unlocked.');
+        }
+        const session = await (0, aleo_1.getScannerSession)(walletPrivateKey);
+        const balances = await (0, aleo_1.getWalletBalances)(session);
+        return {
+            content: [{
+                    type: 'text',
+                    text: `Your burner wallet balance is:\n- ${balances.credits} CREDITS\n- ${balances.usdcx} USDCX\n- ${balances.usad} USAD\n`
+                }],
+            structuredContent: balances
+        };
+    }
+    async sweepFunds(args) {
+        const wallet = this.resolveWallet(args.wallet);
+        const walletPrivateKey = await this.resolveWalletPrivateKey(wallet);
+        const amountMicro = BigInt(Math.round(args.amount * 1000000));
+        const currency = normalizePaymentCurrency(args.currency) || 'CREDITS';
+        const { authorization, programName } = await (0, aleo_1.createSweepAuthorization)({
+            walletPrivateKey,
+            amountMicro,
+            currency,
+            destination: args.destination
+        });
+        const sponsored = await this.backend.sponsorExecution({
+            execution_authorization_string: authorization,
+            programName,
+        });
+        const txId = sponsored.transaction?.id;
+        if (!txId) {
+            throw new Error('Sponsored sweep did not return a transaction id.');
+        }
+        return {
+            content: [{
+                    type: 'text',
+                    text: `Successfully swept ${args.amount} ${currency} to ${args.destination}. Transaction ID: ${txId}`
+                }],
+            structuredContent: {
+                transaction_id: txId,
+                amount: args.amount,
+                currency,
+                destination: args.destination,
+                wallet
+            }
+        };
+    }
+    async payWithGiftcard(args) {
+        const hex = args.gift_code.replace('gift-', '');
+        const pkStr = new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16))));
+        const resolved = await this.resolvePayInvoiceContext(args, 'main');
+        const { invoice, sessionId } = resolved;
+        const { authorization } = await (0, aleo_1.createSponsoredPaymentAuthorization)({
+            walletPrivateKey: pkStr,
+            invoice,
+            amount: args.amount,
+            currency: normalizePaymentCurrency(args.currency),
+        });
+        const sponsored = await this.backend.sponsorExecution({
+            execution_authorization_string: authorization,
+            programName: 'zk_pay_proofs_privacy_v26.aleo',
+        });
+        const txId = sponsored.transaction?.id;
+        if (!txId) {
+            throw new Error('Giftcard payment did not return a transaction id.');
+        }
+        const invoiceUpdate = {
+            payment_tx_ids: [txId],
+            ...(sessionId ? { session_id: sessionId } : {}),
+        };
+        if (shouldMarkInvoiceSettled(invoice.invoice_type)) {
+            invoiceUpdate.status = 'SETTLED';
+        }
+        await this.backend.updateInvoice(invoice.invoice_hash, invoiceUpdate);
+        if (sessionId) {
+            await this.backend.updateCheckoutSession(sessionId, { status: 'SETTLED', tx_id: txId });
+        }
+        return {
+            content: [{
+                    type: 'text',
+                    text: `Giftcard payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
+                }],
+            structuredContent: {
+                invoice_hash: invoice.invoice_hash,
+                payment_tx_id: txId,
+                session_id: sessionId || null
+            }
+        };
+    }
+    async payWithCard(args) {
+        const normalizedCardNumber = args.card_number.replace(/\D/g, '');
+        const cardNumberHash = (0, crypto_1.hashAddress)(normalizedCardNumber);
+        const cardProfile = await this.backend.lookupCardWallet(cardNumberHash);
+        if (!cardProfile) {
+            throw new Error('NullPay card not found relative to this card number.');
+        }
+        if (cardProfile.card_status !== 'ACTIVE') {
+            throw new Error('This NullPay card is not active.');
+        }
+        if (!cardProfile.encrypted_card_private_key || !cardProfile.card_kdf_salt) {
+            throw new Error('Card missing encryption material.');
+        }
+        const pkStr = await (0, crypto_1.decryptCardPrivateKey)(cardProfile.encrypted_card_private_key, args.pin, args.card_secret, cardProfile.card_kdf_salt, cardProfile.card_kdf_algorithm, cardProfile.card_kdf_params);
+        const resolved = await this.resolvePayInvoiceContext(args, 'main');
+        const { invoice, sessionId } = resolved;
+        const { authorization } = await (0, aleo_1.createSponsoredPaymentAuthorization)({
+            walletPrivateKey: pkStr,
+            invoice,
+            amount: args.amount,
+            currency: normalizePaymentCurrency(args.currency),
+        });
+        const sponsored = await this.backend.sponsorExecution({
+            execution_authorization_string: authorization,
+            programName: 'zk_pay_proofs_privacy_v26.aleo',
+        });
+        const txId = sponsored.transaction?.id;
+        if (!txId) {
+            throw new Error('Card payment did not return a transaction id.');
+        }
+        const invoiceUpdate = {
+            payment_tx_ids: [txId],
+            ...(sessionId ? { session_id: sessionId } : {}),
+        };
+        if (shouldMarkInvoiceSettled(invoice.invoice_type)) {
+            invoiceUpdate.status = 'SETTLED';
+        }
+        await this.backend.updateInvoice(invoice.invoice_hash, invoiceUpdate);
+        if (sessionId) {
+            await this.backend.updateCheckoutSession(sessionId, { status: 'SETTLED', tx_id: txId });
+        }
+        return {
+            content: [{
+                    type: 'text',
+                    text: `Card payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
+                }],
+            structuredContent: {
+                invoice_hash: invoice.invoice_hash,
+                payment_tx_id: txId,
+                session_id: sessionId || null
+            }
+        };
+    }
+    async getAnalytics(args) {
+        const wallet = this.resolveWallet(args.wallet);
+        const walletAddress = await this.resolveWalletAddress(wallet);
+        const walletPrivateKey = await this.resolveWalletPrivateKeyOptional(wallet);
+        let invoices = [];
+        try {
+            const rawInvoices = await this.backend.getMerchantInvoices((0, crypto_1.hashAddress)(walletAddress));
+            if (walletPrivateKey) {
+                invoices = await Promise.all(rawInvoices.map(inv => this.enrichInvoiceIfPossible(inv, walletPrivateKey)));
+            }
+            else {
+                invoices = rawInvoices;
+            }
+        }
+        catch {
+            invoices = [];
+        }
+        const now = Date.now();
+        const cutoff = args.days ? now - args.days * 24 * 60 * 60 * 1000 : 0;
+        let totalVolume = 0;
+        let totalTransactions = 0;
+        const tokens = {};
+        const dailyTrend = {};
+        const monthlyTrend = {};
+        invoices.forEach(inv => {
+            const createdAt = inv.created_at ? new Date(inv.created_at).getTime() : 0;
+            if (createdAt >= cutoff) {
+                totalTransactions++;
+                const amount = inv.amount || 0;
+                totalVolume += amount;
+                const tokenLabel = tokenTypeLabel(inv.token_type);
+                tokens[tokenLabel] = (tokens[tokenLabel] || 0) + amount;
+                if (inv.created_at) {
+                    const dateObj = new Date(inv.created_at);
+                    const dateStr = dateObj.toISOString().split('T')[0];
+                    const monthStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+                    dailyTrend[dateStr] = (dailyTrend[dateStr] || 0) + amount;
+                    monthlyTrend[monthStr] = (monthlyTrend[monthStr] || 0) + amount;
+                }
+            }
+        });
+        const lines = [
+            `Analytics for ${wallet} wallet (${walletAddress}) over ${args.days ? `last ${args.days} days` : 'all time'}:`,
+            `- Total Transactions: ${totalTransactions}`,
+            `- Total Volume Activity: ${totalVolume}`
+        ];
+        for (const [token, amount] of Object.entries(tokens)) {
+            lines.push(`  * ${token}: ${amount}`);
+        }
+        if (!walletPrivateKey) {
+            lines.push(`\nNote: Exact amounts could not be loaded because private key is not provided.`);
+        }
+        return {
+            content: [{ type: 'text', text: lines.join('\n') }],
+            structuredContent: {
+                total_transactions: totalTransactions,
+                total_volume: totalVolume,
+                breakdown_by_token: tokens,
+                daily_trend: dailyTrend,
+                monthly_trend: monthlyTrend
+            }
+        };
     }
 }
 exports.NullPayMcpService = NullPayMcpService;

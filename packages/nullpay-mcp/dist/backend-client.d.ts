@@ -1,4 +1,4 @@
-import { InvoiceRecord, UserProfile } from './types';
+import { CardWalletProfile, InvoiceRecord, UserProfile } from './types';
 export declare class NullPayBackendClient {
     private readonly baseUrl;
     constructor(baseUrl: string);
@@ -41,4 +41,5 @@ export declare class NullPayBackendClient {
             id?: string;
         };
     }>;
+    lookupCardWallet(cardNumberHash: string): Promise<CardWalletProfile | null>;
 }

@@ -1,5 +1,5 @@
 import { Currency, InvoiceRecord, InvoiceStatusData, InvoiceType, ParsedOwnedInvoiceRecord } from './types';
-export declare const PROGRAM_ID = "zk_pay_proofs_privacy_v25.aleo";
+export declare const PROGRAM_ID = "zk_pay_proofs_privacy_v26.aleo";
 export declare function generateSalt(): string;
 export declare function normalizeInvoiceHash(hash: string): string;
 export declare function getInvoiceHashFromMapping(salt: string): Promise<string | null>;
@@ -53,6 +53,11 @@ export declare function createInvoiceDbRecord(args: {
     }[] | null;
     for_sdk: boolean;
 };
+export interface ScannerSession {
+    scannerHeaders: Record<string, string>;
+    scannerUuid: string;
+    account: any;
+}
 export interface ParsedBurnerBackupRecord {
     owner: string;
     burnerAddress: string;
@@ -66,6 +71,7 @@ export interface RecoveredOnChainWalletBackup {
     encryptedBurnerKey?: string;
     source: 'password_only' | 'full_burner';
 }
+export declare function getScannerSession(privateKey: string): Promise<ScannerSession>;
 export declare function parseOwnedInvoiceRecord(plaintext: string): ParsedOwnedInvoiceRecord | null;
 export declare function parseBurnerBackupRecord(plaintext: string): ParsedBurnerBackupRecord | null;
 export declare function fetchOwnedInvoiceRecords(privateKey: string): Promise<ParsedOwnedInvoiceRecord[]>;
@@ -73,6 +79,13 @@ export declare function fetchOwnedBurnerBackupRecords(privateKey: string): Promi
 export declare function recoverOnChainWalletBackup(privateKey: string, ownerAddress: string): Promise<RecoveredOnChainWalletBackup | null>;
 export declare function fetchOwnedInvoiceRecordByHash(privateKey: string, invoiceHash: string): Promise<ParsedOwnedInvoiceRecord | null>;
 export declare function enrichInvoiceWithRecordAmount(invoice: InvoiceRecord, privateKey?: string | null): Promise<InvoiceRecord>;
+export declare function findSpendableRecord(session: ScannerSession, programFilter: string, recordName: string, amountRequired: bigint, isCredits: boolean): Promise<string | null>;
+export declare function getWalletBalances(session: ScannerSession): Promise<{
+    credits: number;
+    usdcx: number;
+    usad: number;
+}>;
+export declare function generateFreezeListProof(ownerAddress: string, tokenProgram: string): Promise<string>;
 export declare function createSponsoredPaymentAuthorization(args: {
     walletPrivateKey: string;
     invoice: InvoiceRecord;
@@ -80,4 +93,13 @@ export declare function createSponsoredPaymentAuthorization(args: {
     currency?: Exclude<Currency, 'ANY'>;
 }): Promise<{
     authorization: string;
+}>;
+export declare function createSweepAuthorization(args: {
+    walletPrivateKey: string;
+    amountMicro: bigint;
+    currency: Currency;
+    destination: string;
+}): Promise<{
+    authorization: string;
+    programName: string;
 }>;
