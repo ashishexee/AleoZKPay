@@ -7,7 +7,8 @@ interface PaidInvoicesTableProps {
     receipts: PayerReceipt[];
     loading: boolean;
     search: string;
-    onViewReceipts: (hashes: string[]) => void;
+    onViewReceipts: (receipts: PayerReceipt[]) => void;
+    onViewNotes: (notes: string[]) => void;
 }
 
 const formatFieldHash = (hash: string, startLength = 5, endLength = 4) => {
@@ -28,7 +29,7 @@ const formatTokenAmount = (amount: number) => {
     return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/\.?0+$/, '');
 };
 
-export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, loading, search, onViewReceipts }) => {
+export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, loading, search, onViewReceipts, onViewNotes }) => {
     // Process receipts to group by invoiceHash
     const groupedReceipts = useMemo(() => {
         // Deduplicate by receiptHash first
@@ -57,6 +58,7 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                     <th className="py-5 px-6 text-xs font-bold text-orange-100/90 uppercase tracking-[0.24em]">Invoice Hash</th>
                     <th className="py-5 px-6 text-xs font-bold text-amber-100/90 uppercase tracking-[0.24em] text-center">Amount Paid</th>
                     <th className="py-5 px-6 text-xs font-bold text-cyan-100/90 uppercase tracking-[0.24em]">Your Note</th>
+                    <th className="py-5 px-6 text-xs font-bold text-blue-100/90 uppercase tracking-[0.24em] text-center">Transaction ID</th>
                     <th className="py-5 px-6 text-xs font-bold text-emerald-100/90 uppercase tracking-[0.24em] text-right">Receipt Hash</th>
                 </tr>
             </thead>
@@ -67,12 +69,13 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                             <td className="py-5 px-6"><Shimmer className="h-6 w-48 bg-white/5 rounded" /></td>
                             <td className="py-5 px-6 text-center"><Shimmer className="h-6 w-24 bg-white/5 rounded mx-auto" /></td>
                             <td className="py-5 px-6"><Shimmer className="h-6 w-36 bg-white/5 rounded" /></td>
+                            <td className="py-5 px-6 text-center"><Shimmer className="h-6 w-40 bg-white/5 rounded mx-auto" /></td>
                             <td className="py-5 px-6 text-right"><Shimmer className="h-6 w-48 bg-white/5 rounded ml-auto" /></td>
                         </tr>
                     ))
                 ) : groupedReceipts.length === 0 ? (
                     <tr>
-                        <td colSpan={4} className="py-8 text-center text-gray-500 italic">No paid invoices found.</td>
+                        <td colSpan={5} className="py-8 text-center text-gray-500 italic">No paid invoices found.</td>
                     </tr>
                 ) : (
                     groupedReceipts.map(([invoiceHash, receipts]) => {
@@ -125,14 +128,17 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                                     </div>
                                 </td>
                                 <td className="py-5 px-6">
-                                    <div className="max-w-[220px]">
+                                    <div 
+                                        className={`max-w-[220px] transition-all ${noteSummary.length > 0 ? 'cursor-pointer hover:opacity-80' : ''}`}
+                                        onClick={() => noteSummary.length > 0 && onViewNotes(noteSummary)}
+                                    >
                                         {noteSummary.length > 0 ? (
                                             <>
                                                 <span className="block truncate text-sm text-gray-200" title={noteSummary[0]}>
                                                     {noteSummary[0]}
                                                 </span>
                                                 {noteSummary.length > 1 && (
-                                                    <span className="mt-1 block text-[11px] text-cyan-200/60">
+                                                    <span className="mt-1 block text-[11px] text-cyan-200/60 font-semibold hover:text-cyan-100 transition-colors">
                                                         +{noteSummary.length - 1} more note{noteSummary.length > 2 ? 's' : ''}
                                                     </span>
                                                 )}
@@ -141,6 +147,31 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                                             <span className="text-sm text-gray-600">No payer note</span>
                                         )}
                                     </div>
+                                </td>
+                                <td className="py-5 px-6 text-center">
+                                    {receipts.length === 1 && receipts[0].transactionId ? (
+                                        <div className="flex justify-center items-center gap-2 group/tx">
+                                            <a 
+                                                href={`https://testnet.explorer.provable.com/transaction/${receipts[0].transactionId}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-[10px] font-black text-blue-300/60 hover:text-blue-200 uppercase tracking-[0.2em] transition-all border-b border-blue-400/20 hover:border-blue-300/40"
+                                                title={receipts[0].transactionId}
+                                            >
+                                                {formatFieldHash(receipts[0].transactionId, 3, 3)}
+                                            </a>
+                                            <CopyButton text={receipts[0].transactionId} className="opacity-0 group-hover/tx:opacity-100 transition-opacity text-blue-300/50 hover:text-blue-200" />
+                                        </div>
+                                    ) : receipts.length > 1 ? (
+                                        <button
+                                            onClick={() => onViewReceipts(receipts)}
+                                            className="text-[10px] text-blue-300/60 hover:text-blue-200 uppercase tracking-[0.2em] font-black transition-all border-b border-blue-400/20 hover:border-blue-300/40"
+                                        >
+                                            Multi-Tx ({receipts.length})
+                                        </button>
+                                    ) : (
+                                        <span className="text-xs text-gray-700 italic">No TX ID</span>
+                                    )}
                                 </td>
                                 <td className="py-5 px-6 text-right font-mono text-neon-accent text-sm">
                                     {receipts.length === 1 ? (
@@ -153,7 +184,7 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                                     ) : (
                                         <div className="flex justify-end">
                                             <button
-                                                onClick={() => onViewReceipts(receipts.map(r => r.receiptHash))}
+                                                onClick={() => onViewReceipts(receipts)}
                                                 className="text-xs text-cyan-300 hover:text-cyan-200 cursor-pointer border-b border-cyan-400/30 hover:border-cyan-300/50 transition-colors font-medium"
                                             >
                                                 Receipts ({receipts.length})

@@ -9,12 +9,13 @@ const Navbar = () => {
     const location = useLocation();
     const isActive = (path: string) => location.pathname === path;
 
-    const isLanding = location.pathname === '/' || location.pathname === '/vision' || location.pathname === '/privacy';
+    const isLanding = location.pathname === '/' || location.pathname === '/vision' || location.pathname === '/privacy' || location.pathname === '/docs';
 
     const landingNavItems = [
         { path: '/', label: 'Home' },
         { path: '/vision', label: 'Vision' },
         { label: 'Privacy', path: '/privacy' },
+        { label: 'Docs', path: '/docs' },
     ];
 
     const appNavItems = [

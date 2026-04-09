@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { DocsChatbot } from '../../../shared/components/DocsChatbot';
@@ -8,23 +8,62 @@ import { sectionContentByTab } from './sections';
 import { docsTabs } from './tabs';
 import type { DocsSection, DocsTab } from './types';
 
-const SectionContent = ({ section }: { section: DocsSection }) => (
-    <motion.div
-        key={section.id}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.22, ease: 'easeOut' }}
-        className="space-y-5"
-    >
-        <div>
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-orange-300">{section.eyebrow}</p>
-            <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">{section.title}</h2>
-            <p className="mt-3 max-w-4xl text-sm leading-7 text-gray-400 md:text-base">{section.summary}</p>
-        </div>
-        {section.content}
-    </motion.div>
-);
+const SectionContent = ({ section, activeTab }: { section: DocsSection; activeTab: DocsTab['id'] }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        if (typeof window === 'undefined' || !navigator?.clipboard) return;
+        try {
+            const url = `${window.location.origin}${window.location.pathname}?tab=${activeTab}&section=${section.id}`;
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+        } catch {
+            // ignore
+        }
+    };
+
+    return (
+        <motion.div
+            key={section.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="space-y-5"
+        >
+            <div className="flex items-start justify-between gap-6">
+                <div>
+                    <p className="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-orange-300">{section.eyebrow}</p>
+                    <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl flex items-center gap-3">
+                        {section.title}
+                    </h2>
+                    <p className="mt-3 max-w-4xl text-sm leading-7 text-gray-400 md:text-base">{section.summary}</p>
+                </div>
+
+                <div className="flex flex-shrink-0 flex-col items-end gap-2">
+                    <button
+                        onClick={handleCopy}
+                        className="inline-flex items-center gap-2 rounded-md bg-white/6 px-3 py-1 text-sm font-medium text-white hover:bg-white/10"
+                        aria-label="Copy link to section"
+                    >
+                        {copied ? 'Copied' : 'Copy link'}
+                    </button>
+                    <a
+                        href="https://github.com/geekofdhruv/NullPay/tree/main/docs"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-gray-400 hover:text-white"
+                    >
+                        Open docs folder on GitHub
+                    </a>
+                </div>
+            </div>
+
+            {section.content}
+        </motion.div>
+    );
+};
 
 const getTabForSection = (sectionId: string | null): DocsTab['id'] | null => {
     if (!sectionId) return null;
@@ -53,6 +92,9 @@ const resolveTabAndSection = (searchParams: URLSearchParams) => {
 
 const Docs = () => {
     const [searchParams, setSearchParams] = useSearchParams();
+    const [searchQuery, setSearchQuery] = useState('');
+    const inputRef = useRef<HTMLInputElement | null>(null);
+
     const sectionsByTab = useMemo(() => sectionContentByTab, []);
     const initialState = resolveTabAndSection(searchParams);
     const [activeTab, setActiveTab] = useState<DocsTab['id']>(initialState.activeTab);
@@ -71,7 +113,7 @@ const Docs = () => {
         if (resolvedState.activeSection !== activeSection) {
             setActiveSection(resolvedState.activeSection);
         }
-    }, [searchParams]);
+    }, [searchParams]); // eslint-disable-line
 
     useEffect(() => {
         if (searchParams.get('tab') === activeTab && searchParams.get('section') === activeSection) {
@@ -87,15 +129,43 @@ const Docs = () => {
         );
     }, [activeTab, activeSection, searchParams, setSearchParams]);
 
-    const groupedSections = activeSections.reduce<Record<string, DocsSection[]>>((acc, section) => {
-        acc[section.group] = acc[section.group] ?? [];
-        acc[section.group].push(section);
-        return acc;
-    }, {});
+    const groupedSections = useMemo(() => {
+        return activeSections.reduce<Record<string, DocsSection[]>>((acc, section) => {
+            acc[section.group] = acc[section.group] ?? [];
+            acc[section.group].push(section);
+            return acc;
+        }, {});
+    }, [activeSections]);
+
+    const filteredGroups = useMemo(() => {
+        if (!searchQuery.trim()) return groupedSections;
+        const q = searchQuery.toLowerCase();
+        return Object.entries(groupedSections).reduce((acc, [groupName, groupSections]) => {
+            const matches = groupSections.filter((section) => {
+                return (
+                    section.label.toLowerCase().includes(q) ||
+                    (section.summary && section.summary.toLowerCase().includes(q)) ||
+                    section.id.toLowerCase().includes(q)
+                );
+            });
+            if (matches.length) acc[groupName] = matches;
+            return acc;
+        }, {} as Record<string, DocsSection[]>);
+    }, [groupedSections, searchQuery]);
+
+    useEffect(() => {
+        const allFiltered = Object.values(filteredGroups).flat();
+        if (allFiltered.length === 0) return;
+        const exists = allFiltered.some((s) => s.id === activeSection);
+        if (!exists) {
+            setActiveSection(allFiltered[0].id);
+        }
+    }, [filteredGroups]); // eslint-disable-line
 
     const handleTabChange = (tabId: DocsTab['id']) => {
         setActiveTab(tabId);
         setActiveSection(sectionsByTab[tabId][0].id);
+        setSearchQuery('');
     };
 
     const handleSectionChange = (sectionId: string) => {
@@ -167,7 +237,32 @@ const Docs = () => {
                                 </button>
                             );
                         })}
+
+                        <div className="ml-4 flex flex-1 min-w-[220px] max-w-md items-center">
+                            <div className="relative w-full">
+                                <input
+                                    ref={inputRef}
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search docs and sections..."
+                                    className="w-full rounded-md bg-white/6 px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            inputRef.current?.focus();
+                                        }}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs text-gray-300 hover:text-white"
+                                        aria-label="Clear search"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
+
                     <AnimatePresence mode="wait" initial={false}>
                         <motion.p
                             key={activeTab}
@@ -185,35 +280,39 @@ const Docs = () => {
                 <div className="grid gap-10 xl:grid-cols-[220px_minmax(0,1fr)]">
                     <motion.aside variants={fadeInUp} className="xl:sticky xl:top-44 xl:self-start">
                         <GlassCard className="rounded-xl border border-white/[0.08] bg-black/30 p-4">
-                            {Object.entries(groupedSections).map(([groupName, groupSections]) => (
-                                <div key={groupName} className="mb-6 last:mb-0">
-                                    <p className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-gray-500">{groupName}</p>
-                                    <div className="space-y-1">
-                                        {groupSections.map((section) => {
-                                            const isActive = section.id === selectedSection.id;
-                                            return (
-                                                <button
-                                                    key={section.id}
-                                                    onClick={() => handleSectionChange(section.id)}
-                                                    className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-all ${
-                                                        isActive
-                                                            ? 'bg-white/[0.06] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
-                                                            : 'text-gray-500 hover:bg-white/[0.03] hover:text-gray-200'
-                                                    }`}
-                                                >
-                                                    {section.label}
-                                                </button>
-                                            );
-                                        })}
+                            {Object.keys(filteredGroups).length === 0 ? (
+                                <p className="text-sm text-gray-500">No docs match "{searchQuery}"</p>
+                            ) : (
+                                Object.entries(filteredGroups).map(([groupName, groupSections]) => (
+                                    <div key={groupName} className="mb-6 last:mb-0">
+                                        <p className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-gray-500">{groupName}</p>
+                                        <div className="space-y-1">
+                                            {groupSections.map((section) => {
+                                                const isActive = section.id === selectedSection.id;
+                                                return (
+                                                    <button
+                                                        key={section.id}
+                                                        onClick={() => handleSectionChange(section.id)}
+                                                        className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-all ${
+                                                            isActive
+                                                                ? 'bg-white/[0.06] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
+                                                                : 'text-gray-500 hover:bg-white/[0.03] hover:text-gray-200'
+                                                        }`}
+                                                    >
+                                                        {section.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </GlassCard>
                     </motion.aside>
 
                     <motion.main variants={fadeInUp} className="min-w-0 max-w-4xl">
                         <AnimatePresence mode="wait" initial={false}>
-                            <SectionContent section={selectedSection} />
+                            <SectionContent section={selectedSection} activeTab={activeTab} />
                         </AnimatePresence>
                     </motion.main>
                 </div>

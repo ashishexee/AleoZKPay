@@ -167,11 +167,7 @@ Moving them first would force a protocol-wide migration instead of a safe modula
 
 ## What To Do With Batch Functions
 
-These should not stay in the core contract if they threaten deploy size:
-
-- `BatchCreditsPaymentInput`
-- `batch_pay_2_credits`
-- `batch_pay_3_credits`
+These should not stay in the core contract if they threaten deploy size.
 
 Recommended handling:
 
@@ -278,9 +274,7 @@ while still shrinking the core contract materially.
 
 ### Remove Or Defer
 
-- `BatchCreditsPaymentInput`
-- `batch_pay_2_credits`
-- `batch_pay_3_credits`
+- experimental batch-payment entrypoints
 
 ## Final Recommendation
 

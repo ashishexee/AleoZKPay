@@ -62,7 +62,7 @@ const SdkReceiptsTable = ({
 }: {
     receipts: MerchantReceipt[];
     search: string;
-    onViewReceipts: (hashes: string[]) => void;
+    onViewReceipts: (receipts: MerchantReceipt[]) => void;
 }) => {
     const groupedReceipts = useMemo(() => {
         const seenReceipts = new Set<string>();
@@ -140,7 +140,7 @@ const SdkReceiptsTable = ({
                                     ) : (
                                         <div className="flex justify-end">
                                             <button
-                                                onClick={() => onViewReceipts(invoiceReceipts.map((receipt) => receipt.receiptHash))}
+                                                onClick={() => onViewReceipts(invoiceReceipts)}
                                                 className="text-xs bg-cyan-400/10 hover:bg-cyan-400/20 px-3 py-1.5 rounded text-cyan-300 border border-cyan-300/20 transition-colors font-bold"
                                             >
                                                 Receipts ({invoiceReceipts.length})
@@ -178,7 +178,7 @@ export const SdkDashboard: React.FC = () => {
     const [verifiedRecord, setVerifiedRecord] = useState<any>(null);
     const [verifyingInvoice, setVerifyingInvoice] = useState<any>(null);
     const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[] | null>(null);
-    const [selectedReceiptHashes, setSelectedReceiptHashes] = useState<string[] | null>(null);
+    const [selectedReceipts, setSelectedReceipts] = useState<MerchantReceipt[] | null>(null);
     const fetchMerchantReceiptsRef = useRef(0);
     const itemsPerPage = 10;
 
@@ -562,8 +562,8 @@ export const SdkDashboard: React.FC = () => {
             />
 
             <ReceiptHashesModal
-                receiptHashes={selectedReceiptHashes}
-                onClose={() => setSelectedReceiptHashes(null)}
+                receipts={selectedReceipts}
+                onClose={() => setSelectedReceipts(null)}
             />
 
             <GlassCard className="p-8 md:p-10">
@@ -664,7 +664,7 @@ export const SdkDashboard: React.FC = () => {
                         <SdkReceiptsTable
                             receipts={filteredMerchantReceipts}
                             search={invoiceSearch}
-                            onViewReceipts={(hashes) => setSelectedReceiptHashes(hashes)}
+                            onViewReceipts={(receipts) => setSelectedReceipts(receipts)}
                         />
                     </div>
                 </div>

@@ -161,6 +161,11 @@ async function submitToRelayer(secretKey, invoice, salt) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
         throw new Error(err.error ?? `Relayer error (${res.status})`);
     }
+    const data = await res.json();
+    if (!data.tx_id) {
+        throw new Error('Relayer response did not include a creation transaction id.');
+    }
+    return data.tx_id;
 }
 async function pollForHash(salt, maxRetries = 60) {
     for (let i = 0; i < maxRetries; i++) {
@@ -178,6 +183,30 @@ async function pollForHash(salt, maxRetries = 60) {
         }
     }
     return null;
+}
+async function saveInvoiceToDashboard(secretKey, merchantAddress, invoice, hash, salt, invoiceTransactionId) {
+    const invoiceTypeNum = invoice.type === 'multipay' ? 1 : 2;
+    const res = await fetch(`${BACKEND_URL}/invoices`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${secretKey}`,
+        },
+        body: JSON.stringify({
+            invoice_hash: hash,
+            merchant_address: merchantAddress,
+            amount: invoice.type === 'donation' ? 0 : invoice.amount,
+            memo: invoice.label ?? '',
+            invoice_type: invoiceTypeNum,
+            salt,
+            invoice_transaction_id: invoiceTransactionId,
+            for_sdk: true,
+            status: 'PENDING'
+        }),
+    });
+    if (!res.ok) {
+        throw new Error(`Dashboard sync failed (${res.status})`);
+    }
 }
 function renderInvoiceCard(inv, index) {
     const typeLabel = inv.type === 'multipay'
@@ -456,7 +485,7 @@ async function onboard() {
         const prefix = C.dim(`  [${i + 1}/${allInvoices.length}]`);
         const sp = spin(`${prefix.toString()} Submitting "${C.brand(inv.name)}" to Aleo network...`);
         try {
-            await submitToRelayer(secretKey, inv, salt);
+            const creationTxId = await submitToRelayer(secretKey, inv, salt);
             sp.text = `${prefix.toString()} Waiting for block confirmation -> "${C.brand(inv.name)}"`;
             const hash = await pollForHash(salt);
             if (!hash) {
@@ -470,6 +499,13 @@ async function onboard() {
                 symbol: C.success('  OK'),
                 text: C.white(`"${inv.name}" confirmed on-chain`),
             });
+            // 📢 Sync with Dashboard
+            try {
+                await saveInvoiceToDashboard(secretKey, resolvedAddress, inv, hash, salt, creationTxId);
+            }
+            catch (syncErr) {
+                line(`  ${C.gold('!')}  ${C.slate(`Dashboard sync failed for "${inv.name}", but Aleo tx succeeded.`)}`);
+            }
             generatedInvoices.push({ ...inv, hash, salt });
         }
         catch (err) {

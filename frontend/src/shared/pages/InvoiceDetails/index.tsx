@@ -742,8 +742,8 @@ const InvoiceDetailsPage: React.FC = () => {
                                                         <CopyBtn text={r.receiptHash} small />
                                                     </div>
                                                     {r.merchantNote && (
-                                                        <p className="mt-2 text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                                                            Merchant note: <span style={{ color: 'rgba(255,255,255,0.78)' }}>{r.merchantNote}</span>
+                                                        <p className="mt-2.5 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                                                            Message from payer: <span className="font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>{r.merchantNote}</span>
                                                         </p>
                                                     )}
                                                 </div>

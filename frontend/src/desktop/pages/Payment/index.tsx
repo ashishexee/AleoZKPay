@@ -16,6 +16,7 @@ import { BatchPayPage } from '../../../shared/pages/BatchPay';
 import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 import { TokenCode, getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/tokens';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../shared/utils/leo-input-limits';
+import { looksLikeAleoAddress, normalizeAleoAddress } from '../../../shared/utils/aleo-address';
 
 const SingleInvoicePaymentPage = () => {
     const {
@@ -47,6 +48,7 @@ const SingleInvoicePaymentPage = () => {
     const [selectedToken, setSelectedToken] = useState<number>(0);
     const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card' | 'giftcard'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
+    const [giftCardPayerAddress, setGiftCardPayerAddress] = useState('');
     const [cardNumber, setCardNumber] = useState<string>('');
     const [cardPin, setCardPin] = useState<string>('');
     const [cardSecret, setCardSecret] = useState<string>('');
@@ -94,7 +96,7 @@ const SingleInvoicePaymentPage = () => {
         await payWithGiftCard(giftCode, invoice?.tokenType === 3 ? selectedToken : undefined, {
             payerNote,
             merchantNote: shareMerchantNote ? merchantNote : null
-        });
+        }, giftCardPayerAddress);
     };
 
     const handleCardPay = async () => {
@@ -139,6 +141,8 @@ const SingleInvoicePaymentPage = () => {
     const merchantNoteBytes = getUtf8ByteLength(merchantNote);
     const payerNoteTooLong = payerNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
     const merchantNoteTooLong = merchantNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
+    const normalizedGiftCardPayerAddress = normalizeAleoAddress(giftCardPayerAddress);
+    const giftCardPayerAddressInvalid = normalizedGiftCardPayerAddress.length > 0 && !looksLikeAleoAddress(normalizedGiftCardPayerAddress);
 
     return (
         <motion.div
@@ -191,7 +195,7 @@ const SingleInvoicePaymentPage = () => {
                 <GlassCard variant="heavy" className="p-8 relative overflow-hidden">
                     {/* Progress Bar */}
                     <div className="flex justify-between mb-8 relative">
-                        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-white/10 -z-0" />
+                        <div className="absolute top-4 left-0 w-full h-0.5 bg-white/10 -z-0" />
                         {steps.map((s, index) => {
                             let isActive = s.key === step ||
                                 (step === 'CONVERT' && s.key === 'PAY') ||
@@ -201,7 +205,7 @@ const SingleInvoicePaymentPage = () => {
                             return (
                                 <div key={s.key} className="relative z-10 flex flex-col items-center gap-2">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isActive
-                                        ? 'bg-orange-400 border-orange-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.28)]'
+                                        ? 'bg-white border-white text-black shadow-[0_0_15px_rgba(255,255,255,0.4)]'
                                         : 'bg-black border-gray-700 text-gray-500'
                                         }`}>
                                         {isActive ? (
@@ -212,7 +216,7 @@ const SingleInvoicePaymentPage = () => {
                                             <span className="text-xs font-bold">{index + 1}</span>
                                         )}
                                     </div>
-                                    <span className={`text-xs font-bold tracking-wider uppercase transition-colors ${isActive ? 'text-orange-200' : 'text-gray-600'}`}>
+                                    <span className={`text-xs font-bold tracking-wider uppercase transition-colors ${isActive ? 'text-white' : 'text-gray-600'}`}>
                                         {s.label}
                                     </span>
                                 </div>
@@ -328,8 +332,8 @@ const SingleInvoicePaymentPage = () => {
                         )}
 
                         {status && !status.startsWith('at1') && !error && step !== 'ALREADY_PAID' && step !== 'SUCCESS' && (
-                            <div className="text-center rounded-xl border border-orange-400/20 bg-orange-500/10 p-3">
-                                <p className="text-orange-200 text-sm font-mono animate-pulse">{status}</p>
+                            <div className="text-center rounded-xl border border-white/20 bg-white/10 p-3">
+                                <p className="text-white text-sm font-mono animate-pulse">{status}</p>
                             </div>
                         )}
 
@@ -342,16 +346,16 @@ const SingleInvoicePaymentPage = () => {
                                 </p>
                                 {isMultiPay && step !== 'ALREADY_PAID' && (
                                     <div className="bg-black/40 border border-orange-400/20 p-4 rounded-xl text-left space-y-3">
-                                        <p className="text-xs text-orange-300 uppercase font-bold mb-1">Your Receipt Hash</p>
+                                        <p className="text-xs text-white uppercase font-bold mb-1">Your Receipt Hash</p>
 
                                         {receiptHash ? (
-                                            <div className="bg-orange-500/10 border border-orange-400/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-orange-500/15 transition-colors" onClick={() => {
+                                            <div className="bg-white/10 border border-white/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-white/15 transition-colors" onClick={() => {
                                                 navigator.clipboard.writeText(receiptHash);
                                                 setCopiedHash(true);
                                                 setTimeout(() => setCopiedHash(false), 2000);
                                             }}>
                                                 {receiptHash}
-                                                <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-orange-300' : 'opacity-70 text-gray-400'}`}>
+                                                <div className={`absolute top-1 right-2 text-[10px] font-bold transition-colors ${copiedHash ? 'text-white' : 'opacity-70 text-gray-400'}`}>
                                                     {copiedHash ? 'COPIED!' : 'COPY'}
                                                 </div>
                                             </div>
@@ -444,7 +448,7 @@ const SingleInvoicePaymentPage = () => {
                                     </button>
                                     <button
                                         onClick={() => handleSelectPaymentMethod('card')}
-                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${paymentMethod === 'card' ? 'bg-white/10 text-orange-300 shadow-md' : 'text-gray-500 hover:text-white/80'
+                                        className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${paymentMethod === 'card' ? 'bg-white/10 text-white shadow-md' : 'text-gray-500 hover:text-white/80'
                                             }`}
                                     >
                                         NullPay Card
@@ -465,6 +469,20 @@ const SingleInvoicePaymentPage = () => {
                                             onChange={setGiftCode}
                                             disabled={isProcess}
                                         />
+                                        <div>
+                                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-500">Payer Address Optional</label>
+                                            <Input
+                                                placeholder="aleo1..."
+                                                value={giftCardPayerAddress}
+                                                onChange={(e) => setGiftCardPayerAddress(e.target.value)}
+                                                className={giftCardPayerAddressInvalid ? '!border-red-500/60' : ''}
+                                            />
+                                            <p className={`mt-2 text-[11px] ${giftCardPayerAddressInvalid ? 'text-red-400' : 'text-gray-500'}`}>
+                                                {giftCardPayerAddressInvalid
+                                                    ? 'Enter a valid Aleo public address or leave this blank.'
+                                                    : 'If you leave this blank, the payment receipt hash will be minted on the gift card address.'}
+                                            </p>
+                                        </div>
                                         {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (
                                             <GiftCardRedeemPrompt
                                                 availableAmount={giftCardRedeemOption.availableAmount}
@@ -477,7 +495,7 @@ const SingleInvoicePaymentPage = () => {
                                         <Button
                                             variant="primary"
                                             onClick={handleGiftCardPay}
-                                            disabled={isProcess || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
+                                            disabled={isProcess || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || giftCardPayerAddressInvalid || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
                                             className="w-full text-lg h-14"
                                             glow
                                         >

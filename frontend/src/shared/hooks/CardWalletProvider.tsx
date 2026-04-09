@@ -12,11 +12,9 @@ import {
 import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { decryptCardPrivateKey, encryptCardPrivateKey, type CardKdfAlgorithm } from '../utils/card-crypto';
 import { decryptWithPassword, encryptWithPassword, hashAddress } from '../utils/crypto';
+import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../utils/card-input-limits';
 import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../utils/leo-input-limits';
 import {
-    CARD_STATUS_ACTIVE,
-    CARD_STATUS_FROZEN,
-    buildCardStatusInputs,
     buildCreateCardRecordInputs,
     sha256HexToField
 } from '../utils/card-chain';
@@ -36,12 +34,6 @@ interface CreateCardOptions {
     hint?: string;
 }
 
-interface CardStatusUpdateOptions {
-    pin?: string;
-    cardSecret?: string;
-    preferCardCredentials?: boolean;
-}
-
 interface CardWalletContextValue {
     card: CardWalletProfile | null;
     isLoading: boolean;
@@ -49,7 +41,6 @@ interface CardWalletContextValue {
     decryptedCardKey: string | null;
     cardBalances: Record<BalanceKey, number> | null;
     isRefreshingBalances: boolean;
-    isStatusChangePending: boolean;
     createCard: (pin: string, cardSecret: string, options: CreateCardOptions) => Promise<CardWalletProfile>;
     unlockCard: (pin: string, cardSecret: string, options?: { persist?: boolean }) => Promise<string>;
     lockCard: () => void;
@@ -61,10 +52,6 @@ interface CardWalletContextValue {
     ) => Promise<Record<BalanceKey, number> | null>;
     topUpCard: (token: CardTokenCode, amount: number, pin?: string, cardSecret?: string) => Promise<string>;
     requestCardLimitChange: (token: CardTokenCode, nextLimits: CardLimitDraft) => Promise<CardWalletProfile>;
-    updateCardStatus: (
-        nextStatus: typeof CARD_STATUS_ACTIVE | typeof CARD_STATUS_FROZEN,
-        options?: CardStatusUpdateOptions
-    ) => Promise<string>;
 }
 
 const CardWalletContext = createContext<CardWalletContextValue | undefined>(undefined);
@@ -72,7 +59,6 @@ const CardWalletContext = createContext<CardWalletContextValue | undefined>(unde
 const AUTO_LOCK_MS = 10 * 60 * 1000;
 const DEFAULT_TOP_UP_FEE = 100_000;
 const DEFAULT_LIMIT_MICROS = 25_000_000;
-
 const TOKEN_TO_BALANCE_KEY: Record<CardTokenCode, BalanceKey> = {
     CREDITS: 'ALEO',
     USDCX: 'USDCx',
@@ -86,14 +72,15 @@ const DEFAULT_CARD_LIMITS: Record<CardTokenCode, CardLimitDraft> = {
 };
 
 function validatePin(pin: string) {
-    if (!/^\d{6}$/.test(pin)) {
-        throw new Error('Card PIN must be exactly 6 digits.');
+    if (!new RegExp(`^\\d{${CARD_PIN_LENGTH}}$`).test(pin)) {
+        throw new Error(`Card PIN must be exactly ${CARD_PIN_LENGTH} digits.`);
     }
 }
 
 function validateCardSecret(cardSecret: string) {
-    if (!cardSecret || cardSecret.trim().length < 8) {
-        throw new Error('Card secret must be at least 8 characters long.');
+    const normalized = cardSecret?.trim() || '';
+    if (normalized.length < CARD_SECRET_MIN_LENGTH) {
+        throw new Error(`Card secret must be at least ${CARD_SECRET_MIN_LENGTH} characters long.`);
     }
 }
 
@@ -234,7 +221,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const [decryptedCardKey, setDecryptedCardKey] = useState<string | null>(null);
     const [cardBalances, setCardBalances] = useState<Record<BalanceKey, number> | null>(null);
     const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
-    const [isStatusChangePending, setIsStatusChangePending] = useState(false);
     const autoLockTimeoutRef = useRef<number | null>(null);
 
     const clearAutoLockTimeout = () => {
@@ -255,6 +241,14 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         autoLockTimeoutRef.current = window.setTimeout(() => {
             lockCard();
         }, AUTO_LOCK_MS);
+    };
+
+    const clearCachedCard = (ownerAddress: string) => {
+        try {
+            window.localStorage.removeItem(`nullpay_card_wallet_cache_v1:${ownerAddress.toLowerCase()}`);
+        } catch (error) {
+            console.warn('[CardWalletProvider] Failed to clear legacy local card cache', error);
+        }
     };
 
     const normalizeDbCardProfile = async (profile: CardWalletProfile | null): Promise<CardWalletProfile | null> => {
@@ -318,7 +312,29 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         try {
             setIsLoading(true);
             const dbCard = await fetchMirrorCard();
-            setCardState(dbCard || null);
+            if (dbCard) {
+                let resolvedCard = dbCard;
+
+                if (!resolvedCard.mainOwner) {
+                    try {
+                        const repairedCard = await upsertCardWallet(address, {
+                            main_address: address
+                        });
+                        const normalizedRepairedCard = await normalizeDbCardProfile(repairedCard);
+                        if (normalizedRepairedCard) {
+                            resolvedCard = normalizedRepairedCard;
+                        }
+                    } catch (error) {
+                        console.warn('[CardWalletProvider] Failed to repair missing card main owner mirror', error);
+                    }
+                }
+
+                setCardState(resolvedCard);
+                return;
+            }
+
+            clearCachedCard(address);
+            setCardState(null);
         } finally {
             setIsLoading(false);
         }
@@ -511,7 +527,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const persistMirrorCard = async (
         ownerAddress: string,
         payload: {
-            encryptedMainAddress: string;
+            mainAddress: string;
             encryptedCardAddress: string;
             encryptedCardNumber: string;
             cardNumberHashHex: string;
@@ -520,14 +536,13 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             cardKdfSalt: string;
             cardKdfAlgorithm: string;
             cardKdfParams: Record<string, unknown>;
-            cardStatus: string;
             cardLabel: string;
             cardHint: string | null;
         }
     ) => {
         try {
             await upsertCardWallet(ownerAddress, {
-                main_address: payload.encryptedMainAddress,
+                main_address: payload.mainAddress,
                 card_address: payload.encryptedCardAddress,
                 encrypted_card_number: payload.encryptedCardNumber,
                 card_number_hash: payload.cardNumberHashHex,
@@ -536,7 +551,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 card_kdf_salt: payload.cardKdfSalt,
                 card_kdf_algorithm: payload.cardKdfAlgorithm,
                 card_kdf_params: payload.cardKdfParams,
-                card_status: payload.cardStatus,
                 card_label: payload.cardLabel,
                 card_hint: payload.cardHint,
                 limits: DEFAULT_CARD_LIMITS
@@ -571,7 +585,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const encryptedCardNumber = await encryptWithPassword(cardNumber, appPassword);
         const encryptedCardLabel = await encryptWithPassword(options.label.trim(), appPassword);
         const encryptedCardHint = cardHint ? await encryptWithPassword(cardHint, appPassword) : null;
-        const encryptedMainAddress = await encryptWithPassword(address, appPassword);
 
         const inputs = buildCreateCardRecordInputs({
             cardNumberHashField,
@@ -604,7 +617,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
 
             await persistMirrorCard(address, {
-                encryptedMainAddress,
+                mainAddress: address,
                 encryptedCardAddress,
                 encryptedCardNumber,
                 cardNumberHashHex,
@@ -613,7 +626,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 cardKdfSalt: encrypted.saltBase64,
                 cardKdfAlgorithm: encrypted.kdfAlgorithm,
                 cardKdfParams: encrypted.kdfParams as unknown as Record<string, unknown>,
-                cardStatus: CARD_STATUS_ACTIVE,
                 cardLabel: options.label.trim(),
                 cardHint
             });
@@ -634,7 +646,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 card_kdf_salt: encrypted.saltBase64,
                 card_kdf_algorithm: encrypted.kdfAlgorithm,
                 card_kdf_params: encrypted.kdfParams as unknown as Record<string, unknown>,
-                card_status: CARD_STATUS_ACTIVE,
                 card_label: options.label.trim(),
                 card_hint: cardHint,
                 card_limits_updated_at: null,
@@ -646,7 +657,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             await refreshCardBalances(pin, cardSecret, { retryOnZero: true });
 
             await persistMirrorCard(address, {
-                encryptedMainAddress,
+                mainAddress: address,
                 encryptedCardAddress,
                 encryptedCardNumber,
                 cardNumberHashHex,
@@ -655,7 +666,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 cardKdfSalt: encrypted.saltBase64,
                 cardKdfAlgorithm: encrypted.kdfAlgorithm,
                 cardKdfParams: encrypted.kdfParams as unknown as Record<string, unknown>,
-                cardStatus: CARD_STATUS_ACTIVE,
                 cardLabel: options.label.trim(),
                 cardHint
             });
@@ -734,9 +744,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const topUpCard = async (token: CardTokenCode, amount: number, pin?: string, cardSecret?: string) => {
         if (!address || !executeTransaction || !card?.card_address) {
             throw new Error('Connect your main wallet and create a card first.');
-        }
-        if (card.card_status === CARD_STATUS_FROZEN) {
-            throw new Error('This card is frozen. Unfreeze it before topping up.');
         }
 
         const amountMicro = toMicroUnits(amount);
@@ -858,7 +865,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
             if (encryptedCardAddress && encryptedCardNumber && cardNumberHash && cardLast4 && card.card_label) {
                 await upsertCardWallet(address, {
-                    main_address: await encryptWithPassword(address, appPassword),
+                    main_address: address,
                     card_address: encryptedCardAddress,
                     encrypted_card_number: encryptedCardNumber,
                     card_number_hash: cardNumberHash,
@@ -867,7 +874,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     card_kdf_salt: card.card_kdf_salt,
                     card_kdf_algorithm: card.card_kdf_algorithm,
                     card_kdf_params: card.card_kdf_params,
-                    card_status: card.card_status,
                     card_label: card.card_label,
                     card_hint: card.card_hint || null,
                     limits: card.limits
@@ -899,78 +905,13 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const nextCard = await submitCardLimitChange(address, address, message, signatureBase64);
         const normalizedCard = await normalizeDbCardProfile(nextCard);
         if (normalizedCard) {
-            setCard((current) => current ? { ...current, ...normalizedCard, limits: normalizedCard.limits } : normalizedCard);
-            return normalizedCard;
+            const mergedCard = card
+                ? { ...card, ...normalizedCard, limits: normalizedCard.limits }
+                : normalizedCard;
+            setCard(mergedCard);
+            return mergedCard;
         }
         throw new Error('Card limit update response was empty.');
-    };
-
-    const persistCardStatusMirror = async (nextStatus: string) => {
-        if (!address || !card) {
-            return;
-        }
-
-        try {
-            await upsertCardWallet(address, {
-                card_status: nextStatus
-            });
-        } catch (error) {
-            console.warn('[CardWalletProvider] Failed to mirror card status update', error);
-        }
-    };
-
-    const updateCardStatus = async (
-        nextStatus: typeof CARD_STATUS_ACTIVE | typeof CARD_STATUS_FROZEN,
-        options?: CardStatusUpdateOptions
-    ) => {
-        void options;
-        const cardNumberHashField = card?.card_number_hash_field;
-        if (!cardNumberHashField) {
-            throw new Error('Card lookup hash is unavailable.');
-        }
-
-        setIsStatusChangePending(true);
-        try {
-            if (!executeTransaction) {
-                throw new Error('Main wallet transaction support is unavailable.');
-            }
-
-            const statusInputs = buildCardStatusInputs(cardNumberHashField, nextStatus);
-            const estimatedStatusFee = await estimateExecutionFee({
-                programName: WALLET_PROGRAM_ID,
-                functionName: 'set_card_status',
-                inputs: statusInputs,
-                fallbackMicrocredits: DEFAULT_TOP_UP_FEE
-            });
-
-            const tx = await executeWithShieldRetry(
-                () => executeTransaction({
-                    program: WALLET_PROGRAM_ID,
-                    function: 'set_card_status',
-                    inputs: statusInputs,
-                    fee: estimatedStatusFee,
-                    privateFee: false
-                }),
-                { onRetry: () => void 0 }
-            );
-
-            if (!tx?.transactionId) {
-                throw new Error('The wallet did not return a transaction id for card status change.');
-            }
-
-            const finalTxId = await pollForFinalTransactionId(tx.transactionId);
-
-            setCard((current) => current ? { ...current, card_status: nextStatus } : current);
-            await persistCardStatusMirror(nextStatus);
-            return finalTxId;
-        } catch (err: any) {
-            if (handleWalletError(err)) {
-                throw err;
-            }
-            throw err;
-        } finally {
-            setIsStatusChangePending(false);
-        }
     };
 
     return (
@@ -982,15 +923,13 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 decryptedCardKey,
                 cardBalances,
                 isRefreshingBalances,
-                isStatusChangePending,
                 createCard,
                 unlockCard,
                 lockCard,
                 refreshCard,
                 refreshCardBalances,
                 topUpCard,
-                requestCardLimitChange,
-                updateCardStatus
+                requestCardLimitChange
             }}
         >
             {children}

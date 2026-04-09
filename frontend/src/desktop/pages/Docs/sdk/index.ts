@@ -1,14 +1,18 @@
 import type { DocsSection } from '../types';
-import { backendExampleSection } from './backend-example';
-import { cliSection } from './cli';
 import { nodeSdkSection } from './node-sdk';
-import { nullpayJsonSection } from './nullpay-json';
+import { invoiceHelpersSection } from './invoice-helpers';
+import { checkoutSessionsSection } from './checkout-sessions';
 import { webhooksSection } from './webhooks';
+import { nullpayJsonSection } from './nullpay-json';
+import { cliSection } from './cli';
+import { backendExampleSection } from './backend-example';
 
 export const sdkSections: DocsSection[] = [
     nodeSdkSection,
-    cliSection,
-    nullpayJsonSection,
-    backendExampleSection,
+    invoiceHelpersSection,
+    checkoutSessionsSection,
     webhooksSection,
+    nullpayJsonSection,
+    cliSection,
+    backendExampleSection,
 ];
