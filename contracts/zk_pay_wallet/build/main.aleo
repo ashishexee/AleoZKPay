@@ -6,7 +6,7 @@ import test_usdcx_stablecoin.aleo;
 import test_usad_multisig_core.aleo;
 import test_usad_freezelist.aleo;
 import test_usad_stablecoin.aleo;
-program zk_pay_proofs_privacy_wallet_v2.aleo;
+program zk_pay_proofs_privacy_wallet_v3.aleo;
 
 record BurnerWalletRecord:
     owner as address.private;

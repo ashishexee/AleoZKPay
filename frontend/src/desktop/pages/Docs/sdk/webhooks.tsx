@@ -1,6 +1,5 @@
 import { AlertTriangle, Lock, Shield, Zap } from 'lucide-react';
 import type { DocsSection } from '../types';
-import { webhookExample } from '../examples';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 

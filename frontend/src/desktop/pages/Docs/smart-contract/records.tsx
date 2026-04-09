@@ -81,7 +81,7 @@ record BurnerWalletRecord {
 // pk_part_1..10 = all 0field (no burner key stored)`;
 
 const cardAndGiftExample = `// Private records for the card and gift card system.
-// Both live in zk_pay_proofs_privacy_wallet_v2.aleo.
+// Both live in zk_pay_proofs_privacy_wallet_v3.aleo.
 
 record CardProfileRecord {
     owner:                  address,     // main wallet address
@@ -180,7 +180,7 @@ export const recordsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Database className="h-4 w-4 text-blue-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v2.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v3.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">record BurnerWalletRecord</h3>
                     <p className="mt-1 text-sm text-gray-400">Owner: Main wallet. Stores an encrypted burner private key split into 10 field elements for on-chain backup.</p>
@@ -194,7 +194,7 @@ export const recordsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Database className="h-4 w-4 text-blue-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v2.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v3.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">record CardProfileRecord &amp; GiftCardRecord</h3>
                 </div>

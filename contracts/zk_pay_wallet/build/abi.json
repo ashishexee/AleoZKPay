@@ -1,5 +1,5 @@
 {
-  "program": "zk_pay_proofs_privacy_wallet_v2.aleo",
+  "program": "zk_pay_proofs_privacy_wallet_v3.aleo",
   "structs": [],
   "records": [
     {
@@ -243,7 +243,7 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v2.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v3.aleo"
             }
           },
           "mode": "None"
@@ -370,7 +370,7 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v2.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v3.aleo"
             }
           },
           "mode": "None"
@@ -465,7 +465,7 @@
               "path": [
                 "CardProfileRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v2.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v3.aleo"
             }
           },
           "mode": "None"
@@ -516,7 +516,7 @@
               "path": [
                 "GiftCardRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v2.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v3.aleo"
             }
           },
           "mode": "None"

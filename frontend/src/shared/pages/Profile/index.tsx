@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
 import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from './components/modals/ReceiptHashesModal';
+import { PayerNotesModal } from './components/modals/PayerNotesModal';
 import { BurnerWalletSettings } from './components/BurnerWalletSettings';
 import { BackupBanner } from './components/BackupBanner';
 import { InvoiceDistributionChart } from './components/Charts/InvoiceDistributionChart';
@@ -53,7 +54,8 @@ const Profile: React.FC = () => {
     const [verifiedRecord, setVerifiedRecord] = useState<any>(null);
     const [verifyingInvoice, setVerifyingInvoice] = useState<any>(null);
     const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[] | null>(null);
-    const [selectedReceiptHashes, setSelectedReceiptHashes] = useState<string[] | null>(null);
+    const [selectedReceipts, setSelectedReceipts] = useState<PayerReceipt[] | null>(null);
+    const [selectedNotes, setSelectedNotes] = useState<string[] | null>(null);
     const [invoiceSearch, setInvoiceSearch] = useState('');
     const [activeTab, setActiveTab] = useState<'created' | 'paid'>('created');
     const [merchantReceipts, setMerchantReceipts] = useState<MerchantReceipt[]>([]);
@@ -729,8 +731,13 @@ const Profile: React.FC = () => {
 
             {/* RECEIPT HASHES MODAL */}
             <ReceiptHashesModal
-                receiptHashes={selectedReceiptHashes}
-                onClose={() => setSelectedReceiptHashes(null)}
+                receipts={selectedReceipts}
+                onClose={() => setSelectedReceipts(null)}
+            />
+
+            <PayerNotesModal
+                notes={selectedNotes}
+                onClose={() => setSelectedNotes(null)}
             />
 
             <motion.div
@@ -901,7 +908,8 @@ const Profile: React.FC = () => {
                                 receipts={payerReceipts}
                                 loading={loadingPayerReceipts}
                                 search={invoiceSearch}
-                                onViewReceipts={(hashes) => setSelectedReceiptHashes(hashes)}
+                                onViewReceipts={(receipts) => setSelectedReceipts(receipts)}
+                                onViewNotes={(notes) => setSelectedNotes(notes)}
                             />
                         </div>
                     </div>

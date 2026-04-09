@@ -1,6 +1,5 @@
 import { Code2, Key, Package, Settings } from 'lucide-react';
 import type { DocsSection } from '../types';
-import { installNodeCommand } from '../examples';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 

@@ -59,8 +59,6 @@ const CardWalletContext = createContext<CardWalletContextValue | undefined>(unde
 const AUTO_LOCK_MS = 10 * 60 * 1000;
 const DEFAULT_TOP_UP_FEE = 100_000;
 const DEFAULT_LIMIT_MICROS = 25_000_000;
-const CARD_CACHE_KEY_PREFIX = 'nullpay_card_wallet_cache_v1:';
-
 const TOKEN_TO_BALANCE_KEY: Record<CardTokenCode, BalanceKey> = {
     CREDITS: 'ALEO',
     USDCX: 'USDCx',
@@ -109,20 +107,6 @@ function normalizeCardHint(cardHint?: string) {
 
 function normalizeCardNumber(cardNumber: string) {
     return cardNumber.replace(/\D/g, '');
-}
-
-function getCardCacheKey(address: string) {
-    return `${CARD_CACHE_KEY_PREFIX}${address.toLowerCase()}`;
-}
-
-function toCachedCardProfile(profile: CardWalletProfile): CardWalletProfile {
-    return {
-        ...profile,
-        card_address: '',
-        encrypted_card_address: profile.encrypted_card_address || profile.card_address || null,
-        card_number: null,
-        encrypted_card_number: profile.encrypted_card_number || profile.card_number || null
-    };
 }
 
 function calculateLuhnCheckDigit(partialNumber: string) {
@@ -259,33 +243,11 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }, AUTO_LOCK_MS);
     };
 
-    const persistCachedCard = (ownerAddress: string, nextCard: CardWalletProfile | null) => {
+    const clearCachedCard = (ownerAddress: string) => {
         try {
-            if (!nextCard) {
-                window.localStorage.removeItem(getCardCacheKey(ownerAddress));
-                return;
-            }
-
-            window.localStorage.setItem(
-                getCardCacheKey(ownerAddress),
-                JSON.stringify(toCachedCardProfile(nextCard))
-            );
+            window.localStorage.removeItem(`nullpay_card_wallet_cache_v1:${ownerAddress.toLowerCase()}`);
         } catch (error) {
-            console.warn('[CardWalletProvider] Failed to persist local card cache', error);
-        }
-    };
-
-    const readCachedCard = (ownerAddress: string): CardWalletProfile | null => {
-        try {
-            const raw = window.localStorage.getItem(getCardCacheKey(ownerAddress));
-            if (!raw) {
-                return null;
-            }
-
-            return JSON.parse(raw) as CardWalletProfile;
-        } catch (error) {
-            console.warn('[CardWalletProvider] Failed to read local card cache', error);
-            return null;
+            console.warn('[CardWalletProvider] Failed to clear legacy local card cache', error);
         }
     };
 
@@ -332,15 +294,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     };
 
-    const fetchCachedCard = async () => {
-        if (!address) {
-            return null;
-        }
-
-        const cachedCard = readCachedCard(address);
-        return normalizeDbCardProfile(cachedCard);
-    };
-
     const setCardState = (nextCard: CardWalletProfile | null) => {
         setCard(nextCard);
         if (!nextCard) {
@@ -360,13 +313,28 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             setIsLoading(true);
             const dbCard = await fetchMirrorCard();
             if (dbCard) {
-                persistCachedCard(address, dbCard);
-                setCardState(dbCard);
+                let resolvedCard = dbCard;
+
+                if (!resolvedCard.mainOwner) {
+                    try {
+                        const repairedCard = await upsertCardWallet(address, {
+                            main_address: address
+                        });
+                        const normalizedRepairedCard = await normalizeDbCardProfile(repairedCard);
+                        if (normalizedRepairedCard) {
+                            resolvedCard = normalizedRepairedCard;
+                        }
+                    } catch (error) {
+                        console.warn('[CardWalletProvider] Failed to repair missing card main owner mirror', error);
+                    }
+                }
+
+                setCardState(resolvedCard);
                 return;
             }
 
-            const cachedCard = await fetchCachedCard();
-            setCardState(cachedCard || null);
+            clearCachedCard(address);
+            setCardState(null);
         } finally {
             setIsLoading(false);
         }
@@ -559,7 +527,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const persistMirrorCard = async (
         ownerAddress: string,
         payload: {
-            encryptedMainAddress: string;
+            mainAddress: string;
             encryptedCardAddress: string;
             encryptedCardNumber: string;
             cardNumberHashHex: string;
@@ -574,7 +542,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     ) => {
         try {
             await upsertCardWallet(ownerAddress, {
-                main_address: payload.encryptedMainAddress,
+                main_address: payload.mainAddress,
                 card_address: payload.encryptedCardAddress,
                 encrypted_card_number: payload.encryptedCardNumber,
                 card_number_hash: payload.cardNumberHashHex,
@@ -617,7 +585,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const encryptedCardNumber = await encryptWithPassword(cardNumber, appPassword);
         const encryptedCardLabel = await encryptWithPassword(options.label.trim(), appPassword);
         const encryptedCardHint = cardHint ? await encryptWithPassword(cardHint, appPassword) : null;
-        const encryptedMainAddress = await encryptWithPassword(address, appPassword);
 
         const inputs = buildCreateCardRecordInputs({
             cardNumberHashField,
@@ -650,7 +617,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
 
             await persistMirrorCard(address, {
-                encryptedMainAddress,
+                mainAddress: address,
                 encryptedCardAddress,
                 encryptedCardNumber,
                 cardNumberHashHex,
@@ -685,13 +652,12 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 limits: DEFAULT_CARD_LIMITS
             };
             setCard(finalizedCard);
-            persistCachedCard(address, finalizedCard);
             setDecryptedCardKey(privateKeyString);
             scheduleAutoLock();
             await refreshCardBalances(pin, cardSecret, { retryOnZero: true });
 
             await persistMirrorCard(address, {
-                encryptedMainAddress,
+                mainAddress: address,
                 encryptedCardAddress,
                 encryptedCardNumber,
                 cardNumberHashHex,
@@ -899,7 +865,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
             if (encryptedCardAddress && encryptedCardNumber && cardNumberHash && cardLast4 && card.card_label) {
                 await upsertCardWallet(address, {
-                    main_address: await encryptWithPassword(address, appPassword),
+                    main_address: address,
                     card_address: encryptedCardAddress,
                     encrypted_card_number: encryptedCardNumber,
                     card_number_hash: cardNumberHash,
@@ -943,7 +909,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 ? { ...card, ...normalizedCard, limits: normalizedCard.limits }
                 : normalizedCard;
             setCard(mergedCard);
-            persistCachedCard(address, mergedCard);
             return mergedCard;
         }
         throw new Error('Card limit update response was empty.');

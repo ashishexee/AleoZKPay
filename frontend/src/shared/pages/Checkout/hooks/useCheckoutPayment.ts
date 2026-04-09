@@ -13,6 +13,7 @@ import { hashAddress } from '../../../utils/crypto';
 import { resolveCardLookupByHashHex } from '../../../utils/card-chain';
 import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../../utils/card-input-limits';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/leo-input-limits';
+import { isValidAleoAddress, normalizeAleoAddress } from '../../../utils/aleo-address';
 
 // Convert Hex back to String
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
@@ -725,14 +726,16 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         }
     };
 
-    const payWithGiftCard = async (giftCode: string, donationAmount?: number, selectedTokenOverride?: string, notes?: PaymentNoteInput) => {
+    const payWithGiftCard = async (
+        giftCode: string,
+        donationAmount?: number,
+        selectedTokenOverride?: string,
+        notes?: PaymentNoteInput,
+        payerAddressOverride?: string
+    ) => {
         if (!session) return;
         if (!giftCode.startsWith('gift-')) {
             setError('Invalid Gift Card format.');
-            return;
-        }
-        if (!publicKey) {
-            setError('Connect your main wallet first so NullPay can mint the payer receipt to it.');
             return;
         }
 
@@ -744,7 +747,13 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
 
             const hex = giftCode.replace('gift-', '');
             const pkStr = fromHex(hex);
-            PrivateKey.from_string(pkStr); // Validate
+            const giftPrivateKey = PrivateKey.from_string(pkStr);
+            const giftCardAddress = giftPrivateKey.to_address().to_string();
+            const normalizedPayerAddress = normalizeAleoAddress(payerAddressOverride);
+            if (normalizedPayerAddress && !(await isValidAleoAddress(normalizedPayerAddress))) {
+                throw new Error('Enter a valid Aleo public address or leave it blank.');
+            }
+            const payerOwner = normalizedPayerAddress || giftCardAddress;
 
             const isDonationType = session.amount === 0;
             const finalAmount = (isDonationType && donationAmount && donationAmount > 0) ? donationAmount : session.amount;
@@ -825,7 +834,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             const inputs = [
                 payRecordStr,
                 session.merchant_address,
-                publicKey,
+                payerOwner,
                 `${amountMicro}${typeSuffix}`,
                 session.salt,
                 paymentSecret,

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "set NODE_OPTIONS=--experimental-vm-modules && jest --detectOpenHandles"
+    "test": "set NODE_OPTIONS=--experimental-vm-modules && jest --detectOpenHandles",
+    "reencrypt:card-metadata": "node scripts/reencrypt-card-metadata.js"
   },
   "dependencies": {
     "@provablehq/sdk": "^0.9.18",

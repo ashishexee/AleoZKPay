@@ -175,7 +175,7 @@ export const mappingsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Database className="h-4 w-4 text-blue-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v2.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v3.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">mapping card_lookup</h3>
                     <p className="mt-1 text-sm text-gray-400">Minimal public state for the gift card system. Keyed by a BHP256 hash of card material, not the card number itself.</p>

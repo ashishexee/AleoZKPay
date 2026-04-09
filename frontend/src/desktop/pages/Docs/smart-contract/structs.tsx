@@ -101,7 +101,7 @@ export const structsSection: DocsSection = {
 
             <GlassCard className="overflow-hidden p-0">
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v2.aleo</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v3.aleo</p>
                     <h3 className="mt-1 text-xl font-bold text-white">struct CardLookupData</h3>
                     <p className="mt-1 text-sm text-gray-400">Public struct stored in the <code className="rounded bg-white/5 px-1.5 py-0.5">card_lookup</code> mapping, keyed by the card_number_hash.</p>
                 </div>

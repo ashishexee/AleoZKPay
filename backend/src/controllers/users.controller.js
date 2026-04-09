@@ -131,10 +131,12 @@ function parseStoredCardKdfParams(value) {
     return JSON.parse(decrypted);
 }
 
-function buildCardResponse(row) {
+function buildCardResponse(row, options = {}) {
     if (!hasStoredCardWallet(row)) {
         return null;
     }
+
+    const { includePrivateMetadata = true } = options;
 
     const clientEncryptedCardAddress = row.card_address
         ? readMerchantStoredValue(row.card_address)
@@ -145,19 +147,24 @@ function buildCardResponse(row) {
     const clientEncryptedCardPrivateKey = row.encrypted_card_private_key
         ? decryptStoredValue(row.encrypted_card_private_key, { label: 'card encrypted private key' })
         : null;
+    const cardMainOwner = row.card_main_address
+        ? decryptStoredValue(row.card_main_address, { label: 'card main address' })
+        : null;
     const cardKdfSalt = row.card_kdf_salt
         ? decryptStoredValue(row.card_kdf_salt, { label: 'card KDF salt' })
         : null;
     const cardKdfParams = parseStoredCardKdfParams(row.card_kdf_params);
-    const cardLabel = row.card_label
+    const cardLabel = includePrivateMetadata && row.card_label
         ? decryptStoredValue(row.card_label, { label: 'card label' })
         : null;
-    const cardHint = row.card_hint
+    const cardHint = includePrivateMetadata && row.card_hint
         ? decryptStoredValue(row.card_hint, { label: 'card hint' })
         : null;
 
     return {
         address_hash: row.address_hash,
+        main_owner: cardMainOwner,
+        mainOwner: cardMainOwner,
         card_address: clientEncryptedCardAddress || '',
         encrypted_card_address: clientEncryptedCardAddress,
         encrypted_card_number: clientEncryptedCardNumber,
@@ -194,7 +201,11 @@ function validateLimitShape(token, limits) {
 }
 
 function applyCardPayload(updates, body) {
-    if (body.main_address !== undefined) updates.main_address = body.main_address;
+    if (body.main_address !== undefined) {
+        updates.card_main_address = body.main_address
+            ? encryptStoredValue(body.main_address, { label: 'card main address' })
+            : null;
+    }
     if (body.card_address !== undefined) updates.card_address = body.card_address ? encryptMerchantValue(body.card_address) : null;
     if (body.encrypted_card_number !== undefined) {
         updates.encrypted_card_number = body.encrypted_card_number
@@ -222,11 +233,9 @@ function applyCardPayload(updates, body) {
     if (body.card_status !== undefined) updates.card_status = body.card_status;
     if (body.card_label !== undefined) {
         const label = validateCardLabel(body.card_label);
-        // Keep the DB mirror label in plaintext so it satisfies the existing
-        // column length constraint. Reads remain backward-compatible because
-        // decryptStoredValue returns raw values unchanged when they are not
-        // stored in encrypted form.
-        updates.card_label = label || null;
+        updates.card_label = label
+            ? encryptStoredValue(label, { label: 'card label' })
+            : null;
     }
     if (body.card_hint !== undefined) {
         const hint = validateCardHint(body.card_hint);
@@ -397,7 +406,7 @@ const upsertCardWallet = async (req, res) => {
         const existingProfile = await getUserByAddressHash(address_hash);
         const isCreatingCard = !hasStoredCardWallet(existingProfile) && req.body.card_address !== undefined;
         if (isCreatingCard) {
-            if (!req.body.main_address && !existingProfile?.main_address) {
+            if (!req.body.main_address && !existingProfile?.card_main_address) {
                 return res.status(400).json({ error: 'Main wallet address is required when creating a card.' });
             }
             validateCardLabel(req.body.card_label);
@@ -428,7 +437,7 @@ const lookupCardWallet = async (req, res) => {
     try {
         const normalizedHash = validateCardNumberHash(card_number_hash);
         const data = await getUserByCardNumberHash(normalizedHash);
-        const cardResponse = buildCardResponse(data);
+        const cardResponse = buildCardResponse(data, { includePrivateMetadata: false });
         if (!cardResponse) {
             return res.status(404).json({ error: 'Card wallet not found' });
         }

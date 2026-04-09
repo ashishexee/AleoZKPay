@@ -10,6 +10,7 @@ import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPromp
 import { CARD_PIN_LENGTH } from '../../../utils/card-input-limits';
 import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../utils/tokens';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/leo-input-limits';
+import { looksLikeAleoAddress, normalizeAleoAddress } from '../../../utils/aleo-address';
 
 interface CheckoutUIProps {
     session: CheckoutSession | null;
@@ -22,7 +23,7 @@ interface CheckoutUIProps {
     success: boolean;
     onPay: (donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }) => void;
     onPayWithCard: (cardNumber: string, pin: string, cardSecret: string, donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }) => void;
-    onPayWithGiftCard: (giftCode: string, donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }) => void;
+    onPayWithGiftCard: (giftCode: string, donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }, payerAddress?: string) => void;
     giftCardRedeemOption?: { giftCode: string; availableAmount: number; tokenLabel: string } | null;
     onRedeemGiftCardBalance: () => void;
 }
@@ -48,6 +49,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     const [selectedPayerToken, setSelectedPayerToken] = useState<string>('CREDITS');
     const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'giftcard' | 'card'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
+    const [giftCardPayerAddress, setGiftCardPayerAddress] = useState('');
     const [cardNumber, setCardNumber] = useState<string>('');
     const [cardPin, setCardPin] = useState<string>('');
     const [cardSecret, setCardSecret] = useState<string>('');
@@ -107,9 +109,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
             merchantNote: shareMerchantNote ? merchantNote : null
         };
         if (isDonation) {
-            onPayWithGiftCard(giftCode, parseFloat(donationAmount || '0'), tokenToPass, notes);
+            onPayWithGiftCard(giftCode, parseFloat(donationAmount || '0'), tokenToPass, notes, giftCardPayerAddress);
         } else {
-            onPayWithGiftCard(giftCode, undefined, tokenToPass, notes);
+            onPayWithGiftCard(giftCode, undefined, tokenToPass, notes, giftCardPayerAddress);
         }
     };
 
@@ -131,6 +133,8 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     const merchantNoteBytes = getUtf8ByteLength(merchantNote);
     const payerNoteTooLong = payerNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
     const merchantNoteTooLong = merchantNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
+    const normalizedGiftCardPayerAddress = normalizeAleoAddress(giftCardPayerAddress);
+    const giftCardPayerAddressInvalid = normalizedGiftCardPayerAddress.length > 0 && !looksLikeAleoAddress(normalizedGiftCardPayerAddress);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[85vh]">
@@ -459,6 +463,21 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             placeholder="gift-..."
                                             className="w-full bg-black/40 border border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors tracking-widest text-center shadow-inner"
                                         />
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payer Address Optional</label>
+                                            <input
+                                                type="text"
+                                                value={giftCardPayerAddress}
+                                                onChange={(e) => setGiftCardPayerAddress(e.target.value)}
+                                                placeholder="aleo1..."
+                                                className={`w-full bg-black/40 border outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors text-center ${giftCardPayerAddressInvalid ? 'border-red-500/60 focus:border-red-500/70' : 'border-white/10 focus:border-neon-primary/50'}`}
+                                            />
+                                            <p className={`mt-2 text-[11px] ${giftCardPayerAddressInvalid ? 'text-red-400' : 'text-gray-500'}`}>
+                                                {giftCardPayerAddressInvalid
+                                                    ? 'Enter a valid Aleo public address or leave this blank.'
+                                                    : 'If you leave this blank, the payment receipt hash will be minted on the gift card address.'}
+                                            </p>
+                                        </div>
                                         {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (
                                             <GiftCardRedeemPrompt
                                                 availableAmount={giftCardRedeemOption.availableAmount}
@@ -489,6 +508,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             paymentLoading ||
                                             payerNoteTooLong ||
                                             (shareMerchantNote && merchantNoteTooLong) ||
+                                            (paymentMethod === 'giftcard' && giftCardPayerAddressInvalid) ||
                                             (isDonation && (!donationAmount || parseFloat(donationAmount) <= 0)) ||
                                             (paymentMethod === 'giftcard' && !giftCode) ||
                                             (paymentMethod === 'card' && (!cardNumber || !cardPin || !cardSecret))

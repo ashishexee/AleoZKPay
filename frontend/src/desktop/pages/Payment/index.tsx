@@ -16,6 +16,7 @@ import { BatchPayPage } from '../../../shared/pages/BatchPay';
 import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 import { TokenCode, getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/tokens';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../shared/utils/leo-input-limits';
+import { looksLikeAleoAddress, normalizeAleoAddress } from '../../../shared/utils/aleo-address';
 
 const SingleInvoicePaymentPage = () => {
     const {
@@ -47,6 +48,7 @@ const SingleInvoicePaymentPage = () => {
     const [selectedToken, setSelectedToken] = useState<number>(0);
     const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card' | 'giftcard'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
+    const [giftCardPayerAddress, setGiftCardPayerAddress] = useState('');
     const [cardNumber, setCardNumber] = useState<string>('');
     const [cardPin, setCardPin] = useState<string>('');
     const [cardSecret, setCardSecret] = useState<string>('');
@@ -94,7 +96,7 @@ const SingleInvoicePaymentPage = () => {
         await payWithGiftCard(giftCode, invoice?.tokenType === 3 ? selectedToken : undefined, {
             payerNote,
             merchantNote: shareMerchantNote ? merchantNote : null
-        });
+        }, giftCardPayerAddress);
     };
 
     const handleCardPay = async () => {
@@ -139,6 +141,8 @@ const SingleInvoicePaymentPage = () => {
     const merchantNoteBytes = getUtf8ByteLength(merchantNote);
     const payerNoteTooLong = payerNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
     const merchantNoteTooLong = merchantNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
+    const normalizedGiftCardPayerAddress = normalizeAleoAddress(giftCardPayerAddress);
+    const giftCardPayerAddressInvalid = normalizedGiftCardPayerAddress.length > 0 && !looksLikeAleoAddress(normalizedGiftCardPayerAddress);
 
     return (
         <motion.div
@@ -465,6 +469,20 @@ const SingleInvoicePaymentPage = () => {
                                             onChange={setGiftCode}
                                             disabled={isProcess}
                                         />
+                                        <div>
+                                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-500">Payer Address Optional</label>
+                                            <Input
+                                                placeholder="aleo1..."
+                                                value={giftCardPayerAddress}
+                                                onChange={(e) => setGiftCardPayerAddress(e.target.value)}
+                                                className={giftCardPayerAddressInvalid ? '!border-red-500/60' : ''}
+                                            />
+                                            <p className={`mt-2 text-[11px] ${giftCardPayerAddressInvalid ? 'text-red-400' : 'text-gray-500'}`}>
+                                                {giftCardPayerAddressInvalid
+                                                    ? 'Enter a valid Aleo public address or leave this blank.'
+                                                    : 'If you leave this blank, the payment receipt hash will be minted on the gift card address.'}
+                                            </p>
+                                        </div>
                                         {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (
                                             <GiftCardRedeemPrompt
                                                 availableAmount={giftCardRedeemOption.availableAmount}
@@ -477,7 +495,7 @@ const SingleInvoicePaymentPage = () => {
                                         <Button
                                             variant="primary"
                                             onClick={handleGiftCardPay}
-                                            disabled={isProcess || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
+                                            disabled={isProcess || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || giftCardPayerAddressInvalid || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
                                             className="w-full text-lg h-14"
                                             glow
                                         >
