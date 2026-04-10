@@ -14,4 +14,5 @@ export interface CheckoutSession {
         aleo_address: string;
     };
     invoice_type?: number;
+    allowed_tokens?: string[];
 }

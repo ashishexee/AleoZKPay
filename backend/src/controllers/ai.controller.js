@@ -365,6 +365,70 @@ function normalizePromptInvoiceType(rawValue) {
     return 'standard';
 }
 
+function extractOptionalFieldValue(rawMessage, fieldName) {
+    const patterns = fieldName === 'title'
+        ? [
+            /(?:invoice\s+title|title|titile|name)\s+(?:as|to|is|should\s+be|would\s+be|=)?\s*["']([^"']+)["']/i,
+            /(?:invoice\s+title|title|titile|name)\s+(?:as|to|is|should\s+be|would\s+be|=)\s+([a-z0-9][a-z0-9 _.-]{0,80})$/i
+        ]
+        : [
+            /(?:memo|note)\s+(?:as|to|is|should\s+be|would\s+be|=)?\s*["']([^"']+)["']/i,
+            /(?:memo|note)\s+(?:as|to|is|should\s+be|would\s+be|=)\s+([a-z0-9][a-z0-9 _.,-]{0,120})$/i
+        ];
+
+    for (const pattern of patterns) {
+        const match = String(rawMessage || '').match(pattern);
+        if (match?.[1]?.trim()) {
+            return match[1].trim();
+        }
+    }
+
+    return null;
+}
+
+function parseInvoiceArgsFromMessage(message, existingArgs = {}) {
+    const rawMessage = String(message || '').trim();
+    const nextArgs = { ...(existingArgs && typeof existingArgs === 'object' ? existingArgs : {}) };
+    const amountMatch = rawMessage.match(/(\d+(?:[.,]\d+)?)\s*(credits?|credit|usdcx|usad|any token|any)\b/i);
+    const invoiceTypeMatch = rawMessage.match(/\b(donation|multipay|multi-pay|standard)\b/i);
+    const walletMatch = rawMessage.match(/\b(main|burner)\b/i);
+    const titleValue = extractOptionalFieldValue(rawMessage, 'title');
+    const memoValue = extractOptionalFieldValue(rawMessage, 'memo');
+
+    const amount = amountMatch ? parsePromptAmount(amountMatch[1]) : parsePromptAmount(rawMessage);
+    const currency = amountMatch ? normalizePromptCurrency(amountMatch[2]) : (
+        /\b(usdcx|usad|credits?|credit|aleo|any token|any)\b/i.test(rawMessage)
+            ? normalizePromptCurrency(rawMessage)
+            : null
+    );
+
+    if (amount != null) {
+        nextArgs.amount = amount;
+    }
+
+    if (currency) {
+        nextArgs.currency = currency;
+    }
+
+    if (invoiceTypeMatch?.[1]) {
+        nextArgs.invoice_type = normalizePromptInvoiceType(invoiceTypeMatch[1]);
+    }
+
+    if (walletMatch?.[1]) {
+        nextArgs.wallet = normalizePromptWallet(walletMatch[1]);
+    }
+
+    if (titleValue) {
+        nextArgs.title = titleValue;
+    }
+
+    if (memoValue) {
+        nextArgs.memo = memoValue;
+    }
+
+    return nextArgs;
+}
+
 function normalizeMissingArgs(rawValue) {
     if (!Array.isArray(rawValue)) {
         return [];
@@ -525,12 +589,130 @@ function normalizePlannedNullBotToolCall(rawToolCall) {
     return null;
 }
 
-function detectNullBotToolCall(message) {
+function detectNullBotToolCall(message, context = {}) {
     const rawMessage = String(message || '').trim();
     const normalizedMessage = rawMessage.toLowerCase();
+    const pendingToolCall = context?.pendingToolCall && typeof context.pendingToolCall === 'object'
+        ? context.pendingToolCall
+        : null;
 
     if (!rawMessage) {
         return null;
+    }
+
+    if (pendingToolCall?.name === 'create_invoice') {
+        const pendingArgs = pendingToolCall.args && typeof pendingToolCall.args === 'object'
+            ? pendingToolCall.args
+            : {};
+        const mergedArgs = parseInvoiceArgsFromMessage(rawMessage, pendingArgs);
+        const invoiceType = mergedArgs.invoice_type ? normalizePromptInvoiceType(mergedArgs.invoice_type) : 'standard';
+        const isDonation = invoiceType === 'donation';
+        const wantsContinue = /^(continue|skip|no|none|nope|go ahead|create it|create invoice|proceed)$/i.test(rawMessage);
+        const hasOptionalReviewStage = Array.isArray(pendingToolCall.missingArgs) && pendingToolCall.missingArgs.includes('optional_review');
+        const currency = mergedArgs.currency ? normalizePromptCurrency(mergedArgs.currency) : null;
+        const amount = parsePromptAmount(mergedArgs.amount);
+
+        if (hasOptionalReviewStage) {
+            if (wantsContinue) {
+                return {
+                    reply: 'Creating the invoice now. Approve the wallet popup when it appears.',
+                    toolCall: {
+                        name: 'create_invoice',
+                        args: {
+                            ...(isDonation ? { amount: 0 } : (amount != null ? { amount } : {})),
+                            ...(currency ? { currency } : (isDonation ? { currency: 'ANY' } : {})),
+                            ...(mergedArgs.title ? { title: String(mergedArgs.title).trim() } : {}),
+                            invoice_type: invoiceType,
+                            wallet: normalizePromptWallet(mergedArgs.wallet),
+                            ...(mergedArgs.memo ? { memo: String(mergedArgs.memo).trim() } : {})
+                        }
+                    }
+                };
+            }
+
+            return {
+                reply: [
+                    'Your invoice draft is ready.',
+                    '',
+                    ...(isDonation ? [
+                        'Add a token if you want to restrict the donation.',
+                        'Examples: `credits`, `usdcx`, `usad`, or `any token`.',
+                        ''
+                    ] : []),
+                    'Add an optional title or memo if you want.',
+                    'Examples: `title "Team dinner"` or `memo "April payout"`.',
+                    `If you do not want ${isDonation ? 'any of these' : 'either'}, say \`continue\`.`
+                ].join('\n'),
+                toolCall: {
+                    name: 'create_invoice',
+                    args: {
+                        ...(isDonation ? { amount: 0 } : (amount != null ? { amount } : {})),
+                        ...(currency ? { currency } : {}),
+                        ...(mergedArgs.title ? { title: String(mergedArgs.title).trim() } : {}),
+                        invoice_type: invoiceType,
+                        wallet: normalizePromptWallet(mergedArgs.wallet),
+                        ...(mergedArgs.memo ? { memo: String(mergedArgs.memo).trim() } : {})
+                    },
+                    missingArgs: ['optional_review']
+                }
+            };
+        }
+
+        const missingArgs = [
+            ...(isDonation || amount != null ? [] : ['amount']),
+            ...((isDonation ? (currency || 'ANY') : currency) ? [] : ['currency'])
+        ];
+
+        if (missingArgs.length > 0) {
+            return {
+                reply: isDonation
+                    ? 'Tell me which token to restrict the donation to, like `credits`, `usdcx`, or `usad`, or say `any token`.'
+                    : missingArgs.length === 2
+                        ? 'Tell me the invoice amount and token, like `0.1 credits` or `2 usdcx`.'
+                        : missingArgs[0] === 'amount'
+                            ? 'Tell me the invoice amount.'
+                            : 'Tell me which token to use, like `credits`, `usdcx`, or `usad`.',
+                toolCall: {
+                    name: 'create_invoice',
+                    args: {
+                        ...(amount != null ? { amount } : {}),
+                        ...(currency ? { currency } : {}),
+                        ...(mergedArgs.title ? { title: String(mergedArgs.title).trim() } : {}),
+                        invoice_type: invoiceType,
+                        wallet: normalizePromptWallet(mergedArgs.wallet),
+                        ...(mergedArgs.memo ? { memo: String(mergedArgs.memo).trim() } : {})
+                    },
+                    missingArgs
+                }
+            };
+        }
+
+        return {
+            reply: [
+                'Your invoice draft is ready.',
+                '',
+                ...(isDonation ? [
+                    'Add a token if you want to restrict the donation.',
+                    'Examples: `credits`, `usdcx`, `usad`, or `any token`.',
+                    ''
+                ] : []),
+                'Add an optional title or memo if you want.',
+                'Examples: `title "Team dinner"` or `memo "April payout"`.',
+                `If you do not want ${isDonation ? 'any of these' : 'either'}, say \`continue\`.`
+            ].join('\n'),
+            toolCall: {
+                name: 'create_invoice',
+                args: {
+                    ...(isDonation ? { amount: 0 } : { amount }),
+                    ...(currency ? { currency } : (isDonation ? { currency: 'ANY' } : {})),
+                    ...(mergedArgs.title ? { title: String(mergedArgs.title).trim() } : {}),
+                    invoice_type: invoiceType,
+                    wallet: normalizePromptWallet(mergedArgs.wallet),
+                    ...(mergedArgs.memo ? { memo: String(mergedArgs.memo).trim() } : {})
+                },
+                missingArgs: ['optional_review']
+            }
+        };
     }
 
     if (/(connect wallet|connect my wallet|link wallet)/i.test(rawMessage)) {
@@ -576,23 +758,50 @@ function detectNullBotToolCall(message) {
         /\binvoice\b[\s\S]{0,30}\b(of|for)\b/i.test(rawMessage);
 
     if (createInvoiceIntent) {
-        const amountMatch = rawMessage.match(/(\d+(?:[.,]\d+)?)\s*(credits?|credit|usdcx|usad|any token|any)\b/i);
-        const invoiceTypeMatch = rawMessage.match(/\b(donation|multipay|multi-pay|standard)\b/i);
-        const walletMatch = rawMessage.match(/\b(main|burner)\b/);
-        const titleMatch = rawMessage.match(/(?:invoice\s+title|title|name)\s+(?:as|to|is)?\s*["']([^"']+)["']/i);
-        const memoMatch = rawMessage.match(/(?:memo|note)\s+(?:as|to|is)?\s*["']([^"']+)["']/i);
-        const title = titleMatch?.[1]?.trim();
-        const memo = memoMatch?.[1]?.trim();
-        const invoiceType = invoiceTypeMatch?.[1] ? normalizePromptInvoiceType(invoiceTypeMatch[1]) : 'standard';
+        const mergedArgs = parseInvoiceArgsFromMessage(rawMessage, {});
+        const invoiceType = mergedArgs.invoice_type ? normalizePromptInvoiceType(mergedArgs.invoice_type) : 'standard';
+        const title = typeof mergedArgs.title === 'string' ? mergedArgs.title.trim() : undefined;
+        const memo = typeof mergedArgs.memo === 'string' ? mergedArgs.memo.trim() : undefined;
+        const wallet = normalizePromptWallet(mergedArgs.wallet);
+        const amount = parsePromptAmount(mergedArgs.amount);
+        const currency = mergedArgs.currency ? normalizePromptCurrency(mergedArgs.currency) : null;
 
-        if (amountMatch) {
-            const amount = parsePromptAmount(amountMatch[1]);
-            const currency = normalizePromptCurrency(amountMatch[2]);
-            const wallet = walletMatch?.[1] === 'burner' ? 'burner' : 'main';
+        if (invoiceType === 'donation') {
+            return {
+                reply: [
+                    'Your invoice draft is ready.',
+                    '',
+                    'Add a token if you want to restrict the donation.',
+                    'Examples: `credits`, `usdcx`, `usad`, or `any token`.',
+                    '',
+                    'Add an optional title or memo if you want.',
+                    'Examples: `title "Team dinner"` or `memo "April payout"`.',
+                    'If you do not want any of these, say `continue`.'
+                ].join('\n'),
+                toolCall: {
+                    name: 'create_invoice',
+                    args: {
+                        amount: 0,
+                        ...(currency ? { currency } : { currency: 'ANY' }),
+                        ...(title ? { title } : {}),
+                        invoice_type: 'donation',
+                        wallet,
+                        ...(memo ? { memo } : {})
+                    },
+                    missingArgs: ['optional_review']
+                }
+            };
+        }
 
-            if (amount != null) {
-                return {
-                reply: `I can create a ${invoiceType} invoice for ${amount} ${currency} from your ${wallet} wallet. Approve the wallet popup when it opens.`,
+        if (amount != null && currency) {
+            return {
+                reply: [
+                    'Your invoice draft is ready.',
+                    '',
+                    'Add an optional title or memo if you want.',
+                    'Examples: `title "Team dinner"` or `memo "April payout"`.',
+                    'If you do not want either, say `continue`.'
+                ].join('\n'),
                 toolCall: {
                     name: 'create_invoice',
                     args: {
@@ -602,27 +811,8 @@ function detectNullBotToolCall(message) {
                         invoice_type: invoiceType,
                         wallet,
                         ...(memo ? { memo } : {})
-                    }
-                }
-            };
-            }
-        }
-
-        if (invoiceType === 'donation') {
-            const wallet = walletMatch?.[1] === 'burner' ? 'burner' : 'main';
-
-            return {
-                reply: 'I can create a donation invoice. If you want to restrict the token, say `credits`, `usdcx`, or `usad`. Otherwise I will keep it open for any token.',
-                toolCall: {
-                    name: 'create_invoice',
-                    args: {
-                        amount: 0,
-                        currency: amountMatch ? normalizePromptCurrency(amountMatch[2]) : 'ANY',
-                        ...(title ? { title } : {}),
-                        invoice_type: 'donation',
-                        wallet,
-                        ...(memo ? { memo } : {})
-                    }
+                    },
+                    missingArgs: ['optional_review']
                 }
             };
         }
@@ -633,8 +823,8 @@ function detectNullBotToolCall(message) {
                 name: 'create_invoice',
                 args: {
                     ...(title ? { title } : {}),
-                    ...(invoiceTypeMatch?.[1] ? { invoice_type: normalizePromptInvoiceType(invoiceTypeMatch[1]) } : {}),
-                    ...(walletMatch?.[1] ? { wallet: normalizePromptWallet(walletMatch[1]) } : {}),
+                    ...(mergedArgs.invoice_type ? { invoice_type: invoiceType } : {}),
+                    ...(mergedArgs.wallet ? { wallet } : {}),
                     ...(memo ? { memo } : {})
                 },
                 missingArgs: ['amount', 'currency']
@@ -668,6 +858,11 @@ async function planNullBotToolCall(message, context) {
         'When the context includes pendingToolCall, treat the new message as a follow-up that may fill missing args for that same tool.',
         'Treat both `0.1` and `0,1` as valid decimal amounts.',
         'For create_invoice, preferred args are amount, currency, title, invoice_type, wallet, memo.',
+        'Donation invoices are open amount. Never ask for an amount when invoice_type is donation.',
+        'For donation invoices, token restriction is optional. If none is supplied, keep currency as ANY until the user restricts it or says continue.',
+        'When required invoice args are complete but the user may still want optional token/title/memo fields, keep the tool pending with missingArgs ["optional_review"] and ask what optional fields to add or whether to continue.',
+        'When the pending create_invoice tool is in optional review and the user says continue/skip/no, finalize the tool call with no missingArgs so the frontend can execute it.',
+        'If the user adds title, memo, or donation token during optional review, keep the same pending create_invoice tool and preserve previously collected args.',
         'Donation and multipay are invoice types, so prompts like "create a donation for me" or "create a multipay" should still map to create_invoice.',
         'For sweep_funds from burner to the connected main wallet, set wallet to burner and destination to main_wallet when the user says burner to main.',
         'For burner balance checks, use check_burner_balance.',
@@ -711,7 +906,7 @@ async function planNullBotToolCall(message, context) {
 }
 
 async function generateNullBotChat(message, context) {
-    const fallback = detectNullBotToolCall(message);
+    const fallback = detectNullBotToolCall(message, context);
 
     try {
         const planned = await planNullBotToolCall(message, context);

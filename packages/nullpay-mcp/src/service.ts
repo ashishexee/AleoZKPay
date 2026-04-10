@@ -545,6 +545,7 @@ export class NullPayMcpService {
                 invoiceTxId: relayResponse.tx_id,
                 wallet,
                 lineItems: args.line_items,
+                allowedTokens: args.allowed_tokens,
                 merchantAddressHash: hashAddress(merchantAddress),
             })
         );
@@ -583,11 +584,39 @@ export class NullPayMcpService {
         const resolved = await this.resolvePayInvoiceContext(args, wallet);
         const { invoice, sessionId, source } = resolved;
 
+        const paymentCurrency = normalizePaymentCurrency(args.currency);
+        let quoteSignature: string | undefined;
+        let quoteExpiresAt: number | undefined;
+        let paymentAmount = args.amount;
+        
+        const invoiceBaseCurrency = tokenTypeLabel(invoice.token_type);
+        const invoiceAmount = invoice.amount ?? 0;
+
+        if (paymentCurrency && invoiceBaseCurrency !== paymentCurrency && invoiceAmount > 0) {
+            if (invoice.allowed_tokens && invoice.allowed_tokens.length > 0 && !invoice.allowed_tokens.includes(paymentCurrency)) {
+                throw new Error(`${paymentCurrency} is not an allowed token for this invoice. Allowed tokens: ${invoice.allowed_tokens.join(', ')}`);
+            } else if (invoice.token_type !== 3 && (!invoice.allowed_tokens || invoice.allowed_tokens.length === 0)) {
+                throw new Error(`${paymentCurrency} cannot be used because this invoice is strictly denominated in ${invoiceBaseCurrency} and has no alternative allowed tokens.`);
+            }
+
+            const quote = await this.backend.getOracleQuote(invoiceBaseCurrency, paymentCurrency, invoiceAmount);
+            if (!quote || !quote.signature) {
+                throw new Error('Failed to fetch a valid Oracle quote for payment token override');
+            }
+            paymentAmount = quote.expected_amount;
+            quoteSignature = quote.signature;
+            quoteExpiresAt = quote.expires_at;
+        }
+
         const { authorization } = await createSponsoredPaymentAuthorization({
             walletPrivateKey,
             invoice,
-            amount: args.amount,
-            currency: normalizePaymentCurrency(args.currency),
+            amount: paymentAmount,
+            currency: paymentCurrency,
+            payerCurrency: paymentCurrency,
+            quoteSignature,
+            quoteExpiresAt,
+            quoteConvertedMicro: paymentAmount ? BigInt(Math.round(paymentAmount * 1_000_000)) : undefined,
         });
 
         const sponsored = await this.backend.sponsorExecution({

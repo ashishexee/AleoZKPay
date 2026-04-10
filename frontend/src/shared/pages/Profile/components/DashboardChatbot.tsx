@@ -14,7 +14,6 @@ import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
 import type { MerchantReceipt, PayerReceipt } from '../../../utils/aleo-utils';
 import {
     chatWithNullBot,
-    type NullBotCreateInvoiceArgs,
     type NullBotPendingToolCall,
     type NullBotToolCall,
 } from '../../../services/api';
@@ -59,7 +58,6 @@ type ChatMessage = {
 
 type PendingToolMetadata = {
     availableBurnerBalances?: Record<BurnerSweepCurrency, number>;
-    awaitingInvoiceOptionalFields?: boolean;
 };
 
 type PendingToolCall =
@@ -151,65 +149,6 @@ const formatPublicMappingBalance = (data: unknown, suffix: string) => {
     }
 
     return '0.00';
-};
-
-const parseFlexibleAmount = (rawValue: string) => {
-    const normalized = rawValue.trim().replace(/,/g, '.');
-    const match = normalized.match(/\d+(?:\.\d+)?/);
-    if (!match) {
-        return null;
-    }
-
-    const amount = Number(match[0]);
-    return Number.isFinite(amount) && amount > 0 ? amount : null;
-};
-
-const parseCurrencyFromPrompt = (rawValue: string): 'CREDITS' | 'USDCX' | 'USAD' | 'ANY' | null => {
-    const normalized = rawValue.toLowerCase();
-    if (/\busdcx\b/.test(normalized)) return 'USDCX';
-    if (/\busad\b/.test(normalized)) return 'USAD';
-    if (/\bany(?: token)?\b/.test(normalized)) return 'ANY';
-    if (/\b(aleo|credit|credits)\b/.test(normalized)) return 'CREDITS';
-    return null;
-};
-
-const parseInvoiceFollowUpArgs = (
-    message: string,
-    existingArgs: Record<string, unknown>
-): Record<string, unknown> => {
-    const nextArgs = { ...existingArgs };
-    const amount = parseFlexibleAmount(message);
-    const currency = parseCurrencyFromPrompt(message);
-    const invoiceTypeMatch = message.match(/\b(donation|multipay|multi-pay|standard)\b/i);
-    const walletMatch = message.match(/\b(main|burner)\b/i);
-    const titleMatch = message.match(/(?:invoice\s+title|title|name)\s+(?:as|to|is)?\s*["']([^"']+)["']/i);
-    const memoMatch = message.match(/(?:memo|note)\s+(?:as|to|is)?\s*["']([^"']+)["']/i);
-
-    if (amount != null) {
-        nextArgs.amount = amount;
-    }
-
-    if (currency) {
-        nextArgs.currency = currency;
-    }
-
-    if (invoiceTypeMatch?.[1]) {
-        nextArgs.invoice_type = invoiceTypeMatch[1].toLowerCase() === 'multi-pay' ? 'multipay' : invoiceTypeMatch[1].toLowerCase();
-    }
-
-    if (walletMatch?.[1]) {
-        nextArgs.wallet = walletMatch[1].toLowerCase() === 'burner' ? 'burner' : 'main';
-    }
-
-    if (titleMatch?.[1]?.trim()) {
-        nextArgs.title = titleMatch[1].trim();
-    }
-
-    if (memoMatch?.[1]?.trim()) {
-        nextArgs.memo = memoMatch[1].trim();
-    }
-
-    return nextArgs;
 };
 
 const MiniInvoiceCard: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => {
@@ -565,8 +504,8 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
         }
 
         if (toolCall.name === 'create_invoice') {
-            if (toolCall.metadata?.awaitingInvoiceOptionalFields) {
-                return 'Invoice draft ready. Add optional `title` or `memo`, or say `continue`.';
+            if (toolCall.missingArgs.includes('optional_review')) {
+                return 'Invoice draft ready. Add optional token/title/memo details, or say `continue`.';
             }
             return 'Invoice draft active. Reply with the missing invoice details like `0.1 credits` or say `cancel`.';
         }
@@ -608,32 +547,6 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
             fallbackReply || 'Tell me how much you want to sweep and which token.',
             'Examples: `0.3 credits`, `0.5 usdcx`, or `all usad`.',
             'You can also say `cancel`.'
-        ].join('\n'));
-    };
-
-    const promptForOptionalInvoiceFields = (args: Record<string, unknown>) => {
-        const isDonation = args.invoice_type === 'donation';
-        setPendingToolCall({
-            name: 'create_invoice',
-            args,
-            missingArgs: [],
-            metadata: {
-                awaitingInvoiceOptionalFields: true,
-            }
-        });
-        appendAssistantMessage([
-            'Your invoice draft is ready.',
-            '',
-            ...(isDonation
-                ? [
-                    'Add a token if you want to restrict the donation.',
-                    'Examples: `credits`, `usdcx`, `usad`, or `any token`.',
-                    ''
-                ]
-                : []),
-            'Add an optional title or memo if you want.',
-            'Examples: `title "Team dinner"` or `memo "April payout"`.',
-            `If you do not want ${isDonation ? 'any of these' : 'either'}, say \`continue\`.`
         ].join('\n'));
     };
 
@@ -865,89 +778,6 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                 return;
             }
 
-            if (pendingToolCall?.name === 'create_invoice') {
-                if (pendingToolCall.metadata?.awaitingInvoiceOptionalFields) {
-                    if (/^(continue|skip|no|none|nope)$/i.test(trimmed)) {
-                        setPendingToolCall(null);
-                        await executePlannedToolCall({
-                            name: 'create_invoice',
-                            args: pendingToolCall.args as Extract<NullBotToolCall, { name: 'create_invoice' }>['args']
-                        });
-                        return;
-                    }
-
-                    const mergedOptionalArgs = parseInvoiceFollowUpArgs(trimmed, pendingToolCall.args);
-                    if (mergedOptionalArgs.title || mergedOptionalArgs.memo || mergedOptionalArgs.currency) {
-                        setPendingToolCall(null);
-                        await executePlannedToolCall({
-                            name: 'create_invoice',
-                            args: mergedOptionalArgs as Extract<NullBotToolCall, { name: 'create_invoice' }>['args']
-                        });
-                        return;
-                    }
-
-                    appendAssistantMessage(
-                        pendingToolCall.args.invoice_type === 'donation'
-                            ? 'Add a token like `credits`, `usdcx`, `usad`, or `any token`, add `title "..."` / `memo "..."`, or say `continue` to create the invoice now.'
-                            : 'Add `title "..."` or `memo "..."`, or say `continue` to create the invoice now.'
-                    );
-                    return;
-                }
-
-                const mergedArgs = parseInvoiceFollowUpArgs(trimmed, pendingToolCall.args);
-                const invoiceType = typeof mergedArgs.invoice_type === 'string' ? mergedArgs.invoice_type : 'standard';
-                const amount = typeof mergedArgs.amount === 'number' ? mergedArgs.amount : null;
-                const currency = typeof mergedArgs.currency === 'string' ? mergedArgs.currency : null;
-                const resolvedAmount = invoiceType === 'donation' ? (amount ?? 0) : amount;
-                const resolvedCurrency = (invoiceType === 'donation' ? (currency || 'ANY') : currency) as NullBotCreateInvoiceArgs['currency'] | null;
-
-                if (resolvedAmount != null && resolvedCurrency) {
-                    const readyArgs: NullBotCreateInvoiceArgs = {
-                        amount: resolvedAmount,
-                        currency: resolvedCurrency,
-                        ...(typeof mergedArgs.title === 'string' && mergedArgs.title.trim()
-                            ? { title: mergedArgs.title.trim() }
-                            : {}),
-                        invoice_type: invoiceType as NullBotCreateInvoiceArgs['invoice_type'],
-                        wallet: mergedArgs.wallet === 'burner' ? 'burner' : 'main',
-                        ...(typeof mergedArgs.memo === 'string' && mergedArgs.memo.trim()
-                            ? { memo: mergedArgs.memo.trim() }
-                            : {})
-                    };
-
-                    if (!readyArgs.title && !readyArgs.memo) {
-                        promptForOptionalInvoiceFields(readyArgs);
-                        return;
-                    }
-
-                    setPendingToolCall(null);
-                    await executePlannedToolCall({
-                        name: 'create_invoice',
-                        args: readyArgs
-                    });
-                    return;
-                }
-
-                setPendingToolCall({
-                    ...pendingToolCall,
-                    args: mergedArgs,
-                    missingArgs: [
-                        ...(invoiceType === 'donation' || amount != null ? [] : ['amount']),
-                        ...(resolvedCurrency ? [] : ['currency'])
-                    ]
-                });
-                appendAssistantMessage(
-                    invoiceType === 'donation' && !resolvedCurrency
-                        ? 'Tell me which token to restrict the donation to, like `credits`, `usdcx`, or `usad`, or say `any token`.'
-                        : amount == null && !currency
-                        ? 'Tell me the invoice amount and token, like `0.1 credits` or `2 usdcx`.'
-                        : amount == null
-                            ? 'Tell me the invoice amount, like `0.1 credits`.'
-                            : 'Tell me which token to use, like `credits`, `usdcx`, or `usad`.'
-                );
-                return;
-            }
-
             const response = await chatWithNullBot(trimmed, {
                 ...dashboardContext,
                 pendingToolCall: pendingToolCall
@@ -955,6 +785,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                         name: pendingToolCall.name,
                         args: pendingToolCall.args,
                         missingArgs: pendingToolCall.missingArgs,
+                        metadata: pendingToolCall.metadata,
                     }
                     : null,
             });
@@ -977,11 +808,6 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                 if (response.reply) {
                     appendAssistantMessage(response.reply);
                 }
-                return;
-            }
-
-            if (response.toolCall.name === 'create_invoice' && !response.toolCall.args.title && !response.toolCall.args.memo) {
-                promptForOptionalInvoiceFields(response.toolCall.args);
                 return;
             }
 

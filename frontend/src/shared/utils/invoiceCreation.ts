@@ -23,6 +23,7 @@ interface CreateInvoiceViaWalletParams {
     forSdk?: boolean;
     showItems?: boolean;
     items?: InvoiceItem[];
+    allowedTokens?: string[];
     onStatus?: (status: string) => void;
 }
 
@@ -110,6 +111,7 @@ export const createInvoiceViaWallet = async ({
     forSdk = false,
     showItems = false,
     items = [],
+    allowedTokens = [],
     onStatus
 }: CreateInvoiceViaWalletParams): Promise<CreatedInvoiceResult> => {
     let salt = generateSalt();
@@ -270,6 +272,7 @@ export const createInvoiceViaWallet = async ({
         is_burner: walletType === 1 && !forSdk,
         for_sdk: forSdk,
         invoice_items: showItems && items.length > 0 ? items : undefined,
+        allowed_tokens: allowedTokens && allowedTokens.length > 0 ? allowedTokens : undefined,
     });
 
     const params = new URLSearchParams({

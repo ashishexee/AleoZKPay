@@ -9,6 +9,7 @@ export interface InvoiceState {
     memo: string;
     tokenType: number;
     invoiceType: number;
+    allowedTokens?: string[];
     items?: { name: string; quantity: number; unitPrice: number; total: number }[];
     sessionId?: string;
 }

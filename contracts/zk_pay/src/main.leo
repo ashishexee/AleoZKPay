@@ -4,7 +4,7 @@ import test_usad_stablecoin.aleo;
 
 program zk_pay_proofs_privacy_v27.aleo {
     
-    @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
+    @admin(address="aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge")
     constructor() {
         // The Leo compiler automatically generates the constructor logic.
     }
@@ -15,6 +15,14 @@ program zk_pay_proofs_privacy_v27.aleo {
         invoice_type: u8, // 0 = Standard, 1 = Multi Pay, 2 = Donation
         token_type: u8, // 0 = Credits, 1 = USDCx, 2 = USAD
         wallet_type: u8 // 0 = Main Wallet, 1 = Burner Wallet
+    }
+
+    struct OracleQuote {
+        original_amount_micro: u64,    // Invoice amount in base token micros
+        converted_amount_micro: u64,   // Payer amount in their token micros
+        from_token_type: u8,           // Base token (0=Credits, 1=USDCx, 2=USAD)
+        to_token_type: u8,             // Payer token
+        expires_at: u32                // Block height expiry
     }
 
     record PayerReceipt {
@@ -51,6 +59,7 @@ program zk_pay_proofs_privacy_v27.aleo {
 
     mapping invoices: field => InvoiceData;
     mapping salt_to_invoice: field => field;
+    mapping oracle_address: u8 => address;  // key 0u8 => trusted oracle address
 
     fn create_invoice(
         private merchant: address,
@@ -764,6 +773,618 @@ program zk_pay_proofs_privacy_v27.aleo {
 
                 if invoice_data.expiry_height != 0u32 {
                     assert(block.height <= invoice_data.expiry_height);
+                }
+            }
+        );
+    }
+
+    // ─── Admin: Set Oracle Address ─────────────────────────────────
+    fn set_oracle_address(
+        public oracle_addr: address
+    ) -> Final {
+        assert_eq(self.caller, aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0);
+        return final {
+            oracle_address.set(0u8, oracle_addr);
+        };
+    }
+
+    // ─── Cross-Token Payments: CREDITS invoice paid via USDCx ─────
+    fn pay_invoice_credits_via_usdcx(
+        pay_record: test_usdcx_stablecoin.aleo::Token,
+        merchant: address,
+        public payer_owner: address,
+        original_amount: u64,          // Invoice amount in microcredits (for hash verification)
+        converted_amount: u128,        // USDCx amount to actually transfer
+        salt: field,
+        private payment_secret: field,
+        private payer_note: field,
+        private merchant_note: field,
+        public message: field,
+        private proofs: [test_usdcx_stablecoin.aleo::MerkleProof; 2],
+        oracle_sig: signature,
+        public expires_at: u32
+    ) -> (test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
+        // Transfer USDCx from payer to merchant
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usdcx_stablecoin.aleo::ComplianceRecord, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, Final) = 
+            test_usdcx_stablecoin.aleo::transfer_private(merchant, converted_amount, pay_record, proofs);
+
+        // Verify invoice hash using ORIGINAL amount (matches create_invoice)
+        let merchant_field: field = merchant as field;
+        let amount_field: field = original_amount as field;
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+
+        // Verify oracle signature over the quote
+        let quote: OracleQuote = OracleQuote {
+            original_amount_micro: original_amount,
+            converted_amount_micro: converted_amount as u64,
+            from_token_type: 0u8,  // CREDITS
+            to_token_type: 1u8,    // USDCx
+            expires_at: expires_at
+        };
+        let quote_hash: field = BHP256::hash_to_field(quote);
+        let is_valid: bool = signature::verify(oracle_sig, payer_owner, quote_hash);
+        assert(is_valid);
+
+        let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
+        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+
+        let payer_receipt: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount as u64,
+            token_type: 1u8,  // Paid in USDCx
+            payer_note: payer_note,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt: MerchantReceipt = MerchantReceipt {
+            owner: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount as u64,
+            token_type: 1u8,
+            merchant_note: merchant_note
+        };
+
+        return (
+            transfer_output_1,
+            transfer_output_2,
+            compliance_record,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                transfer_future.run();
+
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+                assert_eq(invoice_data.token_type, 0u8); // Must be a CREDITS invoice
+                assert_eq(invoice_data.status, 0u8);
+
+                if expires_at != 0u32 {
+                    assert(block.height <= expires_at);
+                }
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+
+                // Verify oracle address
+                let trusted_oracle: address = oracle_address.get(0u8);
+                assert(signature::verify(oracle_sig, trusted_oracle, quote_hash));
+
+                if invoice_data.invoice_type == 0u8 {
+                    let updated_data: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data.invoice_type,
+                        token_type: invoice_data.token_type,
+                        wallet_type: invoice_data.wallet_type
+                    };
+                    invoices.set(stored_hash, updated_data);
+                }
+            }
+        );
+    }
+
+    // ─── Cross-Token Payments: CREDITS invoice paid via USAD ──────
+    fn pay_invoice_credits_via_usad(
+        pay_record: test_usad_stablecoin.aleo::Token,
+        merchant: address,
+        public payer_owner: address,
+        original_amount: u64,
+        converted_amount: u128,
+        salt: field,
+        private payment_secret: field,
+        private payer_note: field,
+        private merchant_note: field,
+        public message: field,
+        private proofs: [test_usad_stablecoin.aleo::MerkleProof; 2],
+        oracle_sig: signature,
+        public expires_at: u32
+    ) -> (test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usad_stablecoin.aleo::ComplianceRecord, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, Final) = 
+            test_usad_stablecoin.aleo::transfer_private(merchant, converted_amount, pay_record, proofs);
+
+        let merchant_field: field = merchant as field;
+        let amount_field: field = original_amount as field;
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+
+        let quote: OracleQuote = OracleQuote {
+            original_amount_micro: original_amount,
+            converted_amount_micro: converted_amount as u64,
+            from_token_type: 0u8,
+            to_token_type: 2u8,  // USAD
+            expires_at: expires_at
+        };
+        let quote_hash: field = BHP256::hash_to_field(quote);
+        let is_valid: bool = signature::verify(oracle_sig, payer_owner, quote_hash);
+        assert(is_valid);
+
+        let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
+        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+
+        let payer_receipt: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount as u64,
+            token_type: 2u8,
+            payer_note: payer_note,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt: MerchantReceipt = MerchantReceipt {
+            owner: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount as u64,
+            token_type: 2u8,
+            merchant_note: merchant_note
+        };
+
+        return (
+            transfer_output_1,
+            transfer_output_2,
+            compliance_record,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                transfer_future.run();
+
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+                assert_eq(invoice_data.token_type, 0u8);
+                assert_eq(invoice_data.status, 0u8);
+
+                if expires_at != 0u32 {
+                    assert(block.height <= expires_at);
+                }
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+
+                let trusted_oracle: address = oracle_address.get(0u8);
+                assert(signature::verify(oracle_sig, trusted_oracle, quote_hash));
+
+                if invoice_data.invoice_type == 0u8 {
+                    let updated_data: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data.invoice_type,
+                        token_type: invoice_data.token_type,
+                        wallet_type: invoice_data.wallet_type
+                    };
+                    invoices.set(stored_hash, updated_data);
+                }
+            }
+        );
+    }
+
+    // ─── Cross-Token Payments: USDCx invoice paid via CREDITS ─────
+    fn pay_invoice_usdcx_via_credits(
+        pay_record: credits.aleo::credits,
+        merchant: address,
+        public payer_owner: address,
+        original_amount: u128,         // Invoice amount in micro-USDCx (for hash verification)
+        converted_amount: u64,         // Credits amount to actually transfer
+        salt: field,
+        private payment_secret: field,
+        private payer_note: field,
+        private merchant_note: field,
+        public message: field,
+        oracle_sig: signature,
+        public expires_at: u32
+    ) -> (credits.aleo::credits, credits.aleo::credits, PayerReceipt, MerchantReceipt, Final) {
+        let (r1, r2): (credits.aleo::credits, credits.aleo::credits) = 
+            credits.aleo::transfer_private(pay_record, merchant, converted_amount);
+
+        let merchant_field: field = merchant as field;
+        let amount_field: field = original_amount as field;
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+
+        let quote: OracleQuote = OracleQuote {
+            original_amount_micro: original_amount as u64,
+            converted_amount_micro: converted_amount,
+            from_token_type: 1u8,  // USDCx
+            to_token_type: 0u8,    // CREDITS
+            expires_at: expires_at
+        };
+        let quote_hash: field = BHP256::hash_to_field(quote);
+        let is_valid: bool = signature::verify(oracle_sig, payer_owner, quote_hash);
+        assert(is_valid);
+
+        let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
+        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+
+        let payer_receipt: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount,
+            token_type: 0u8,
+            payer_note: payer_note,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt: MerchantReceipt = MerchantReceipt {
+            owner: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount,
+            token_type: 0u8,
+            merchant_note: merchant_note
+        };
+
+        return (
+            r1,
+            r2,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+                assert_eq(invoice_data.token_type, 1u8); // Must be a USDCx invoice
+                assert_eq(invoice_data.status, 0u8);
+
+                if expires_at != 0u32 {
+                    assert(block.height <= expires_at);
+                }
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+
+                let trusted_oracle: address = oracle_address.get(0u8);
+                assert(signature::verify(oracle_sig, trusted_oracle, quote_hash));
+
+                if invoice_data.invoice_type == 0u8 {
+                    let updated_data: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data.invoice_type,
+                        token_type: invoice_data.token_type,
+                        wallet_type: invoice_data.wallet_type
+                    };
+                    invoices.set(stored_hash, updated_data);
+                }
+            }
+        );
+    }
+
+    // ─── Cross-Token Payments: USDCx invoice paid via USAD ────────
+    fn pay_invoice_usdcx_via_usad(
+        pay_record: test_usad_stablecoin.aleo::Token,
+        merchant: address,
+        public payer_owner: address,
+        original_amount: u128,
+        converted_amount: u128,
+        salt: field,
+        private payment_secret: field,
+        private payer_note: field,
+        private merchant_note: field,
+        public message: field,
+        private proofs: [test_usad_stablecoin.aleo::MerkleProof; 2],
+        oracle_sig: signature,
+        public expires_at: u32
+    ) -> (test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usad_stablecoin.aleo::ComplianceRecord, test_usad_stablecoin.aleo::Token, test_usad_stablecoin.aleo::Token, Final) = 
+            test_usad_stablecoin.aleo::transfer_private(merchant, converted_amount, pay_record, proofs);
+
+        let merchant_field: field = merchant as field;
+        let amount_field: field = original_amount as field;
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+
+        let quote: OracleQuote = OracleQuote {
+            original_amount_micro: original_amount as u64,
+            converted_amount_micro: converted_amount as u64,
+            from_token_type: 1u8,
+            to_token_type: 2u8,
+            expires_at: expires_at
+        };
+        let quote_hash: field = BHP256::hash_to_field(quote);
+        let is_valid: bool = signature::verify(oracle_sig, payer_owner, quote_hash);
+        assert(is_valid);
+
+        let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
+        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+
+        let payer_receipt: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount as u64,
+            token_type: 2u8,
+            payer_note: payer_note,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt: MerchantReceipt = MerchantReceipt {
+            owner: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount as u64,
+            token_type: 2u8,
+            merchant_note: merchant_note
+        };
+
+        return (
+            transfer_output_1,
+            transfer_output_2,
+            compliance_record,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                transfer_future.run();
+
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+                assert_eq(invoice_data.token_type, 1u8);
+                assert_eq(invoice_data.status, 0u8);
+
+                if expires_at != 0u32 {
+                    assert(block.height <= expires_at);
+                }
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+
+                let trusted_oracle: address = oracle_address.get(0u8);
+                assert(signature::verify(oracle_sig, trusted_oracle, quote_hash));
+
+                if invoice_data.invoice_type == 0u8 {
+                    let updated_data: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data.invoice_type,
+                        token_type: invoice_data.token_type,
+                        wallet_type: invoice_data.wallet_type
+                    };
+                    invoices.set(stored_hash, updated_data);
+                }
+            }
+        );
+    }
+
+    // ─── Cross-Token Payments: USAD invoice paid via CREDITS ──────
+    fn pay_invoice_usad_via_credits(
+        pay_record: credits.aleo::credits,
+        merchant: address,
+        public payer_owner: address,
+        original_amount: u128,
+        converted_amount: u64,
+        salt: field,
+        private payment_secret: field,
+        private payer_note: field,
+        private merchant_note: field,
+        public message: field,
+        oracle_sig: signature,
+        public expires_at: u32
+    ) -> (credits.aleo::credits, credits.aleo::credits, PayerReceipt, MerchantReceipt, Final) {
+        let (r1, r2): (credits.aleo::credits, credits.aleo::credits) = 
+            credits.aleo::transfer_private(pay_record, merchant, converted_amount);
+
+        let merchant_field: field = merchant as field;
+        let amount_field: field = original_amount as field;
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+
+        let quote: OracleQuote = OracleQuote {
+            original_amount_micro: original_amount as u64,
+            converted_amount_micro: converted_amount,
+            from_token_type: 2u8,  // USAD
+            to_token_type: 0u8,    // CREDITS
+            expires_at: expires_at
+        };
+        let quote_hash: field = BHP256::hash_to_field(quote);
+        let is_valid: bool = signature::verify(oracle_sig, payer_owner, quote_hash);
+        assert(is_valid);
+
+        let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
+        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+
+        let payer_receipt: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount,
+            token_type: 0u8,
+            payer_note: payer_note,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt: MerchantReceipt = MerchantReceipt {
+            owner: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount,
+            token_type: 0u8,
+            merchant_note: merchant_note
+        };
+
+        return (
+            r1,
+            r2,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+                assert_eq(invoice_data.token_type, 2u8); // Must be USAD invoice
+                assert_eq(invoice_data.status, 0u8);
+
+                if expires_at != 0u32 {
+                    assert(block.height <= expires_at);
+                }
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+
+                let trusted_oracle: address = oracle_address.get(0u8);
+                assert(signature::verify(oracle_sig, trusted_oracle, quote_hash));
+
+                if invoice_data.invoice_type == 0u8 {
+                    let updated_data: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data.invoice_type,
+                        token_type: invoice_data.token_type,
+                        wallet_type: invoice_data.wallet_type
+                    };
+                    invoices.set(stored_hash, updated_data);
+                }
+            }
+        );
+    }
+
+    // ─── Cross-Token Payments: USAD invoice paid via USDCx ────────
+    fn pay_invoice_usad_via_usdcx(
+        pay_record: test_usdcx_stablecoin.aleo::Token,
+        merchant: address,
+        public payer_owner: address,
+        original_amount: u128,
+        converted_amount: u128,
+        salt: field,
+        private payment_secret: field,
+        private payer_note: field,
+        private merchant_note: field,
+        public message: field,
+        private proofs: [test_usdcx_stablecoin.aleo::MerkleProof; 2],
+        oracle_sig: signature,
+        public expires_at: u32
+    ) -> (test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::ComplianceRecord, PayerReceipt, MerchantReceipt, Final) {
+        let (compliance_record, transfer_output_1, transfer_output_2, transfer_future): (test_usdcx_stablecoin.aleo::ComplianceRecord, test_usdcx_stablecoin.aleo::Token, test_usdcx_stablecoin.aleo::Token, Final) = 
+            test_usdcx_stablecoin.aleo::transfer_private(merchant, converted_amount, pay_record, proofs);
+
+        let merchant_field: field = merchant as field;
+        let amount_field: field = original_amount as field;
+        let merchant_hash: field = BHP256::hash_to_field(merchant_field);
+        let amount_hash: field = BHP256::hash_to_field(amount_field);
+        let salt_hash: field = BHP256::hash_to_field(salt);
+        let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+
+        let quote: OracleQuote = OracleQuote {
+            original_amount_micro: original_amount as u64,
+            converted_amount_micro: converted_amount as u64,
+            from_token_type: 2u8,
+            to_token_type: 1u8,
+            expires_at: expires_at
+        };
+        let quote_hash: field = BHP256::hash_to_field(quote);
+        let is_valid: bool = signature::verify(oracle_sig, payer_owner, quote_hash);
+        assert(is_valid);
+
+        let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
+        let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
+
+        let payer_receipt: PayerReceipt = PayerReceipt {
+            owner: payer_owner,
+            merchant: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount as u64,
+            token_type: 1u8,
+            payer_note: payer_note,
+            timestamp: 0u64
+        };
+
+        let merchant_receipt: MerchantReceipt = MerchantReceipt {
+            owner: merchant,
+            receipt_hash: receipt_hash,
+            invoice_hash: invoice_hash,
+            amount: converted_amount as u64,
+            token_type: 1u8,
+            merchant_note: merchant_note
+        };
+
+        return (
+            transfer_output_1,
+            transfer_output_2,
+            compliance_record,
+            payer_receipt,
+            merchant_receipt,
+            final {
+                transfer_future.run();
+
+                let stored_hash: field = salt_to_invoice.get(salt);
+                assert_eq(invoice_hash, stored_hash);
+
+                let invoice_data: InvoiceData = invoices.get(stored_hash);
+                assert_eq(invoice_data.token_type, 2u8);
+                assert_eq(invoice_data.status, 0u8);
+
+                if expires_at != 0u32 {
+                    assert(block.height <= expires_at);
+                }
+
+                if invoice_data.expiry_height != 0u32 {
+                    assert(block.height <= invoice_data.expiry_height);
+                }
+
+                let trusted_oracle: address = oracle_address.get(0u8);
+                assert(signature::verify(oracle_sig, trusted_oracle, quote_hash));
+
+                if invoice_data.invoice_type == 0u8 {
+                    let updated_data: InvoiceData = InvoiceData {
+                        expiry_height: invoice_data.expiry_height,
+                        status: 1u8,
+                        invoice_type: invoice_data.invoice_type,
+                        token_type: invoice_data.token_type,
+                        wallet_type: invoice_data.wallet_type
+                    };
+                    invoices.set(stored_hash, updated_data);
                 }
             }
         );

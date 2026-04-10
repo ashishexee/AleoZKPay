@@ -61,6 +61,7 @@ export interface InvoiceRecord {
     invoice_type?: number | null;
     token_type?: number | null;
     invoice_items?: Array<{ name: string; quantity: number; unitPrice: number; total: number }> | null;
+    allowed_tokens?: string[] | null;
     for_sdk?: boolean;
 }
 
@@ -94,6 +95,7 @@ export interface CreateInvoiceArgs {
     invoice_type?: InvoiceType;
     wallet?: WalletPreference;
     line_items?: Array<{ name: string; quantity: number; unitPrice: number; total: number }>;
+    allowed_tokens?: string[];
 }
 
 export interface PayInvoiceArgs {
