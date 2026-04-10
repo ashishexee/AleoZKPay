@@ -151,26 +151,6 @@ const formatPublicMappingBalance = (data: unknown, suffix: string) => {
     return '0.00';
 };
 
-const parseFlexibleAmount = (rawValue: string) => {
-    const normalized = rawValue.trim().replace(/,/g, '.');
-    const match = normalized.match(/\d+(?:\.\d+)?/);
-    if (!match) {
-        return null;
-    }
-
-    const amount = Number(match[0]);
-    return Number.isFinite(amount) && amount > 0 ? amount : null;
-};
-
-const parseCurrencyFromPrompt = (rawValue: string): 'CREDITS' | 'USDCX' | 'USAD' | 'ANY' | null => {
-    const normalized = rawValue.toLowerCase();
-    if (/\busdcx\b/.test(normalized)) return 'USDCX';
-    if (/\busad\b/.test(normalized)) return 'USAD';
-    if (/\bany(?: token)?\b/.test(normalized)) return 'ANY';
-    if (/\b(aleo|credit|credits)\b/.test(normalized)) return 'CREDITS';
-    return null;
-};
-
 const MiniInvoiceCard: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => {
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
