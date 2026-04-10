@@ -7,6 +7,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { QRCodeSVG } from 'qrcode.react';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
 import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
@@ -15,6 +16,7 @@ import { chatWithNullBot } from '../../../services/api';
 import { createInvoiceViaWallet } from '../../../utils/invoiceCreation';
 import { sweepBurnerFundsToDestination, type BurnerSweepCurrency } from '../../../utils/burnerSweep';
 import { fetchAllPrivateBalances } from './BurnerWallet/scanner';
+import type { InvoiceData } from '../../../types/invoice';
 
 type DashboardInvoice = {
     invoiceHash: string;
@@ -47,11 +49,13 @@ type ChatMessage = {
     id: number;
     role: 'assistant' | 'user';
     content: string;
+    invoiceData?: InvoiceData;
 };
 
 type PendingAction =
     | {
         type: 'sweep_burner_to_main';
+        balances: Record<BurnerSweepCurrency, number>;
     }
     | null;
 
@@ -123,6 +127,109 @@ const walletLabel = (walletType: number) => (walletType === 1 ? 'Burner' : 'Main
 const truncateAddress = (value: string | null | undefined) => (
     value ? `${value.slice(0, 10)}...${value.slice(-6)}` : 'Not connected'
 );
+
+const isBurnerSweepRequest = (message: string) => {
+    const normalized = message.toLowerCase();
+    return normalized.includes('burner') && (
+        normalized.includes('sweep') ||
+        normalized.includes('transfer') ||
+        normalized.includes('move')
+    );
+};
+
+const formatPublicMappingBalance = (data: unknown, suffix: string) => {
+    const normalize = (raw: unknown) => {
+        const numeric = Number(String(raw ?? '').replace(suffix, '').replace(/"/g, '').replace(/_/g, ''));
+        return Number.isFinite(numeric) ? (numeric / 1_000_000).toFixed(2) : '0.00';
+    };
+
+    if (typeof data === 'string' || typeof data === 'number') {
+        return normalize(data);
+    }
+
+    if (data && typeof data === 'object') {
+        const record = data as Record<string, unknown>;
+        if ('microcredits' in record) return normalize(record.microcredits);
+        if ('amount' in record) return normalize(record.amount);
+        if ('balance' in record) return normalize(record.balance);
+        if ('value' in record) return normalize(record.value);
+    }
+
+    return '0.00';
+};
+
+const isBurnerBalanceQuestion = (message: string) => {
+    const normalized = message.toLowerCase();
+    return !isBurnerSweepRequest(message) && normalized.includes('burner') && (
+        normalized.includes('balance') ||
+        normalized.includes('funds') ||
+        normalized.includes('how much') ||
+        normalized.includes('how many')
+    );
+};
+
+const MiniInvoiceCard: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => {
+    const [copiedLink, setCopiedLink] = useState(false);
+    const [copiedHash, setCopiedHash] = useState(false);
+
+    const copyLink = () => {
+        navigator.clipboard.writeText(invoiceData.link);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+    };
+
+    const copyHash = () => {
+        navigator.clipboard.writeText(invoiceData.hash);
+        setCopiedHash(true);
+        setTimeout(() => setCopiedHash(false), 2000);
+    };
+
+    return (
+        <div className="mt-3 rounded-2xl border border-white/10 bg-black/35 p-3 sm:p-4">
+            <div className="flex flex-col items-center gap-3">
+                <div className="rounded-2xl bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+                    <div className="relative">
+                        <QRCodeSVG value={invoiceData.link} size={164} level="H" includeMargin={false} />
+                        <div className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl bg-white p-1.5 shadow-[0_8px_22px_rgba(0,0,0,0.2)]">
+                            <img
+                                src="/assets/nullpay_logo.png"
+                                alt="NullPay"
+                                className="h-full w-full object-contain"
+                                style={{ filter: 'brightness(0)' }}
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div className="w-full space-y-2">
+                    <div className="rounded-xl bg-white/5 px-3 py-2">
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400">Payment Link</div>
+                        <div className="mt-1 truncate font-mono text-[11px] text-orange-200">{invoiceData.link}</div>
+                    </div>
+                    <div className="rounded-xl bg-white/5 px-3 py-2">
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400">Invoice Hash</div>
+                        <div className="mt-1 truncate font-mono text-[11px] text-cyan-200">{invoiceData.hash}</div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={copyLink}
+                            className="flex-1 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-orange-100"
+                        >
+                            {copiedLink ? 'Link Copied' : 'Copy Link'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={copyHash}
+                            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                        >
+                            {copiedHash ? 'Hash Copied' : 'Copy Hash'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const parseSweepReply = (
     message: string,
@@ -223,9 +330,9 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
     const [actionStatus, setActionStatus] = useState('');
     const [pendingAction, setPendingAction] = useState<PendingAction>(null);
     const [burnerBalances, setBurnerBalances] = useState<BotBalanceView[]>([
-        { token: 'Credits', publicBalance: '0.00', privateBalance: '0.00', loading: true },
-        { token: 'USDCx', publicBalance: '0.00', privateBalance: '0.00', loading: true },
-        { token: 'USAD', publicBalance: '0.00', privateBalance: '0.00', loading: true },
+        { token: 'Credits', publicBalance: '0.00', privateBalance: '0.00', loading: false },
+        { token: 'USDCx', publicBalance: '0.00', privateBalance: '0.00', loading: false },
+        { token: 'USAD', publicBalance: '0.00', privateBalance: '0.00', loading: false },
     ]);
     const [messages, setMessages] = useState<ChatMessage[]>(() => {
         if (typeof window === 'undefined') {
@@ -261,9 +368,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
         );
     }, [messages]);
 
-    useEffect(() => {
-        let cancelled = false;
-
+    const loadBurnerBalanceContext = React.useCallback(async (): Promise<BotBalanceView[]> => {
         const initialBurnerBalances: BotBalanceView[] = [
             { token: 'Credits', publicBalance: '0.00', privateBalance: '0.00', loading: true },
             { token: 'USDCx', publicBalance: '0.00', privateBalance: '0.00', loading: true },
@@ -277,95 +382,78 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                     return '0.00';
                 }
                 const data = await response.json();
-                const value = String(data).replace(suffix, '').replace(/"/g, '');
-                return (Number(value) / 1_000_000).toFixed(2);
+                return formatPublicMappingBalance(data, suffix);
             } catch {
                 return '0.00';
             }
         };
 
-        const fetchBurnerBalanceContext = async () => {
-            if (!decryptedBurnerAddress) {
-                if (!cancelled) {
-                    setBurnerBalances(initialBurnerBalances.map((entry) => ({ ...entry, loading: false })));
-                }
-                return;
-            }
+        if (!decryptedBurnerAddress) {
+            const emptyBalances = initialBurnerBalances.map((entry) => ({ ...entry, loading: false }));
+            setBurnerBalances(emptyBalances);
+            return emptyBalances;
+        }
 
-            if (!cancelled) {
-                setBurnerBalances(initialBurnerBalances);
-            }
+        setBurnerBalances(initialBurnerBalances);
 
-            try {
-                const [creditsPublic, usdcxPublic, usadPublic] = await Promise.all([
-                    updatePublicBalance(decryptedBurnerAddress, 'credits.aleo', 'account', 'u64'),
-                    updatePublicBalance(decryptedBurnerAddress, 'test_usdcx_stablecoin.aleo', 'balances', 'u128'),
-                    updatePublicBalance(decryptedBurnerAddress, 'test_usad_stablecoin.aleo', 'balances', 'u128'),
-                ]);
+        try {
+            const [creditsPublic, usdcxPublic, usadPublic] = await Promise.all([
+                updatePublicBalance(decryptedBurnerAddress, 'credits.aleo', 'account', 'u64'),
+                updatePublicBalance(decryptedBurnerAddress, 'test_usdcx_stablecoin.aleo', 'balances', 'u128'),
+                updatePublicBalance(decryptedBurnerAddress, 'test_usad_stablecoin.aleo', 'balances', 'u128'),
+            ]);
 
-                let privateBalances = { ALEO: 0, USDCx: 0, USAD: 0 };
-                if (decryptedBurnerKey) {
-                    try {
-                        privateBalances = await fetchAllPrivateBalances(decryptedBurnerKey);
-                    } catch (error) {
-                        console.warn('Failed to fetch burner private balances for NullBot context:', error);
-                    }
-                }
-
-                if (!cancelled) {
-                    setBurnerBalances([
-                        {
-                            token: 'Credits',
-                            publicBalance: creditsPublic,
-                            privateBalance: privateBalances.ALEO.toFixed(2),
-                            loading: false,
-                        },
-                        {
-                            token: 'USDCx',
-                            publicBalance: usdcxPublic,
-                            privateBalance: privateBalances.USDCx.toFixed(2),
-                            loading: false,
-                        },
-                        {
-                            token: 'USAD',
-                            publicBalance: usadPublic,
-                            privateBalance: privateBalances.USAD.toFixed(2),
-                            loading: false,
-                        },
-                    ]);
-                }
-            } catch (error) {
-                console.error('Failed to build burner balance context for NullBot:', error);
-                if (!cancelled) {
-                    setBurnerBalances(initialBurnerBalances.map((entry) => ({ ...entry, loading: false })));
+            let privateBalances = { ALEO: 0, USDCx: 0, USAD: 0 };
+            if (decryptedBurnerKey) {
+                try {
+                    privateBalances = await fetchAllPrivateBalances(decryptedBurnerKey);
+                } catch (error) {
+                    console.warn('Failed to fetch burner private balances for NullBot context:', error);
                 }
             }
-        };
 
-        fetchBurnerBalanceContext();
-
-        return () => {
-            cancelled = true;
-        };
+            const nextBalances: BotBalanceView[] = [
+                {
+                    token: 'Credits',
+                    publicBalance: creditsPublic,
+                    privateBalance: privateBalances.ALEO.toFixed(2),
+                    loading: false,
+                },
+                {
+                    token: 'USDCx',
+                    publicBalance: usdcxPublic,
+                    privateBalance: privateBalances.USDCx.toFixed(2),
+                    loading: false,
+                },
+                {
+                    token: 'USAD',
+                    publicBalance: usadPublic,
+                    privateBalance: privateBalances.USAD.toFixed(2),
+                    loading: false,
+                },
+            ];
+            setBurnerBalances(nextBalances);
+            return nextBalances;
+        } catch (error) {
+            console.error('Failed to build burner balance context for NullBot:', error);
+            const emptyBalances = initialBurnerBalances.map((entry) => ({ ...entry, loading: false }));
+            setBurnerBalances(emptyBalances);
+            return emptyBalances;
+        }
     }, [decryptedBurnerAddress, decryptedBurnerKey]);
 
     const appendMessage = (message: ChatMessage) => {
         setMessages((current) => [...current, message].slice(-MAX_HISTORY_MESSAGES));
     };
 
-    const appendAssistantMessage = (content: string) => {
+    const appendAssistantMessage = (content: string, invoiceData?: InvoiceData) => {
         appendMessage({
             id: Date.now() + Math.floor(Math.random() * 1000),
             role: 'assistant',
             content,
+            invoiceData,
         });
     };
-
-    const availableBurnerBalances = useMemo<Record<BurnerSweepCurrency, number>>(() => ({
-        ALEO: Number(burnerBalances.find((entry) => entry.token === 'Credits')?.privateBalance || '0'),
-        USDCx: Number(burnerBalances.find((entry) => entry.token === 'USDCx')?.privateBalance || '0'),
-        USAD: Number(burnerBalances.find((entry) => entry.token === 'USAD')?.privateBalance || '0'),
-    }), [burnerBalances]);
 
     const dashboardContext = useMemo(() => {
         return {
@@ -490,13 +578,21 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                 return;
             }
 
-            setPendingAction({ type: 'sweep_burner_to_main' });
+            setActionStatus('Scanning burner wallet records...');
+            const freshBurnerBalances = await loadBurnerBalanceContext();
+            const freshAvailableByCurrency: Record<BurnerSweepCurrency, number> = {
+                ALEO: Number(freshBurnerBalances.find((entry) => entry.token === 'Credits')?.privateBalance || '0'),
+                USDCx: Number(freshBurnerBalances.find((entry) => entry.token === 'USDCx')?.privateBalance || '0'),
+                USAD: Number(freshBurnerBalances.find((entry) => entry.token === 'USAD')?.privateBalance || '0'),
+            };
+
+            setPendingAction({ type: 'sweep_burner_to_main', balances: freshAvailableByCurrency });
             appendAssistantMessage([
                 'Your burner wallet private balances are:',
                 '',
-                `- Credits: ${availableBurnerBalances.ALEO.toFixed(2)}`,
-                `- USDCx: ${availableBurnerBalances.USDCx.toFixed(2)}`,
-                `- USAD: ${availableBurnerBalances.USAD.toFixed(2)}`,
+                `- Credits: ${freshAvailableByCurrency.ALEO.toFixed(2)}`,
+                `- USDCx: ${freshAvailableByCurrency.USDCx.toFixed(2)}`,
+                `- USAD: ${freshAvailableByCurrency.USAD.toFixed(2)}`,
                 '',
                 'Tell me how much you want to sweep and which token.',
                 'Examples: `1 credit`, `0.5 usdcx`, `all usad`.',
@@ -548,7 +644,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
             `Hash: \`${result.hash}\``,
             `Transaction: \`${result.txId}\``,
             `Payment link: ${result.invoiceData.link}`,
-        ].join('\n'));
+        ].join('\n'), result.invoiceData);
     };
 
     const sendMessage = async (message: string) => {
@@ -566,7 +662,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
 
         try {
             if (pendingAction?.type === 'sweep_burner_to_main') {
-                const parsed = parseSweepReply(trimmed, availableBurnerBalances);
+                const parsed = parseSweepReply(trimmed, pendingAction.balances);
 
                 if ('cancelled' in parsed) {
                     setPendingAction(null);
@@ -591,24 +687,47 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                     return;
                 }
 
-                if (parsed.amount > availableBurnerBalances[parsed.currency]) {
-                    appendAssistantMessage(`That exceeds your available private ${parsed.currency} burner balance of ${availableBurnerBalances[parsed.currency].toFixed(2)}.`);
+                if (parsed.amount > pendingAction.balances[parsed.currency]) {
+                    appendAssistantMessage(`That exceeds your available private ${parsed.currency} burner balance of ${pendingAction.balances[parsed.currency].toFixed(2)}.`);
                     return;
                 }
 
-                const txId = await sweepBurnerFundsToDestination({
-                    decryptedBurnerKey,
-                    amount: parsed.amount,
-                    currency: parsed.currency,
-                    destination: address,
-                    onStatus: setActionStatus
-                });
+                try {
+                    const sweepResult = await sweepBurnerFundsToDestination({
+                        decryptedBurnerKey,
+                        amount: parsed.amount,
+                        currency: parsed.currency,
+                        destination: address,
+                        onStatus: setActionStatus
+                    });
 
-                setPendingAction(null);
+                    setPendingAction(null);
+                    appendAssistantMessage([
+                        `Burner sweep submitted to your main wallet${sweepResult.txIds.length > 1 ? ` across ${sweepResult.txIds.length} transactions` : ''}.`,
+                        '',
+                        ...sweepResult.txIds.map((txId, index) =>
+                            `- Transfer ${index + 1}: \`${txId}\``
+                        )
+                    ].join('\n'));
+                } catch (sweepError) {
+                    throw sweepError;
+                }
+                return;
+            }
+
+            if (isBurnerBalanceQuestion(trimmed)) {
+                if (!decryptedBurnerAddress) {
+                    appendAssistantMessage('Your burner wallet is not unlocked right now, so I cannot read its balances yet.');
+                    return;
+                }
+
+                setActionStatus('Scanning burner wallet records...');
+                const resolvedBalances = await loadBurnerBalanceContext();
+
                 appendAssistantMessage([
-                    'Burner sweep submitted to your main wallet.',
+                    'Your burner wallet balances are:',
                     '',
-                    `- ${parsed.amount.toFixed(2)} ${parsed.currency} -> \`${txId}\``
+                    ...resolvedBalances.map((entry) => `- ${entry.token}: public ${entry.publicBalance}, private ${entry.privateBalance}`)
                 ].join('\n'));
                 return;
             }
@@ -739,6 +858,9 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                                         >
                                                             {message.content}
                                                         </ReactMarkdown>
+                                                    )}
+                                                    {message.role === 'assistant' && message.invoiceData && (
+                                                        <MiniInvoiceCard invoiceData={message.invoiceData} />
                                                     )}
                                                 </motion.div>
                                             </div>
