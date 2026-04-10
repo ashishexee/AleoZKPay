@@ -4,9 +4,10 @@ import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import * as readline from 'readline';
 
 const BACKEND_URL = process.env.NULLPAY_BACKEND_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
-const ALEO_PROGRAM = 'zk_pay_proofs_privacy_26.aleo';
+const ALEO_PROGRAM = 'zk_pay_proofs_privacy_v27.aleo';
 const ALEO_MAP_BASE = `https://api.provable.com/v2/testnet/program/${ALEO_PROGRAM}/mapping/salt_to_invoice`;
 const W = 56;
 
@@ -33,6 +34,7 @@ interface InvoiceConfig {
     type: 'multipay' | 'donation';
     amount: number | null;
     currency: string;
+    title?: string;
     label: string;
 }
 
@@ -127,6 +129,101 @@ function resolveOutputPath(input: string): string {
     return path.resolve(process.cwd(), trimmed);
 }
 
+function compactValue(value: string, head = 12, tail = 10): string {
+    if (value.length <= head + tail + 3) return value;
+    return `${value.slice(0, head)}...${value.slice(-tail)}`;
+}
+
+function ask(question: string): Promise<string> {
+    return new Promise((resolve) => {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        });
+
+        rl.question(question, (answer) => {
+            rl.close();
+            resolve(answer.trim());
+        });
+    });
+}
+
+function askHidden(question: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const stdin = process.stdin;
+        const stdout = process.stdout;
+
+        if (!stdin.isTTY || !stdout.isTTY || typeof stdin.setRawMode !== 'function') {
+            ask(question).then(resolve, reject);
+            return;
+        }
+
+        let value = '';
+        const previousRawMode = stdin.isRaw;
+
+        const cleanup = () => {
+            stdin.off('data', onData);
+            stdin.setRawMode(previousRawMode ?? false);
+            stdin.pause();
+        };
+
+        const finish = () => {
+            cleanup();
+            stdout.write('\n');
+            resolve(value.trim());
+        };
+
+        const onData = (chunk: Buffer | string) => {
+            const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+
+            for (const ch of text) {
+                if (ch === '\u0003') {
+                    cleanup();
+                    reject(new Error('Input cancelled by user.'));
+                    return;
+                }
+
+                if (ch === '\r' || ch === '\n') {
+                    finish();
+                    return;
+                }
+
+                if (ch === '\u0008' || ch === '\u007f') {
+                    value = value.slice(0, -1);
+                    continue;
+                }
+
+                if (ch >= ' ') {
+                    value += ch;
+                }
+            }
+        };
+
+        stdout.write(question);
+        stdin.setEncoding('utf8');
+        stdin.resume();
+        stdin.setRawMode(true);
+        stdin.on('data', onData);
+    });
+}
+
+async function promptValidated(
+    question: string,
+    validate: (value: string) => true | string,
+    options?: { hidden?: boolean }
+): Promise<string> {
+    while (true) {
+        const value = options?.hidden ? await askHidden(question) : await ask(question);
+        const result = validate(value);
+        if (result === true) {
+            return value;
+        }
+
+        line(`  ${C.rose('X')}  ${result}`);
+        blank();
+    }
+}
+
 async function validateMerchant(
     secretKey: string,
     merchantAddress: string,
@@ -164,6 +261,7 @@ async function submitToRelayer(
             amount: invoice.type === 'donation' ? 0 : invoice.amount,
             currency: invoice.currency,
             salt,
+            title: invoice.title ?? '',
             memo: invoice.label ?? '',
             invoice_type: invoiceTypeNum,
         }),
@@ -265,6 +363,7 @@ function renderResultCard(inv: GeneratedInvoice, index: number, total: number): 
     line(C.dim('  |'));
     line(C.dim('  |  ') + C.slate('type    ') + '  ' + typeColor(inv.type));
     line(C.dim('  |  ') + C.slate('amount  ') + '  ' + amountLabel);
+    if (inv.title) line(C.dim('  |  ') + C.slate('title   ') + '  ' + C.white(inv.title));
     line(C.dim('  |  ') + C.slate('hash    ') + '  ' + C.brandDim(truncateHash(inv.hash, 36)));
     line(C.dim(`  +${'-'.repeat(W + 1)}+`));
 }
@@ -284,8 +383,15 @@ async function promptDonationInvoice(template: DonationTemplate): Promise<Invoic
         },
         {
             type: 'input',
+            name: 'title',
+            message: C.slate('Invoice title') + C.dim(' (optional, shared with payer)'),
+            prefix: C.dim('    >'),
+            default: '',
+        },
+        {
+            type: 'input',
             name: 'label',
-            message: C.slate('Memo') + C.dim(' (optional)'),
+            message: C.slate('Memo') + C.dim(' (optional to share)'),
             prefix: C.dim('    >'),
             default: '',
         },
@@ -296,6 +402,7 @@ async function promptDonationInvoice(template: DonationTemplate): Promise<Invoic
         type: 'donation',
         amount: null,
         currency: template.currency,
+        title: a.title,
         label: a.label,
     };
 }
@@ -304,23 +411,32 @@ export async function onboard(): Promise<void> {
     printBanner();
 
     section(1, 4, 'Authentication');
+    line(`  ${C.slate('Paste your dashboard secret key and merchant address below.')}`);
+    line(`  ${C.dim('  Paste works normally here. Press Enter after each field. Ctrl+C cancels.')}`);
+    blank();
 
-    const { secretKey } = await inquirer.prompt([{
-        type: 'password',
-        name: 'secretKey',
-        message: C.slate('Secret Key') + ' ' + C.dim('(sk_test_... or sk_live_...)'),
-        mask: '*',
-        prefix: C.brand('  >'),
-        validate: (v: string) => v.startsWith('sk_') ? true : C.rose('Must start with sk_test_ or sk_live_'),
-    }]);
+    let secretKey = '';
+    let merchantAddress = '';
 
-    const { merchantAddress } = await inquirer.prompt([{
-        type: 'input',
-        name: 'merchantAddress',
-        message: C.slate('Aleo Address') + ' ' + C.dim('(aleo1...)'),
-        prefix: C.brand('  >'),
-        validate: (v: string) => v.startsWith('aleo1') ? true : C.rose('Must be a valid Aleo address (aleo1...)'),
-    }]);
+    try {
+        secretKey = await promptValidated(
+            '  > Secret Key (hidden): ',
+            (v: string) => v.startsWith('sk_') ? true : 'Must start with sk_test_ or sk_live_',
+            { hidden: true }
+        );
+        line(`  ${C.success('OK')}  ${C.slate('Secret key captured')}`);
+
+        merchantAddress = await promptValidated(
+            '  > Aleo Address (aleo1...): ',
+            (v: string) => v.startsWith('aleo1') ? true : 'Must be a valid Aleo address (aleo1...)'
+        );
+        line(`  ${C.success('OK')}  ${C.slate('Address captured')}  ${C.brandDim(compactValue(merchantAddress, 14, 12))}`);
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        blank();
+        line(`  ${C.rose('X')}  ${C.rose(msg)}`);
+        process.exit(1);
+    }
 
     section(2, 4, 'Verifying Credentials');
 
@@ -398,6 +514,13 @@ export async function onboard(): Promise<void> {
                     validate: (v: number) => v > 0 ? true : C.rose('Must be > 0'),
                 },
                 {
+                    type: 'input',
+                    name: 'title',
+                    message: C.slate('Invoice title') + C.dim(' (optional, shared with payer)'),
+                    prefix: C.dim('    >'),
+                    default: '',
+                },
+                {
                     type: 'list',
                     name: 'currency',
                     message: C.slate('Token'),
@@ -415,6 +538,7 @@ export async function onboard(): Promise<void> {
                 type: 'multipay',
                 amount: a.amount,
                 currency: a.currency,
+                title: a.title,
                 label: '',
             });
         }

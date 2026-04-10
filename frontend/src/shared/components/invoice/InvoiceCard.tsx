@@ -12,11 +12,13 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 interface InvoiceCardProps {
     invoiceData: InvoiceData;
     resetInvoice: () => void;
+    invoiceTitle: string;
     memo: string;
 }
 
 export const InvoiceCard: React.FC<InvoiceCardProps> = ({
     invoiceData,
+    invoiceTitle,
     resetInvoice
 }) => {
 
@@ -154,6 +156,12 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({
             </AnimatePresence>
             {/* ... other code ... */}
             <div className="mb-8">
+                {invoiceTitle && (
+                    <div className="mb-4 rounded-xl border border-white/5 bg-black/30 px-4 py-3 text-left">
+                        <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-gray-500">Invoice Title</span>
+                        <span className="text-sm font-medium text-white">{invoiceTitle}</span>
+                    </div>
+                )}
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payment Link</label>
                 <div className="flex gap-2">
                     <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 font-mono text-sm text-gray-300 truncate">

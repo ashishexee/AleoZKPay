@@ -3,6 +3,7 @@ export interface ParsedPaymentLink {
     amount: string | null;
     salt: string | null;
     hash: string | null;
+    title: string;
     memo: string;
     tokenType: number;
     invoiceType: number;
@@ -27,6 +28,7 @@ export const parsePaymentLink = (rawValue: string): ParsedPaymentLink | null => 
         const amount = url.searchParams.get('amount');
         const salt = url.searchParams.get('salt');
         const hash = url.searchParams.get('hash');
+        const title = url.searchParams.get('title') || '';
         const memo = url.searchParams.get('memo') || '';
         const tokenParam = url.searchParams.get('token');
         const typeParam = url.searchParams.get('type');
@@ -38,6 +40,7 @@ export const parsePaymentLink = (rawValue: string): ParsedPaymentLink | null => 
             amount,
             salt,
             hash,
+            title,
             memo,
             tokenType: tokenParam === 'usdcx' ? 1 : tokenParam === 'usad' ? 2 : tokenParam === 'any' ? 3 : 0,
             invoiceType: typeParam === 'donation' ? 2 : typeParam === 'multipay' ? 1 : 0,

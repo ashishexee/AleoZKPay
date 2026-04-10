@@ -9,6 +9,7 @@ export interface NullPayInvoice {
     type: 'multipay' | 'donation';
     amount: number | null;
     currency: string;
+    title?: string;
     label?: string;
     hash: string;
     salt: string;
@@ -23,6 +24,7 @@ export interface CreateCheckoutSessionParams {
     amount?: number;
     currency?: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
     type?: 'standard' | 'donation' | 'multipay';
+    title?: string;
     success_url?: string;
     cancel_url?: string;
     invoice_hash?: string;

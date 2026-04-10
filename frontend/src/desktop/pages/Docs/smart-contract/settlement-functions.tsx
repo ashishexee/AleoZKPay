@@ -125,7 +125,7 @@ export const settlementFunctionsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Lock className="h-4 w-4 text-orange-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v26.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">settle_invoice</h3>
                     <p className="mt-1 text-sm text-gray-400">Merchant-only manual settlement. No token transfer. Proves merchant identity by recomputing the hash from <code className="rounded bg-white/5 px-1.5 py-0.5">self.caller</code>.</p>
@@ -158,7 +158,7 @@ export const settlementFunctionsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Eye className="h-4 w-4 text-gray-400" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v26.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">get_invoice_status</h3>
                     <p className="mt-1 text-sm text-gray-400">Read-only on-chain lookup. Verifies a hash exists in the invoices mapping.</p>

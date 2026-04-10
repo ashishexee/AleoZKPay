@@ -96,6 +96,7 @@ export const useSharedPayment = () => {
             let salt = searchParams.get('salt');
             let hashParam = searchParams.get('hash');
 
+            const title = searchParams.get('title') || '';
             const memo = searchParams.get('memo') || '';
             const tokenParam = searchParams.get('token');
             const tokenType = tokenParam === 'usdcx' ? 1 : tokenParam === 'usad' ? 2 : tokenParam === 'any' ? 3 : 0;
@@ -195,6 +196,7 @@ export const useSharedPayment = () => {
                         amount: finalAmount,
                         salt,
                         hash: fetchedHash!,
+                        title,
                         memo,
                         tokenType: tokenTypeOnChain,
                         invoiceType: finalInvoiceType,
@@ -211,6 +213,7 @@ export const useSharedPayment = () => {
                     amount: finalAmount,
                     salt,
                     hash: fetchedHash!,
+                    title,
                     memo,
                     tokenType: tokenTypeOnChain,
                     invoiceType: finalInvoiceType,

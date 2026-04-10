@@ -13,6 +13,7 @@ interface CreateInvoiceViaWalletParams {
     transactionStatus: (transactionId: string) => Promise<any>;
     requestTransactionHistory?: ((programId: string) => Promise<any>) | undefined;
     amount: number;
+    title?: string;
     memo?: string;
     invoiceType?: PromptInvoiceType;
     tokenType?: number;
@@ -99,6 +100,7 @@ export const createInvoiceViaWallet = async ({
     transactionStatus,
     requestTransactionHistory,
     amount,
+    title = '',
     memo = '',
     invoiceType = 'standard',
     tokenType = 0,
@@ -137,6 +139,7 @@ export const createInvoiceViaWallet = async ({
         amountInput = `${amountMicro}u128`;
     }
 
+    const titleField = title ? stringToField(title) : '0field';
     const memoField = memo ? stringToField(memo) : '0field';
     const merchantAddress = walletType === 1 && decryptedBurnerAddress && !forSdk
         ? decryptedBurnerAddress
@@ -146,6 +149,7 @@ export const createInvoiceViaWallet = async ({
         merchantAddress,
         amountInput,
         salt,
+        titleField,
         memoField,
         '0u32',
         typeInput,
@@ -273,6 +277,7 @@ export const createInvoiceViaWallet = async ({
         amount: amount.toString(),
         salt
     });
+    if (title) params.append('title', title);
     if (memo) params.append('memo', memo);
     if (invoiceType === 'multipay') params.append('type', 'multipay');
     if (invoiceType === 'donation') params.append('type', 'donation');
@@ -285,7 +290,9 @@ export const createInvoiceViaWallet = async ({
         amount: Number(amount),
         salt,
         hash,
-        link: `${window.location.origin}/pay?${params.toString()}`
+        link: `${window.location.origin}/pay?${params.toString()}`,
+        title,
+        type: dbInvoiceType
     };
 
     onStatus?.('Invoice created successfully.');

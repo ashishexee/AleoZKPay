@@ -21,7 +21,7 @@ const validateOnboard = async (req, res) => {
 const createInvoiceRelayer = async (req, res) => {
     // Relayed invoice creation endpoint used by the CLI and Node SDK fallback flow.
     const merchant = req.merchant; 
-    const { amount, currency, salt, memo, invoice_type } = req.body;
+    const { amount, currency, salt, title, memo, invoice_type } = req.body;
     
     if (!salt) return res.status(400).json({ error: 'Salt is required.' });
 
@@ -33,6 +33,7 @@ const createInvoiceRelayer = async (req, res) => {
             amount,
             currency,
             salt,
+            title,
             memo,
             invoice_type
         });
@@ -45,7 +46,7 @@ const createInvoiceRelayer = async (req, res) => {
 
 const createInvoiceMCP = async (req, res) => {
     // MCP-facing version of relayed invoice creation.
-    const { merchant_address, amount, currency, salt, memo, invoice_type } = req.body;
+    const { merchant_address, amount, currency, salt, title, memo, invoice_type } = req.body;
     if (!merchant_address || !salt) {
         return res.status(400).json({ error: 'merchant_address and salt are required.' });
     }
@@ -56,6 +57,7 @@ const createInvoiceMCP = async (req, res) => {
             amount,
             currency,
             salt,
+            title,
             memo,
             invoice_type
         });

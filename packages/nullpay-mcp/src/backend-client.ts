@@ -81,6 +81,7 @@ export class NullPayBackendClient {
         amount: number;
         currency: string;
         salt: string;
+        title?: string;
         memo?: string;
         invoice_type?: number;
     }): Promise<{ success: boolean; tx_id: string; salt: string }> {

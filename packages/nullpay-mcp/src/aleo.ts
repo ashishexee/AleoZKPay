@@ -3,7 +3,7 @@ import { Currency, InvoiceRecord, InvoiceStatusData, InvoiceType, ParsedOwnedInv
 import { dynamicImport } from './esm';
 import { getProvableConfig } from './env';
 
-export const PROGRAM_ID = 'zk_pay_proofs_privacy_v26.aleo';
+export const PROGRAM_ID = 'zk_pay_proofs_privacy_v27.aleo';
 const USDCX_FREEZELIST_PROGRAM_ID = 'test_usdcx_freezelist.aleo';
 const USAD_FREEZELIST_PROGRAM_ID = 'test_usad_freezelist.aleo';
 const EXPLORER_BASE = 'https://api.explorer.provable.com/v1';
@@ -154,6 +154,7 @@ export function buildPaymentLink(baseUrl: string, args: {
     merchant: string;
     amount: number;
     salt: string;
+    title?: string;
     memo?: string;
     invoiceType: InvoiceType;
     currency: Currency;
@@ -164,6 +165,7 @@ export function buildPaymentLink(baseUrl: string, args: {
     url.searchParams.set('amount', args.amount.toString());
     url.searchParams.set('salt', args.salt);
     url.searchParams.set('hash', args.invoiceHash);
+    if (args.title) url.searchParams.set('title', args.title);
     if (args.memo) url.searchParams.set('memo', args.memo);
     if (args.invoiceType === 'multipay') url.searchParams.set('type', 'multipay');
     if (args.invoiceType === 'donation') url.searchParams.set('type', 'donation');
@@ -177,6 +179,7 @@ export function createInvoiceDbRecord(args: {
     invoiceHash: string;
     merchantAddress: string;
     amount: number;
+    title?: string;
     memo?: string;
     invoiceType: InvoiceType;
     currency: Currency;
@@ -193,6 +196,7 @@ export function createInvoiceDbRecord(args: {
         merchant_address_hash: args.merchantAddressHash,
         is_burner: args.wallet === 'burner',
         amount: args.amount,
+        title: args.title || '',
         memo: args.memo || '',
         status: 'PENDING' as const,
         invoice_transaction_id: args.invoiceTxId,

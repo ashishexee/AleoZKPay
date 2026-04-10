@@ -237,6 +237,17 @@ const SingleInvoicePaymentPage = () => {
                             )}
                         </div>
 
+                        {invoice?.title && (
+                            <div className="flex justify-between items-center pt-4 border-t border-white/5">
+                                <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">Invoice Title</span>
+                                {loading && !invoice ? (
+                                    <Shimmer className="h-5 w-48 bg-white/5 rounded" />
+                                ) : (
+                                    <span className="max-w-[60%] text-right text-white">{invoice.title}</span>
+                                )}
+                            </div>
+                        )}
+
                         {/* LINE ITEMS BREAKDOWN */}
                         {invoice?.items && invoice.items.length > 0 && (
                             <div className="pt-4 border-t border-white/5">

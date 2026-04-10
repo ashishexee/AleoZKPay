@@ -8,6 +8,7 @@ import { useBurnerWallet } from '../../../shared/hooks/BurnerWalletProvider';
 const MobileCreateInvoice: React.FC = () => {
     const {
         amount, setAmount,
+        invoiceTitle, setInvoiceTitle,
         memo, setMemo,
         status, loading,
         invoiceData,
@@ -60,6 +61,8 @@ const MobileCreateInvoice: React.FC = () => {
                             <MobileInvoiceForm
                                 amount={amount}
                                 setAmount={setAmount}
+                                invoiceTitle={invoiceTitle}
+                                setInvoiceTitle={setInvoiceTitle}
                                 memo={memo}
                                 setMemo={setMemo}
                                 handleCreate={handleCreate}
@@ -86,6 +89,7 @@ const MobileCreateInvoice: React.FC = () => {
                             <InvoiceCard
                                 invoiceData={invoiceData}
                                 resetInvoice={resetInvoice}
+                                invoiceTitle={invoiceTitle}
                                 memo={memo}
                             />
                         )}

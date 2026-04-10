@@ -90,6 +90,7 @@ export interface CreateInvoiceArgs {
     amount: number;
     currency?: Currency;
     memo?: string;
+    title?: string;
     invoice_type?: InvoiceType;
     wallet?: WalletPreference;
     line_items?: Array<{ name: string; quantity: number; unitPrice: number; total: number }>;

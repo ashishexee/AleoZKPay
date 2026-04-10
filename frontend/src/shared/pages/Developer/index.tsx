@@ -192,7 +192,7 @@ export const DeveloperPortal = () => {
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {commandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
-                                        {commandCopied ? 'Copied brother' : 'Copy'}
+                                        {commandCopied ? 'copied' : 'Copy'}
                                     </span>
                                 </div>
                             </div>
@@ -208,7 +208,7 @@ export const DeveloperPortal = () => {
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {cliCommandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
-                                        {cliCommandCopied ? 'Copied brother' : 'Copy'}
+                                        {cliCommandCopied ? 'copied' : 'Copy'}
                                     </span>
                                 </div>
                             </div>
@@ -224,7 +224,7 @@ export const DeveloperPortal = () => {
                                 <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
                                     {mcpCommandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
-                                        {mcpCommandCopied ? 'Copied brother' : 'Copy'}
+                                        {mcpCommandCopied ? 'copied' : 'Copy'}
                                     </span>
                                 </div>
                             </div>
@@ -233,13 +233,13 @@ export const DeveloperPortal = () => {
                     </motion.div>
 
                     <motion.div variants={fadeInUp} className="flex flex-wrap justify-center gap-10 mt-6 mb-2">
-                        <motion.div 
+                        <motion.div
                             layout
                             className="flex flex-col items-center transition-all duration-500 group/badge"
                         >
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-6 select-none whitespace-nowrap opacity-50 group-hover/badge:opacity-100 transition-opacity duration-500">MCP Works Seamlessly With</span>
                             <div className="flex items-center justify-center gap-8">
-                                <motion.a 
+                                <motion.a
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
@@ -249,23 +249,23 @@ export const DeveloperPortal = () => {
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-red-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
-                                        <motion.img 
+                                        <motion.img
                                             layout
-                                            src="/assets/openclaw.svg" 
-                                            alt="OpenClaw" 
+                                            src="/assets/openclaw.svg"
+                                            alt="OpenClaw"
                                             className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
                                             variants={{
                                                 initial: { scale: 1, rotate: 0 },
                                                 hover: { scale: 1.15, rotate: -4 }
                                             }}
                                         />
-                                        <motion.span 
+                                        <motion.span
                                             layout
                                             variants={{
                                                 initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
                                                 hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
                                             }}
-                                            transition={{ 
+                                            transition={{
                                                 width: { type: "spring", stiffness: 100, damping: 20 },
                                                 opacity: { duration: 0.4 },
                                                 x: { type: "spring", stiffness: 100, damping: 20 }
@@ -277,7 +277,7 @@ export const DeveloperPortal = () => {
                                     </div>
                                 </motion.a>
 
-                                <motion.a 
+                                <motion.a
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
@@ -286,23 +286,23 @@ export const DeveloperPortal = () => {
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-orange-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
-                                        <motion.img 
+                                        <motion.img
                                             layout
-                                            src="/assets/claude.svg" 
-                                            alt="Claude" 
+                                            src="/assets/claude.svg"
+                                            alt="Claude"
                                             className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
                                             variants={{
                                                 initial: { scale: 1, rotate: 0 },
                                                 hover: { scale: 1.15, rotate: -5 }
                                             }}
                                         />
-                                        <motion.span 
+                                        <motion.span
                                             layout
                                             variants={{
                                                 initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
                                                 hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
                                             }}
-                                            transition={{ 
+                                            transition={{
                                                 width: { type: "spring", stiffness: 100, damping: 20 },
                                                 opacity: { duration: 0.4 },
                                                 x: { type: "spring", stiffness: 100, damping: 20 }
@@ -314,7 +314,7 @@ export const DeveloperPortal = () => {
                                     </div>
                                 </motion.a>
 
-                                <motion.a 
+                                <motion.a
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
@@ -323,23 +323,23 @@ export const DeveloperPortal = () => {
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-purple-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
-                                        <motion.img 
+                                        <motion.img
                                             layout
-                                            src="/assets/antigravity.svg" 
-                                            alt="Antigravity" 
+                                            src="/assets/antigravity.svg"
+                                            alt="Antigravity"
                                             className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
                                             variants={{
                                                 initial: { scale: 1, rotate: 0 },
                                                 hover: { scale: 1.15, rotate: 5 }
                                             }}
                                         />
-                                        <motion.span 
+                                        <motion.span
                                             layout
                                             variants={{
                                                 initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
                                                 hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
                                             }}
-                                            transition={{ 
+                                            transition={{
                                                 width: { type: "spring", stiffness: 100, damping: 20 },
                                                 opacity: { duration: 0.4 },
                                                 x: { type: "spring", stiffness: 100, damping: 20 }
@@ -351,7 +351,7 @@ export const DeveloperPortal = () => {
                                     </div>
                                 </motion.a>
 
-                                <motion.a 
+                                <motion.a
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
@@ -360,23 +360,23 @@ export const DeveloperPortal = () => {
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-blue-500/10 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
-                                        <motion.img 
+                                        <motion.img
                                             layout
-                                            src="/assets/cursor-ide.png" 
-                                            alt="Cursor" 
+                                            src="/assets/cursor-ide.png"
+                                            alt="Cursor"
                                             className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
                                             variants={{
                                                 initial: { scale: 1, rotate: 0 },
                                                 hover: { scale: 1.15, rotate: 5 }
                                             }}
                                         />
-                                        <motion.span 
+                                        <motion.span
                                             layout
                                             variants={{
                                                 initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
                                                 hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
                                             }}
-                                            transition={{ 
+                                            transition={{
                                                 width: { type: "spring", stiffness: 100, damping: 20 },
                                                 opacity: { duration: 0.4 },
                                                 x: { type: "spring", stiffness: 100, damping: 20 }
@@ -388,7 +388,7 @@ export const DeveloperPortal = () => {
                                     </div>
                                 </motion.a>
 
-                                <motion.a 
+                                <motion.a
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
@@ -397,23 +397,23 @@ export const DeveloperPortal = () => {
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-emerald-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
-                                        <motion.img 
+                                        <motion.img
                                             layout
-                                            src="/assets/codex.svg" 
-                                            alt="Codex" 
+                                            src="/assets/codex.svg"
+                                            alt="Codex"
                                             className="w-10 h-10 object-contain relative z-10 transition-all duration-700"
                                             variants={{
                                                 initial: { scale: 1, rotate: 0 },
                                                 hover: { scale: 1.15, rotate: -5 }
                                             }}
                                         />
-                                        <motion.span 
+                                        <motion.span
                                             layout
                                             variants={{
                                                 initial: { width: 0, opacity: 0, marginLeft: 0, x: -10 },
                                                 hover: { width: 'auto', opacity: 1, marginLeft: 14, x: 0 }
                                             }}
-                                            transition={{ 
+                                            transition={{
                                                 width: { type: "spring", stiffness: 100, damping: 20 },
                                                 opacity: { duration: 0.4 },
                                                 x: { type: "spring", stiffness: 100, damping: 20 }

@@ -173,6 +173,7 @@ export class NullPayMcpService {
                     properties: {
                         amount: { type: 'number' },
                         currency: { type: 'string', enum: ['CREDITS', 'USDCX', 'USAD', 'ANY'] },
+                        title: { type: 'string', description: 'Optional invoice title shown to the payer.' },
                         memo: { type: 'string' },
                         invoice_type: { type: 'string', enum: ['standard', 'multipay', 'donation'] },
                         wallet: { type: 'string', enum: ['main', 'burner'] },
@@ -525,6 +526,7 @@ export class NullPayMcpService {
             amount: invoiceType === 'donation' ? 0 : Number(args.amount),
             currency,
             salt,
+            title: args.title,
             memo: args.memo,
             invoice_type: invoiceTypeToNumber(invoiceType),
         });
@@ -535,6 +537,7 @@ export class NullPayMcpService {
                 invoiceHash,
                 merchantAddress,
                 amount: invoiceType === 'donation' ? 0 : Number(args.amount),
+                title: args.title,
                 memo: args.memo,
                 invoiceType,
                 currency,
@@ -550,6 +553,7 @@ export class NullPayMcpService {
             merchant: merchantAddress,
             amount: invoiceType === 'donation' ? 0 : Number(args.amount),
             salt,
+            title: args.title,
             memo: args.memo,
             invoiceType,
             currency,
@@ -588,7 +592,7 @@ export class NullPayMcpService {
 
         const sponsored = await this.backend.sponsorExecution({
             execution_authorization_string: authorization,
-            programName: 'zk_pay_proofs_privacy_v26.aleo',
+            programName: 'zk_pay_proofs_privacy_v27.aleo',
         });
 
         const txId = sponsored.transaction?.id;
@@ -875,10 +879,10 @@ export class NullPayMcpService {
     private async sweepFunds(args: SweepFundsArgs): Promise<ToolResult> {
         const wallet = this.resolveWallet(args.wallet);
         const walletPrivateKey = await this.resolveWalletPrivateKey(wallet);
-        
+
         const amountMicro = BigInt(Math.round(args.amount * 1_000_000));
         const currency = normalizePaymentCurrency(args.currency) || 'CREDITS';
-        
+
         const { authorization, programName } = await createSweepAuthorization({
             walletPrivateKey,
             amountMicro,
@@ -914,7 +918,7 @@ export class NullPayMcpService {
     private async payWithGiftcard(args: PayWithGiftcardArgs): Promise<ToolResult> {
         const hex = args.gift_code.replace('gift-', '');
         const pkStr = new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
-        
+
         const resolved = await this.resolvePayInvoiceContext(args as PayInvoiceArgs, 'main');
         const { invoice, sessionId } = resolved;
 
@@ -927,7 +931,7 @@ export class NullPayMcpService {
 
         const sponsored = await this.backend.sponsorExecution({
             execution_authorization_string: authorization,
-            programName: 'zk_pay_proofs_privacy_v26.aleo',
+            programName: 'zk_pay_proofs_privacy_v27.aleo',
         });
 
         const txId = sponsored.transaction?.id;
@@ -963,7 +967,7 @@ export class NullPayMcpService {
     private async payWithCard(args: PayWithCardArgs): Promise<ToolResult> {
         const normalizedCardNumber = args.card_number.replace(/\D/g, '');
         const cardNumberHash = hashAddress(normalizedCardNumber);
-        
+
         const cardProfile = await this.backend.lookupCardWallet(cardNumberHash);
         if (!cardProfile) {
             throw new Error('NullPay card not found relative to this card number.');
@@ -972,7 +976,7 @@ export class NullPayMcpService {
             throw new Error('This NullPay card is not active.');
         }
         if (!cardProfile.encrypted_card_private_key || !cardProfile.card_kdf_salt) {
-             throw new Error('Card missing encryption material.');
+            throw new Error('Card missing encryption material.');
         }
 
         const pkStr = await decryptCardPrivateKey(
@@ -996,7 +1000,7 @@ export class NullPayMcpService {
 
         const sponsored = await this.backend.sponsorExecution({
             execution_authorization_string: authorization,
-            programName: 'zk_pay_proofs_privacy_v26.aleo',
+            programName: 'zk_pay_proofs_privacy_v27.aleo',
         });
 
         const txId = sponsored.transaction?.id;
@@ -1033,7 +1037,7 @@ export class NullPayMcpService {
         const wallet = this.resolveWallet(args.wallet);
         const walletAddress = await this.resolveWalletAddress(wallet);
         const walletPrivateKey = await this.resolveWalletPrivateKeyOptional(wallet);
-        
+
         let invoices: InvoiceRecord[] = [];
         try {
             const rawInvoices = await this.backend.getMerchantInvoices(hashAddress(walletAddress));
@@ -1048,7 +1052,7 @@ export class NullPayMcpService {
 
         const now = Date.now();
         const cutoff = args.days ? now - args.days * 24 * 60 * 60 * 1000 : 0;
-        
+
         let totalVolume = 0;
         let totalTransactions = 0;
         const tokens: Record<string, number> = {};
@@ -1061,7 +1065,7 @@ export class NullPayMcpService {
                 totalTransactions++;
                 const amount = inv.amount || 0;
                 totalVolume += amount;
-                
+
                 const tokenLabel = tokenTypeLabel(inv.token_type);
                 tokens[tokenLabel] = (tokens[tokenLabel] || 0) + amount;
 
@@ -1069,7 +1073,7 @@ export class NullPayMcpService {
                     const dateObj = new Date(inv.created_at);
                     const dateStr = dateObj.toISOString().split('T')[0];
                     const monthStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-                    
+
                     dailyTrend[dateStr] = (dailyTrend[dateStr] || 0) + amount;
                     monthlyTrend[monthStr] = (monthlyTrend[monthStr] || 0) + amount;
                 }
@@ -1081,7 +1085,7 @@ export class NullPayMcpService {
             `- Total Transactions: ${totalTransactions}`,
             `- Total Volume Activity: ${totalVolume}`
         ];
-        
+
         for (const [token, amount] of Object.entries(tokens)) {
             lines.push(`  * ${token}: ${amount}`);
         }

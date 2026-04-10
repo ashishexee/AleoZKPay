@@ -5,12 +5,14 @@ import { Input } from '../../shared/components/ui/Input';
 import { Button } from '../../shared/components/ui/Button';
 import type { InvoiceType } from '../../shared/hooks/useCreateInvoice';
 import type { InvoiceItem } from '../../shared/types/invoice';
-import { getUtf8ByteLength, LEO_MEMO_MAX_BYTES } from '../../shared/utils/leo-input-limits';
+import { getUtf8ByteLength, LEO_INVOICE_TITLE_MAX_BYTES, LEO_MEMO_MAX_BYTES } from '../../shared/utils/leo-input-limits';
 import { getTokenLabel } from '../../shared/utils/tokens';
 
 interface InvoiceFormProps {
     amount: number | '';
     setAmount: (val: number | '') => void;
+    invoiceTitle: string;
+    setInvoiceTitle: (val: string) => void;
     memo: string;
     setMemo: (val: string) => void;
     handleCreate: () => void;
@@ -37,6 +39,8 @@ interface InvoiceFormProps {
 export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
     amount,
     setAmount,
+    invoiceTitle,
+    setInvoiceTitle,
     memo,
     setMemo,
     handleCreate,
@@ -59,6 +63,8 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
     updateItem,
     removeItem
 }) => {
+    const invoiceTitleBytes = getUtf8ByteLength(invoiceTitle);
+    const invoiceTitleTooLong = invoiceTitleBytes > LEO_INVOICE_TITLE_MAX_BYTES;
     const memoBytes = getUtf8ByteLength(memo);
     const memoTooLong = memoBytes > LEO_MEMO_MAX_BYTES;
 
@@ -349,6 +355,18 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
                 )}
 
                 <Input
+                    label="Invoice Title (Optional)"
+                    type="text"
+                    placeholder={invoiceType === 'donation' ? "e.g., Monsoon Relief Drive" : "e.g., April Retainer"}
+                    value={invoiceTitle}
+                    error={invoiceTitleTooLong ? `Keep title within ${LEO_INVOICE_TITLE_MAX_BYTES} bytes for a single Leo field.` : undefined}
+                    onChange={(e) => setInvoiceTitle(e.target.value)}
+                />
+                <div className={`-mt-3 text-xs ${invoiceTitleTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                    This title is shared with the payer and stored in one Leo `field`: {invoiceTitleBytes}/{LEO_INVOICE_TITLE_MAX_BYTES} bytes.
+                </div>
+
+                <Input
                     label="Memo (Optional)"
                     type="text"
                     placeholder={invoiceType === 'donation' ? "e.g., Save the Whales Campaign" : "e.g., Dinner Bill"}
@@ -357,7 +375,7 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
                     onChange={(e) => setMemo(e.target.value)}
                 />
                 <div className={`-mt-3 text-xs ${memoTooLong ? 'text-red-400' : 'text-gray-500'}`}>
-                    Memo is stored in one Leo `field`: {memoBytes}/{LEO_MEMO_MAX_BYTES} bytes. Regular letters usually count as 1 byte.
+                    Memo is optional to share and stored in one Leo `field`: {memoBytes}/{LEO_MEMO_MAX_BYTES} bytes. Regular letters usually count as 1 byte.
                 </div>
 
                 <div className="w-full mt-4">
@@ -370,7 +388,7 @@ export const MobileInvoiceForm: React.FC<InvoiceFormProps> = ({
                             variant="primary"
                             className="w-full"
                             onClick={handleCreate}
-                            disabled={loading || memoTooLong}
+                            disabled={loading || invoiceTitleTooLong || memoTooLong}
                             glow={!loading}
                         >
                             {loading ? (

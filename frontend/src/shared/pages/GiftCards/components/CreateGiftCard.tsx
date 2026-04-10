@@ -56,7 +56,7 @@ export const CreateGiftCard: React.FC = () => {
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         const aleoAmt = Number(amounts.ALEO || 0);
         const usdcxAmt = Number(amounts.USDCx || 0);
         const usadAmt = Number(amounts.USAD || 0);
@@ -101,7 +101,7 @@ export const CreateGiftCard: React.FC = () => {
             for (let i = 0; i < assetsToFund.length; i++) {
                 const asset = assetsToFund[i];
                 setFundingStatus(`Preparing ${asset.symbol} (${i + 1}/${assetsToFund.length})...`);
-                
+
                 const amountMicro = Math.round(asset.amount * 1_000_000);
 
                 if (!requestRecords) throw new Error("Wallet does not support requestRecords.");
@@ -380,7 +380,7 @@ export const CreateGiftCard: React.FC = () => {
                             <FloatingGiftCard giftCode={giftCode} amounts={{ ALEO: amounts.ALEO, USDCx: amounts.USDCx, USAD: amounts.USAD }} isInteractive={false} />
                             <p className="mt-3 text-xs text-white/25 flex items-center justify-center gap-1.5">
                                 <Copy className="w-3 h-3" />
-                                {copied ? 'Copied brother' : 'Click to copy code'}
+                                {copied ? 'copied' : 'Click to copy code'}
                             </p>
                         </div>
 

@@ -1,6 +1,6 @@
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useTransactions } from '../../hooks/useTransactions';
@@ -57,6 +57,10 @@ const Profile: React.FC = () => {
     const [selectedReceipts, setSelectedReceipts] = useState<PayerReceipt[] | null>(null);
     const [selectedNotes, setSelectedNotes] = useState<string[] | null>(null);
     const [invoiceSearch, setInvoiceSearch] = useState('');
+    const [valueFilterType, setValueFilterType] = useState<'none' | 'amount' | 'earnings'>('none');
+    const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+    const filterDropdownRef = useRef<HTMLDivElement>(null);
+    const [valueFilterInput, setValueFilterInput] = useState('');
     const [activeTab, setActiveTab] = useState<'created' | 'paid'>('created');
     const [merchantReceipts, setMerchantReceipts] = useState<MerchantReceipt[]>([]);
     const [createdInvoices, setCreatedInvoices] = useState<InvoiceRecord[]>([]);
@@ -78,6 +82,12 @@ const Profile: React.FC = () => {
     const [profileMainHash, setProfileMainHash] = useState<string | null>(null);
     const [profileBurnerHash, setProfileBurnerHash] = useState<string | null>(null);
     const { balances } = useWalletBalances();
+    const normalizedValueFilterAmount = valueFilterInput.trim() ? Number(valueFilterInput) : null;
+    const hasInvalidValueFilter = valueFilterInput.trim().length > 0 && (!Number.isFinite(normalizedValueFilterAmount) || (normalizedValueFilterAmount ?? 0) < 0);
+    const appliedValueFilterAmount = hasInvalidValueFilter ? null : normalizedValueFilterAmount;
+    const searchPlaceholder = activeTab === 'created'
+        ? 'Search by invoice hash, salt, title, memo, or merchant note...'
+        : 'Search by invoice hash or payer note...';
 
     useEffect(() => {
         const fetchProfileData = async () => {
@@ -106,6 +116,26 @@ const Profile: React.FC = () => {
             fetchPayerReceipts();
         }
     }, [publicKey]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [invoiceSearch, valueFilterType, valueFilterInput, activeTab]);
+
+    useEffect(() => {
+        if (activeTab === 'paid' && valueFilterType === 'earnings') {
+            setValueFilterType('amount');
+        }
+    }, [activeTab, valueFilterType]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
+                setIsFilterDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Fetch burner invoices from DB separately (they have a different merchant_address_hash)
     useEffect(() => {
@@ -321,6 +351,7 @@ const Profile: React.FC = () => {
                 walletType: 0, // Enforce Main Wallet
                 owner: record.owner,
                 salt: record.salt,
+                title: record.title || '',
 
                 // Merge DB Metadata if available
                 status: dbTx?.status === 'SETTLED' ? 'SETTLED' : 'PENDING',
@@ -348,6 +379,7 @@ const Profile: React.FC = () => {
                 walletType: 1, // Enforce Burner Wallet
                 owner: record.owner,
                 salt: record.salt,
+                title: record.title || '',
 
                 // Merge DB Metadata if available
                 status: dbTx?.status === 'SETTLED' ? 'SETTLED' : 'PENDING',
@@ -799,6 +831,15 @@ const Profile: React.FC = () => {
                         <p className="mt-2 text-xs text-gray-500">
                             Auditors should verify the encrypted JSON package and audit key here before trusting the HTML report.
                         </p>
+                        {hasInvalidValueFilter ? (
+                            <p className="mt-2 text-center text-xs text-red-400">
+                                Enter a valid positive number for the value filter.
+                            </p>
+                        ) : valueFilterType !== 'none' ? (
+                            <p className="mt-2 text-center text-xs text-gray-500">
+                                Showing {activeTab === 'created' && valueFilterType === 'earnings' ? 'invoices with total earnings' : activeTab === 'paid' ? 'paid invoices with total paid amount' : 'invoices with amount'} at or above the value you enter.
+                            </p>
+                        ) : null}
                     </div>
                 </motion.div>
 
@@ -856,13 +897,14 @@ const Profile: React.FC = () => {
 
                     {/* SEARCH */}
                     <div className="px-6 pb-4">
-                        <div className="relative max-w-md mx-auto">
+                        <div className="mx-auto grid max-w-4xl grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px]">
+                            <div className="relative">
                             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                             <input
                                 type="text"
-                                placeholder="Search by invoice hash..."
+                                placeholder={searchPlaceholder}
                                 value={invoiceSearch}
                                 onChange={(e) => setInvoiceSearch(e.target.value)}
                                 className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-10 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-primary/50 focus:ring-1 focus:ring-neon-primary/30 transition-colors"
@@ -875,7 +917,82 @@ const Profile: React.FC = () => {
                                     ✕
                                 </button>
                             )}
+                            </div>
+                            <div className="relative" ref={filterDropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+                                    className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-[9px] text-sm text-white focus:outline-none focus:border-neon-primary/50 focus:ring-1 focus:ring-neon-primary/30 transition-all hover:bg-white/10 group"
+                                >
+                                    <span className={valueFilterType === 'none' ? 'text-gray-400' : 'text-white'}>
+                                        {valueFilterType === 'none' ? 'No value filter' : 
+                                         valueFilterType === 'amount' ? 'By Amount' : 'By Earnings'}
+                                    </span>
+                                    <svg className={`w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-all duration-300 ${isFilterDropdownOpen ? 'rotate-180 translate-y-[-1px]' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                
+                                <AnimatePresence>
+                                    {isFilterDropdownOpen && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                                            transition={{ duration: 0.15, ease: "easeOut" }}
+                                            className="absolute top-full left-0 right-0 mt-2 z-[20] bg-[#0F0F0F]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-1.5"
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => { setValueFilterType('none'); setIsFilterDropdownOpen(false); }}
+                                                className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between ${valueFilterType === 'none' ? 'text-neon-primary bg-white/[0.03]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                            >
+                                                <span>No value filter</span>
+                                                {valueFilterType === 'none' && <div className="w-1 h-1 rounded-full bg-neon-primary shadow-[0_0_8px_rgba(5,213,250,0.8)]" />}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setValueFilterType('amount'); setIsFilterDropdownOpen(false); }}
+                                                className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between ${valueFilterType === 'amount' ? 'text-neon-primary bg-white/[0.03]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                            >
+                                                <span>By Amount</span>
+                                                {valueFilterType === 'amount' && <div className="w-1 h-1 rounded-full bg-neon-primary shadow-[0_0_8px_rgba(5,213,250,0.8)]" />}
+                                            </button>
+                                            {activeTab === 'created' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setValueFilterType('earnings'); setIsFilterDropdownOpen(false); }}
+                                                    className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between ${valueFilterType === 'earnings' ? 'text-neon-primary bg-white/[0.03]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                                >
+                                                    <span>By Earnings</span>
+                                                    {valueFilterType === 'earnings' && <div className="w-1 h-1 rounded-full bg-neon-primary shadow-[0_0_8px_rgba(5,213,250,0.8)]" />}
+                                                </button>
+                                            )}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder={valueFilterType === 'none' ? 'Optional min value' : `Enter min ${valueFilterType}...`}
+                                value={valueFilterInput}
+                                onChange={(e) => setValueFilterInput(e.target.value)}
+                                disabled={valueFilterType === 'none'}
+                                className={`w-full bg-white/5 border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 transition-all disabled:opacity-30 disabled:cursor-not-allowed ${hasInvalidValueFilter ? 'border-red-500/40 focus:border-red-500/60 focus:ring-red-500/10' : 'border-white/10 focus:border-neon-primary/40 focus:ring-neon-primary/20 hover:border-white/20'}`}
+                            />
                         </div>
+                        {hasInvalidValueFilter ? (
+                            <p className="mt-2 text-center text-[11px] font-medium text-red-400/90 tracking-wide uppercase">
+                                Please enter a valid positive amount
+                            </p>
+                        ) : valueFilterType !== 'none' ? (
+                            <p className="mt-2 text-center text-[11px] font-medium text-gray-500 tracking-wide uppercase">
+                                Filtering {activeTab === 'created' && valueFilterType === 'earnings' ? 'earnings' : activeTab === 'paid' ? 'total paid' : 'invoice amount'} ≥ {valueFilterInput || '0'}
+                            </p>
+                        ) : null}
                     </div>
 
                     <div className="overflow-x-auto min-h-[300px]">
@@ -885,6 +1002,8 @@ const Profile: React.FC = () => {
                                 invoices={loadingBurner ? [] : combinedInvoices}
                                 loading={loadingCreated || loadingTransactions || loadingBurner}
                                 search={invoiceSearch}
+                                valueFilterType={valueFilterType}
+                                valueFilterAmount={appliedValueFilterAmount}
                                 currentPage={currentPage}
                                 itemsPerPage={itemsPerPage}
                                 setCurrentPage={setCurrentPage}
@@ -908,6 +1027,7 @@ const Profile: React.FC = () => {
                                 receipts={payerReceipts}
                                 loading={loadingPayerReceipts}
                                 search={invoiceSearch}
+                                valueFilterAmount={valueFilterType === 'none' ? null : appliedValueFilterAmount}
                                 onViewReceipts={(receipts) => setSelectedReceipts(receipts)}
                                 onViewNotes={(notes) => setSelectedNotes(notes)}
                             />

@@ -129,7 +129,7 @@ export const recordsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Key className="h-4 w-4 text-orange-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v26.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">record Invoice</h3>
                     <p className="mt-1 text-sm text-gray-400">Owner: Merchant. Contains the full invoice definition including the hash, salt, amount, and memo.</p>
@@ -143,7 +143,7 @@ export const recordsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Hash className="h-4 w-4 text-orange-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v26.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">record PayerReceipt</h3>
                     <p className="mt-1 text-sm text-gray-400">Owner: Payer. Cryptographic proof that the payer completed a payment. The receipt_hash uniquely identifies this payment event.</p>
@@ -160,7 +160,7 @@ export const recordsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Hash className="h-4 w-4 text-orange-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v26.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">record MerchantReceipt</h3>
                     <p className="mt-1 text-sm text-gray-400">Owner: Merchant. Companion to PayerReceipt. Shares the same receipt_hash, enabling both parties to independently verify the same payment.</p>
