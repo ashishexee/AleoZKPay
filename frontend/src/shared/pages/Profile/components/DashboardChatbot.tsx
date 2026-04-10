@@ -455,12 +455,6 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
         });
     };
 
-    const availableBurnerBalances = useMemo<Record<BurnerSweepCurrency, number>>(() => ({
-        ALEO: Number(burnerBalances.find((entry) => entry.token === 'Credits')?.privateBalance || '0'),
-        USDCx: Number(burnerBalances.find((entry) => entry.token === 'USDCx')?.privateBalance || '0'),
-        USAD: Number(burnerBalances.find((entry) => entry.token === 'USAD')?.privateBalance || '0'),
-    }), [burnerBalances]);
-
     const dashboardContext = useMemo(() => {
         return {
             mode: 'dashboard',
@@ -716,7 +710,6 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                         )
                     ].join('\n'));
                 } catch (sweepError) {
-                    const message = sweepError instanceof Error ? sweepError.message : 'Sweeping funds failed.';
                     throw sweepError;
                 }
                 return;
