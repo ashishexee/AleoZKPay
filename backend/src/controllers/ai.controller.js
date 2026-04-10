@@ -336,7 +336,196 @@ function normalizePromptCurrency(rawValue) {
     return 'CREDITS';
 }
 
-function detectNullBotAction(message) {
+function parsePromptAmount(rawValue) {
+    if (typeof rawValue === 'number') {
+        return Number.isFinite(rawValue) ? rawValue : null;
+    }
+
+    const normalized = String(rawValue || '')
+        .trim()
+        .replace(/,/g, '.')
+        .replace(/[^\d.]/g, '');
+
+    if (!normalized) {
+        return null;
+    }
+
+    const amount = Number(normalized);
+    return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function normalizePromptWallet(rawValue) {
+    return String(rawValue || '').toLowerCase() === 'burner' ? 'burner' : 'main';
+}
+
+function normalizePromptInvoiceType(rawValue) {
+    const value = String(rawValue || '').toLowerCase();
+    if (value === 'multipay' || value === 'multi-pay') return 'multipay';
+    if (value === 'donation') return 'donation';
+    return 'standard';
+}
+
+function normalizeMissingArgs(rawValue) {
+    if (!Array.isArray(rawValue)) {
+        return [];
+    }
+
+    return Array.from(
+        new Set(
+            rawValue
+                .map((value) => String(value || '').trim())
+                .filter(Boolean)
+        )
+    );
+}
+
+function extractJsonObject(text) {
+    const raw = String(text || '').trim();
+    if (!raw) {
+        return null;
+    }
+
+    const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidate = fencedMatch?.[1]?.trim() || raw;
+
+    try {
+        return JSON.parse(candidate);
+    } catch {
+        const firstBrace = candidate.indexOf('{');
+        const lastBrace = candidate.lastIndexOf('}');
+        if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(candidate.slice(firstBrace, lastBrace + 1));
+        } catch {
+            return null;
+        }
+    }
+}
+
+function normalizePlannedNullBotToolCall(rawToolCall) {
+    if (!rawToolCall || typeof rawToolCall !== 'object') {
+        return null;
+    }
+
+    const toolCall = rawToolCall;
+    const rawName = String(toolCall.name || toolCall.type || '').trim();
+    const args = toolCall.args && typeof toolCall.args === 'object' ? toolCall.args : {};
+    const missingArgs = normalizeMissingArgs(toolCall.missingArgs || toolCall.missing_args);
+
+    if (!rawName) {
+        return null;
+    }
+
+    if (rawName === 'connect_wallet') {
+        return {
+            name: 'connect_wallet',
+            args: {},
+            ...(missingArgs.length > 0 ? { missingArgs } : {})
+        };
+    }
+
+    if (rawName === 'check_burner_balance') {
+        return {
+            name: 'check_burner_balance',
+            args: {},
+            ...(missingArgs.length > 0 ? { missingArgs } : {})
+        };
+    }
+
+    if (rawName === 'create_invoice') {
+        const amount = parsePromptAmount(args.amount);
+        const memo = typeof args.memo === 'string' ? args.memo.trim() : undefined;
+        const title = typeof args.title === 'string' ? args.title.trim() : undefined;
+
+        return {
+            name: 'create_invoice',
+            args: {
+                ...(amount != null ? { amount } : {}),
+                ...(args.currency ? { currency: normalizePromptCurrency(args.currency) } : {}),
+                ...(title ? { title } : {}),
+                ...(args.invoice_type ? { invoice_type: normalizePromptInvoiceType(args.invoice_type) } : {}),
+                ...(args.wallet ? { wallet: normalizePromptWallet(args.wallet) } : {}),
+                ...(memo ? { memo } : {})
+            },
+            ...(missingArgs.length > 0 ? { missingArgs } : {})
+        };
+    }
+
+    if (rawName === 'pay_invoice' || rawName === 'open_payment_link') {
+        const amount = parsePromptAmount(args.amount);
+        const paymentLink = typeof args.payment_link === 'string'
+            ? args.payment_link.trim()
+            : typeof args.url === 'string'
+                ? args.url.trim()
+                : undefined;
+
+        return {
+            name: 'pay_invoice',
+            args: {
+                ...(paymentLink ? { payment_link: paymentLink } : {}),
+                ...(typeof args.invoice_hash === 'string' && args.invoice_hash.trim()
+                    ? { invoice_hash: args.invoice_hash.trim() }
+                    : {}),
+                ...(args.wallet ? { wallet: normalizePromptWallet(args.wallet) } : {}),
+                ...(amount != null ? { amount } : {}),
+                ...(args.currency ? { currency: normalizePromptCurrency(args.currency) } : {})
+            },
+            ...(missingArgs.length > 0 ? { missingArgs } : {})
+        };
+    }
+
+    if (rawName === 'get_transaction_info') {
+        const limit = Number(args.limit);
+
+        return {
+            name: 'get_transaction_info',
+            args: {
+                ...(typeof args.invoice_hash === 'string' && args.invoice_hash.trim()
+                    ? { invoice_hash: args.invoice_hash.trim() }
+                    : {}),
+                ...(args.wallet ? { wallet: normalizePromptWallet(args.wallet) } : {}),
+                ...(Number.isFinite(limit) && limit > 0 ? { limit: Math.round(limit) } : {})
+            },
+            ...(missingArgs.length > 0 ? { missingArgs } : {})
+        };
+    }
+
+    if (rawName === 'get_analytics') {
+        const days = Number(args.days);
+
+        return {
+            name: 'get_analytics',
+            args: {
+                ...(args.wallet ? { wallet: normalizePromptWallet(args.wallet) } : {}),
+                ...(Number.isFinite(days) && days > 0 ? { days: Math.round(days) } : {})
+            },
+            ...(missingArgs.length > 0 ? { missingArgs } : {})
+        };
+    }
+
+    if (rawName === 'sweep_funds' || rawName === 'sweep_burner_to_main') {
+        const amount = parsePromptAmount(args.amount);
+        const destination = typeof args.destination === 'string' ? args.destination.trim() : undefined;
+
+        return {
+            name: 'sweep_funds',
+            args: {
+                ...(amount != null ? { amount } : {}),
+                ...(args.currency ? { currency: normalizePromptCurrency(args.currency) } : {}),
+                ...(args.wallet ? { wallet: normalizePromptWallet(args.wallet) } : {}),
+                ...(destination ? { destination } : {})
+            },
+            ...(missingArgs.length > 0 ? { missingArgs } : {})
+        };
+    }
+
+    return null;
+}
+
+function detectNullBotToolCall(message) {
     const rawMessage = String(message || '').trim();
     const normalizedMessage = rawMessage.toLowerCase();
 
@@ -346,9 +535,11 @@ function detectNullBotAction(message) {
 
     if (/(connect wallet|connect my wallet|link wallet)/i.test(rawMessage)) {
         return {
-            type: 'connect_wallet',
-            args: {},
-            reply: 'Connect your wallet first, then I can run NullPay actions from your prompts.'
+            reply: 'Connect your wallet first, then I can run NullPay actions from your prompts.',
+            toolCall: {
+                name: 'connect_wallet',
+                args: {}
+            }
         };
     }
 
@@ -358,76 +549,190 @@ function detectNullBotAction(message) {
         /\btransfer\b[\s\S]{0,50}\bfrom burner\b/i.test(rawMessage);
 
     if (sweepIntent && normalizedMessage.includes('burner')) {
-        const amountMatch = rawMessage.match(/(\d+(?:\.\d+)?)\s*(aleo|credits?|credit|usdcx|usad)\b/i);
+        const amountMatch = rawMessage.match(/(\d+(?:[.,]\d+)?)\s*(aleo|credits?|credit|usdcx|usad)\b/i);
         const currency = amountMatch ? normalizePromptCurrency(amountMatch[2]) : null;
+        const amount = amountMatch ? parsePromptAmount(amountMatch[1]) : null;
 
         return {
-            type: 'sweep_burner_to_main',
-            args: {
-                ...(amountMatch ? { amount: Number(amountMatch[1]) } : {}),
-                ...(currency ? { currency } : {})
-            },
             reply: amountMatch
                 ? `I can sweep ${amountMatch[1]} ${currency} from your burner wallet to your connected main wallet using the usual sponsored burner sweep flow.`
-                : 'I can sweep your available burner-wallet funds to your connected main wallet using the usual sponsored burner sweep flow.'
+                : 'I can sweep your available burner-wallet funds to your connected main wallet using the usual sponsored burner sweep flow.',
+            toolCall: {
+                name: 'sweep_funds',
+                args: {
+                    wallet: 'burner',
+                    destination: 'main_wallet',
+                    ...(amount != null ? { amount } : {}),
+                    ...(currency ? { currency } : {})
+                },
+                ...(!amountMatch ? { missingArgs: ['amount', 'currency'] } : {})
+            }
         };
     }
 
     const createInvoiceIntent =
         /\b(create|make|generate)\b[\s\S]{0,40}\b(invoice|invocie|bill|payment link)\b/i.test(rawMessage) ||
+        /\b(create|make|generate)\b[\s\S]{0,20}\b(donation|multipay|multi-pay|standard)\b/i.test(rawMessage) ||
         /\binvoice\b[\s\S]{0,30}\b(of|for)\b/i.test(rawMessage);
 
     if (createInvoiceIntent) {
-        const amountMatch = rawMessage.match(/(\d+(?:\.\d+)?)\s*(credits?|credit|usdcx|usad|any token|any)\b/i);
+        const amountMatch = rawMessage.match(/(\d+(?:[.,]\d+)?)\s*(credits?|credit|usdcx|usad|any token|any)\b/i);
         const invoiceTypeMatch = rawMessage.match(/\b(donation|multipay|multi-pay|standard)\b/i);
         const walletMatch = rawMessage.match(/\b(main|burner)\b/);
+        const titleMatch = rawMessage.match(/(?:invoice\s+title|title|name)\s+(?:as|to|is)?\s*["']([^"']+)["']/i);
         const memoMatch = rawMessage.match(/(?:memo|note)\s+(?:as|to|is)?\s*["']([^"']+)["']/i);
+        const title = titleMatch?.[1]?.trim();
+        const memo = memoMatch?.[1]?.trim();
+        const invoiceType = invoiceTypeMatch?.[1] ? normalizePromptInvoiceType(invoiceTypeMatch[1]) : 'standard';
 
         if (amountMatch) {
-            const amount = Number(amountMatch[1]);
+            const amount = parsePromptAmount(amountMatch[1]);
             const currency = normalizePromptCurrency(amountMatch[2]);
-            const invoiceTypeRaw = String(invoiceTypeMatch?.[1] || 'standard').toLowerCase();
-            const invoiceType = invoiceTypeRaw === 'multi-pay' ? 'multipay' : invoiceTypeRaw;
             const wallet = walletMatch?.[1] === 'burner' ? 'burner' : 'main';
-            const memo = memoMatch?.[1]?.trim();
+
+            if (amount != null) {
+                return {
+                reply: `I can create a ${invoiceType} invoice for ${amount} ${currency} from your ${wallet} wallet. Approve the wallet popup when it opens.`,
+                toolCall: {
+                    name: 'create_invoice',
+                    args: {
+                        amount,
+                        currency,
+                        ...(title ? { title } : {}),
+                        invoice_type: invoiceType,
+                        wallet,
+                        ...(memo ? { memo } : {})
+                    }
+                }
+            };
+            }
+        }
+
+        if (invoiceType === 'donation') {
+            const wallet = walletMatch?.[1] === 'burner' ? 'burner' : 'main';
 
             return {
-                type: 'create_invoice',
-                args: {
-                    amount,
-                    currency,
-                    invoice_type: invoiceType,
-                    wallet,
-                    ...(memo ? { memo } : {})
-                },
-                reply: `I can create a ${invoiceType} invoice for ${amount} ${currency} from your ${wallet} wallet. Approve the wallet popup when it opens.`
+                reply: 'I can create a donation invoice. If you want to restrict the token, say `credits`, `usdcx`, or `usad`. Otherwise I will keep it open for any token.',
+                toolCall: {
+                    name: 'create_invoice',
+                    args: {
+                        amount: 0,
+                        currency: amountMatch ? normalizePromptCurrency(amountMatch[2]) : 'ANY',
+                        ...(title ? { title } : {}),
+                        invoice_type: 'donation',
+                        wallet,
+                        ...(memo ? { memo } : {})
+                    }
+                }
             };
         }
+
+        return {
+            reply: 'I can create that invoice for you. Tell me the amount and token, like `0.1 credits` or `2 usdcx`.',
+            toolCall: {
+                name: 'create_invoice',
+                args: {
+                    ...(title ? { title } : {}),
+                    ...(invoiceTypeMatch?.[1] ? { invoice_type: normalizePromptInvoiceType(invoiceTypeMatch[1]) } : {}),
+                    ...(walletMatch?.[1] ? { wallet: normalizePromptWallet(walletMatch[1]) } : {}),
+                    ...(memo ? { memo } : {})
+                },
+                missingArgs: ['amount', 'currency']
+            }
+        };
     }
 
     const paymentLinkMatch = rawMessage.match(/https?:\/\/[^\s]+/i);
     const payIntent = /\b(pay|open|use)\b[\s\S]{0,30}\b(invoice|link|payment)\b/i.test(rawMessage);
     if (payIntent && paymentLinkMatch) {
         return {
-            type: 'open_payment_link',
-            args: {
-                url: paymentLinkMatch[0]
-            },
-            reply: 'I found a NullPay payment link. I can open the in-app payment flow so you can approve it with your wallet popup.'
+            reply: 'I found a NullPay payment link. I can open the in-app payment flow so you can approve it with your wallet popup.',
+            toolCall: {
+                name: 'pay_invoice',
+                args: {
+                    payment_link: paymentLinkMatch[0]
+                }
+            }
         };
     }
 
     return null;
 }
 
-async function generateNullBotChat(message, context) {
-    const action = detectNullBotAction(message);
+async function planNullBotToolCall(message, context) {
+    const systemInstruction = [
+        'You are the NullBot tool planner for the browser dashboard.',
+        'Your job is to decide whether the next user message should call one dashboard tool, continue collecting args for a pending tool, or just answer normally.',
+        'You must never ask the user for a private key or secret key.',
+        'Use these exact tool names only when needed: connect_wallet, create_invoice, pay_invoice, get_transaction_info, get_analytics, check_burner_balance, sweep_funds.',
+        'When the context includes pendingToolCall, treat the new message as a follow-up that may fill missing args for that same tool.',
+        'Treat both `0.1` and `0,1` as valid decimal amounts.',
+        'For create_invoice, preferred args are amount, currency, title, invoice_type, wallet, memo.',
+        'Donation and multipay are invoice types, so prompts like "create a donation for me" or "create a multipay" should still map to create_invoice.',
+        'For sweep_funds from burner to the connected main wallet, set wallet to burner and destination to main_wallet when the user says burner to main.',
+        'For burner balance checks, use check_burner_balance.',
+        'For dashboard summaries or stats questions, use get_analytics.',
+        'For invoice or transaction lookup questions, use get_transaction_info.',
+        'For payment requests with a NullPay payment link, use pay_invoice with payment_link.',
+        'If some required args are still missing, return the chosen tool with missingArgs and a short follow-up question.',
+        'If no tool should run, return toolCall as null and provide a concise helpful reply.',
+        'Respond with JSON only. No markdown fences, no prose outside JSON.',
+        'JSON shape: {"reply":"string","toolCall":{"name":"tool_name","args":{},"missingArgs":["field"]} | null}.'
+    ].join(' ');
 
-    if (action) {
-        return {
-            reply: action.reply,
-            action
-        };
+    const prompt = [
+        'Dashboard tool context:',
+        JSON.stringify(context, null, 2),
+        '',
+        'User message:',
+        message
+    ].join('\n');
+
+    const result = await requestGeminiReply({
+        systemInstruction,
+        prompt,
+        maxOutputTokens: 700
+    });
+
+    const parsed = extractJsonObject(result.text);
+    if (!parsed || typeof parsed !== 'object') {
+        throw new Error('Planner returned invalid JSON.');
+    }
+
+    const reply = typeof parsed.reply === 'string' && parsed.reply.trim()
+        ? parsed.reply.trim()
+        : '';
+    const toolCall = normalizePlannedNullBotToolCall(parsed.toolCall);
+
+    return {
+        reply,
+        ...(toolCall ? { toolCall } : {})
+    };
+}
+
+async function generateNullBotChat(message, context) {
+    const fallback = detectNullBotToolCall(message);
+
+    try {
+        const planned = await planNullBotToolCall(message, context);
+
+        if (planned.toolCall) {
+            return planned;
+        }
+
+        if (fallback) {
+            return fallback;
+        }
+
+        if (planned.reply) {
+            return planned;
+        }
+    } catch (plannerError) {
+        console.warn('NullBot planner fallback:', plannerError.message);
+    }
+
+    if (fallback) {
+        return fallback;
     }
 
     const mode = context?.mode === 'developer' || context?.mode === 'docs'
