@@ -82,7 +82,7 @@ Implementation notes & helpful functions:
 - `generateSalt()` — uses `crypto.randomBytes(16)` and converts to a bigint string plus `field` suffix.
 - `validateMerchant(secretKey, merchantAddress)` — POST to `${BACKEND_URL}/sdk/onboard/validate` with `Authorization: Bearer ${secretKey}`.
 - `submitToRelayer(secretKey, invoice, salt)` — POST to `${BACKEND_URL}/dps/relayer/create-invoice` with invoice fields.
-- `pollForHash(salt)` — polls `https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v26.aleo/mapping/salt_to_invoice/${salt}` for a mapping value.
+- `pollForHash(salt)` — polls `https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v27.aleo/mapping/salt_to_invoice/${salt}` for a mapping value.
 
 Developer tips:
 - The CLI prints a summary card showing `hash` and `salt` (hash truncated) for verification.

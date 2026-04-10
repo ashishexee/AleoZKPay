@@ -524,9 +524,9 @@ class NullPayMcpService {
         });
         return {
             content: [{
-                    type: 'text',
-                    text: `Invoice created with hash ${invoiceHash}. Active wallet ${wallet} was used. Payment link: ${paymentLink}`
-                }],
+                type: 'text',
+                text: `Invoice created with hash ${invoiceHash}. Active wallet ${wallet} was used. Payment link: ${paymentLink}`
+            }],
             structuredContent: {
                 invoice_hash: invoiceHash,
                 invoice_transaction_id: relayResponse.tx_id,
@@ -551,7 +551,7 @@ class NullPayMcpService {
         });
         const sponsored = await this.backend.sponsorExecution({
             execution_authorization_string: authorization,
-            programName: 'zk_pay_proofs_privacy_v26.aleo',
+            programName: 'zk_pay_proofs_privacy_v27.aleo',
         });
         const txId = sponsored.transaction?.id;
         if (!txId) {
@@ -576,9 +576,9 @@ class NullPayMcpService {
             : 'Payment recorded on the invoice while keeping the invoice open for additional multipay/donation activity.';
         return {
             content: [{
-                    type: 'text',
-                    text: `Invoice ${invoice.invoice_hash} was paid from ${wallet} wallet using ${invoice.amount ?? args.amount ?? 0} ${tokenTypeLabel(invoice.token_type)} to ${invoice.designated_address || invoice.merchant_address}. ${invoiceStatusNote}`
-                }],
+                type: 'text',
+                text: `Invoice ${invoice.invoice_hash} was paid from ${wallet} wallet using ${invoice.amount ?? args.amount ?? 0} ${tokenTypeLabel(invoice.token_type)} to ${invoice.designated_address || invoice.merchant_address}. ${invoiceStatusNote}`
+            }],
             structuredContent: {
                 invoice_hash: invoice.invoice_hash,
                 payment_tx_id: txId,
@@ -607,9 +607,9 @@ class NullPayMcpService {
                 : '';
             return {
                 content: [{
-                        type: 'text',
-                        text: `Transaction details: ${formatInvoiceSummary(invoice)}${onChainStatus}${amountHint}${missingAmountNote}`
-                    }],
+                    type: 'text',
+                    text: `Transaction details: ${formatInvoiceSummary(invoice)}${onChainStatus}${amountHint}${missingAmountNote}`
+                }],
                 structuredContent: {
                     invoice,
                     on_chain: onChain,
@@ -629,9 +629,9 @@ class NullPayMcpService {
             : `No transactions found for ${wallet} wallet ${walletAddress}.`;
         return {
             content: [{
-                    type: 'text',
-                    text: summaryText
-                }],
+                type: 'text',
+                text: summaryText
+            }],
             structuredContent: {
                 wallet,
                 wallet_address: walletAddress,
@@ -801,9 +801,9 @@ class NullPayMcpService {
         const balances = await (0, aleo_1.getWalletBalances)(session);
         return {
             content: [{
-                    type: 'text',
-                    text: `Your burner wallet balance is:\n- ${balances.credits} CREDITS\n- ${balances.usdcx} USDCX\n- ${balances.usad} USAD\n`
-                }],
+                type: 'text',
+                text: `Your burner wallet balance is:\n- ${balances.credits} CREDITS\n- ${balances.usdcx} USDCX\n- ${balances.usad} USAD\n`
+            }],
             structuredContent: balances
         };
     }
@@ -828,9 +828,9 @@ class NullPayMcpService {
         }
         return {
             content: [{
-                    type: 'text',
-                    text: `Successfully swept ${args.amount} ${currency} to ${args.destination}. Transaction ID: ${txId}`
-                }],
+                type: 'text',
+                text: `Successfully swept ${args.amount} ${currency} to ${args.destination}. Transaction ID: ${txId}`
+            }],
             structuredContent: {
                 transaction_id: txId,
                 amount: args.amount,
@@ -853,7 +853,7 @@ class NullPayMcpService {
         });
         const sponsored = await this.backend.sponsorExecution({
             execution_authorization_string: authorization,
-            programName: 'zk_pay_proofs_privacy_v26.aleo',
+            programName: 'zk_pay_proofs_privacy_v27.aleo',
         });
         const txId = sponsored.transaction?.id;
         if (!txId) {
@@ -872,9 +872,9 @@ class NullPayMcpService {
         }
         return {
             content: [{
-                    type: 'text',
-                    text: `Giftcard payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
-                }],
+                type: 'text',
+                text: `Giftcard payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
+            }],
             structuredContent: {
                 invoice_hash: invoice.invoice_hash,
                 payment_tx_id: txId,
@@ -906,7 +906,7 @@ class NullPayMcpService {
         });
         const sponsored = await this.backend.sponsorExecution({
             execution_authorization_string: authorization,
-            programName: 'zk_pay_proofs_privacy_v26.aleo',
+            programName: 'zk_pay_proofs_privacy_v27.aleo',
         });
         const txId = sponsored.transaction?.id;
         if (!txId) {
@@ -925,9 +925,9 @@ class NullPayMcpService {
         }
         return {
             content: [{
-                    type: 'text',
-                    text: `Card payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
-                }],
+                type: 'text',
+                text: `Card payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
+            }],
             structuredContent: {
                 invoice_hash: invoice.invoice_hash,
                 payment_tx_id: txId,
