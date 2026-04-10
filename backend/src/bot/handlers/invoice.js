@@ -137,6 +137,7 @@ function buildDraftSummary(state) {
         lines.push(`Amount: ${state.amount}`);
     }
 
+    lines.push(`Title: ${state.title || 'None'}`);
     lines.push(`Memo: ${state.memo || 'None'}`);
 
     return lines.join('\n');
@@ -347,7 +348,9 @@ module.exports = (bot) => {
             invoiceType: null,
             currency: null,
             amount: null,
+            title: '',
             memo: '',
+            step: null,
             user
         });
 
@@ -457,7 +460,7 @@ module.exports = (bot) => {
             return;
         }
 
-        if (state.invoiceType !== 'donation' && state.amount === null) {
+        if (state.step === 'amount') {
             const amount = Number(msg.text.trim());
             if (!Number.isFinite(amount) || amount <= 0) {
                 await bot.sendMessage(msg.chat.id, 'Enter a positive amount like 12.5.');
@@ -465,14 +468,26 @@ module.exports = (bot) => {
             }
 
             state.amount = amount;
+            state.step = 'title';
             setState(msg.chat.id, state);
-            await bot.sendMessage(msg.chat.id, 'Add an optional memo for this invoice, or send `skip`.', {
+            await bot.sendMessage(msg.chat.id, 'Add an optional invoice title to share with the payer, or send `skip`.', {
                 parse_mode: 'Markdown'
             });
             return;
         }
 
-        state.memo = msg.text.trim().toLowerCase() === 'skip' ? '' : msg.text.trim().slice(0, 100);
+        if (state.step === 'title') {
+            state.title = msg.text.trim().toLowerCase() === 'skip' ? '' : msg.text.trim();
+            state.step = 'memo';
+            setState(msg.chat.id, state);
+            await bot.sendMessage(msg.chat.id, 'Add an optional memo to share with the payer, or send `skip`.', {
+                parse_mode: 'Markdown'
+            });
+            return;
+        }
+
+        state.memo = msg.text.trim().toLowerCase() === 'skip' ? '' : msg.text.trim();
+        state.step = 'confirm';
         setState(msg.chat.id, state);
         await sendConfirmPrompt(bot, msg.chat.id, state);
     });
@@ -545,7 +560,9 @@ module.exports = (bot) => {
                         invoiceType: null,
                         currency: null,
                         amount: null,
+                        title: '',
                         memo: '',
+                        step: null,
                         user
                     };
                 }
@@ -553,7 +570,9 @@ module.exports = (bot) => {
                 state.invoiceType = data.replace('CREATE_TYPE_', '');
                 state.currency = null;
                 state.amount = null;
+                state.title = '';
                 state.memo = '';
+                state.step = null;
                 setState(chatId, state);
                 await bot.answerCallbackQuery(query.id);
                 await sendTokenPrompt(bot, chatId, state.invoiceType);
@@ -575,23 +594,31 @@ module.exports = (bot) => {
                         invoiceType: parsedToken.invoiceType,
                         currency: null,
                         amount: null,
+                        title: '',
                         memo: '',
+                        step: null,
                         user
                     };
                 }
 
                 state.invoiceType = parsedToken.invoiceType;
                 state.currency = parsedToken.currency;
+                state.title = '';
+                state.memo = '';
                 setState(chatId, state);
                 await bot.answerCallbackQuery(query.id);
 
                 if (state.invoiceType === 'donation') {
-                    await bot.sendMessage(chatId, 'Add an optional memo for this donation invoice, or send `skip`.', {
+                    state.step = 'title';
+                    setState(chatId, state);
+                    await bot.sendMessage(chatId, 'Add an optional invoice title to share with the payer, or send `skip`.', {
                         parse_mode: 'Markdown'
                     });
                     return;
                 }
 
+                state.step = 'amount';
+                setState(chatId, state);
                 await bot.sendMessage(chatId, 'Enter the amount you want to charge, for example `12.5`.', {
                     parse_mode: 'Markdown'
                 });
@@ -616,6 +643,9 @@ module.exports = (bot) => {
                 text += `Token: ${formatTokenLabel(result.invoice.token_type)}\n`;
                 if (result.draft.amount > 0) {
                     text += `Amount: ${result.draft.amount}\n`;
+                }
+                if (result.draft.title) {
+                    text += `Title: ${result.draft.title}\n`;
                 }
                 if (result.draft.memo) {
                     text += `Memo: ${result.draft.memo}\n`;

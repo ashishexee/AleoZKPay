@@ -7,6 +7,7 @@ interface PaidInvoicesTableProps {
     receipts: PayerReceipt[];
     loading: boolean;
     search: string;
+    valueFilterAmount: number | null;
     onViewReceipts: (receipts: PayerReceipt[]) => void;
     onViewNotes: (notes: string[]) => void;
 }
@@ -29,9 +30,10 @@ const formatTokenAmount = (amount: number) => {
     return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/\.?0+$/, '');
 };
 
-export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, loading, search, onViewReceipts, onViewNotes }) => {
+export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, loading, search, valueFilterAmount, onViewReceipts, onViewNotes }) => {
     // Process receipts to group by invoiceHash
     const groupedReceipts = useMemo(() => {
+        const normalizedSearch = search.trim().toLowerCase();
         // Deduplicate by receiptHash first
         const seenReceipts = new Set<string>();
         const deduped = receipts.filter(r => {
@@ -48,8 +50,24 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
         });
 
         return Array.from(grouped.entries())
-            .filter(([hash]) => !search || hash.toLowerCase().includes(search.toLowerCase()));
-    }, [receipts, search]);
+            .filter(([hash, groupedItems]) => {
+                const noteSummary = Array.from(new Set(groupedItems.map((receipt) => receipt.payerNote).filter(Boolean)));
+                const searchableValues = [hash, ...noteSummary]
+                    .filter(Boolean)
+                    .map((value) => String(value).toLowerCase());
+                const matchesSearch = !normalizedSearch || searchableValues.some((value) => value.includes(normalizedSearch));
+                if (!matchesSearch) {
+                    return false;
+                }
+
+                if (valueFilterAmount === null) {
+                    return true;
+                }
+
+                const totalPaid = groupedItems.reduce((sum, receipt) => sum + Number(receipt.amount || 0), 0) / 1_000_000;
+                return totalPaid >= valueFilterAmount;
+            });
+    }, [receipts, search, valueFilterAmount]);
 
     return (
         <table className="w-full">

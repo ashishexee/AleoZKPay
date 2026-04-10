@@ -2,8 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import type { InvoiceData, InvoiceItem } from '../types/invoice';
 import { useBurnerWallet } from './BurnerWalletProvider';
-import { getUtf8ByteLength, LEO_MEMO_MAX_BYTES } from '../utils/leo-input-limits';
 import { createInvoiceViaWallet } from '../utils/invoiceCreation';
+import { getUtf8ByteLength, LEO_INVOICE_TITLE_MAX_BYTES, LEO_MEMO_MAX_BYTES } from '../utils/leo-input-limits';
 
 export type InvoiceType = 'standard' | 'multipay' | 'donation';
 
@@ -11,11 +11,13 @@ export const useCreateInvoice = () => {
     const { address, executeTransaction, transactionStatus, requestTransactionHistory } = useWallet();
     const { decryptedBurnerAddress, appPassword } = useBurnerWallet();
     const publicKey = address;
+
     const [amount, setAmount] = useState<number | ''>('');
     const [loading, setLoading] = useState(false);
     const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
-    const [memo, setMemo] = useState('');
-    const [status, setStatus] = useState('');
+    const [invoiceTitle, setInvoiceTitle] = useState<string>('');
+    const [memo, setMemo] = useState<string>('');
+    const [status, setStatus] = useState<string>('');
     const [invoiceType, setInvoiceType] = useState<InvoiceType>('standard');
     const [tokenType, setTokenType] = useState(0);
     const [walletType, setWalletType] = useState(0);
@@ -91,16 +93,22 @@ export const useCreateInvoice = () => {
             return;
         }
 
+        if (invoiceTitle && getUtf8ByteLength(invoiceTitle) > LEO_INVOICE_TITLE_MAX_BYTES) {
+            setStatus(`Title is too long for one Leo field. Keep it within ${LEO_INVOICE_TITLE_MAX_BYTES} bytes.`);
+            return;
+        }
+
         setLoading(true);
         setStatus('Initializing invoice creation...');
 
         try {
-            const result = await createInvoiceViaWallet({
+            const created = await createInvoiceViaWallet({
                 publicKey,
                 executeTransaction,
                 transactionStatus,
                 requestTransactionHistory,
                 amount: Number(amount),
+                title: invoiceTitle,
                 memo,
                 invoiceType,
                 tokenType,
@@ -113,7 +121,7 @@ export const useCreateInvoice = () => {
                 onStatus: setStatus
             });
 
-            setInvoiceData(result.invoiceData);
+            setInvoiceData(created.invoiceData);
             setStatus('Invoice Created Successfully!');
         } catch (error: any) {
             console.error(error);
@@ -126,6 +134,7 @@ export const useCreateInvoice = () => {
     const resetInvoice = () => {
         setInvoiceData(null);
         setAmount('');
+        setInvoiceTitle('');
         setMemo('');
         setStatus('');
         setInvoiceType('standard');
@@ -139,6 +148,8 @@ export const useCreateInvoice = () => {
     return {
         amount,
         setAmount,
+        invoiceTitle,
+        setInvoiceTitle,
         memo,
         setMemo,
         status,

@@ -130,7 +130,7 @@ export const mappingsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Database className="h-4 w-4 text-orange-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v26.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">mapping invoices</h3>
                     <p className="mt-1 text-sm text-gray-400">The primary invoice state store. Public — anyone with the invoice hash can read the full <code className="rounded bg-white/5 px-1.5 py-0.5">InvoiceData</code>.</p>
@@ -158,7 +158,7 @@ export const mappingsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Database className="h-4 w-4 text-orange-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v26.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
                     </div>
                     <h3 className="mt-1 text-xl font-bold text-white">mapping salt_to_invoice</h3>
                     <p className="mt-1 text-sm text-gray-400">The salt→hash bridge. Enables payment validation without exposing the hash directly in the transaction inputs.</p>

@@ -77,7 +77,7 @@ export const ReceiptHashesModal: React.FC<ReceiptHashesModalProps> = ({ receipts
                                 <thead>
                                     <tr className="border-b border-white/[0.05] bg-white/[0.01]">
                                         <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-gray-400">Amount & Token</th>
-                                        <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-gray-400 text-right">Transaction Hash</th>
+                                        <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-gray-400 text-right">Receipt Hash</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/[0.05]">

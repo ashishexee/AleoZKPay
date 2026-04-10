@@ -35,6 +35,8 @@ class TelegramServiceError extends Error {
     }
 }
 
+const LEO_SINGLE_FIELD_MAX_BYTES = 31;
+
 function assertAleoAddress(address) {
     if (!address || typeof address !== 'string' || !address.startsWith('aleo1')) {
         throw new TelegramServiceError('A valid Aleo address is required.', 400);
@@ -43,6 +45,19 @@ function assertAleoAddress(address) {
 
 function hashLookupValue(value) {
     return sha256Hex(String(value));
+}
+
+function normalizeSingleFieldString(value, label) {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+        return '';
+    }
+
+    if (Buffer.byteLength(normalized, 'utf8') > LEO_SINGLE_FIELD_MAX_BYTES) {
+        throw new TelegramServiceError(`${label} must stay within ${LEO_SINGLE_FIELD_MAX_BYTES} UTF-8 bytes.`, 400);
+    }
+
+    return normalized;
 }
 
 function decryptTelegramValue(value, label) {
@@ -478,6 +493,7 @@ async function resolvePayTargetWithOverrides(invoice, user, overrides = {}) {
             merchant,
             amount: amount ?? 0,
             salt: invoice.salt,
+            title: overrides.title || '',
             memo: overrides.memo || '',
             invoiceType: overrides.invoiceType || invoiceTypeToLabel(invoice.invoice_type),
             currency: overrides.currency || tokenTypeToCode(invoice.token_type),
@@ -488,7 +504,7 @@ async function resolvePayTargetWithOverrides(invoice, user, overrides = {}) {
 
 async function waitForInvoiceHash(salt, attempts = 60, delayMs = 2000) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-        const response = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v26.aleo/mapping/salt_to_invoice/${salt}`);
+        const response = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v27.aleo/mapping/salt_to_invoice/${salt}`);
         if (response.ok) {
             const value = await response.json();
             const invoiceHash = value ? String(value).replace(/['"]/g, '') : '';
@@ -506,7 +522,8 @@ async function waitForInvoiceHash(salt, attempts = 60, delayMs = 2000) {
 function validateTelegramInvoiceDraft(draft) {
     const invoiceType = draft.invoiceType || 'standard';
     const currency = String(draft.currency || 'CREDITS').toUpperCase();
-    const memo = String(draft.memo || '').trim().slice(0, 100);
+    const title = normalizeSingleFieldString(draft.title, 'Invoice title');
+    const memo = normalizeSingleFieldString(draft.memo, 'Invoice memo');
     const amount = draft.amount === undefined || draft.amount === null || draft.amount === ''
         ? null
         : Number(draft.amount);
@@ -530,6 +547,7 @@ function validateTelegramInvoiceDraft(draft) {
     return {
         invoiceType,
         currency,
+        title,
         memo,
         amount: invoiceType === 'donation' ? 0 : Number(amount)
     };
@@ -553,6 +571,7 @@ async function createTelegramInvoice(user, draft) {
         amount: normalizedDraft.amount,
         currency: normalizedDraft.currency,
         salt,
+        title: normalizedDraft.title,
         memo: normalizedDraft.memo,
         invoice_type: invoiceTypeNumber
     });
@@ -588,6 +607,7 @@ async function createTelegramInvoice(user, draft) {
 
     const payTarget = await resolvePayTargetWithOverrides(invoice, user, {
         amount: normalizedDraft.amount,
+        title: normalizedDraft.title,
         memo: normalizedDraft.memo,
         invoiceType: normalizedDraft.invoiceType,
         currency: normalizedDraft.currency

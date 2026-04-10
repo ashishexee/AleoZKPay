@@ -10,6 +10,8 @@ interface InvoiceTableProps {
     invoices: any[];
     loading: boolean;
     search: string;
+    valueFilterType: 'none' | 'amount' | 'earnings';
+    valueFilterAmount: number | null;
     currentPage: number;
     itemsPerPage: number;
     setCurrentPage: (page: number | ((prev: number) => number)) => void;
@@ -38,6 +40,8 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
     invoices,
     loading,
     search,
+    valueFilterType,
+    valueFilterAmount,
     currentPage,
     itemsPerPage,
     setCurrentPage,
@@ -49,6 +53,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
 }) => {
     const navigate = useNavigate();
     const [initialGrace, setInitialGrace] = useState(true);
+    const normalizedSearch = search.trim().toLowerCase();
 
     const renderTokenTotals = (
         totals: { credits?: number; usdcx?: number; usad?: number } | undefined,
@@ -96,7 +101,43 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
         }
     }, [invoices.length]);
 
-    const filteredInvoices = invoices.filter(inv => !search || inv.invoiceHash?.toLowerCase().includes(search.toLowerCase()));
+    const getEarningsTotal = (invoice: any) => {
+        const earnings = invoice.earnings || {};
+        return Number(earnings.credits || 0) + Number(earnings.usdcx || 0) + Number(earnings.usad || 0);
+    };
+
+    const filteredInvoices = invoices.filter((inv) => {
+        const merchantNotes = Array.isArray(inv.merchantNotes) ? inv.merchantNotes : [];
+        const searchableValues = [
+            inv.invoiceHash,
+            inv.salt,
+            inv.title,
+            inv.memo,
+            inv.latestMerchantNote,
+            ...merchantNotes
+        ]
+            .filter(Boolean)
+            .map((value) => String(value).toLowerCase());
+
+        const matchesSearch = !normalizedSearch || searchableValues.some((value) => value.includes(normalizedSearch));
+        if (!matchesSearch) {
+            return false;
+        }
+
+        if (valueFilterAmount === null) {
+            return true;
+        }
+
+        if (valueFilterType === 'earnings') {
+            return getEarningsTotal(inv) >= valueFilterAmount;
+        }
+
+        if (valueFilterType === 'amount') {
+            return Number(inv.amount || 0) >= valueFilterAmount;
+        }
+
+        return true;
+    });
 
     // Pagination Logic
     const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
@@ -118,7 +159,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Wallet</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Tx IDs</th>
-                        <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-left">Memo / Latest Note</th>
+                        <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-left">Title / Memo / Latest Note</th>
                         <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
                     </tr>
                 </thead>
@@ -146,7 +187,8 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                             if (inv.invoiceType === 1) paymentParams.append('type', 'multipay');
                             if (inv.invoiceType === 2) paymentParams.append('type', 'donation');
 
-                            // 1. Link WITH Memo (Default)
+                            // 1. Link WITH title and memo
+                            if (inv.title) paymentParams.append('title', inv.title);
                             if (inv.memo) paymentParams.append('memo', inv.memo);
                             const paymentLink = `${window.location.origin}/pay?${paymentParams.toString()}`;
 
@@ -233,6 +275,9 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                     </td>
                                     <td className="py-4 px-6 text-left">
                                         <div className="space-y-1 max-w-[220px]">
+                                            <span className="text-sm font-semibold text-white truncate block" title={inv.title}>
+                                                {inv.title || 'Untitled Invoice'}
+                                            </span>
                                             <span className="text-sm text-gray-400 truncate block" title={inv.memo}>
                                                 {inv.memo || '-'}
                                             </span>
@@ -267,6 +312,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                                         tokenType: inv.tokenType,
                                                         invoiceType: inv.invoiceType,
                                                         walletType: inv.walletType,
+                                                        title: inv.title,
                                                         status: inv.status,
                                                         memo: inv.memo,
                                                         creationTx: inv.creationTx,

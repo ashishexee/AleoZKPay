@@ -2,7 +2,7 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v26.aleo {
+program zk_pay_proofs_privacy_v27.aleo {
     
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     constructor() {
@@ -44,6 +44,7 @@ program zk_pay_proofs_privacy_v26.aleo {
         token_type: u8,       // 0 = Credits, 1 = USDCx, 2 = USAD
         invoice_type: u8,     // 0 = Standard, 1 = Multi Pay
         salt: field,          // For checking against hash
+        title: field,         // Encoded Title (max ~31 chars)
         memo: field,          // Encoded Memo (max ~31 chars)
         wallet_type: u8,      // 0 = Main Wallet, 1 = Burner Wallet
     }
@@ -55,6 +56,7 @@ program zk_pay_proofs_privacy_v26.aleo {
         private merchant: address,
         private amount: u64,
         private salt: field,
+        private title: field,
         private memo: field,
         public expiry_hours: u32,
         public invoice_type: u8,
@@ -76,6 +78,7 @@ program zk_pay_proofs_privacy_v26.aleo {
             token_type: 0u8,
             invoice_type: invoice_type,
             salt: salt,
+            title: title,
             memo: memo,
             wallet_type: wallet_type
         };
@@ -107,6 +110,7 @@ program zk_pay_proofs_privacy_v26.aleo {
         private merchant: address,
         private amount: u128,
         private salt: field,
+        private title: field,
         private memo: field,
         public expiry_hours: u32,
         public invoice_type: u8,
@@ -137,6 +141,7 @@ program zk_pay_proofs_privacy_v26.aleo {
             token_type: 1u8,
             invoice_type: invoice_type,
             salt: salt,
+            title: title,
             memo: memo,
             wallet_type: wallet_type
         };
@@ -168,6 +173,7 @@ program zk_pay_proofs_privacy_v26.aleo {
         private merchant: address,
         private amount: u128,
         private salt: field,
+        private title: field,
         private memo: field,
         public expiry_hours: u32,
         public invoice_type: u8,
@@ -191,6 +197,7 @@ program zk_pay_proofs_privacy_v26.aleo {
             token_type: 2u8,
             invoice_type: invoice_type,
             salt: salt,
+            title: title,
             memo: memo,
             wallet_type: wallet_type
         };
@@ -222,6 +229,7 @@ program zk_pay_proofs_privacy_v26.aleo {
         private merchant: address,
         private amount: u128,
         private salt: field,
+        private title: field,
         private memo: field,
         public expiry_hours: u32,
         public invoice_type: u8,
@@ -245,6 +253,7 @@ program zk_pay_proofs_privacy_v26.aleo {
             token_type: 3u8,
             invoice_type: invoice_type,
             salt: salt,
+            title: title,
             memo: memo,
             wallet_type: wallet_type
         };

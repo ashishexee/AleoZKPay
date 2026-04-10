@@ -6,7 +6,29 @@ function getProvableCredentials() {
 
 let cachedProgramSource = null;
 const cachedImportSources = new Map();
-const CORE_PROGRAM_NAME = 'zk_pay_proofs_privacy_v26.aleo';
+const CORE_PROGRAM_NAME = 'zk_pay_proofs_privacy_v27.aleo';
+const LEO_SINGLE_FIELD_MAX_BYTES = 31;
+
+function encodeSingleField(value, label) {
+    if (!value) {
+        return '0field';
+    }
+
+    const normalized = String(value).trim();
+    if (!normalized) {
+        return '0field';
+    }
+
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(normalized);
+    if (bytes.length > LEO_SINGLE_FIELD_MAX_BYTES) {
+        throw new Error(`${label} exceeds the Leo single-field limit of ${LEO_SINGLE_FIELD_MAX_BYTES} bytes.`);
+    }
+
+    let hex = '0x';
+    for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
+    return `${BigInt(hex).toString()}field`;
+}
 
 async function getProgramSource(programName = CORE_PROGRAM_NAME) {
     if (programName === CORE_PROGRAM_NAME && cachedProgramSource) return cachedProgramSource;
@@ -56,7 +78,7 @@ async function getProgramImports(programName, programSource) {
     return imports;
 }
 
-async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, salt, memo, invoice_type }) {
+async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, salt, title, memo, invoice_type }) {
     const uppercaseCurrency = (currency || 'CREDITS').toUpperCase();
     const isDonation = invoice_type === 2;
     const amountVal = amount ? Number(amount) : 0;
@@ -80,17 +102,11 @@ async function submitRelayedInvoiceCreation({ merchantPubKey, amount, currency, 
         throw new Error('Merchant public key missing');
     }
 
-    let memoField = '0field';
-    if (memo) {
-        const encoder = new TextEncoder();
-        const bytes = encoder.encode(memo);
-        let hex = '0x';
-        for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
-        memoField = `${BigInt(hex).toString()}field`;
-    }
+    const titleField = encodeSingleField(title, 'Invoice title');
+    const memoField = encodeSingleField(memo, 'Invoice memo');
 
     const typeStr = `${invoice_type !== undefined ? invoice_type : 0}u8`;
-    const inputs = [merchantPubKey, amountStr, salt, memoField, '0u32', typeStr, '0u8'];
+    const inputs = [merchantPubKey, amountStr, salt, titleField, memoField, '0u32', typeStr, '0u8'];
 
     const relayerPrivateKeyStr = process.env.RELAYER_PRIVATE_KEY;
     if (!relayerPrivateKeyStr) throw new Error('RELAYER_PRIVATE_KEY missing');

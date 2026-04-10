@@ -10,6 +10,7 @@ import { useBurnerWallet } from '../../../shared/hooks/BurnerWalletProvider';
 export const CreateInvoice: React.FC = () => {
     const {
         amount, setAmount,
+        invoiceTitle, setInvoiceTitle,
         memo, setMemo,
         status, loading,
         invoiceData,
@@ -86,6 +87,8 @@ export const CreateInvoice: React.FC = () => {
                             <InvoiceForm
                                 amount={amount}
                                 setAmount={setAmount}
+                                invoiceTitle={invoiceTitle}
+                                setInvoiceTitle={setInvoiceTitle}
                                 memo={memo}
                                 setMemo={setMemo}
                                 handleCreate={handleCreate}
@@ -112,6 +115,7 @@ export const CreateInvoice: React.FC = () => {
                             <InvoiceCard
                                 invoiceData={invoiceData}
                                 resetInvoice={resetInvoice}
+                                invoiceTitle={invoiceTitle}
                                 memo={memo}
                             />
                         )}

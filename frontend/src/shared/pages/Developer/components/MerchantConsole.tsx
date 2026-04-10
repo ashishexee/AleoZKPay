@@ -3,6 +3,7 @@ import { CheckCircle, Key, Lock } from 'lucide-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Button } from '../../../components/ui/Button';
+import { CopyButton } from '../../../components/ui/CopyButton';
 import { SdkDashboard } from './SdkDashboard';
 
 
@@ -61,9 +62,10 @@ export const MerchantConsole: React.FC<MerchantConsoleProps> = ({
                                 <p className="text-gray-300 text-xs leading-relaxed mb-4">
                                     Save this key in your backend environment now. It will not be shown again on the dashboard.
                                 </p>
-                                <div className="bg-black/60 rounded-xl p-4 border border-white/10 relative overflow-hidden">
+                                <div className="bg-black/60 rounded-xl p-4 border border-white/10 relative overflow-hidden flex items-center justify-between gap-3">
                                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-300 to-white" />
-                                    <code className="text-cyan-300 text-xs font-mono break-all pl-2">{secretKey}</code>
+                                    <code className="text-cyan-300 text-xs font-mono break-all pl-2">************************************************</code>
+                                    <CopyButton text={secretKey} className="text-cyan-300 hover:text-white" />
                                 </div>
                             </div>
 

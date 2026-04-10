@@ -17,6 +17,7 @@ export interface NullPayInvoice {
     type: 'multipay' | 'donation';
     amount: number | null;
     currency: string;
+    title?: string;
     label?: string;
     hash: string;
     salt: string;
@@ -46,6 +47,7 @@ export interface CreateCheckoutSessionParams {
     amount?: number;
     currency?: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
     type?: 'standard' | 'donation' | 'multipay';
+    title?: string;
     success_url?: string;
     cancel_url?: string;
     invoice_hash?: string;
@@ -157,6 +159,7 @@ export class NullPay {
                         type: resolvedParams.type || inv.type,
                         amount: resolvedParams.amount !== undefined ? resolvedParams.amount : (inv.amount ?? undefined),
                         currency: resolvedParams.currency || (inv.currency as CreateCheckoutSessionParams['currency']),
+                        title: resolvedParams.title || inv.title,
                     };
 
                     // Clean up shorthand keys — don't send them to backend
@@ -196,6 +199,7 @@ export class NullPay {
                             amount: isDonation ? 0 : resolvedParams.amount,
                             currency: resolvedParams.currency || 'CREDITS',
                             salt: finalSalt,
+                            title: resolvedParams.title || '',
                             invoice_type: invoiceTypeNum
                         })
                     });
@@ -216,7 +220,7 @@ export class NullPay {
                     while (!hashStr && retries < MAX_RETRIES) {
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         try {
-                            const mapRes = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v26.aleo/mapping/salt_to_invoice/${finalSalt}`);
+                            const mapRes = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v27.aleo/mapping/salt_to_invoice/${finalSalt}`);
                             if (mapRes.ok) {
                                 const textVal = await mapRes.json();
                                 if (textVal) hashStr = textVal.toString().replace(/(['"'])/g, '');

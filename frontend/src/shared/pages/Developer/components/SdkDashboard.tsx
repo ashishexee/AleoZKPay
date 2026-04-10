@@ -643,6 +643,8 @@ export const SdkDashboard: React.FC = () => {
                             invoices={combinedInvoices}
                             loading={loadingCreated || loadingTransactions}
                             search={invoiceSearch}
+                            valueFilterType="none"
+                            valueFilterAmount={null}
                             currentPage={currentPage}
                             itemsPerPage={itemsPerPage}
                             setCurrentPage={setCurrentPage}

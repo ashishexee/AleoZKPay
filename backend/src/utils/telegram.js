@@ -84,6 +84,7 @@ function buildDirectInvoiceUrl({
     merchant,
     amount,
     salt,
+    title,
     memo,
     invoiceType,
     currency,
@@ -96,6 +97,9 @@ function buildDirectInvoiceUrl({
     url.searchParams.set('salt', salt);
     url.searchParams.set('hash', invoiceHash);
 
+    if (title) {
+        url.searchParams.set('title', title);
+    }
     if (memo) {
         url.searchParams.set('memo', memo);
     }

@@ -1,10 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-
-
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-
 const aiRoutes = require('./src/routes/ai.routes');
 const checkoutRoutes = require('./src/routes/checkout.routes');
 const invoicesRoutes = require('./src/routes/invoices.routes');

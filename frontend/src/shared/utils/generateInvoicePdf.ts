@@ -16,6 +16,7 @@ interface InvoicePdfData {
     invoiceType: number;
     walletType: number;
     status: string;
+    title?: string;
     memo?: string;
     creationTx?: string;
     paymentTxIds?: string[];
@@ -107,8 +108,9 @@ export async function generateInvoicePdf(invoice: InvoicePdfData): Promise<void>
     y += 46;
 
     // ─── Invoice Details Card ───
+    const hasTitleAndMemo = Boolean(invoice.title && invoice.memo);
     doc.setFillColor(...CARD_BG);
-    doc.roundedRect(margin, y, contentWidth, 52, 4, 4, 'F');
+    doc.roundedRect(margin, y, contentWidth, hasTitleAndMemo ? 66 : 52, 4, 4, 'F');
 
     const detailsLeft = margin + 8;
     const detailsRight = pageWidth / 2 + 8;
@@ -138,11 +140,24 @@ export async function generateInvoicePdf(invoice: InvoicePdfData): Promise<void>
 
     // Row 3
     drawDetail(detailsLeft, labelY + lineH * 2, 'Wallet', WALLET_LABELS[invoice.walletType] || 'Main');
-    if (invoice.memo) {
+    if (invoice.title) {
+        drawDetail(detailsRight, labelY + lineH * 2, 'Title', invoice.title.length > 30 ? invoice.title.slice(0, 30) + '...' : invoice.title);
+    } else if (invoice.memo) {
         drawDetail(detailsRight, labelY + lineH * 2, 'Memo', invoice.memo.length > 30 ? invoice.memo.slice(0, 30) + '...' : invoice.memo);
     }
 
-    y += 60;
+    if (invoice.title && invoice.memo) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(...TEXT_GRAY);
+        doc.text('MEMO', detailsLeft, labelY + lineH * 3);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(...TEXT_WHITE);
+        doc.text(invoice.memo.length > 55 ? invoice.memo.slice(0, 55) + '...' : invoice.memo, detailsLeft, labelY + lineH * 3 + 5.5);
+    }
+
+    y += hasTitleAndMemo ? 74 : 60;
 
     // ─── Line Items Table (Standard invoices only) ───
     if (invoice.items && invoice.items.length > 0) {

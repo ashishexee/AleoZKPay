@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateInvoicePdf } from '../../utils/generateInvoicePdf';
-import { PROGRAM_ID, parseMerchantReceipt, MerchantReceipt } from '../../utils/aleo-utils';
+import { PROGRAM_ID, parseInvoice, parseMerchantReceipt, MerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
 import { VerifyModal } from '../Profile/components/modals/VerifyModal';
 import { hashAddress } from '../../utils/crypto';
 import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
@@ -18,6 +18,7 @@ interface InvoiceData {
     is_burner?: boolean;
     payer_address?: string;
     amount?: number;
+    title?: string;
     memo?: string;
     status?: 'PENDING' | 'SETTLED';
     invoice_transaction_id?: string;
@@ -193,7 +194,7 @@ const InvoiceDetailsPage: React.FC = () => {
     const navigate = useNavigate();
     const { address, requestRecords, decrypt } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
-    const { decryptedBurnerAddress } = useBurnerWallet();
+    const { decryptedBurnerAddress, decryptedBurnerKey } = useBurnerWallet();
     const [invoice, setInvoice]         = useState<InvoiceData | null>(null);
     const [loading, setLoading]         = useState(true);
     const [error, setError]             = useState<string | null>(null);
@@ -251,6 +252,68 @@ const InvoiceDetailsPage: React.FC = () => {
         };
         load();
     }, [hash, address, decryptedBurnerAddress]);
+
+    useEffect(() => {
+        const enrichInvoiceFromRecords = async () => {
+            if (!invoice || authStatus !== 'authorized') return;
+
+            try {
+                let matchedRecord = null;
+
+                if (invoice.is_burner && invoice.invoice_transaction_id && decryptedBurnerKey) {
+                    const burnerRecords = await fetchBurnerRecordsFromTx(invoice.invoice_transaction_id, decryptedBurnerKey);
+                    matchedRecord = burnerRecords
+                        .map((record) => parseInvoice(record))
+                        .find((record) => record?.invoiceHash === invoice.invoice_hash) || null;
+                }
+
+                if (!matchedRecord && requestRecords) {
+                    const records = await requestRecords(PROGRAM_ID, true);
+                    if (records) {
+                        for (const record of records as any[]) {
+                            let plaintext = record.plaintext;
+                            const cipher = record.recordCiphertext || record.ciphertext;
+                            if (!plaintext && cipher && decrypt) {
+                                try {
+                                    plaintext = await decrypt(cipher);
+                                } catch {
+                                    continue;
+                                }
+                            }
+
+                            const parsed = parseInvoice({ ...record, plaintext });
+                            if (parsed?.invoiceHash === invoice.invoice_hash) {
+                                matchedRecord = parsed;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (matchedRecord) {
+                    setInvoice((current) => {
+                        if (!current) return current;
+                        const nextTitle = matchedRecord.title || current.title;
+                        const nextMemo = matchedRecord.memo || current.memo;
+                        const nextSalt = matchedRecord.salt || current.salt;
+                        if (nextTitle === current.title && nextMemo === current.memo && nextSalt === current.salt) {
+                            return current;
+                        }
+                        return {
+                            ...current,
+                            title: nextTitle,
+                            memo: nextMemo,
+                            salt: nextSalt
+                        };
+                    });
+                }
+            } catch (e) {
+                console.warn('Failed to enrich invoice details from records:', e);
+            }
+        };
+
+        enrichInvoiceFromRecords();
+    }, [authStatus, invoice, requestRecords, decrypt, decryptedBurnerKey]);
 
     // Auto-scan receipts for all invoices as soon as everything is ready
     useEffect(() => {
@@ -328,6 +391,7 @@ const InvoiceDetailsPage: React.FC = () => {
                 invoiceHash: invoice.invoice_hash, amount: invoice.amount ?? 0,
                 tokenType: invoice.token_type ?? 0, invoiceType: invoice.invoice_type ?? 0,
                 walletType: invoice.is_burner ? 1 : 0, status: invoice.status ?? 'PENDING',
+                title: invoice.title,
                 memo: invoice.memo, creationTx: invoice.invoice_transaction_id,
                 paymentTxIds, items: invoice.invoice_items,
             });
@@ -583,6 +647,19 @@ const InvoiceDetailsPage: React.FC = () => {
                                     <CopyBtn text={invoice.invoice_hash} small />
                                 </div>
                             </div>
+
+                            {invoice.title && (
+                                <div className="mt-5 flex items-start gap-2.5 px-4 py-3.5 rounded-2xl border"
+                                    style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.12)' }}>
+                                    <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h10M7 12h10M7 17h6" />
+                                    </svg>
+                                    <div>
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.12em] mb-1.5" style={{ color: 'rgba(255,255,255,0.4)' }}>Invoice Title</p>
+                                        <span className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.9)' }}>{invoice.title}</span>
+                                    </div>
+                                </div>
+                            )}
 
                             {invoice.memo && (
                                 <div className="mt-5 flex items-start gap-2.5 px-4 py-3.5 rounded-2xl border"

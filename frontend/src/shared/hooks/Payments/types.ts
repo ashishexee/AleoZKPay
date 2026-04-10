@@ -5,6 +5,7 @@ export interface InvoiceState {
     amount: number;
     salt: string;
     hash: string;
+    title: string;
     memo: string;
     tokenType: number;
     invoiceType: number;

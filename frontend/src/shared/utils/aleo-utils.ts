@@ -1,6 +1,6 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
 import { FIXED_FEE_MICROCREDITS, getFeePreferenceMode } from './feePreference';
-export const CORE_PROGRAM_ID = "zk_pay_proofs_privacy_v26.aleo";
+export const CORE_PROGRAM_ID = "zk_pay_proofs_privacy_v27.aleo";
 export const WALLET_PROGRAM_ID = "zk_pay_proofs_privacy_wallet_v3.aleo";
 export const PROGRAM_ID = CORE_PROGRAM_ID;
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";
@@ -503,6 +503,7 @@ export interface InvoiceRecord {
     tokenType: number;
     invoiceType: number;
     salt: string;
+    title: string;
     memo: string;
     walletType?: number;
 }
@@ -525,6 +526,7 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
         const invoiceHash = getVal('invoice_hash') || getVal('invoiceHash');
         const owner = getVal('owner');
         const salt = getVal('salt');
+        const titleField = getVal('title');
         const memoField = getVal('memo');
 
         if (invoiceHash && owner) {
@@ -549,6 +551,7 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
                 tokenType: tokenType,
                 invoiceType: invoiceType,
                 salt: salt || '',
+                title: titleField ? fieldToString(titleField) : '',
                 memo: memoField ? fieldToString(memoField) : '',
                 walletType: walletType
             };

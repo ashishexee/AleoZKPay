@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Search, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { DocsChatbot } from '../../../shared/components/DocsChatbot';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
@@ -49,14 +50,6 @@ const SectionContent = ({ section, activeTab }: { section: DocsSection; activeTa
                     >
                         {copied ? 'Copied' : 'Copy link'}
                     </button>
-                    <a
-                        href="https://github.com/geekofdhruv/NullPay/tree/main/docs"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm text-gray-400 hover:text-white"
-                    >
-                        Open docs folder on GitHub
-                    </a>
                 </div>
             </div>
 
@@ -205,7 +198,6 @@ const Docs = () => {
                 className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-20 pt-10"
             >
                 <motion.div variants={fadeInUp} className="mb-8 border-b border-white/10 pb-8 text-center">
-                    <p className="mb-3 text-[11px] font-black uppercase tracking-[0.28em] text-orange-300">NullPay Docs</p>
                     <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
                         Technical <span className="bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 bg-clip-text text-transparent">Documentation</span>
                     </h1>
@@ -239,13 +231,16 @@ const Docs = () => {
                         })}
 
                         <div className="ml-4 flex flex-1 min-w-[220px] max-w-md items-center">
-                            <div className="relative w-full">
+                            <div className="relative w-full group">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-orange-400/80 transition-all duration-300 pointer-events-none">
+                                    <Search className="h-4 w-4" strokeWidth={2.5} />
+                                </div>
                                 <input
                                     ref={inputRef}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search docs and sections..."
-                                    className="w-full rounded-md bg-white/6 px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                    className="w-full rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.08] pl-10 pr-10 py-[9px] text-sm text-white placeholder-gray-500 transition-all duration-300 focus:outline-none focus:border-orange-400/40 focus:ring-4 focus:ring-orange-400/10 hover:bg-white/[0.06] hover:border-white/20"
                                 />
                                 {searchQuery && (
                                     <button
@@ -253,10 +248,10 @@ const Docs = () => {
                                             setSearchQuery('');
                                             inputRef.current?.focus();
                                         }}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs text-gray-300 hover:text-white"
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center"
                                         aria-label="Clear search"
                                     >
-                                        Clear
+                                        <X className="h-3.5 w-3.5" />
                                     </button>
                                 )}
                             </div>
