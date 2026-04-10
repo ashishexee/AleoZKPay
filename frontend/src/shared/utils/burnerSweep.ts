@@ -1,5 +1,5 @@
 import { AleoKeyProvider, AleoNetworkClient, NetworkRecordProvider, ProgramManager } from '@provablehq/sdk';
-import { getScannerSession, findSpendableRecord } from '../pages/Profile/components/BurnerWallet/scanner';
+import { getScannerSession, listSpendableRecords } from '../pages/Profile/components/BurnerWallet/scanner';
 
 export type BurnerSweepCurrency = 'ALEO' | 'USDCx' | 'USAD';
 
@@ -10,6 +10,12 @@ interface SweepBurnerFundsParams {
     destination: string;
     onStatus?: (status: string) => void;
     onLog?: (message: string) => void;
+}
+
+interface SweepBurnerFundsResult {
+    txIds: string[];
+    amount: number;
+    currency: BurnerSweepCurrency;
 }
 
 const emit = (message: string, onStatus?: (status: string) => void, onLog?: (message: string) => void) => {
@@ -24,7 +30,7 @@ export const sweepBurnerFundsToDestination = async ({
     destination,
     onStatus,
     onLog
-}: SweepBurnerFundsParams): Promise<string> => {
+}: SweepBurnerFundsParams): Promise<SweepBurnerFundsResult> => {
     if (!decryptedBurnerKey) {
         throw new Error('Burner wallet must be unlocked to sweep funds.');
     }
@@ -53,22 +59,15 @@ export const sweepBurnerFundsToDestination = async ({
     const microsRequired = Math.round(amount * 1_000_000);
     let programName: string;
     const functionName = 'transfer_private';
-    let amountFormatted: string;
-    let inputs: string[];
+    let proofsInput = '';
+    let spendableRecords: Array<{ plaintext: string; microcredits: number }> = [];
 
     if (currency === 'ALEO') {
         programName = 'credits.aleo';
-        amountFormatted = `${microsRequired}u64`;
-        emit(`Scanning burner wallet for a private ${currency} record...`, onStatus, onLog);
-        const recordPlaintext = await findSpendableRecord(session, programName, 'credits', microsRequired, true);
-        if (!recordPlaintext) {
-            throw new Error(`No private ${currency} record large enough for ${amount.toFixed(2)} ${currency} was found in burner wallet.`);
-        }
-        emit(`Found private ${currency} record.`, onStatus, onLog);
-        inputs = [recordPlaintext, destination, amountFormatted];
+        emit(`Scanning burner wallet for private ${currency} records...`, onStatus, onLog);
+        spendableRecords = await listSpendableRecords(session, programName, 'credits', true);
     } else {
         programName = currency === 'USDCx' ? 'test_usdcx_stablecoin.aleo' : 'test_usad_stablecoin.aleo';
-        amountFormatted = `${microsRequired}u128`;
 
         emit(`Generating compliance proofs for ${currency} sweep...`, onStatus, onLog);
         const { generateFreezeListProof, getFreezeListIndex } = await import('./aleo-utils');
@@ -83,42 +82,76 @@ export const sweepBurnerFundsToDestination = async ({
             }
         }
         const proof = await generateFreezeListProof(1, index0FieldStr);
-        const proofsInput = `[${proof}, ${proof}]`;
+        proofsInput = `[${proof}, ${proof}]`;
         emit('Compliance proofs ready.', onStatus, onLog);
 
-        emit(`Scanning burner wallet for a private ${currency} record...`, onStatus, onLog);
-        const recordPlaintext = await findSpendableRecord(session, programName, 'Token', microsRequired, false);
-        if (!recordPlaintext) {
-            throw new Error(`No private ${currency} record large enough for ${amount.toFixed(2)} ${currency} was found in burner wallet.`);
+        emit(`Scanning burner wallet for private ${currency} records...`, onStatus, onLog);
+        spendableRecords = await listSpendableRecords(session, programName, 'Token', false);
+    }
+
+    const totalSpendable = spendableRecords.reduce((sum, record) => sum + record.microcredits, 0);
+    if (totalSpendable < microsRequired) {
+        throw new Error(`Insufficient private ${currency} balance to sweep ${amount.toFixed(2)} ${currency}.`);
+    }
+
+    let remainingMicros = microsRequired;
+    const selectedRecords: Array<{ plaintext: string; microcredits: number }> = [];
+
+    for (const record of spendableRecords) {
+        if (remainingMicros <= 0) break;
+        selectedRecords.push(record);
+        remainingMicros -= Math.min(record.microcredits, remainingMicros);
+    }
+
+    if (remainingMicros > 0) {
+        throw new Error(`Insufficient private ${currency} balance to sweep ${amount.toFixed(2)} ${currency}.`);
+    }
+
+    emit(`Preparing ${selectedRecords.length} transfer${selectedRecords.length === 1 ? '' : 's'} for ${amount.toFixed(2)} ${currency}...`, onStatus, onLog);
+
+    const txIds: string[] = [];
+    let microsLeftToSweep = microsRequired;
+
+    for (let index = 0; index < selectedRecords.length; index += 1) {
+        const record = selectedRecords[index];
+        const sweepMicros = Math.min(record.microcredits, microsLeftToSweep);
+        const amountFormatted = currency === 'ALEO' ? `${sweepMicros}u64` : `${sweepMicros}u128`;
+        const inputs = currency === 'ALEO'
+            ? [record.plaintext, destination, amountFormatted]
+            : [destination, amountFormatted, record.plaintext, proofsInput];
+
+        emit(
+            `Building authorization for transfer ${index + 1}/${selectedRecords.length} (${(sweepMicros / 1_000_000).toFixed(2)} ${currency})...`,
+            onStatus,
+            onLog
+        );
+        const authorization = await programManager.buildAuthorization({ programName, functionName, inputs });
+
+        emit(`Submitting transfer ${index + 1}/${selectedRecords.length} through NullPay relayer...`, onStatus, onLog);
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+        const sponsorResponse = await fetch(`${apiUrl}/dps/sponsor-sweep`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                execution_authorization_string: authorization.toString(),
+                programName
+            })
+        });
+
+        const payload = await sponsorResponse.json().catch(() => null);
+        if (!sponsorResponse.ok) {
+            throw new Error(payload?.error || payload?.message || `Failed to sponsor ${currency} sweep.`);
         }
-        emit(`Found private ${currency} record.`, onStatus, onLog);
-        inputs = [destination, amountFormatted, recordPlaintext, proofsInput];
+
+        const txId = payload?.transaction?.id || payload?.transactionId || '';
+        if (!txId) {
+            throw new Error(`${currency} sweep did not return a transaction id.`);
+        }
+
+        txIds.push(txId);
+        microsLeftToSweep -= sweepMicros;
     }
 
-    emit(`Building authorization for ${currency} sweep...`, onStatus, onLog);
-    const authorization = await programManager.buildAuthorization({ programName, functionName, inputs });
-
-    emit(`Submitting ${currency} sweep through NullPay relayer...`, onStatus, onLog);
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
-    const sponsorResponse = await fetch(`${apiUrl}/dps/sponsor-sweep`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            execution_authorization_string: authorization.toString(),
-            programName
-        })
-    });
-
-    const payload = await sponsorResponse.json().catch(() => null);
-    if (!sponsorResponse.ok) {
-        throw new Error(payload?.error || payload?.message || `Failed to sponsor ${currency} sweep.`);
-    }
-
-    const txId = payload?.transaction?.id || payload?.transactionId || '';
-    if (!txId) {
-        throw new Error(`${currency} sweep did not return a transaction id.`);
-    }
-
-    emit(`${currency} sweep submitted successfully. TxID: ${txId}`, onStatus, onLog);
-    return txId;
+    emit(`${currency} sweep submitted successfully across ${txIds.length} transaction${txIds.length === 1 ? '' : 's'}.`, onStatus, onLog);
+    return { txIds, amount, currency };
 };

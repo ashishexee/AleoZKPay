@@ -269,7 +269,7 @@ export function useBurnerActions() {
             setSweepTxId(null);
             setSweepLogs([]);
 
-            const txId = await sweepBurnerFundsToDestination({
+            const sweepResult = await sweepBurnerFundsToDestination({
                 decryptedBurnerKey,
                 amount: Number(sweepAmount),
                 currency: sweepCurrency,
@@ -277,8 +277,12 @@ export function useBurnerActions() {
                 onLog: addLog
             });
 
-            setSweepTxId(txId);
-            setSweepSuccess('Sweep broadcasted successfully!');
+            setSweepTxId(sweepResult.txIds[0] || null);
+            setSweepSuccess(
+                sweepResult.txIds.length > 1
+                    ? `Sweep broadcasted successfully across ${sweepResult.txIds.length} transactions!`
+                    : 'Sweep broadcasted successfully!'
+            );
             setSweepAmount('');
         } catch (err: any) {
             console.error('DPS Sweep Failed:', err);

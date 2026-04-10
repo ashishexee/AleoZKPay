@@ -7,6 +7,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { QRCodeSVG } from 'qrcode.react';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
 import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
@@ -15,6 +16,7 @@ import { chatWithNullBot } from '../../../services/api';
 import { createInvoiceViaWallet } from '../../../utils/invoiceCreation';
 import { sweepBurnerFundsToDestination, type BurnerSweepCurrency } from '../../../utils/burnerSweep';
 import { fetchAllPrivateBalances } from './BurnerWallet/scanner';
+import type { InvoiceData } from '../../../types/invoice';
 
 type DashboardInvoice = {
     invoiceHash: string;
@@ -47,11 +49,13 @@ type ChatMessage = {
     id: number;
     role: 'assistant' | 'user';
     content: string;
+    invoiceData?: InvoiceData;
 };
 
 type PendingAction =
     | {
         type: 'sweep_burner_to_main';
+        balances: Record<BurnerSweepCurrency, number>;
     }
     | null;
 
@@ -123,6 +127,109 @@ const walletLabel = (walletType: number) => (walletType === 1 ? 'Burner' : 'Main
 const truncateAddress = (value: string | null | undefined) => (
     value ? `${value.slice(0, 10)}...${value.slice(-6)}` : 'Not connected'
 );
+
+const isBurnerSweepRequest = (message: string) => {
+    const normalized = message.toLowerCase();
+    return normalized.includes('burner') && (
+        normalized.includes('sweep') ||
+        normalized.includes('transfer') ||
+        normalized.includes('move')
+    );
+};
+
+const formatPublicMappingBalance = (data: unknown, suffix: string) => {
+    const normalize = (raw: unknown) => {
+        const numeric = Number(String(raw ?? '').replace(suffix, '').replace(/"/g, '').replace(/_/g, ''));
+        return Number.isFinite(numeric) ? (numeric / 1_000_000).toFixed(2) : '0.00';
+    };
+
+    if (typeof data === 'string' || typeof data === 'number') {
+        return normalize(data);
+    }
+
+    if (data && typeof data === 'object') {
+        const record = data as Record<string, unknown>;
+        if ('microcredits' in record) return normalize(record.microcredits);
+        if ('amount' in record) return normalize(record.amount);
+        if ('balance' in record) return normalize(record.balance);
+        if ('value' in record) return normalize(record.value);
+    }
+
+    return '0.00';
+};
+
+const isBurnerBalanceQuestion = (message: string) => {
+    const normalized = message.toLowerCase();
+    return !isBurnerSweepRequest(message) && normalized.includes('burner') && (
+        normalized.includes('balance') ||
+        normalized.includes('funds') ||
+        normalized.includes('how much') ||
+        normalized.includes('how many')
+    );
+};
+
+const MiniInvoiceCard: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => {
+    const [copiedLink, setCopiedLink] = useState(false);
+    const [copiedHash, setCopiedHash] = useState(false);
+
+    const copyLink = () => {
+        navigator.clipboard.writeText(invoiceData.link);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+    };
+
+    const copyHash = () => {
+        navigator.clipboard.writeText(invoiceData.hash);
+        setCopiedHash(true);
+        setTimeout(() => setCopiedHash(false), 2000);
+    };
+
+    return (
+        <div className="mt-3 rounded-2xl border border-white/10 bg-black/35 p-3 sm:p-4">
+            <div className="flex flex-col items-center gap-3">
+                <div className="rounded-2xl bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+                    <div className="relative">
+                        <QRCodeSVG value={invoiceData.link} size={164} level="H" includeMargin={false} />
+                        <div className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl bg-white p-1.5 shadow-[0_8px_22px_rgba(0,0,0,0.2)]">
+                            <img
+                                src="/assets/nullpay_logo.png"
+                                alt="NullPay"
+                                className="h-full w-full object-contain"
+                                style={{ filter: 'brightness(0)' }}
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div className="w-full space-y-2">
+                    <div className="rounded-xl bg-white/5 px-3 py-2">
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400">Payment Link</div>
+                        <div className="mt-1 truncate font-mono text-[11px] text-orange-200">{invoiceData.link}</div>
+                    </div>
+                    <div className="rounded-xl bg-white/5 px-3 py-2">
+                        <div className="text-[10px] uppercase tracking-wider text-gray-400">Invoice Hash</div>
+                        <div className="mt-1 truncate font-mono text-[11px] text-cyan-200">{invoiceData.hash}</div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={copyLink}
+                            className="flex-1 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-orange-100"
+                        >
+                            {copiedLink ? 'Link Copied' : 'Copy Link'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={copyHash}
+                            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                        >
+                            {copiedHash ? 'Hash Copied' : 'Copy Hash'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const parseSweepReply = (
     message: string,
@@ -223,9 +330,9 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
     const [actionStatus, setActionStatus] = useState('');
     const [pendingAction, setPendingAction] = useState<PendingAction>(null);
     const [burnerBalances, setBurnerBalances] = useState<BotBalanceView[]>([
-        { token: 'Credits', publicBalance: '0.00', privateBalance: '0.00', loading: true },
-        { token: 'USDCx', publicBalance: '0.00', privateBalance: '0.00', loading: true },
-        { token: 'USAD', publicBalance: '0.00', privateBalance: '0.00', loading: true },
+        { token: 'Credits', publicBalance: '0.00', privateBalance: '0.00', loading: false },
+        { token: 'USDCx', publicBalance: '0.00', privateBalance: '0.00', loading: false },
+        { token: 'USAD', publicBalance: '0.00', privateBalance: '0.00', loading: false },
     ]);
     const [messages, setMessages] = useState<ChatMessage[]>(() => {
         if (typeof window === 'undefined') {
@@ -261,9 +368,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
         );
     }, [messages]);
 
-    useEffect(() => {
-        let cancelled = false;
-
+    const loadBurnerBalanceContext = React.useCallback(async (): Promise<BotBalanceView[]> => {
         const initialBurnerBalances: BotBalanceView[] = [
             { token: 'Credits', publicBalance: '0.00', privateBalance: '0.00', loading: true },
             { token: 'USDCx', publicBalance: '0.00', privateBalance: '0.00', loading: true },
@@ -277,87 +382,76 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                     return '0.00';
                 }
                 const data = await response.json();
-                const value = String(data).replace(suffix, '').replace(/"/g, '');
-                return (Number(value) / 1_000_000).toFixed(2);
+                return formatPublicMappingBalance(data, suffix);
             } catch {
                 return '0.00';
             }
         };
 
-        const fetchBurnerBalanceContext = async () => {
-            if (!decryptedBurnerAddress) {
-                if (!cancelled) {
-                    setBurnerBalances(initialBurnerBalances.map((entry) => ({ ...entry, loading: false })));
-                }
-                return;
-            }
+        if (!decryptedBurnerAddress) {
+            const emptyBalances = initialBurnerBalances.map((entry) => ({ ...entry, loading: false }));
+            setBurnerBalances(emptyBalances);
+            return emptyBalances;
+        }
 
-            if (!cancelled) {
-                setBurnerBalances(initialBurnerBalances);
-            }
+        setBurnerBalances(initialBurnerBalances);
 
-            try {
-                const [creditsPublic, usdcxPublic, usadPublic] = await Promise.all([
-                    updatePublicBalance(decryptedBurnerAddress, 'credits.aleo', 'account', 'u64'),
-                    updatePublicBalance(decryptedBurnerAddress, 'test_usdcx_stablecoin.aleo', 'balances', 'u128'),
-                    updatePublicBalance(decryptedBurnerAddress, 'test_usad_stablecoin.aleo', 'balances', 'u128'),
-                ]);
+        try {
+            const [creditsPublic, usdcxPublic, usadPublic] = await Promise.all([
+                updatePublicBalance(decryptedBurnerAddress, 'credits.aleo', 'account', 'u64'),
+                updatePublicBalance(decryptedBurnerAddress, 'test_usdcx_stablecoin.aleo', 'balances', 'u128'),
+                updatePublicBalance(decryptedBurnerAddress, 'test_usad_stablecoin.aleo', 'balances', 'u128'),
+            ]);
 
-                let privateBalances = { ALEO: 0, USDCx: 0, USAD: 0 };
-                if (decryptedBurnerKey) {
-                    try {
-                        privateBalances = await fetchAllPrivateBalances(decryptedBurnerKey);
-                    } catch (error) {
-                        console.warn('Failed to fetch burner private balances for NullBot context:', error);
-                    }
-                }
-
-                if (!cancelled) {
-                    setBurnerBalances([
-                        {
-                            token: 'Credits',
-                            publicBalance: creditsPublic,
-                            privateBalance: privateBalances.ALEO.toFixed(2),
-                            loading: false,
-                        },
-                        {
-                            token: 'USDCx',
-                            publicBalance: usdcxPublic,
-                            privateBalance: privateBalances.USDCx.toFixed(2),
-                            loading: false,
-                        },
-                        {
-                            token: 'USAD',
-                            publicBalance: usadPublic,
-                            privateBalance: privateBalances.USAD.toFixed(2),
-                            loading: false,
-                        },
-                    ]);
-                }
-            } catch (error) {
-                console.error('Failed to build burner balance context for NullBot:', error);
-                if (!cancelled) {
-                    setBurnerBalances(initialBurnerBalances.map((entry) => ({ ...entry, loading: false })));
+            let privateBalances = { ALEO: 0, USDCx: 0, USAD: 0 };
+            if (decryptedBurnerKey) {
+                try {
+                    privateBalances = await fetchAllPrivateBalances(decryptedBurnerKey);
+                } catch (error) {
+                    console.warn('Failed to fetch burner private balances for NullBot context:', error);
                 }
             }
-        };
 
-        fetchBurnerBalanceContext();
-
-        return () => {
-            cancelled = true;
-        };
+            const nextBalances: BotBalanceView[] = [
+                {
+                    token: 'Credits',
+                    publicBalance: creditsPublic,
+                    privateBalance: privateBalances.ALEO.toFixed(2),
+                    loading: false,
+                },
+                {
+                    token: 'USDCx',
+                    publicBalance: usdcxPublic,
+                    privateBalance: privateBalances.USDCx.toFixed(2),
+                    loading: false,
+                },
+                {
+                    token: 'USAD',
+                    publicBalance: usadPublic,
+                    privateBalance: privateBalances.USAD.toFixed(2),
+                    loading: false,
+                },
+            ];
+            setBurnerBalances(nextBalances);
+            return nextBalances;
+        } catch (error) {
+            console.error('Failed to build burner balance context for NullBot:', error);
+            const emptyBalances = initialBurnerBalances.map((entry) => ({ ...entry, loading: false }));
+            setBurnerBalances(emptyBalances);
+            return emptyBalances;
+        }
     }, [decryptedBurnerAddress, decryptedBurnerKey]);
 
     const appendMessage = (message: ChatMessage) => {
         setMessages((current) => [...current, message].slice(-MAX_HISTORY_MESSAGES));
     };
 
-    const appendAssistantMessage = (content: string) => {
+    const appendAssistantMessage = (content: string, invoiceData?: InvoiceData) => {
         appendMessage({
             id: Date.now() + Math.floor(Math.random() * 1000),
             role: 'assistant',
             content,
+            invoiceData,
         });
     };
 
@@ -490,13 +584,21 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                 return;
             }
 
-            setPendingAction({ type: 'sweep_burner_to_main' });
+            setActionStatus('Scanning burner wallet records...');
+            const freshBurnerBalances = await loadBurnerBalanceContext();
+            const freshAvailableByCurrency: Record<BurnerSweepCurrency, number> = {
+                ALEO: Number(freshBurnerBalances.find((entry) => entry.token === 'Credits')?.privateBalance || '0'),
+                USDCx: Number(freshBurnerBalances.find((entry) => entry.token === 'USDCx')?.privateBalance || '0'),
+                USAD: Number(freshBurnerBalances.find((entry) => entry.token === 'USAD')?.privateBalance || '0'),
+            };
+
+            setPendingAction({ type: 'sweep_burner_to_main', balances: freshAvailableByCurrency });
             appendAssistantMessage([
                 'Your burner wallet private balances are:',
                 '',
-                `- Credits: ${availableBurnerBalances.ALEO.toFixed(2)}`,
-                `- USDCx: ${availableBurnerBalances.USDCx.toFixed(2)}`,
-                `- USAD: ${availableBurnerBalances.USAD.toFixed(2)}`,
+                `- Credits: ${freshAvailableByCurrency.ALEO.toFixed(2)}`,
+                `- USDCx: ${freshAvailableByCurrency.USDCx.toFixed(2)}`,
+                `- USAD: ${freshAvailableByCurrency.USAD.toFixed(2)}`,
                 '',
                 'Tell me how much you want to sweep and which token.',
                 'Examples: `1 credit`, `0.5 usdcx`, `all usad`.',
@@ -548,7 +650,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
             `Hash: \`${result.hash}\``,
             `Transaction: \`${result.txId}\``,
             `Payment link: ${result.invoiceData.link}`,
-        ].join('\n'));
+        ].join('\n'), result.invoiceData);
     };
 
     const sendMessage = async (message: string) => {
@@ -566,7 +668,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
 
         try {
             if (pendingAction?.type === 'sweep_burner_to_main') {
-                const parsed = parseSweepReply(trimmed, availableBurnerBalances);
+                const parsed = parseSweepReply(trimmed, pendingAction.balances);
 
                 if ('cancelled' in parsed) {
                     setPendingAction(null);
@@ -591,24 +693,48 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                     return;
                 }
 
-                if (parsed.amount > availableBurnerBalances[parsed.currency]) {
-                    appendAssistantMessage(`That exceeds your available private ${parsed.currency} burner balance of ${availableBurnerBalances[parsed.currency].toFixed(2)}.`);
+                if (parsed.amount > pendingAction.balances[parsed.currency]) {
+                    appendAssistantMessage(`That exceeds your available private ${parsed.currency} burner balance of ${pendingAction.balances[parsed.currency].toFixed(2)}.`);
                     return;
                 }
 
-                const txId = await sweepBurnerFundsToDestination({
-                    decryptedBurnerKey,
-                    amount: parsed.amount,
-                    currency: parsed.currency,
-                    destination: address,
-                    onStatus: setActionStatus
-                });
+                try {
+                    const sweepResult = await sweepBurnerFundsToDestination({
+                        decryptedBurnerKey,
+                        amount: parsed.amount,
+                        currency: parsed.currency,
+                        destination: address,
+                        onStatus: setActionStatus
+                    });
 
-                setPendingAction(null);
+                    setPendingAction(null);
+                    appendAssistantMessage([
+                        `Burner sweep submitted to your main wallet${sweepResult.txIds.length > 1 ? ` across ${sweepResult.txIds.length} transactions` : ''}.`,
+                        '',
+                        ...sweepResult.txIds.map((txId, index) =>
+                            `- Transfer ${index + 1}: \`${txId}\``
+                        )
+                    ].join('\n'));
+                } catch (sweepError) {
+                    const message = sweepError instanceof Error ? sweepError.message : 'Sweeping funds failed.';
+                    throw sweepError;
+                }
+                return;
+            }
+
+            if (isBurnerBalanceQuestion(trimmed)) {
+                if (!decryptedBurnerAddress) {
+                    appendAssistantMessage('Your burner wallet is not unlocked right now, so I cannot read its balances yet.');
+                    return;
+                }
+
+                setActionStatus('Scanning burner wallet records...');
+                const resolvedBalances = await loadBurnerBalanceContext();
+
                 appendAssistantMessage([
-                    'Burner sweep submitted to your main wallet.',
+                    'Your burner wallet balances are:',
                     '',
-                    `- ${parsed.amount.toFixed(2)} ${parsed.currency} -> \`${txId}\``
+                    ...resolvedBalances.map((entry) => `- ${entry.token}: public ${entry.publicBalance}, private ${entry.privateBalance}`)
                 ].join('\n'));
                 return;
             }
@@ -638,29 +764,39 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 18, scale: 0.96 }}
                         transition={{ duration: 0.22, ease: 'easeOut' }}
-                        className={isExpanded ? 'w-[min(96vw,56rem)] origin-bottom-right' : 'w-[min(92vw,26rem)] origin-bottom-right'}
+                        className={isExpanded ? 'w-[min(96vw,72rem)] origin-bottom-right' : 'w-[min(92vw,26rem)] origin-bottom-right'}
                     >
                         <GlassCard
                             variant="heavy"
                             hoverEffect={false}
-                            className="border border-orange-400/20 shadow-[0_25px_80px_rgba(0,0,0,0.45)]"
+                            className={`border border-orange-400/20 shadow-[0_25px_80px_rgba(0,0,0,0.45)] ${isExpanded ? 'bg-[#05060a]/95' : ''}`}
                         >
-                            <div className={`relative flex flex-col overflow-hidden ${isExpanded ? 'h-[min(85vh,48rem)]' : 'h-[min(35rem,calc(100vh-7rem))]'}`}>
-                                <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-br from-orange-400/18 via-cyan-400/10 to-transparent pointer-events-none" />
+                            <div className={`relative overflow-hidden ${isExpanded ? 'h-[min(86vh,52rem)]' : 'flex flex-col h-[min(35rem,calc(100vh-7rem))]'}`}>
+                                <div className={`absolute inset-x-0 top-0 pointer-events-none ${isExpanded ? 'h-40 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.16),transparent_34%),radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_30%)]' : 'h-28 bg-gradient-to-br from-orange-400/18 via-cyan-400/10 to-transparent'}`} />
 
                                 <div className="relative p-4 border-b border-white/8 flex items-start justify-between gap-4">
                                     <div className="flex items-start gap-3">
-                                        <div className="w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-300 text-black flex items-center justify-center shadow-[0_0_24px_rgba(251,146,60,0.35)]">
-                                            <Bot size={20} />
+                                        <div className={`${isExpanded ? 'w-12 h-12 rounded-[1.35rem]' : 'w-11 h-11 rounded-2xl'} shrink-0 bg-gradient-to-br from-orange-400 to-amber-300 text-black flex items-center justify-center shadow-[0_0_24px_rgba(251,146,60,0.35)]`}>
+                                            <Bot size={isExpanded ? 22 : 20} />
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-sm font-semibold text-white">NullBot</span>
                                                 <Sparkles size={14} className="text-orange-300" />
                                             </div>
-                                            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                                            <p className="text-xs text-gray-400 mt-1 leading-relaxed max-w-xl">
                                                 Browser-native NullPay tools with Shield popup signing.
                                             </p>
+                                            {isExpanded && (
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    <span className="rounded-full border border-orange-400/20 bg-orange-400/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-orange-200">
+                                                        Dashboard Copilot
+                                                    </span>
+                                                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-gray-300">
+                                                        {pendingAction?.type === 'sweep_burner_to_main' ? 'Sweep In Progress' : 'Ready'}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -685,6 +821,202 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                     </div>
                                 </div>
 
+                                {isExpanded ? (
+                                    <div className="relative grid h-[calc(100%-5.5rem)] grid-cols-1 md:grid-cols-[18rem_minmax(0,1fr)]">
+                                        <div className="border-b border-white/8 md:border-b-0 md:border-r border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-4 md:p-5 overflow-y-auto space-y-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full">
+                                            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                                                <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-gray-500">
+                                                    <Wallet size={12} className="text-orange-300" />
+                                                    Wallet Context
+                                                </div>
+                                                <div className="mt-3 space-y-3 text-sm">
+                                                    <div className="rounded-2xl border border-white/8 bg-black/30 px-3 py-3">
+                                                        <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Main</div>
+                                                        <div className="mt-1 text-white">{connected ? truncateAddress(address || mainWalletAddress) : 'Not connected'}</div>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-white/8 bg-black/30 px-3 py-3">
+                                                        <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Burner</div>
+                                                        <div className="mt-1 text-white">{decryptedBurnerAddress ? truncateAddress(decryptedBurnerAddress) : 'Locked or unavailable'}</div>
+                                                        <div className="mt-2 text-[11px] text-gray-400">
+                                                            {decryptedBurnerKey ? 'Scanner-ready for private actions' : 'Unlock burner for private sweeps'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                                                <div className="text-[11px] uppercase tracking-[0.24em] text-gray-500">Live Snapshot</div>
+                                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                                    <div className="rounded-2xl border border-white/8 bg-black/30 px-3 py-3">
+                                                        <div className="text-[10px] uppercase tracking-[0.18em] text-gray-500">Pending</div>
+                                                        <div className="mt-1 text-xl font-semibold text-white">{merchantStats.pending}</div>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-white/8 bg-black/30 px-3 py-3">
+                                                        <div className="text-[10px] uppercase tracking-[0.18em] text-gray-500">Settled</div>
+                                                        <div className="mt-1 text-xl font-semibold text-white">{merchantStats.settled}</div>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-white/8 bg-black/30 px-3 py-3">
+                                                        <div className="text-[10px] uppercase tracking-[0.18em] text-gray-500">Burner Credits</div>
+                                                        <div className="mt-1 text-lg font-semibold text-orange-200">{burnerBalances.find((entry) => entry.token === 'Credits')?.privateBalance || '0.00'}</div>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-white/8 bg-black/30 px-3 py-3">
+                                                        <div className="text-[10px] uppercase tracking-[0.18em] text-gray-500">Invoices</div>
+                                                        <div className="mt-1 text-lg font-semibold text-white">{merchantStats.invoices}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                                                <div className="text-[11px] uppercase tracking-[0.24em] text-gray-500">Tool Surface</div>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    {TOOL_PILLS.map((tool) => (
+                                                        <span
+                                                            key={tool}
+                                                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-gray-300"
+                                                        >
+                                                            {tool}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                                                <div className="text-[11px] uppercase tracking-[0.24em] text-gray-500">Prompt Starters</div>
+                                                <div className="mt-3 space-y-2">
+                                                    {QUICK_PROMPTS.map((prompt) => (
+                                                        <button
+                                                            key={prompt}
+                                                            type="button"
+                                                            onClick={() => void sendMessage(prompt)}
+                                                            className="w-full rounded-2xl border border-white/10 bg-black/25 px-3 py-3 text-left text-xs text-gray-300 transition hover:border-orange-400/25 hover:bg-white/5 hover:text-white"
+                                                        >
+                                                            {prompt}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="min-h-0 flex flex-col">
+                                            <div className="px-5 py-3 border-b border-white/6 bg-black/10">
+                                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                                    <div className="text-[11px] uppercase tracking-[0.24em] text-gray-500">Conversation</div>
+                                                    <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                                                        <span className="inline-flex h-2 w-2 rounded-full bg-orange-300 shadow-[0_0_14px_rgba(253,186,116,0.65)]" />
+                                                        {actionStatus || 'NullBot is ready for dashboard actions'}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex-1 min-h-0 px-5 pt-4">
+                                                <div className="h-full overflow-y-auto space-y-5 pr-2 pb-5 scroll-smooth [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+                                                    {messages.map((message) => (
+                                                        <div
+                                                            key={message.id}
+                                                            className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}
+                                                        >
+                                                            <div className="flex items-center gap-2 mb-1.5 px-1">
+                                                                <span className="text-[10px] font-semibold text-gray-400/80 uppercase tracking-wider">
+                                                                    {message.role === 'user' ? 'You' : 'NullBot'}
+                                                                </span>
+                                                            </div>
+
+                                                            <motion.div
+                                                                initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                transition={{ duration: 0.2 }}
+                                                                className={`max-w-[82%] rounded-[1.7rem] px-5 py-4 text-[14px] leading-relaxed whitespace-pre-wrap break-words shadow-sm ${
+                                                                    message.role === 'user'
+                                                                        ? 'bg-gradient-to-r from-orange-500 to-amber-400 text-black shadow-orange-500/20 rounded-br-md font-medium'
+                                                                        : 'bg-[#18181A] text-gray-200 border border-white/10 rounded-bl-md [&_h1]:text-white [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-white [&_p]:mb-1 [&_p]:last:mb-0 [&_strong]:text-white [&_ul]:list-inside [&_ul]:space-y-1 [&_a]:text-orange-400 [&_a]:underline [&_code]:bg-white/10 [&_code]:text-orange-200 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:text-[12px] [&_code]:font-mono [&_pre]:bg-black/50 [&_pre]:p-3 [&_pre]:rounded-xl [&_pre]:my-2 [&_pre]:overflow-x-auto'
+                                                                }`}
+                                                            >
+                                                                {message.role === 'user' ? (
+                                                                    message.content
+                                                                ) : (
+                                                                    <ReactMarkdown
+                                                                        remarkPlugins={[remarkGfm]}
+                                                                        components={{
+                                                                            code(props) {
+                                                                                const { children, className } = props;
+                                                                                return <TruncatedHashComponent className={className}>{children}</TruncatedHashComponent>;
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {message.content}
+                                                                    </ReactMarkdown>
+                                                                )}
+                                                                {message.role === 'assistant' && message.invoiceData && (
+                                                                    <MiniInvoiceCard invoiceData={message.invoiceData} />
+                                                                )}
+                                                            </motion.div>
+                                                        </div>
+                                                    ))}
+
+                                                    {isThinking && (
+                                                        <div className="flex flex-col items-start pt-1">
+                                                            <div className="flex items-center gap-2 mb-1.5 px-1">
+                                                                <span className="text-[10px] font-semibold text-gray-400/80 uppercase tracking-wider">
+                                                                    NullBot
+                                                                </span>
+                                                            </div>
+                                                            <div className="rounded-[1.7rem] rounded-bl-md px-4 py-3 text-sm bg-white/5 backdrop-blur-md border border-white/10 flex flex-col gap-2 min-h-[46px]">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0 }} className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                                                    <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }} className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                                                    <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }} className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                                                </div>
+                                                                {actionStatus && (
+                                                                    <p className="text-xs text-orange-200 whitespace-pre-wrap">{actionStatus}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div ref={endRef} className="h-2" />
+                                                </div>
+                                            </div>
+
+                                            <div className="border-t border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.01))] px-5 py-4 space-y-3">
+                                                {!connected && (
+                                                    <div className="wallet-adapter-wrapper w-full [&>button]:!w-full [&>button]:!justify-center [&>button]:!rounded-2xl [&>button]:!h-12 [&>button]:!bg-white [&>button]:!text-black [&>button]:!font-bold">
+                                                        <WalletMultiButton />
+                                                    </div>
+                                                )}
+                                                <form
+                                                    onSubmit={(event) => {
+                                                        event.preventDefault();
+                                                        void sendMessage(input);
+                                                    }}
+                                                >
+                                                    <div className="rounded-[1.75rem] border border-white/10 bg-black/35 p-2 shadow-inner">
+                                                        {pendingAction?.type === 'sweep_burner_to_main' && (
+                                                            <div className="mb-2 rounded-2xl border border-orange-400/20 bg-orange-400/10 px-3 py-2 text-[11px] text-orange-100">
+                                                                Sweep flow active. Reply with an amount and token like `0.3 credits` or `all usdcx`.
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                value={input}
+                                                                onChange={(event) => setInput(event.target.value)}
+                                                                placeholder="Ask NullBot to inspect balances, create invoices, or move burner funds"
+                                                                className="flex-1 bg-transparent px-2 text-sm text-white placeholder:text-gray-500 focus:outline-none"
+                                                            />
+                                                            <button
+                                                                type="submit"
+                                                                disabled={!input.trim() || isThinking}
+                                                                className="h-12 w-12 rounded-2xl bg-gradient-to-r from-orange-400 to-amber-300 text-black flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                aria-label="Send message"
+                                                            >
+                                                                <SendHorizonal size={17} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
                                 <div className="px-4 pt-3 pb-2 border-b border-white/5 bg-black/10">
                                     <div className="flex items-center gap-2 text-[11px] text-gray-300">
                                         <Wallet size={12} className="text-orange-300" />
@@ -739,6 +1071,9 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                                         >
                                                             {message.content}
                                                         </ReactMarkdown>
+                                                    )}
+                                                    {message.role === 'assistant' && message.invoiceData && (
+                                                        <MiniInvoiceCard invoiceData={message.invoiceData} />
                                                     )}
                                                 </motion.div>
                                             </div>
@@ -822,6 +1157,8 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                         </div>
                                     </form>
                                 </div>
+                                    </>
+                                )}
                             </div>
                         </GlassCard>
                     </motion.div>
