@@ -12,7 +12,12 @@ import { GlassCard } from '../../../components/ui/GlassCard';
 import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
 import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
 import type { MerchantReceipt, PayerReceipt } from '../../../utils/aleo-utils';
-import { chatWithNullBot } from '../../../services/api';
+import {
+    chatWithNullBot,
+    type NullBotCreateInvoiceArgs,
+    type NullBotPendingToolCall,
+    type NullBotToolCall,
+} from '../../../services/api';
 import { createInvoiceViaWallet } from '../../../utils/invoiceCreation';
 import { sweepBurnerFundsToDestination, type BurnerSweepCurrency } from '../../../utils/burnerSweep';
 import { fetchAllPrivateBalances } from './BurnerWallet/scanner';
@@ -52,17 +57,16 @@ type ChatMessage = {
     invoiceData?: InvoiceData;
 };
 
-type PendingAction =
-    | {
-        type: 'sweep_burner_to_main';
-        balances: Record<BurnerSweepCurrency, number>;
-    }
-    | null;
+type PendingToolMetadata = {
+    availableBurnerBalances?: Record<BurnerSweepCurrency, number>;
+    awaitingInvoiceOptionalFields?: boolean;
+};
 
-type SweepReplyParseResult =
-    | { cancelled: true }
-    | { error: string }
-    | { currency: BurnerSweepCurrency; amount: number };
+type PendingToolCall =
+    | (NullBotPendingToolCall & {
+        metadata?: PendingToolMetadata;
+    })
+    | null;
 
 type BotBalanceView = {
     token: 'Credits' | 'USDCx' | 'USAD';
@@ -128,15 +132,6 @@ const truncateAddress = (value: string | null | undefined) => (
     value ? `${value.slice(0, 10)}...${value.slice(-6)}` : 'Not connected'
 );
 
-const isBurnerSweepRequest = (message: string) => {
-    const normalized = message.toLowerCase();
-    return normalized.includes('burner') && (
-        normalized.includes('sweep') ||
-        normalized.includes('transfer') ||
-        normalized.includes('move')
-    );
-};
-
 const formatPublicMappingBalance = (data: unknown, suffix: string) => {
     const normalize = (raw: unknown) => {
         const numeric = Number(String(raw ?? '').replace(suffix, '').replace(/"/g, '').replace(/_/g, ''));
@@ -158,14 +153,63 @@ const formatPublicMappingBalance = (data: unknown, suffix: string) => {
     return '0.00';
 };
 
-const isBurnerBalanceQuestion = (message: string) => {
-    const normalized = message.toLowerCase();
-    return !isBurnerSweepRequest(message) && normalized.includes('burner') && (
-        normalized.includes('balance') ||
-        normalized.includes('funds') ||
-        normalized.includes('how much') ||
-        normalized.includes('how many')
-    );
+const parseFlexibleAmount = (rawValue: string) => {
+    const normalized = rawValue.trim().replace(/,/g, '.');
+    const match = normalized.match(/\d+(?:\.\d+)?/);
+    if (!match) {
+        return null;
+    }
+
+    const amount = Number(match[0]);
+    return Number.isFinite(amount) && amount > 0 ? amount : null;
+};
+
+const parseCurrencyFromPrompt = (rawValue: string): 'CREDITS' | 'USDCX' | 'USAD' | 'ANY' | null => {
+    const normalized = rawValue.toLowerCase();
+    if (/\busdcx\b/.test(normalized)) return 'USDCX';
+    if (/\busad\b/.test(normalized)) return 'USAD';
+    if (/\bany(?: token)?\b/.test(normalized)) return 'ANY';
+    if (/\b(aleo|credit|credits)\b/.test(normalized)) return 'CREDITS';
+    return null;
+};
+
+const parseInvoiceFollowUpArgs = (
+    message: string,
+    existingArgs: Record<string, unknown>
+): Record<string, unknown> => {
+    const nextArgs = { ...existingArgs };
+    const amount = parseFlexibleAmount(message);
+    const currency = parseCurrencyFromPrompt(message);
+    const invoiceTypeMatch = message.match(/\b(donation|multipay|multi-pay|standard)\b/i);
+    const walletMatch = message.match(/\b(main|burner)\b/i);
+    const titleMatch = message.match(/(?:invoice\s+title|title|name)\s+(?:as|to|is)?\s*["']([^"']+)["']/i);
+    const memoMatch = message.match(/(?:memo|note)\s+(?:as|to|is)?\s*["']([^"']+)["']/i);
+
+    if (amount != null) {
+        nextArgs.amount = amount;
+    }
+
+    if (currency) {
+        nextArgs.currency = currency;
+    }
+
+    if (invoiceTypeMatch?.[1]) {
+        nextArgs.invoice_type = invoiceTypeMatch[1].toLowerCase() === 'multi-pay' ? 'multipay' : invoiceTypeMatch[1].toLowerCase();
+    }
+
+    if (walletMatch?.[1]) {
+        nextArgs.wallet = walletMatch[1].toLowerCase() === 'burner' ? 'burner' : 'main';
+    }
+
+    if (titleMatch?.[1]?.trim()) {
+        nextArgs.title = titleMatch[1].trim();
+    }
+
+    if (memoMatch?.[1]?.trim()) {
+        nextArgs.memo = memoMatch[1].trim();
+    }
+
+    return nextArgs;
 };
 
 const MiniInvoiceCard: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }) => {
@@ -231,55 +275,6 @@ const MiniInvoiceCard: React.FC<{ invoiceData: InvoiceData }> = ({ invoiceData }
     );
 };
 
-const parseSweepReply = (
-    message: string,
-    availableByCurrency: Record<BurnerSweepCurrency, number>
-): SweepReplyParseResult => {
-    const trimmed = message.trim();
-    const normalized = trimmed.toLowerCase();
-
-    if (!trimmed) {
-        return { error: 'Tell me the amount and token to sweep, like `1 credit`, `0.5 usdcx`, or `all usad`.' };
-    }
-
-    if (/^(cancel|stop|nevermind|never mind)$/i.test(trimmed)) {
-        return { cancelled: true };
-    }
-
-    const detectCurrency = (): BurnerSweepCurrency | null => {
-        if (/\busdcx\b/i.test(trimmed)) return 'USDCx';
-        if (/\busad\b/i.test(trimmed)) return 'USAD';
-        if (/\b(aleo|credit|credits)\b/i.test(trimmed)) return 'ALEO';
-        return null;
-    };
-
-    const currency = detectCurrency();
-    if (!currency) {
-        return { error: 'Mention which token to sweep: `Credits`, `USDCx`, or `USAD`.' };
-    }
-
-    if (/\ball\b/i.test(normalized)) {
-        const amount = availableByCurrency[currency];
-        if (!amount || amount <= 0) {
-            return { error: `Your burner wallet does not currently show any private ${currency} balance to sweep.` };
-        }
-
-        return { currency, amount };
-    }
-
-    const amountMatch = trimmed.match(/(\d+(?:\.\d+)?)/);
-    if (!amountMatch) {
-        return { error: 'Tell me the amount to sweep, like `1 credit` or `0.5 usdcx`.' };
-    }
-
-    const amount = Number(amountMatch[1]);
-    if (!Number.isFinite(amount) || amount <= 0) {
-        return { error: 'Sweep amount must be a positive number.' };
-    }
-
-    return { currency, amount };
-};
-
 const TruncatedHashComponent = ({ children, className }: any) => {
     const [copied, setCopied] = useState(false);
     const text = String(children).replace(/\n$/, '');
@@ -328,7 +323,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
     const [input, setInput] = useState('');
     const [isThinking, setIsThinking] = useState(false);
     const [actionStatus, setActionStatus] = useState('');
-    const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+    const [pendingToolCall, setPendingToolCall] = useState<PendingToolCall>(null);
     const [burnerBalances, setBurnerBalances] = useState<BotBalanceView[]>([
         { token: 'Credits', publicBalance: '0.00', privateBalance: '0.00', loading: false },
         { token: 'USDCx', publicBalance: '0.00', privateBalance: '0.00', loading: false },
@@ -554,20 +549,182 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
         }
     }, [messages, isOpen, isThinking, actionStatus]);
 
-    const executePlannedAction = async (action: any) => {
-        if (action.type === 'connect_wallet') {
+    const buildPendingToolCall = (
+        toolCall: NullBotToolCall,
+        metadata?: PendingToolMetadata
+    ): PendingToolCall => ({
+        name: toolCall.name,
+        args: toolCall.args as Record<string, unknown>,
+        missingArgs: toolCall.missingArgs || [],
+        ...(metadata ? { metadata } : {})
+    });
+
+    const getPendingToolPrompt = (toolCall: PendingToolCall) => {
+        if (!toolCall) {
+            return null;
+        }
+
+        if (toolCall.name === 'create_invoice') {
+            if (toolCall.metadata?.awaitingInvoiceOptionalFields) {
+                return 'Invoice draft ready. Add optional `title` or `memo`, or say `continue`.';
+            }
+            return 'Invoice draft active. Reply with the missing invoice details like `0.1 credits` or say `cancel`.';
+        }
+
+        if (toolCall.name === 'sweep_funds') {
+            return 'Sweep draft active. Reply with the amount and token you want to move, or say `cancel`.';
+        }
+
+        return 'Tool draft active. Reply with the missing details or say `cancel`.';
+    };
+
+    const prepareSweepFollowUp = async (toolCall: Extract<NullBotToolCall, { name: 'sweep_funds' }>, fallbackReply: string) => {
+        if (!connected || !address) {
+            appendAssistantMessage('Connect your main wallet first, then I can sweep burner funds into it.');
+            return;
+        }
+
+        if (!decryptedBurnerAddress || !decryptedBurnerKey) {
+            appendAssistantMessage('Your burner wallet is not unlocked right now. Unlock it first, then I can sweep funds from burner to main.');
+            return;
+        }
+
+        setActionStatus('Scanning burner wallet records...');
+        const freshBurnerBalances = await loadBurnerBalanceContext();
+        const availableBurnerBalances: Record<BurnerSweepCurrency, number> = {
+            ALEO: Number(freshBurnerBalances.find((entry) => entry.token === 'Credits')?.privateBalance || '0'),
+            USDCx: Number(freshBurnerBalances.find((entry) => entry.token === 'USDCx')?.privateBalance || '0'),
+            USAD: Number(freshBurnerBalances.find((entry) => entry.token === 'USAD')?.privateBalance || '0'),
+        };
+
+        setPendingToolCall(buildPendingToolCall(toolCall, { availableBurnerBalances }));
+        appendAssistantMessage([
+            'Your burner wallet private balances are:',
+            '',
+            `- Credits: ${availableBurnerBalances.ALEO.toFixed(2)}`,
+            `- USDCx: ${availableBurnerBalances.USDCx.toFixed(2)}`,
+            `- USAD: ${availableBurnerBalances.USAD.toFixed(2)}`,
+            '',
+            fallbackReply || 'Tell me how much you want to sweep and which token.',
+            'Examples: `0.3 credits`, `0.5 usdcx`, or `all usad`.',
+            'You can also say `cancel`.'
+        ].join('\n'));
+    };
+
+    const promptForOptionalInvoiceFields = (args: Record<string, unknown>) => {
+        const isDonation = args.invoice_type === 'donation';
+        setPendingToolCall({
+            name: 'create_invoice',
+            args,
+            missingArgs: [],
+            metadata: {
+                awaitingInvoiceOptionalFields: true,
+            }
+        });
+        appendAssistantMessage([
+            'Your invoice draft is ready.',
+            '',
+            ...(isDonation
+                ? [
+                    'Add a token if you want to restrict the donation.',
+                    'Examples: `credits`, `usdcx`, `usad`, or `any token`.',
+                    ''
+                ]
+                : []),
+            'Add an optional title or memo if you want.',
+            'Examples: `title "Team dinner"` or `memo "April payout"`.',
+            `If you do not want ${isDonation ? 'any of these' : 'either'}, say \`continue\`.`
+        ].join('\n'));
+    };
+
+    const executePlannedToolCall = async (toolCall: NullBotToolCall) => {
+        if (toolCall.name === 'connect_wallet') {
             appendAssistantMessage('Use the wallet button below to connect Shield. Once connected, I will use that browser wallet directly.');
             return;
         }
 
-        if (action.type === 'open_payment_link') {
-            const url = new URL(action.args.url);
+        if (toolCall.name === 'pay_invoice') {
+            if (!toolCall.args.payment_link) {
+                appendAssistantMessage('Share the NullPay payment link and I will open the normal payment flow for you.');
+                return;
+            }
+
+            const url = new URL(toolCall.args.payment_link);
             navigate(`/pay${url.search}`);
             appendAssistantMessage('I opened the in-app payment flow. Continue there and approve the payment with your wallet popup.');
             return;
         }
 
-        if (action.type === 'sweep_burner_to_main') {
+        if (toolCall.name === 'check_burner_balance') {
+            if (!decryptedBurnerAddress || !decryptedBurnerKey) {
+                appendAssistantMessage('Your burner wallet is not unlocked right now, so I cannot read its balances yet.');
+                return;
+            }
+
+            setActionStatus('Scanning burner wallet records...');
+            const resolvedBalances = await loadBurnerBalanceContext();
+            appendAssistantMessage([
+                'Your burner wallet balances are:',
+                '',
+                ...resolvedBalances.map((entry) => `- ${entry.token}: public ${entry.publicBalance}, private ${entry.privateBalance}`)
+            ].join('\n'));
+            return;
+        }
+
+        if (toolCall.name === 'get_analytics') {
+            appendAssistantMessage([
+                'Current dashboard snapshot:',
+                '',
+                `- Invoices: ${merchantStats.invoices} total`,
+                `- Pending: ${merchantStats.pending}`,
+                `- Settled: ${merchantStats.settled}`,
+                `- Main volume: ${merchantStats.mainCredits} Credits, ${merchantStats.mainUSDCx} USDCx, ${merchantStats.mainUSAD} USAD`,
+                `- Burner volume: ${merchantStats.burnerCredits} Credits, ${merchantStats.burnerUSDCx} USDCx, ${merchantStats.burnerUSAD} USAD`
+            ].join('\n'));
+            return;
+        }
+
+        if (toolCall.name === 'get_transaction_info') {
+            const invoiceHash = toolCall.args.invoice_hash?.trim().toLowerCase();
+            if (invoiceHash) {
+                const matchedInvoice = invoices.find((invoice) => invoice.invoiceHash.toLowerCase() === invoiceHash);
+                if (!matchedInvoice) {
+                    appendAssistantMessage(`I could not find an invoice with hash \`${toolCall.args.invoice_hash}\` in your current dashboard context.`);
+                    return;
+                }
+
+                appendAssistantMessage([
+                    'Invoice details:',
+                    '',
+                    `- Hash: \`${matchedInvoice.invoiceHash}\``,
+                    `- Amount: ${matchedInvoice.amount.toFixed(2)} ${tokenLabel(matchedInvoice.tokenType)}`,
+                    `- Type: ${invoiceTypeLabel(matchedInvoice.invoiceType)}`,
+                    `- Wallet: ${walletLabel(matchedInvoice.walletType)}`,
+                    `- Status: ${matchedInvoice.status === 'SETTLED' || matchedInvoice.status === 1 ? 'SETTLED' : 'PENDING'}`,
+                    ...(matchedInvoice.memo ? [`- Memo: ${matchedInvoice.memo}`] : [])
+                ].join('\n'));
+                return;
+            }
+
+            const limit = toolCall.args.limit && toolCall.args.limit > 0 ? toolCall.args.limit : 5;
+            const recentInvoices = invoices.slice(0, limit);
+
+            if (recentInvoices.length === 0) {
+                appendAssistantMessage('There are no invoices in your current dashboard context yet.');
+                return;
+            }
+
+            appendAssistantMessage([
+                `Recent invoices (${recentInvoices.length}):`,
+                '',
+                ...recentInvoices.map((invoice) =>
+                    `- \`${invoice.invoiceHash}\` | ${invoice.amount.toFixed(2)} ${tokenLabel(invoice.tokenType)} | ${invoice.status === 'SETTLED' || invoice.status === 1 ? 'SETTLED' : 'PENDING'}`
+                )
+            ].join('\n'));
+            return;
+        }
+
+        if (toolCall.name === 'sweep_funds') {
             if (!connected || !address) {
                 appendAssistantMessage('Connect your main wallet first, then I can sweep burner funds into it.');
                 return;
@@ -578,30 +735,65 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                 return;
             }
 
-            setActionStatus('Scanning burner wallet records...');
-            const freshBurnerBalances = await loadBurnerBalanceContext();
-            const freshAvailableByCurrency: Record<BurnerSweepCurrency, number> = {
-                ALEO: Number(freshBurnerBalances.find((entry) => entry.token === 'Credits')?.privateBalance || '0'),
-                USDCx: Number(freshBurnerBalances.find((entry) => entry.token === 'USDCx')?.privateBalance || '0'),
-                USAD: Number(freshBurnerBalances.find((entry) => entry.token === 'USAD')?.privateBalance || '0'),
+            const currencyMap: Record<'CREDITS' | 'USDCX' | 'USAD', BurnerSweepCurrency> = {
+                CREDITS: 'ALEO',
+                USDCX: 'USDCx',
+                USAD: 'USAD',
             };
 
-            setPendingAction({ type: 'sweep_burner_to_main', balances: freshAvailableByCurrency });
+            if (!toolCall.args.currency || toolCall.args.amount == null) {
+                await prepareSweepFollowUp(toolCall, 'Tell me how much you want to sweep and which token.');
+                return;
+            }
+
+            const mappedCurrency = currencyMap[toolCall.args.currency];
+            const amount = Number(toolCall.args.amount);
+            if (!mappedCurrency || !Number.isFinite(amount) || amount <= 0) {
+                appendAssistantMessage('Tell me the amount and token to sweep, like `0.3 credits` or `0.5 usdcx`.');
+                return;
+            }
+
+            let availableBurnerBalances = pendingToolCall?.name === 'sweep_funds'
+                ? pendingToolCall.metadata?.availableBurnerBalances
+                : undefined;
+
+            if (!availableBurnerBalances) {
+                setActionStatus('Scanning burner wallet records...');
+                const freshBurnerBalances = await loadBurnerBalanceContext();
+                availableBurnerBalances = {
+                    ALEO: Number(freshBurnerBalances.find((entry) => entry.token === 'Credits')?.privateBalance || '0'),
+                    USDCx: Number(freshBurnerBalances.find((entry) => entry.token === 'USDCx')?.privateBalance || '0'),
+                    USAD: Number(freshBurnerBalances.find((entry) => entry.token === 'USAD')?.privateBalance || '0'),
+                };
+            }
+
+            if (amount > (availableBurnerBalances[mappedCurrency] || 0)) {
+                appendAssistantMessage(`That exceeds your available private ${mappedCurrency} burner balance of ${(availableBurnerBalances[mappedCurrency] || 0).toFixed(2)}.`);
+                return;
+            }
+
+            const destination = toolCall.args.destination === 'main_wallet' || !toolCall.args.destination
+                ? address
+                : toolCall.args.destination;
+
+            const sweepResult = await sweepBurnerFundsToDestination({
+                decryptedBurnerKey,
+                amount,
+                currency: mappedCurrency,
+                destination,
+                onStatus: setActionStatus
+            });
+
+            setPendingToolCall(null);
             appendAssistantMessage([
-                'Your burner wallet private balances are:',
+                `Burner sweep submitted${destination === address ? ' to your main wallet' : ''}${sweepResult.txIds.length > 1 ? ` across ${sweepResult.txIds.length} transactions` : ''}.`,
                 '',
-                `- Credits: ${freshAvailableByCurrency.ALEO.toFixed(2)}`,
-                `- USDCx: ${freshAvailableByCurrency.USDCx.toFixed(2)}`,
-                `- USAD: ${freshAvailableByCurrency.USAD.toFixed(2)}`,
-                '',
-                'Tell me how much you want to sweep and which token.',
-                'Examples: `1 credit`, `0.5 usdcx`, `all usad`.',
-                'You can also say `cancel`.'
+                ...sweepResult.txIds.map((txId, index) => `- Transfer ${index + 1}: \`${txId}\``)
             ].join('\n'));
             return;
         }
 
-        if (action.type !== 'create_invoice') {
+        if (toolCall.name !== 'create_invoice') {
             return;
         }
 
@@ -621,17 +813,18 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
             USAD: 2,
             ANY: 3,
         };
-        const walletType = action.args.wallet === 'burner' ? 1 : 0;
+        const walletType = toolCall.args.wallet === 'burner' ? 1 : 0;
 
         const result = await createInvoiceViaWallet({
             publicKey: address,
             executeTransaction,
             transactionStatus,
             requestTransactionHistory,
-            amount: Number(action.args.amount),
-            memo: action.args.memo || '',
-            invoiceType: action.args.invoice_type || 'standard',
-            tokenType: currencyToTokenType[action.args.currency || 'CREDITS'] ?? 0,
+            amount: toolCall.args.invoice_type === 'donation' ? 0 : Number(toolCall.args.amount),
+            title: toolCall.args.title || '',
+            memo: toolCall.args.memo || '',
+            invoiceType: toolCall.args.invoice_type || 'standard',
+            tokenType: currencyToTokenType[toolCall.args.currency || 'CREDITS'] ?? 0,
             walletType,
             appPassword,
             decryptedBurnerAddress,
@@ -661,84 +854,139 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
         setActionStatus('');
 
         try {
-            if (pendingAction?.type === 'sweep_burner_to_main') {
-                const parsed = parseSweepReply(trimmed, pendingAction.balances);
+            if (/^(cancel|stop|nevermind|never mind)$/i.test(trimmed) && pendingToolCall) {
+                const cancelledLabel = pendingToolCall.name === 'create_invoice'
+                    ? 'Invoice creation'
+                    : pendingToolCall.name === 'sweep_funds'
+                        ? 'Sweep'
+                        : 'Tool flow';
+                setPendingToolCall(null);
+                appendAssistantMessage(`${cancelledLabel} cancelled.`);
+                return;
+            }
 
-                if ('cancelled' in parsed) {
-                    setPendingAction(null);
-                    appendAssistantMessage('Sweep cancelled.');
+            if (pendingToolCall?.name === 'create_invoice') {
+                if (pendingToolCall.metadata?.awaitingInvoiceOptionalFields) {
+                    if (/^(continue|skip|no|none|nope)$/i.test(trimmed)) {
+                        setPendingToolCall(null);
+                        await executePlannedToolCall({
+                            name: 'create_invoice',
+                            args: pendingToolCall.args as Extract<NullBotToolCall, { name: 'create_invoice' }>['args']
+                        });
+                        return;
+                    }
+
+                    const mergedOptionalArgs = parseInvoiceFollowUpArgs(trimmed, pendingToolCall.args);
+                    if (mergedOptionalArgs.title || mergedOptionalArgs.memo || mergedOptionalArgs.currency) {
+                        setPendingToolCall(null);
+                        await executePlannedToolCall({
+                            name: 'create_invoice',
+                            args: mergedOptionalArgs as Extract<NullBotToolCall, { name: 'create_invoice' }>['args']
+                        });
+                        return;
+                    }
+
+                    appendAssistantMessage(
+                        pendingToolCall.args.invoice_type === 'donation'
+                            ? 'Add a token like `credits`, `usdcx`, `usad`, or `any token`, add `title "..."` / `memo "..."`, or say `continue` to create the invoice now.'
+                            : 'Add `title "..."` or `memo "..."`, or say `continue` to create the invoice now.'
+                    );
                     return;
                 }
 
-                if ('error' in parsed) {
-                    appendAssistantMessage(parsed.error);
-                    return;
-                }
+                const mergedArgs = parseInvoiceFollowUpArgs(trimmed, pendingToolCall.args);
+                const invoiceType = typeof mergedArgs.invoice_type === 'string' ? mergedArgs.invoice_type : 'standard';
+                const amount = typeof mergedArgs.amount === 'number' ? mergedArgs.amount : null;
+                const currency = typeof mergedArgs.currency === 'string' ? mergedArgs.currency : null;
+                const resolvedAmount = invoiceType === 'donation' ? (amount ?? 0) : amount;
+                const resolvedCurrency = (invoiceType === 'donation' ? (currency || 'ANY') : currency) as NullBotCreateInvoiceArgs['currency'] | null;
 
-                if (!connected || !address) {
-                    setPendingAction(null);
-                    appendAssistantMessage('Connect your main wallet first, then I can sweep burner funds into it.');
-                    return;
-                }
+                if (resolvedAmount != null && resolvedCurrency) {
+                    const readyArgs: NullBotCreateInvoiceArgs = {
+                        amount: resolvedAmount,
+                        currency: resolvedCurrency,
+                        ...(typeof mergedArgs.title === 'string' && mergedArgs.title.trim()
+                            ? { title: mergedArgs.title.trim() }
+                            : {}),
+                        invoice_type: invoiceType as NullBotCreateInvoiceArgs['invoice_type'],
+                        wallet: mergedArgs.wallet === 'burner' ? 'burner' : 'main',
+                        ...(typeof mergedArgs.memo === 'string' && mergedArgs.memo.trim()
+                            ? { memo: mergedArgs.memo.trim() }
+                            : {})
+                    };
 
-                if (!decryptedBurnerKey) {
-                    setPendingAction(null);
-                    appendAssistantMessage('Your burner wallet is not unlocked right now. Unlock it first, then I can sweep funds from burner to main.');
-                    return;
-                }
+                    if (!readyArgs.title && !readyArgs.memo) {
+                        promptForOptionalInvoiceFields(readyArgs);
+                        return;
+                    }
 
-                if (parsed.amount > pendingAction.balances[parsed.currency]) {
-                    appendAssistantMessage(`That exceeds your available private ${parsed.currency} burner balance of ${pendingAction.balances[parsed.currency].toFixed(2)}.`);
-                    return;
-                }
-
-                try {
-                    const sweepResult = await sweepBurnerFundsToDestination({
-                        decryptedBurnerKey,
-                        amount: parsed.amount,
-                        currency: parsed.currency,
-                        destination: address,
-                        onStatus: setActionStatus
+                    setPendingToolCall(null);
+                    await executePlannedToolCall({
+                        name: 'create_invoice',
+                        args: readyArgs
                     });
-
-                    setPendingAction(null);
-                    appendAssistantMessage([
-                        `Burner sweep submitted to your main wallet${sweepResult.txIds.length > 1 ? ` across ${sweepResult.txIds.length} transactions` : ''}.`,
-                        '',
-                        ...sweepResult.txIds.map((txId, index) =>
-                            `- Transfer ${index + 1}: \`${txId}\``
-                        )
-                    ].join('\n'));
-                } catch (sweepError) {
-                    throw sweepError;
-                }
-                return;
-            }
-
-            if (isBurnerBalanceQuestion(trimmed)) {
-                if (!decryptedBurnerAddress) {
-                    appendAssistantMessage('Your burner wallet is not unlocked right now, so I cannot read its balances yet.');
                     return;
                 }
 
-                setActionStatus('Scanning burner wallet records...');
-                const resolvedBalances = await loadBurnerBalanceContext();
-
-                appendAssistantMessage([
-                    'Your burner wallet balances are:',
-                    '',
-                    ...resolvedBalances.map((entry) => `- ${entry.token}: public ${entry.publicBalance}, private ${entry.privateBalance}`)
-                ].join('\n'));
+                setPendingToolCall({
+                    ...pendingToolCall,
+                    args: mergedArgs,
+                    missingArgs: [
+                        ...(invoiceType === 'donation' || amount != null ? [] : ['amount']),
+                        ...(resolvedCurrency ? [] : ['currency'])
+                    ]
+                });
+                appendAssistantMessage(
+                    invoiceType === 'donation' && !resolvedCurrency
+                        ? 'Tell me which token to restrict the donation to, like `credits`, `usdcx`, or `usad`, or say `any token`.'
+                        : amount == null && !currency
+                        ? 'Tell me the invoice amount and token, like `0.1 credits` or `2 usdcx`.'
+                        : amount == null
+                            ? 'Tell me the invoice amount, like `0.1 credits`.'
+                            : 'Tell me which token to use, like `credits`, `usdcx`, or `usad`.'
+                );
                 return;
             }
 
-            const response = await chatWithNullBot(trimmed, dashboardContext);
-            if (response.reply && response.action?.type !== 'sweep_burner_to_main') {
-                appendAssistantMessage(response.reply);
+            const response = await chatWithNullBot(trimmed, {
+                ...dashboardContext,
+                pendingToolCall: pendingToolCall
+                    ? {
+                        name: pendingToolCall.name,
+                        args: pendingToolCall.args,
+                        missingArgs: pendingToolCall.missingArgs,
+                    }
+                    : null,
+            });
+
+            if (!response.toolCall) {
+                setPendingToolCall(null);
+                if (response.reply) {
+                    appendAssistantMessage(response.reply);
+                }
+                return;
             }
-            if (response.action) {
-                await executePlannedAction(response.action);
+
+            if (response.toolCall.missingArgs && response.toolCall.missingArgs.length > 0) {
+                if (response.toolCall.name === 'sweep_funds') {
+                    await prepareSweepFollowUp(response.toolCall, response.reply);
+                    return;
+                }
+
+                setPendingToolCall(buildPendingToolCall(response.toolCall));
+                if (response.reply) {
+                    appendAssistantMessage(response.reply);
+                }
+                return;
             }
+
+            if (response.toolCall.name === 'create_invoice' && !response.toolCall.args.title && !response.toolCall.args.memo) {
+                promptForOptionalInvoiceFields(response.toolCall.args);
+                return;
+            }
+
+            setPendingToolCall(null);
+            await executePlannedToolCall(response.toolCall);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             appendAssistantMessage(`NullBot error: ${errorMessage}`);
@@ -920,6 +1168,15 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                             <WalletMultiButton />
                                         </div>
                                     )}
+                                    {pendingToolCall && getPendingToolPrompt(pendingToolCall) && (
+                                        <div className={`rounded-xl px-3 py-2 text-[11px] ${
+                                            pendingToolCall.name === 'create_invoice'
+                                                ? 'border border-cyan-400/20 bg-cyan-400/10 text-cyan-100'
+                                                : 'border border-orange-400/20 bg-orange-400/10 text-orange-100'
+                                        }`}>
+                                            {getPendingToolPrompt(pendingToolCall)}
+                                        </div>
+                                    )}
                                     <form
                                         onSubmit={(event) => {
                                             event.preventDefault();
@@ -930,7 +1187,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                                             <input
                                                 value={input}
                                                 onChange={(event) => setInput(event.target.value)}
-                                                placeholder="Ask about invoices, balances, or say: sweep funds from burner to main wallet"
+                                                placeholder="Ask anything in plain language. NullBot will pick the tool, collect details, and trigger the browser flow."
                                                 className="flex-1 bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none"
                                             />
                                             <button

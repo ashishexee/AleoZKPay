@@ -403,42 +403,92 @@ export const chatWithDashboardAssistant = async (
     return payload.reply;
 };
 
-export type NullBotAction =
+export type NullBotToolName =
+    | 'connect_wallet'
+    | 'create_invoice'
+    | 'pay_invoice'
+    | 'get_transaction_info'
+    | 'get_analytics'
+    | 'check_burner_balance'
+    | 'sweep_funds';
+
+export type NullBotCreateInvoiceArgs = {
+    amount?: number;
+    currency?: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
+    title?: string;
+    invoice_type?: 'standard' | 'multipay' | 'donation';
+    wallet?: 'main' | 'burner';
+    memo?: string;
+};
+
+export type NullBotPayInvoiceArgs = {
+    payment_link?: string;
+    invoice_hash?: string;
+    wallet?: 'main' | 'burner';
+    amount?: number;
+    currency?: 'CREDITS' | 'USDCX' | 'USAD';
+};
+
+export type NullBotSweepFundsArgs = {
+    amount?: number;
+    currency?: 'CREDITS' | 'USDCX' | 'USAD';
+    wallet?: 'main' | 'burner';
+    destination?: string;
+};
+
+export type NullBotToolCall =
     | {
-        type: 'create_invoice';
-        args: {
-            amount: number;
-            currency: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
-            invoice_type?: 'standard' | 'multipay' | 'donation';
-            wallet?: 'main' | 'burner';
-            memo?: string;
-        };
-        reply?: string;
-    }
-    | {
-        type: 'open_payment_link';
-        args: {
-            url: string;
-        };
-        reply?: string;
-    }
-    | {
-        type: 'connect_wallet';
+        name: 'connect_wallet';
         args: Record<string, never>;
-        reply?: string;
+        missingArgs?: string[];
     }
     | {
-        type: 'sweep_burner_to_main';
+        name: 'create_invoice';
+        args: NullBotCreateInvoiceArgs;
+        missingArgs?: string[];
+    }
+    | {
+        name: 'pay_invoice';
+        args: NullBotPayInvoiceArgs;
+        missingArgs?: string[];
+    }
+    | {
+        name: 'get_transaction_info';
         args: {
-            amount?: number;
-            currency?: 'CREDITS' | 'USDCX' | 'USAD';
+            invoice_hash?: string;
+            wallet?: 'main' | 'burner';
+            limit?: number;
         };
-        reply?: string;
+        missingArgs?: string[];
+    }
+    | {
+        name: 'get_analytics';
+        args: {
+            wallet?: 'main' | 'burner';
+            days?: number;
+        };
+        missingArgs?: string[];
+    }
+    | {
+        name: 'check_burner_balance';
+        args: Record<string, never>;
+        missingArgs?: string[];
+    }
+    | {
+        name: 'sweep_funds';
+        args: NullBotSweepFundsArgs;
+        missingArgs?: string[];
     };
+
+export type NullBotPendingToolCall = {
+    name: NullBotToolName;
+    args: Record<string, unknown>;
+    missingArgs: string[];
+};
 
 export interface NullBotChatResponse {
     reply: string;
-    action?: NullBotAction;
+    toolCall?: NullBotToolCall;
 }
 
 export const chatWithNullBot = async (
