@@ -1,52 +1,9 @@
 import { useSharedPayment } from './useSharedPayment';
-import { createCreditsPayment } from './useCreditsPayment';
-import { createUSDCxPayment } from './useUSDCxPayment';
-import { createUSADPayment } from './useUSADPayment';
-import { getAllowedTokensForInvoice, getTokenTypeFromCode } from '../../utils/tokens';
 
 export type { PaymentStep } from './types';
 
 export const usePayment = () => {
     const shared = useSharedPayment();
-
-    const deps = {
-        invoice: shared.invoice,
-        publicKey: shared.publicKey,
-        executeTransaction: shared.executeTransaction,
-        requestRecords: shared.requestRecords,
-        decrypt: shared.decrypt,
-        programId: shared.programId,
-        donationAmount: shared.donationAmount,
-        paymentSecret: shared.paymentSecret,
-        setLoading: shared.setLoading,
-        setStatus: shared.setStatus,
-        setError: shared.setError,
-        setStep: shared.setStep,
-        setTxId: shared.setTxId,
-        pollTransaction: shared.pollTransaction,
-    };
-
-    const { payInvoiceCredits } = createCreditsPayment(deps);
-    const { payInvoiceUSDCx } = createUSDCxPayment(deps);
-    const { payInvoiceUSAD } = createUSADPayment(deps);
-
-    const payInvoice = async (selectedTokenOverride?: number, notes?: import('./types').PaymentNoteInput) => {
-        if (!shared.invoice) return;
-        const activeTokenType = selectedTokenOverride !== undefined
-            ? selectedTokenOverride
-            : shared.invoice.tokenType === 3
-                ? getTokenTypeFromCode(
-                    getAllowedTokensForInvoice(shared.invoice.tokenType, shared.invoice.invoiceType)[0]
-                )
-                : shared.invoice.tokenType;
-        if (activeTokenType === 1) {
-            await payInvoiceUSDCx(notes);
-        } else if (activeTokenType === 2) {
-            await payInvoiceUSAD(notes);
-        } else {
-            await payInvoiceCredits(notes);
-        }
-    };
 
     return {
         step: shared.step,
@@ -57,7 +14,7 @@ export const usePayment = () => {
         txId: shared.txId,
         conversionTxId: shared.conversionTxId,
         publicKey: shared.publicKey,
-        payInvoice,
+        payInvoice: shared.payInvoice,
         payWithCard: shared.payWithCard,
         payWithGiftCard: shared.payWithGiftCard,
         convertPublicToPrivate: shared.convertPublicToPrivate,
@@ -68,6 +25,9 @@ export const usePayment = () => {
         receiptSearchFailed: shared.receiptSearchFailed,
         donationAmount: shared.donationAmount,
         setDonationAmount: shared.setDonationAmount,
+        quote: shared.quote,
+        quoteTimeRemaining: shared.quoteTimeRemaining,
+        checkOracleQuote: shared.checkOracleQuote,
         giftCardRedeemOption: shared.giftCardRedeemOption,
         redeemGiftCardBalance: shared.redeemGiftCardBalance,
         statusLog: shared.statusLog,

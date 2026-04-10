@@ -14,6 +14,7 @@ const scannerRoutes = require('./src/routes/scanner.routes');
 const proxyRoutes = require('./src/routes/proxy.routes');
 const dpsRoutes = require('./src/routes/dps.routes');
 const telegramRoutes = require('./src/routes/telegram.routes');
+const oracleRoutes = require('./src/routes/oracle.routes');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -55,6 +56,7 @@ app.use('/api/scanner/:network', scannerRoutes.scannerRouter);
 app.use('/api/proxy/provable', proxyRoutes);
 app.use('/api/dps', dpsRoutes);
 app.use('/api/telegram', telegramRoutes);
+app.use('/api/oracle', oracleRoutes);
 
 console.log('Backend initialized. (Relayer daemon removed, relayer is now on-demand)');
 

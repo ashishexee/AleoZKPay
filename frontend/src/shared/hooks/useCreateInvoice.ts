@@ -24,6 +24,7 @@ export const useCreateInvoice = () => {
     const [items, setItems] = useState<InvoiceItem[]>([]);
     const [showItems, setShowItems] = useState(false);
     const [forSdk, setForSdk] = useState(false);
+    const [selectedAllowedTokens, setSelectedAllowedTokens] = useState<string[]>(['CREDITS']);
 
     useEffect(() => {
         if (walletType === 1 && forSdk) {
@@ -34,6 +35,12 @@ export const useCreateInvoice = () => {
     useEffect(() => {
         if (invoiceType !== 'donation' && tokenType === 3) {
             setTokenType(0);
+        }
+        
+        // Auto-select the base token in allowedTokens
+        const baseTokenStr = tokenType === 0 ? 'CREDITS' : tokenType === 1 ? 'USDCX' : tokenType === 2 ? 'USAD' : 'ANY';
+        if (baseTokenStr !== 'ANY') {
+            setSelectedAllowedTokens(prev => Array.from(new Set([...prev, baseTokenStr])));
         }
     }, [invoiceType, tokenType]);
 
@@ -118,6 +125,7 @@ export const useCreateInvoice = () => {
                 forSdk,
                 showItems,
                 items,
+                allowedTokens: selectedAllowedTokens,
                 onStatus: setStatus
             });
 
@@ -143,6 +151,7 @@ export const useCreateInvoice = () => {
         setItems([]);
         setShowItems(false);
         setForSdk(false);
+        setSelectedAllowedTokens(['CREDITS']);
     };
 
     return {
@@ -169,6 +178,8 @@ export const useCreateInvoice = () => {
         setShowItems,
         forSdk,
         setForSdk,
+        selectedAllowedTokens,
+        setSelectedAllowedTokens,
         addItem,
         updateItem,
         removeItem

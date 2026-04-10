@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { PROGRAM_ID, estimateExecutionFee, generateSalt, stringToField } from '../../../utils/aleo-utils';
+import { PROGRAM_ID, WALLET_PROGRAM_ID, estimateExecutionFee, generateSalt, stringToField } from '../../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
 import { CheckoutSession } from '../types';
 import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
@@ -32,8 +32,26 @@ interface PaymentNoteInput {
     merchantNote?: string | null;
 }
 
-const resolveCheckoutToken = (selectedTokenOverride?: string): TokenCode => {
-    const allowedTokens: TokenCode[] = ['CREDITS', 'USDCX', 'USAD'];
+const getAllowedCheckoutTokens = (session: CheckoutSession | null): TokenCode[] => {
+    if (!session) {
+        return ['CREDITS', 'USDCX', 'USAD'];
+    }
+
+    if (Array.isArray(session.allowed_tokens) && session.allowed_tokens.length > 0) {
+        return session.allowed_tokens.filter((token): token is TokenCode =>
+            token === 'CREDITS' || token === 'USDCX' || token === 'USAD'
+        );
+    }
+
+    if (session.token_type === 'ANY') {
+        return ['CREDITS', 'USDCX', 'USAD'];
+    }
+
+    return [session.token_type as TokenCode];
+};
+
+const resolveCheckoutToken = (session: CheckoutSession | null, selectedTokenOverride?: string): TokenCode => {
+    const allowedTokens = getAllowedCheckoutTokens(session);
     const requestedToken = (selectedTokenOverride || allowedTokens[0]) as TokenCode;
     if (!allowedTokens.includes(requestedToken)) {
         throw new Error(`This checkout only accepts ${allowedTokens.join(', ')}.`);
@@ -51,6 +69,26 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const [success, setSuccess] = useState(false);
     const [step, setStep] = useState<'PAY' | 'CONVERT'>('PAY');
     const [giftCardRedeemOption, setGiftCardRedeemOption] = useState<GiftCardRedeemOption | null>(null);
+
+    const [quote, setQuote] = useState<{ expected_amount: number, expires_at: number, signature: string, from_token: string, to_token: string } | null>(null);
+    const [quoteTimeRemaining, setQuoteTimeRemaining] = useState<number>(0);
+    const hasSelectableTokens = getAllowedCheckoutTokens(session).length > 1;
+
+    const checkOracleQuote = async (fromToken: string, toToken: string, amount: number) => {
+        try {
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+            const res = await fetch(`${API_URL}/oracle/quote?from_token=${fromToken}&to_token=${toToken}&amount=${amount}`);
+            if (!res.ok) throw new Error('Quote fetch failed');
+            const data = await res.json();
+            setQuote(data);
+            setQuoteTimeRemaining(Math.max(0, data.expires_at - Math.floor(Date.now() / 1000)));
+            return data;
+        } catch (e) {
+            console.error('Oracle fetch error', e);
+            setQuote(null);
+            return null;
+        }
+    };
 
     const encodePaymentNote = (value?: string | null, label: string = 'Payment note') => {
         const normalized = (value || '').trim();
@@ -82,7 +120,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         return 0;
     };
 
-    const pay = async (donationAmount?: number, selectedTokenOverride?: string, notes?: PaymentNoteInput) => {
+    const pay = async (donationAmount?: number, selectedTokenOverride?: string, notes?: PaymentNoteInput, quoteOverride?: { signature: string, expires_at: number, expected_amount: number }) => {
         if (!session || !publicKey || !executeTransaction || !wallet?.adapter) return;
 
         try {
@@ -98,25 +136,56 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 throw new Error("Amount must be greater than zero.");
             }
 
-            const actualTokenType = session.token_type === 'ANY'
-                ? resolveCheckoutToken(selectedTokenOverride)
+            const actualTokenType = hasSelectableTokens
+                ? resolveCheckoutToken(session, selectedTokenOverride)
                 : session.token_type;
 
-            // 1. Determine Token Program
+            // Determine if this is a cross-token payment
+            const baseTokenType = session.token_type === 'ANY' ? actualTokenType : session.token_type;
+            const isCrossToken = !isDonationType && baseTokenType !== actualTokenType && (baseTokenType as string) !== 'ANY';
+
+            // 1. Determine Token Program & Function Name
             let tokenProgram = 'credits.aleo';
+            
+            // For cross-token: amountMicro = converted amount (what payer actually sends)
+            // For same-token: amountMicro = invoice amount
             let amountMicro = Math.round(finalAmount * 1_000_000);
+            if (isCrossToken && quoteOverride?.expected_amount) {
+                amountMicro = Math.round(quoteOverride.expected_amount * 1_000_000);
+            }
+            
             let typeSuffix = 'u64';
             let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
 
-            if (actualTokenType === 'USDCX') {
-                tokenProgram = 'test_usdcx_stablecoin.aleo';
-                typeSuffix = 'u128';
-                funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
-            } else if (actualTokenType === 'USAD') {
-                tokenProgram = 'test_usad_stablecoin.aleo';
-                typeSuffix = 'u128';
-                funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
+            if (isCrossToken) {
+                // Cross-token: use pay_invoice_BASE_via_PAYER
+                const baseKey = baseTokenType.toLowerCase();   // e.g. 'credits'
+                const payerKey = actualTokenType.toLowerCase(); // e.g. 'usad'
+                funcName = `pay_invoice_${baseKey}_via_${payerKey}`;
+                
+                // Token program is the PAYER's token
+                if (actualTokenType === 'USDCX') {
+                    tokenProgram = 'test_usdcx_stablecoin.aleo';
+                    typeSuffix = 'u128';
+                } else if (actualTokenType === 'USAD') {
+                    tokenProgram = 'test_usad_stablecoin.aleo';
+                    typeSuffix = 'u128';
+                }
+                // If payer pays in CREDITS, typeSuffix stays 'u64'
+            } else {
+                // Same-token payment (existing logic)
+                if (actualTokenType === 'USDCX') {
+                    tokenProgram = 'test_usdcx_stablecoin.aleo';
+                    typeSuffix = 'u128';
+                    funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+                } else if (actualTokenType === 'USAD') {
+                    tokenProgram = 'test_usad_stablecoin.aleo';
+                    typeSuffix = 'u128';
+                    funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
+                }
             }
+
+            const targetProgramId = isCrossToken ? WALLET_PROGRAM_ID : PROGRAM_ID;
 
             // 2. Request Records from Wallet
             const records = await requestRecords(tokenProgram, false);
@@ -162,7 +231,6 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             if (actualTokenType !== 'CREDITS') {
                 setStatus('Generating Compliance Proofs for Stablecoin...');
                 const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex } = await import('../../../utils/aleo-utils');
-                // Ensure we call them even if unused to wake up the node state if needed
                 await getFreezeListRoot();
                 await getFreezeListCount();
                 const firstIndex = await getFreezeListIndex(0);
@@ -183,7 +251,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 setStatus('Requesting your approval to execute payment...');
             }
 
-            // 3. Construct Inputs for the invoice payment transition.
+            // 3. Construct Inputs
             const paymentSecret = generateSalt();
             const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
             const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
@@ -192,31 +260,63 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 throw new Error("Merchant address is missing from session details.");
             }
 
-            const inputs = [
-                payRecord.plaintext || payRecord.ciphertext || payRecord,
-                session.merchant_address,
-                publicKey,
-                `${amountMicro}${typeSuffix}`,
-                session.salt,
-                paymentSecret,
-                payerNoteField,
-                merchantNoteField,
-                session.invoice_hash
-            ];
+            let inputs: any[];
 
-            if (proofsInput) {
-                inputs.push(proofsInput);
+            if (isCrossToken && quoteOverride) {
+                // Cross-token input order matches Leo contract:
+                // pay_record, merchant, payer_owner, original_amount, converted_amount,
+                // salt, payment_secret, payer_note, merchant_note, message,
+                // [proofs], oracle_sig, expires_at
+                const originalAmountMicro = Math.round(finalAmount * 1_000_000);
+                const baseTypeSuffix = (baseTokenType === 'USDCX' || baseTokenType === 'USAD') ? 'u128' : 'u64';
+
+                inputs = [
+                    payRecord.plaintext || payRecord.ciphertext || payRecord,
+                    session.merchant_address,
+                    publicKey,
+                    `${originalAmountMicro}${baseTypeSuffix}`,  // original_amount (for hash)
+                    `${amountMicro}${typeSuffix}`,              // converted_amount (actual transfer)
+                    session.salt,
+                    paymentSecret,
+                    payerNoteField,
+                    merchantNoteField,
+                    session.invoice_hash
+                ];
+
+                if (proofsInput) {
+                    inputs.push(proofsInput);
+                }
+
+                inputs.push(quoteOverride.signature);
+                inputs.push(`${Math.floor(quoteOverride.expires_at)}u32`);
+            } else {
+                // Same-token input order (existing)
+                inputs = [
+                    payRecord.plaintext || payRecord.ciphertext || payRecord,
+                    session.merchant_address,
+                    publicKey,
+                    `${amountMicro}${typeSuffix}`,
+                    session.salt,
+                    paymentSecret,
+                    payerNoteField,
+                    merchantNoteField,
+                    session.invoice_hash
+                ];
+
+                if (proofsInput) {
+                    inputs.push(proofsInput);
+                }
             }
 
             const estimatedFee = await estimateExecutionFee({
-                programName: PROGRAM_ID,
+                programName: targetProgramId,
                 functionName: funcName,
                 inputs,
                 fallbackMicrocredits: 100_000
             });
 
             const transaction: TransactionOptions = {
-                program: PROGRAM_ID,
+                program: targetProgramId,
                 function: funcName,
                 inputs: inputs,
                 fee: estimatedFee,
@@ -330,8 +430,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             let typeSuffix = 'u64';
             let tokenName = 'Credits';
 
-            const actualTokenType = session.token_type === 'ANY'
-                ? resolveCheckoutToken(selectedTokenOverride)
+            const actualTokenType = hasSelectableTokens
+                ? resolveCheckoutToken(session, selectedTokenOverride)
                 : session.token_type;
 
             if (actualTokenType === 'USDCX') {
@@ -564,7 +664,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         cardSecret: string,
         donationAmount?: number,
         selectedTokenOverride?: string,
-        notes?: PaymentNoteInput
+        notes?: PaymentNoteInput,
+        quoteOverride?: { signature: string, expires_at: number, expected_amount: number }
     ) => {
         if (!session) {
             return;
@@ -627,12 +728,17 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             const finalAmount = (isDonationType && donationAmount && donationAmount > 0) ? donationAmount : session.amount;
             if (finalAmount <= 0) throw new Error('Amount must be greater than zero.');
 
-            const actualTokenType = session.token_type === 'ANY'
-                ? resolveCheckoutToken(selectedTokenOverride)
+            const actualTokenType = hasSelectableTokens
+                ? resolveCheckoutToken(session, selectedTokenOverride)
                 : session.token_type;
 
             let tokenProgram = 'credits.aleo';
-            let amountMicro = Math.round(finalAmount * 1_000_000);
+            
+            // If quote override exists, use its expected amount
+            let amountMicro = quoteOverride?.expected_amount 
+                ? Math.round(quoteOverride.expected_amount * 1_000_000)
+                : Math.round(finalAmount * 1_000_000);
+            
             let typeSuffix = 'u64';
             let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
 
@@ -645,6 +751,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 typeSuffix = 'u128';
                 funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
             }
+
+            const targetProgramId = quoteOverride ? WALLET_PROGRAM_ID : PROGRAM_ID;
 
             setStatus('Scanning your card for private balance...');
             const host = 'https://api.explorer.provable.com/v1';
@@ -699,8 +807,13 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
 
             if (proofsInput) inputs.push(proofsInput);
 
+            if (quoteOverride) {
+                inputs.push(`${Math.floor(quoteOverride.expires_at)}u32`);
+                inputs.push(quoteOverride.signature);
+            }
+
             const authorization = await programManager.buildAuthorization({
-                programName: PROGRAM_ID,
+                programName: targetProgramId,
                 functionName: funcName,
                 inputs
             });
@@ -731,7 +844,8 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         donationAmount?: number,
         selectedTokenOverride?: string,
         notes?: PaymentNoteInput,
-        payerAddressOverride?: string
+        payerAddressOverride?: string,
+        quoteOverride?: { expected_amount: number; expires_at: number; signature: string }
     ) => {
         if (!session) return;
         if (!giftCode.startsWith('gift-')) {
@@ -759,12 +873,17 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             const finalAmount = (isDonationType && donationAmount && donationAmount > 0) ? donationAmount : session.amount;
             if (finalAmount <= 0) throw new Error("Amount must be greater than zero.");
 
-            const actualTokenType = session.token_type === 'ANY'
-                ? resolveCheckoutToken(selectedTokenOverride)
+            const actualTokenType = hasSelectableTokens
+                ? resolveCheckoutToken(session, selectedTokenOverride)
                 : session.token_type;
 
             let tokenProgram = 'credits.aleo';
-            let amountMicro = Math.round(finalAmount * 1_000_000);
+            
+            // If quote override exists, use its expected amount
+            let amountMicro = quoteOverride?.expected_amount 
+                ? Math.round(quoteOverride.expected_amount * 1_000_000)
+                : Math.round(finalAmount * 1_000_000);
+            
             let typeSuffix = 'u64';
             let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
 
@@ -845,6 +964,11 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
 
             if (proofsInput) inputs.push(proofsInput);
 
+            if (quoteOverride) {
+                inputs.push(`${Math.floor(quoteOverride.expires_at)}u32`);
+                inputs.push(quoteOverride.signature);
+            }
+
             const authorization = await programManager.buildAuthorization({
                 programName: PROGRAM_ID,
                 functionName: funcName,
@@ -886,6 +1010,9 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         setStep,
         publicKey,
         giftCardRedeemOption,
-        redeemGiftCardBalance
+        redeemGiftCardBalance,
+        quote,
+        quoteTimeRemaining,
+        checkOracleQuote
     };
 };

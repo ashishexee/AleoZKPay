@@ -133,6 +133,10 @@ function buildDraftSummary(state) {
         `Token: ${state.currency}`
     ];
 
+    if (state.currency === 'ANY') {
+        lines.push(`Allowed Tokens: CREDITS, USDCX, USAD`);
+    }
+
     if (state.invoiceType !== 'donation') {
         lines.push(`Amount: ${state.amount}`);
     }
@@ -641,6 +645,12 @@ module.exports = (bot) => {
                 text += `Hash: \`${result.invoice.invoice_hash}\`\n`;
                 text += `Type: ${formatInvoiceTypeLabel(result.invoice.invoice_type)}\n`;
                 text += `Token: ${formatTokenLabel(result.invoice.token_type)}\n`;
+                
+                if (result.invoice.allowed_tokens && result.invoice.allowed_tokens.length > 0) {
+                    text += `Allowed Tokens: ${result.invoice.allowed_tokens.join(', ')}\n`;
+                } else if (result.invoice.token_type === 3) {
+                    text += `Allowed Tokens: CREDITS, USDCX, USAD\n`;
+                }
                 if (result.draft.amount > 0) {
                     text += `Amount: ${result.draft.amount}\n`;
                 }

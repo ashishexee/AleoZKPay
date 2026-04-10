@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { createClient } from '@supabase/supabase-js';
-import { PROGRAM_ID, parseMerchantReceipt } from '../utils/aleo-utils';
+import { PROGRAM_ID, WALLET_PROGRAM_ID, parseMerchantReceipt } from '../utils/aleo-utils';
 import { hashAddress } from '../utils/crypto';
 import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
 
@@ -64,8 +64,17 @@ export const usePaymentMonitor = () => {
                 console.log(`🔍 [PaymentMonitor] Attempt ${attempt + 1}/${retryDelays.length}: waiting ${retryDelays[attempt]}ms for on-chain sync...`);
                 await new Promise(r => setTimeout(r, retryDelays[attempt]));
 
-                const records = await requestRecords(PROGRAM_ID, true);
-                if (!records || records.length === 0) continue;
+                const [baseRecords, walletRecords] = await Promise.all([
+                    requestRecords(PROGRAM_ID, true),
+                    requestRecords(WALLET_PROGRAM_ID, true)
+                ]);
+
+                const records = [
+                    ...(baseRecords ? (baseRecords as any[]) : []),
+                    ...(walletRecords ? (walletRecords as any[]) : [])
+                ];
+
+                if (records.length === 0) continue;
 
                 const matchingReceipts: { amount: number, tokenType: number }[] = [];
 

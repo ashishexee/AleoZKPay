@@ -25,6 +25,8 @@ export const CreateInvoice: React.FC = () => {
         setWalletType,
         forSdk,
         setForSdk,
+        selectedAllowedTokens,
+        setSelectedAllowedTokens,
         items,
         showItems,
         setShowItems,
@@ -103,6 +105,8 @@ export const CreateInvoice: React.FC = () => {
                                 setWalletType={setWalletType}
                                 forSdk={forSdk}
                                 setForSdk={setForSdk}
+                                selectedAllowedTokens={selectedAllowedTokens}
+                                setSelectedAllowedTokens={setSelectedAllowedTokens}
                                 hasBurnerWallet={hasBurnerWallet}
                                 items={items}
                                 showItems={showItems}

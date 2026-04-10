@@ -23,6 +23,7 @@ export interface Invoice {
     invoice_type?: number;
     token_type?: number;
     invoice_items?: { name: string; quantity: number; unitPrice: number; total: number }[];
+    allowed_tokens?: string[];
 }
 
 export const fetchInvoices = async (status?: string): Promise<Invoice[]> => {
@@ -484,6 +485,7 @@ export type NullBotPendingToolCall = {
     name: NullBotToolName;
     args: Record<string, unknown>;
     missingArgs: string[];
+    metadata?: Record<string, unknown>;
 };
 
 export interface NullBotChatResponse {
