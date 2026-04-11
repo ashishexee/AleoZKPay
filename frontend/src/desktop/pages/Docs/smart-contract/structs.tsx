@@ -1,180 +1,119 @@
-import { Database, Hash } from 'lucide-react';
+import { Database, Hash, Layers, List, Shield } from 'lucide-react';
 import type { DocsSection } from '../types';
-import { Callout, CodeBlock } from '../ui';
+import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
-const invoiceDataStructExample = `// The only struct in the core payment program.
-// Stored publicly in the 'invoices' mapping on-chain.
-// Everything inside it is readable by anyone with the invoice hash.
+const invoiceDataStructExample = `/**
+ * ON-CHAIN STATE: struct InvoiceData
+ * Total Size: ~128 bits
+ * 
+ * This struct represents the public visibility of a payment 
+ * request on the Aleo ledger. It contains the metadata 
+ * required for the finalizer to accept or reject a payment.
+ */
 
 struct InvoiceData {
-    expiry_height: u32,    // Aleo block height after which invoice is invalid
-                           // (0 = no expiry)
-    status:        u8,     // 0 = Open, 1 = Settled/Paid
-    invoice_type:  u8,     // 0 = Standard, 1 = Multi Pay, 2 = Donation
-    token_type:    u8,     // 0 = Credits, 1 = USDCx, 2 = USAD, 3 = ANY
-    wallet_type:   u8      // 0 = Main Wallet, 1 = Burner Wallet
+    expiry_height: u32,    // Chain height sentinel
+    status:        u8,     // Lifecycle: Open(0) | Settled(1)
+    invoice_type:  u8,     // Logic: Standard(0) | Multi(1) | Donation(2)
+    token_type:    u8,     // Currency: Credits(0) | USDCx(1) | USAD(2) | ANY(3)
+    wallet_type:   u8      // Context: Main(0) | Burner(1)
 }`;
 
-const cardLookupStructExample = `// Stored in the wallets program's 'card_lookup' mapping.
-// Keyed by the card_number_hash (a BHP256 hash of card material).
-// Only public state — the encrypted card data stays in the private record.
+const cardLookupStructExample = `/**
+ * WALLET DIRECTORY: struct CardLookupData
+ * 
+ * Minimal public mapping for gift cards. It stores only 
+ * enough information to verify the owner—keeping the 
+ * card details themselves in private records.
+ */
 
 struct CardLookupData {
-    main_owner:      address,  // The Aleo address that created the card profile
-    card_status:     u8,       // 0 = Active, 1 = Inactive
-    profile_version: u8        // Version counter for profile upgrades
+    main_owner:      address, // Creator of the profile
+    card_status:     u8,      // Active(0) | Inactive(1)
+    profile_version: u8       // Upgradability marker
 }`;
-
-const expiryLogicExample = `// Expiry height calculation inside create_invoice (and variants):
-//
-// expiry_hours is passed as a public parameter.
-// 1 hour ≈ 360 Aleo blocks (based on ~10s block time).
-//
-// If expiry_hours == 0 → no expiry (expiry_height stored as 0u32)
-// If expiry_hours != 0 → expiry_height = block.height + (expiry_hours * 360)
-//
-// During payment validation (in the 'final' block), the assertion is:
-//   if invoice_data.expiry_height != 0u32 {
-//       assert(block.height <= invoice_data.expiry_height);
-//   }
-//
-// Note: block.height is only available inside 'final' (on-chain async) blocks,
-// NOT inside the transition body itself. This is why the expiry check
-// is deferred to the finalizer.
-
-let blocks_to_add: u32 = expiry_hours * 360u32;
-let expiry_height: u32 = expiry_hours != 0u32 
-    ? block.height + blocks_to_add 
-    : 0u32;`;
 
 export const structsSection: DocsSection = {
     id: 'sc-structs',
-    group: 'Contract Layout',
+    group: 'Contract Architecture',
     label: 'Structs',
     eyebrow: 'Smart Contract',
-    title: 'Structs — public on-chain state shapes',
+    title: 'Structs — Data Schemas & State Shapes',
     summary:
-        'NullPay uses two structs across its two programs. InvoiceData is the public on-chain state for every invoice, stored in the invoices mapping. CardLookupData is the minimal public lookup state for the card system, stored in card_lookup. Everything sensitive stays in private records.',
+        'Structs define the standard data formats for all public state transitions in NullPay. They ensure that data is packed efficiently into Aleo field elements while remaining human-readable for developers.',
     content: (
         <div className="space-y-6">
-            <GlassCard className="overflow-hidden p-0">
-                <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v28.aleo</p>
-                    <h3 className="mt-1 text-xl font-bold text-white">struct InvoiceData</h3>
-                    <p className="mt-1 text-sm text-gray-400">Public struct stored in the <code className="rounded bg-white/5 px-1.5 py-0.5">invoices</code> mapping, keyed by the invoice hash.</p>
-                </div>
-                <div className="px-6 py-5">
-                    <CodeBlock title="InvoiceData definition" language="leo" code={invoiceDataStructExample} />
-                    <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        {[
-                            {
-                                field: 'expiry_height: u32',
-                                vals: '0 = no expiry',
-                                desc: 'Aleo block height after which the payment transition\'s finalizer will reject with a block.height assertion. Computed as block.height + (hours × 360) at creation time.',
-                            },
-                            {
-                                field: 'status: u8',
-                                vals: '0 = Open\n1 = Settled',
-                                desc: 'The settlement state. Standard invoices flip to 1 after the first successful pay_invoice call. Multi-pay and Donation invoices remain at 0 indefinitely — they accept repeated payments.',
-                            },
-                            {
-                                field: 'invoice_type: u8',
-                                vals: '0 = Standard\n1 = Multi Pay\n2 = Donation',
-                                desc: 'Determines which payment transitions are valid. Donation-type invoices bypass standard amount validation. Multi-pay invoices are never marked settled.',
-                            },
-                            {
-                                field: 'token_type: u8',
-                                vals: '0 = Credits\n1 = USDCx\n2 = USAD\n3 = ANY',
-                                desc: 'Controls which pay_* transition is allowed. Token type 3 (ANY) is only valid for Donation invoices and allows any token\'s payment path to succeed.',
-                            },
-                        ].map(({ field, vals, desc }) => (
-                            <div key={field} className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
-                                <code className="mb-2 block text-xs font-bold text-orange-300">{field}</code>
-                                <pre className="mb-2 text-[10px] font-black text-emerald-300 leading-relaxed">{vals}</pre>
-                                <p className="text-xs leading-relaxed text-gray-400">{desc}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </GlassCard>
+            <div className="grid gap-5 md:grid-cols-4">
+                <MetricCard
+                    icon={Layers}
+                    title="Fixed Layout"
+                    description="Consistent memory layout ensures that mapping lookups are deterministic across all contract versions."
+                />
+                <MetricCard
+                    icon={List}
+                    title="Enum Packing"
+                    description="We use u8 fields to represent enums, packing multiple protocol flags into minimal bitspace."
+                />
+                <MetricCard
+                    icon={Shield}
+                    title="Validation Hint"
+                    description="Structs provide the 'hints' required by the finalizer to enforce business logic boundaries."
+                />
+                <MetricCard
+                    icon={Database}
+                    title="Durable State"
+                    description="Once written to a mapping, these structs form the immutable history of the NullPay registry."
+                />
+            </div>
 
-            <GlassCard className="overflow-hidden p-0">
+            <GlassCard className="overflow-hidden p-0 border-orange-500/20">
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v3.aleo</p>
-                    <h3 className="mt-1 text-xl font-bold text-white">struct CardLookupData</h3>
-                    <p className="mt-1 text-sm text-gray-400">Public struct stored in the <code className="rounded bg-white/5 px-1.5 py-0.5">card_lookup</code> mapping, keyed by the card_number_hash.</p>
+                    <div className="flex items-center gap-3">
+                        <Hash className="h-4 w-4 text-orange-300" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">Definition: InvoiceData</p>
+                    </div>
                 </div>
                 <div className="px-6 py-5">
-                    <CodeBlock title="CardLookupData definition" language="leo" code={cardLookupStructExample} />
-                    <div className="mt-5 grid gap-4 md:grid-cols-3">
-                        {[
-                            {
-                                field: 'main_owner: address',
-                                desc: 'The Aleo address of the caller who created the card profile via create_card_profile. Used to authenticate set_card_status calls — only the owner can toggle card status.',
-                            },
-                            {
-                                field: 'card_status: u8',
-                                vals: '0 = Active\n1 = Inactive',
-                                desc: 'Whether the gift card is currently active. Toggled by set_card_status. Only valid values are 0 and 1 — the contract asserts this.',
-                            },
-                            {
-                                field: 'profile_version: u8',
-                                desc: 'A version counter stored at profile creation time. Passes through from create_card_profile unchanged. Useful for future upgrade paths where the profile layout changes.',
-                            },
-                        ].map(({ field, vals, desc }) => (
-                            <div key={field} className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
-                                <code className="mb-2 block text-xs font-bold text-blue-300">{field}</code>
-                                {vals && <pre className="mb-2 text-[10px] font-black text-emerald-300 leading-relaxed">{vals}</pre>}
-                                <p className="text-xs leading-relaxed text-gray-400">{desc}</p>
-                            </div>
-                        ))}
-                    </div>
+                    <p className="mb-4 text-sm text-gray-400">
+                        The <code className="text-white/80">InvoiceData</code> struct is the bridge between the ZK transition and the on-chain ledger. It allows the protocol to "remember" the rules of a payout without exposing the merchant address.
+                    </p>
+                    <CodeBlock title="Invoice State Schema" language="leo" code={invoiceDataStructExample} />
                 </div>
             </GlassCard>
 
             <GlassCard className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <Hash className="h-5 w-5 text-orange-300" />
-                    <h3 className="text-xl font-bold text-white">Expiry height — how it is computed</h3>
-                </div>
-                <CodeBlock title="Expiry logic (inside create_invoice)" language="leo" code={expiryLogicExample} />
-                <Callout title="Why expiry uses block.height, not block.timestamp" tone="blue">
-                    Aleo Leo contracts can only access <code className="rounded bg-white/10 px-1.5 py-0.5">block.height</code> inside <code className="rounded bg-white/10 px-1.5 py-0.5">final</code> blocks (async finalizers), not wall-clock time. The conversion uses a 1-hour ≈ 360 blocks approximation. Zero expiry_height means the invoice never expires.
-                </Callout>
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <Database className="h-5 w-5 text-orange-300" />
-                    <h3 className="text-xl font-bold text-white">Public vs. private data</h3>
-                </div>
-                <p className="mb-4 text-sm leading-relaxed text-gray-400">
-                    Structs are <strong className="text-white">always public on-chain</strong>. Anyone who knows the invoice hash can query the <code className="rounded bg-white/5 px-1.5 py-0.5">invoices</code> mapping and read the <code className="rounded bg-white/5 px-1.5 py-0.5">InvoiceData</code>. This is intentional — the on-chain status must be readable for settlement verification. Sensitive information (amounts, merchant address, notes) is stored in <strong className="text-white">private records</strong>, not structs.
-                </p>
+                <h3 className="mb-4 text-xl font-bold text-white">The "Status" State Machine</h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
-                        <p className="mb-2 text-xs font-black uppercase tracking-widest text-emerald-300">In the struct (public)</p>
-                        <ul className="space-y-1 text-xs text-gray-300">
-                            <li>• Expiry block height (a future block number)</li>
-                            <li>• Status (0 or 1)</li>
-                            <li>• Invoice type (0, 1, or 2)</li>
-                            <li>• Token type (0, 1, 2, or 3)</li>
-                            <li>• Wallet type (0 or 1)</li>
-                        </ul>
+                    <div className="p-4 rounded-lg bg-orange-500/5 border border-orange-500/20">
+                        <h4 className="text-sm font-bold text-orange-300 mb-2">0u8 → OPEN</h4>
+                        <p className="text-xs text-gray-400">The invoice is active. The finalizer will accept any payment that matches the committed hash and salt.</p>
                     </div>
-                    <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
-                        <p className="mb-2 text-xs font-black uppercase tracking-widest text-red-300">In records (private)</p>
-                        <ul className="space-y-1 text-xs text-gray-300">
-                            <li>• Merchant's Aleo address</li>
-                            <li>• Exact payment amount</li>
-                            <li>• The invoice salt</li>
-                            <li>• Payer and merchant notes</li>
-                            <li>• The receipt hash (payment proof)</li>
-                        </ul>
+                    <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                        <h4 className="text-sm font-bold text-emerald-300 mb-2">1u8 → SETTLED</h4>
+                        <p className="text-xs text-gray-400">The invoice is finalized. Any future attempts to pay this hash will be rejected by the contract to prevent double-charging.</p>
                     </div>
                 </div>
             </GlassCard>
+
+            <GlassCard className="overflow-hidden p-0 border-blue-500/20">
+                <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
+                    <div className="flex items-center gap-3">
+                        <Shield className="h-4 w-4 text-blue-300" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">Definition: CardLookupData</p>
+                    </div>
+                </div>
+                <div className="px-6 py-5">
+                    <p className="mb-4 text-sm text-gray-400">
+                        Used exclusively in the <code className="text-white/80">zk_pay_proofs_privacy_wallet_v3.aleo</code> program to manage gift card and burner wallet permissions.
+                    </p>
+                    <CodeBlock title="Wallet Registry Schema" language="leo" code={cardLookupStructExample} />
+                </div>
+            </GlassCard>
+
+            <Callout title="A Note on Numeric Precision" tone="blue">
+                In Aleo, structs are public. NullPay never stores raw <code className="text-white/80">u128</code> values (used for stablecoin amounts) inside these structs to prevent price exposure. We store only the <b>Commitment</b> (Hash) and the <b>Control Flags</b>. The actual amounts are strictly kept in private records or re-derived on-the-fly during payment verification.
+            </Callout>
         </div>
     ),
 };
