@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PROGRAM_ID = void 0;
+exports.WALLET_PROGRAM_ID = exports.PROGRAM_ID = void 0;
 exports.generateSalt = generateSalt;
 exports.normalizeInvoiceHash = normalizeInvoiceHash;
 exports.getInvoiceHashFromMapping = getInvoiceHashFromMapping;
@@ -29,6 +29,7 @@ const crypto_1 = __importDefault(require("crypto"));
 const esm_1 = require("./esm");
 const env_1 = require("./env");
 exports.PROGRAM_ID = 'zk_pay_proofs_privacy_v27.aleo';
+exports.WALLET_PROGRAM_ID = 'zk_pay_proofs_privacy_wallet_v4.aleo';
 const USDCX_FREEZELIST_PROGRAM_ID = 'test_usdcx_freezelist.aleo';
 const USAD_FREEZELIST_PROGRAM_ID = 'test_usad_freezelist.aleo';
 const EXPLORER_BASE = 'https://api.explorer.provable.com/v1';
@@ -169,6 +170,8 @@ function buildPaymentLink(baseUrl, args) {
     url.searchParams.set('amount', args.amount.toString());
     url.searchParams.set('salt', args.salt);
     url.searchParams.set('hash', args.invoiceHash);
+    if (args.title)
+        url.searchParams.set('title', args.title);
     if (args.memo)
         url.searchParams.set('memo', args.memo);
     if (args.invoiceType === 'multipay')
@@ -191,6 +194,7 @@ function createInvoiceDbRecord(args) {
         merchant_address_hash: args.merchantAddressHash,
         is_burner: args.wallet === 'burner',
         amount: args.amount,
+        title: args.title || '',
         memo: args.memo || '',
         status: 'PENDING',
         invoice_transaction_id: args.invoiceTxId,
@@ -198,46 +202,74 @@ function createInvoiceDbRecord(args) {
         invoice_type: invoiceTypeToNumber(args.invoiceType),
         token_type: getTokenTypeNumber(args.currency),
         invoice_items: args.lineItems || null,
+        allowed_tokens: args.allowedTokens || null,
         for_sdk: false,
     };
 }
-function resolvePaymentMode(invoice, fallbackAmount, fallbackCurrency) {
+function resolvePaymentMode(invoice, fallbackAmount, fallbackCurrency, payerCurrency, quoteConvertedMicro) {
     const invoiceType = invoice.invoice_type ?? 0;
     const tokenType = invoice.token_type ?? (fallbackCurrency === 'USDCX' ? 1 : fallbackCurrency === 'USAD' ? 2 : 0);
     const amountMajor = invoice.amount && invoice.amount > 0 ? Number(invoice.amount) : Number(fallbackAmount ?? 0);
     const amountMicroFromInvoice = invoice.amount_micro && invoice.amount_micro > 0 ? BigInt(invoice.amount_micro) : null;
-    const amountMicro = amountMicroFromInvoice ?? BigInt(Math.round(amountMajor * 1000000));
+    const originalAmountMicro = amountMicroFromInvoice ?? BigInt(Math.round(amountMajor * 1000000));
     const isDonation = invoiceType === 2;
-    if (!isDonation && amountMicro <= 0n) {
+    if (!isDonation && originalAmountMicro <= 0n) {
         throw new Error('Invoice amount is missing. Add main wallet private key in env or pass amount explicitly.');
     }
-    if (tokenType === 1) {
+    // Determine base token name from tokenType
+    const baseTokenName = tokenType === 1 ? 'usdcx' : tokenType === 2 ? 'usad' : 'credits';
+    const originalAmountSuffix = (tokenType === 1 || tokenType === 2) ? 'u128' : 'u64';
+    // Determine payer token
+    const payerTokenNum = payerCurrency === 'USDCX' ? 1 : payerCurrency === 'USAD' ? 2 : 0;
+    const payerTokenName = payerCurrency === 'USDCX' ? 'usdcx' : payerCurrency === 'USAD' ? 'usad' : 'credits';
+    const isCrossToken = !isDonation && payerCurrency !== undefined && payerTokenNum !== tokenType;
+    if (isCrossToken && quoteConvertedMicro) {
+        // Cross-token payment
+        const payerProgram = payerCurrency === 'USDCX' ? 'test_usdcx_stablecoin.aleo' : payerCurrency === 'USAD' ? 'test_usad_stablecoin.aleo' : 'credits.aleo';
+        const payerSuffix = (payerCurrency === 'USDCX' || payerCurrency === 'USAD') ? 'u128' : 'u64';
         return {
             invoiceType,
             tokenType,
-            amountMicro,
+            amountMicro: quoteConvertedMicro,
+            originalAmountMicro,
+            functionName: `pay_invoice_${baseTokenName}_via_${payerTokenName}`,
+            tokenProgram: payerProgram,
+            amountSuffix: payerSuffix,
+            originalAmountSuffix,
+            isCrossToken: true,
+        };
+    }
+    // Same-token payment (existing logic)
+    if (tokenType === 1) {
+        return {
+            invoiceType, tokenType,
+            amountMicro: originalAmountMicro,
+            originalAmountMicro,
             functionName: isDonation ? 'pay_donation_usdcx' : 'pay_invoice_usdcx',
             tokenProgram: 'test_usdcx_stablecoin.aleo',
-            amountSuffix: 'u128',
+            amountSuffix: 'u128', originalAmountSuffix: 'u128',
+            isCrossToken: false,
         };
     }
     if (tokenType === 2) {
         return {
-            invoiceType,
-            tokenType,
-            amountMicro,
+            invoiceType, tokenType,
+            amountMicro: originalAmountMicro,
+            originalAmountMicro,
             functionName: isDonation ? 'pay_donation_usad' : 'pay_invoice_usad',
             tokenProgram: 'test_usad_stablecoin.aleo',
-            amountSuffix: 'u128',
+            amountSuffix: 'u128', originalAmountSuffix: 'u128',
+            isCrossToken: false,
         };
     }
     return {
-        invoiceType,
-        tokenType,
-        amountMicro,
+        invoiceType, tokenType,
+        amountMicro: originalAmountMicro,
+        originalAmountMicro,
         functionName: isDonation ? 'pay_donation' : 'pay_invoice',
         tokenProgram: 'credits.aleo',
-        amountSuffix: 'u64',
+        amountSuffix: 'u64', originalAmountSuffix: 'u64',
+        isCrossToken: false,
     };
 }
 async function getScannerSession(privateKey) {
@@ -667,7 +699,7 @@ async function generateFreezeListProof(ownerAddress, tokenProgram) {
 }
 async function createSponsoredPaymentAuthorization(args) {
     const session = await getScannerSession(args.walletPrivateKey);
-    const paymentMode = resolvePaymentMode(args.invoice, args.amount, args.currency);
+    const paymentMode = resolvePaymentMode(args.invoice, args.amount, args.currency, args.payerCurrency, args.quoteConvertedMicro);
     if (!args.invoice.salt) {
         throw new Error('Invoice is missing salt.');
     }
@@ -696,22 +728,47 @@ async function createSponsoredPaymentAuthorization(args) {
     const programManager = new ProgramManager(EXPLORER_BASE, keyProvider, recordProvider);
     programManager.setAccount(session.account);
     const paymentSecret = generateSalt();
-    const inputs = [
-        record,
-        merchantAddress,
-        session.account.address().toString(),
-        `${paymentMode.amountMicro}${paymentMode.amountSuffix}`,
-        args.invoice.salt,
-        paymentSecret,
-        '0field',
-        '0field',
-        args.invoice.invoice_hash,
-    ];
-    if (proofsInput) {
-        inputs.push(proofsInput);
+    let inputs;
+    if (paymentMode.isCrossToken && args.quoteSignature && args.quoteExpiresAt) {
+        // Cross-token: original_amount + converted_amount + oracle_sig + expires_at
+        inputs = [
+            record,
+            merchantAddress,
+            session.account.address().toString(),
+            `${paymentMode.originalAmountMicro}${paymentMode.originalAmountSuffix}`,
+            `${paymentMode.amountMicro}${paymentMode.amountSuffix}`,
+            args.invoice.salt,
+            paymentSecret,
+            '0field',
+            '0field',
+            args.invoice.invoice_hash,
+        ];
+        if (proofsInput) {
+            inputs.push(proofsInput);
+        }
+        inputs.push(args.quoteSignature);
+        inputs.push(`${args.quoteExpiresAt}u32`);
     }
+    else {
+        // Same-token payment (existing)
+        inputs = [
+            record,
+            merchantAddress,
+            session.account.address().toString(),
+            `${paymentMode.amountMicro}${paymentMode.amountSuffix}`,
+            args.invoice.salt,
+            paymentSecret,
+            '0field',
+            '0field',
+            args.invoice.invoice_hash,
+        ];
+        if (proofsInput) {
+            inputs.push(proofsInput);
+        }
+    }
+    const targetProgramId = paymentMode.isCrossToken ? exports.WALLET_PROGRAM_ID : exports.PROGRAM_ID;
     const authorization = await programManager.buildAuthorization({
-        programName: exports.PROGRAM_ID,
+        programName: targetProgramId,
         functionName: paymentMode.functionName,
         inputs,
     });

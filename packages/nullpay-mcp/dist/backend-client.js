@@ -84,5 +84,8 @@ class NullPayBackendClient {
             body: JSON.stringify({ card_number_hash: cardNumberHash }),
         }).catch(() => null);
     }
+    async getOracleQuote(fromToken, toToken, amount) {
+        return await this.request(`/oracle/quote?from_token=${fromToken}&to_token=${toToken}&amount=${amount}`);
+    }
 }
 exports.NullPayBackendClient = NullPayBackendClient;
