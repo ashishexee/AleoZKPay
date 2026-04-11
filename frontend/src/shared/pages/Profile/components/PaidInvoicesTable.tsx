@@ -8,6 +8,10 @@ interface PaidInvoicesTableProps {
     loading: boolean;
     search: string;
     valueFilterAmount: number | null;
+    dateFilterMode: 'all' | 'single' | 'range';
+    singleDateFilter: string;
+    rangeStartDateFilter: string;
+    rangeEndDateFilter: string;
     onViewReceipts: (receipts: PayerReceipt[]) => void;
     onViewNotes: (notes: string[]) => void;
 }
@@ -30,7 +34,61 @@ const formatTokenAmount = (amount: number) => {
     return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/\.?0+$/, '');
 };
 
-export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, loading, search, valueFilterAmount, onViewReceipts, onViewNotes }) => {
+export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({
+    receipts,
+    loading,
+    search,
+    valueFilterAmount,
+    dateFilterMode,
+    singleDateFilter,
+    rangeStartDateFilter,
+    rangeEndDateFilter,
+    onViewReceipts,
+    onViewNotes
+}) => {
+    const getDayRange = (value: string) => {
+        if (!value) return null;
+
+        const start = new Date(`${value}T00:00:00`);
+        if (Number.isNaN(start.getTime())) return null;
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+
+        return { start: start.getTime(), end: end.getTime() };
+    };
+
+    const matchesDateFilter = (items: PayerReceipt[]) => {
+        if (dateFilterMode === 'all') return true;
+
+        return items.some((receipt) => {
+            const rawValue = (receipt as any).createdAt || (receipt as any).created_at || (receipt.timestamp ? new Date(receipt.timestamp).toISOString() : null);
+            
+            // If the record has no attached timestamp, it cannot be meaningfully filtered.
+            // We return true (include it) so it doesn't mysteriously disappear when the user sets a date filter.
+            if (!rawValue) return true;
+
+            const timestamp = new Date(rawValue).getTime();
+            if (Number.isNaN(timestamp) || timestamp === 0) return true;
+
+            if (dateFilterMode === 'single') {
+                const selectedDay = getDayRange(singleDateFilter);
+                if (!selectedDay) return true;
+                return timestamp >= selectedDay.start && timestamp < selectedDay.end;
+            }
+
+            const startDay = getDayRange(rangeStartDateFilter);
+            const endDay = getDayRange(rangeEndDateFilter);
+
+            if (!startDay && !endDay) return true;
+            if (startDay && timestamp < startDay.start) return false;
+            // End day needs to be at or before the start of the Next Day (which is what endDay.end is)
+            if (endDay && timestamp >= endDay.end) return false;
+
+            return true;
+        });
+    };
+
     // Process receipts to group by invoiceHash
     const groupedReceipts = useMemo(() => {
         const normalizedSearch = search.trim().toLowerCase();
@@ -60,6 +118,10 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                     return false;
                 }
 
+                if (!matchesDateFilter(groupedItems)) {
+                    return false;
+                }
+
                 if (valueFilterAmount === null) {
                     return true;
                 }
@@ -67,7 +129,7 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                 const totalPaid = groupedItems.reduce((sum, receipt) => sum + Number(receipt.amount || 0), 0) / 1_000_000;
                 return totalPaid >= valueFilterAmount;
             });
-    }, [receipts, search, valueFilterAmount]);
+    }, [receipts, search, valueFilterAmount, dateFilterMode, singleDateFilter, rangeStartDateFilter, rangeEndDateFilter]);
 
     return (
         <table className="w-full">
@@ -93,7 +155,7 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({ receipts, 
                     ))
                 ) : groupedReceipts.length === 0 ? (
                     <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-500 italic">No paid invoices found.</td>
+                        <td colSpan={5} className="py-8 text-center text-gray-500 italic">{search || dateFilterMode !== 'all' ? 'No paid invoices match the active filters.' : 'No paid invoices found.'}</td>
                     </tr>
                 ) : (
                     groupedReceipts.map(([invoiceHash, receipts]) => {

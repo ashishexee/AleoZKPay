@@ -16,6 +16,7 @@ export interface Invoice {
     block_settled?: number;
     invoice_transaction_id?: string;
     payment_tx_ids?: string[];
+    payment_timestamps?: Record<string, string>;
     payment_tx_id?: string;
     created_at?: string;
     updated_at?: string;

@@ -63,6 +63,7 @@ export const useProfileQR = () => {
             amountInput,
             salt,
             '0field',
+            '0field',
             '0u32',
             typeInput,
             isBurner ? '1u8' : '0u8'

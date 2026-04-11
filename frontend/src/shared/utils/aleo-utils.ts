@@ -569,6 +569,7 @@ export interface PayerReceipt {
     tokenType: number;
     payerNote: string;
     timestamp: number;
+    created_at?: string;
     transactionId?: string;
 }
 
@@ -602,7 +603,8 @@ export const parsePayerReceipt = (record: any): PayerReceipt | null => {
                 amount: parseInt((getVal('amount') || '0').replace('u64', '')),
                 tokenType: parseInt((getVal('token_type') || getVal('tokenType') || '0').replace('u8', '')),
                 payerNote: payerNoteField ? fieldToString(payerNoteField) : '',
-                timestamp: 0, // Placeholder
+                timestamp: record.timestamp || ((record.created_at || record.createdAt) ? new Date(record.created_at || record.createdAt).getTime() : 0),
+                created_at: record.created_at || record.createdAt || undefined,
                 transactionId: record.transactionId || record.transaction_id || undefined
             };
         }
@@ -618,6 +620,7 @@ export interface MerchantReceipt {
     tokenType: number;
     merchantNote: string;
     timestamp?: number;
+    created_at?: string;
     transactionId?: string;
 }
 
@@ -655,6 +658,8 @@ export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
                 amount: amount,
                 tokenType: tokenType,
                 merchantNote: merchantNoteField ? fieldToString(merchantNoteField) : '',
+                timestamp: record.timestamp || ((record.created_at || record.createdAt) ? new Date(record.created_at || record.createdAt).getTime() : 0),
+                created_at: record.created_at || record.createdAt || undefined,
                 transactionId: record.transactionId || record.transaction_id || undefined
             };
         }

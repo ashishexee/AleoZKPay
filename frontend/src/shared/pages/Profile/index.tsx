@@ -1,7 +1,7 @@
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useTransactions } from '../../hooks/useTransactions';
 import { PROGRAM_ID, WALLET_PROGRAM_ID, estimateExecutionFee, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
@@ -20,6 +20,7 @@ import { BurnerWalletSettings } from './components/BurnerWalletSettings';
 import { BackupBanner } from './components/BackupBanner';
 import { InvoiceDistributionChart } from './components/Charts/InvoiceDistributionChart';
 import { TokenDistributionChart } from './components/Charts/TokenDistributionChart';
+import { PaymentTimelineChart } from './components/Charts/PaymentTimelineChart';
 import { WalletBalances } from './components/WalletBalances';
 import { useWalletBalances } from '../../hooks/useWalletBalances';
 import { DashboardChatbot } from './components/DashboardChatbot';
@@ -47,6 +48,24 @@ const Profile: React.FC = () => {
         });
         return merged;
     }, [mainTransactions, burnerDbTransactions]);
+    const paymentTimestampsByTxId = useMemo(() => {
+        const timestamps: Record<string, string> = {};
+
+        transactions.forEach((tx: any) => {
+            const paymentTimestamps = tx.payment_timestamps;
+            if (!paymentTimestamps || typeof paymentTimestamps !== 'object' || Array.isArray(paymentTimestamps)) {
+                return;
+            }
+
+            Object.entries(paymentTimestamps).forEach(([txId, timestamp]) => {
+                if (typeof timestamp === 'string' && timestamp && !timestamps[txId]) {
+                    timestamps[txId] = timestamp;
+                }
+            });
+        });
+
+        return timestamps;
+    }, [transactions]);
     const [settling, setSettling] = useState<string | null>(null);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [verifyInput, setVerifyInput] = useState('');
@@ -58,10 +77,25 @@ const Profile: React.FC = () => {
     const [selectedNotes, setSelectedNotes] = useState<string[] | null>(null);
     const [invoiceSearch, setInvoiceSearch] = useState('');
     const [valueFilterType, setValueFilterType] = useState<'none' | 'amount' | 'earnings'>('none');
+    const [dateFilterMode, setDateFilterMode] = useState<'all' | 'single' | 'range'>('all');
+    const [singleDateFilter, setSingleDateFilter] = useState('');
+    const [rangeStartDateFilter, setRangeStartDateFilter] = useState('');
+    const [rangeEndDateFilter, setRangeEndDateFilter] = useState('');
     const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
     const filterDropdownRef = useRef<HTMLDivElement>(null);
     const [valueFilterInput, setValueFilterInput] = useState('');
     const [activeTab, setActiveTab] = useState<'created' | 'paid'>('created');
+    const [mainViewTab, setMainViewTab] = useState<'statistics' | 'dashboard'>('statistics');
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (location.pathname === '/profile/dashboard') {
+            setMainViewTab('dashboard');
+        } else if (location.pathname === '/profile/statistics' || location.pathname === '/profile') {
+            setMainViewTab('statistics');
+        }
+    }, [location.pathname]);
     const [merchantReceipts, setMerchantReceipts] = useState<MerchantReceipt[]>([]);
     const [createdInvoices, setCreatedInvoices] = useState<InvoiceRecord[]>([]);
     const [payerReceipts, setPayerReceipts] = useState<PayerReceipt[]>([]);
@@ -119,7 +153,7 @@ const Profile: React.FC = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [invoiceSearch, valueFilterType, valueFilterInput, activeTab]);
+    }, [invoiceSearch, valueFilterType, valueFilterInput, activeTab, dateFilterMode, singleDateFilter, rangeStartDateFilter, rangeEndDateFilter]);
 
     useEffect(() => {
         if (activeTab === 'paid' && valueFilterType === 'earnings') {
@@ -363,6 +397,7 @@ const Profile: React.FC = () => {
 
                 // Merge DB Metadata if available
                 status: dbTx?.status === 'SETTLED' ? 'SETTLED' : 'PENDING',
+                createdAt: dbTx?.created_at || null,
                 creationTx: dbTx?.invoice_transaction_id || null,
                 paymentTxIds: dbTx?.payment_tx_ids || (dbTx?.payment_tx_id ? [dbTx.payment_tx_id] : []),
                 memo: record.memo || dbTx?.memo || '',
@@ -392,6 +427,7 @@ const Profile: React.FC = () => {
 
                 // Merge DB Metadata if available
                 status: dbTx?.status === 'SETTLED' ? 'SETTLED' : 'PENDING',
+                createdAt: dbTx?.created_at || null,
                 creationTx: dbTx?.invoice_transaction_id || null,
                 paymentTxIds: dbTx?.payment_tx_ids || (dbTx?.payment_tx_id ? [dbTx.payment_tx_id] : []),
                 memo: record.memo || dbTx?.memo || '',
@@ -544,6 +580,34 @@ const Profile: React.FC = () => {
     }, [burnerMerchantReceipts, profileMainHash, profileBurnerHash, sdkHashSet]);
 
     const merchantStats = useMemo(() => {
+        const totalInvoices = combinedInvoices.length;
+        const settledCount = combinedInvoices.filter((invoice) => invoice.status === 'SETTLED' || invoice.status === 1).length;
+        const pendingCount = combinedInvoices.filter((invoice) => invoice.status === 'PENDING' || invoice.status === 0).length;
+        const totalPayments = uniqueMainReceipts.length + uniqueBurnerReceipts.length;
+        const settlementRate = totalInvoices > 0 ? (settledCount / totalInvoices) * 100 : 0;
+        const averagePaymentsPerInvoice = totalInvoices > 0 ? totalPayments / totalInvoices : 0;
+        const mainPaymentShare = totalPayments > 0 ? (uniqueMainReceipts.length / totalPayments) * 100 : 0;
+        const burnerPaymentShare = totalPayments > 0 ? (uniqueBurnerReceipts.length / totalPayments) * 100 : 0;
+        const nonDonationInvoices = combinedInvoices.filter((invoice) => invoice.invoiceType !== 2 && Number(invoice.amount) > 0);
+        const averageInvoiceAmountForToken = (tokenType: number) => {
+            const matchingInvoices = nonDonationInvoices.filter((invoice) => invoice.tokenType === tokenType);
+            if (matchingInvoices.length === 0) return '0.00';
+
+            const totalAmount = matchingInvoices.reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0);
+            return (totalAmount / matchingInvoices.length).toFixed(2);
+        };
+        const mainInvoiceCount = combinedInvoices.filter((invoice) => invoice.walletType !== 1).length;
+        const burnerInvoiceCount = combinedInvoices.filter((invoice) => invoice.walletType === 1).length;
+        const mainInvoiceShare = totalInvoices > 0 ? (mainInvoiceCount / totalInvoices) * 100 : 0;
+        const burnerInvoiceShare = totalInvoices > 0 ? (burnerInvoiceCount / totalInvoices) * 100 : 0;
+        const receiptCountByInvoice = [...uniqueMainReceipts, ...uniqueBurnerReceipts].reduce((counts, receipt) => {
+            counts.set(receipt.invoiceHash, (counts.get(receipt.invoiceHash) || 0) + 1);
+            return counts;
+        }, new Map<string, number>());
+        const multipayInvoices = combinedInvoices.filter((invoice) => invoice.invoiceType === 1);
+        const engagedMultipayInvoices = multipayInvoices.filter((invoice) => (receiptCountByInvoice.get(invoice.invoiceHash) || 0) > 1).length;
+        const multipayParticipationRate = multipayInvoices.length > 0 ? (engagedMultipayInvoices / multipayInvoices.length) * 100 : 0;
+
         return {
             mainCredits: uniqueMainReceipts
                 .filter((receipt) => receipt.tokenType !== 1 && receipt.tokenType !== 2)
@@ -569,9 +633,22 @@ const Profile: React.FC = () => {
                 .filter((receipt) => receipt.tokenType === 2)
                 .reduce((acc, curr) => acc + (Number(curr.amount) / 1_000_000 || 0), 0)
                 .toFixed(2),
-            invoices: combinedInvoices.length,
-            settled: combinedInvoices.filter((invoice) => invoice.status === 'SETTLED' || invoice.status === 1).length,
-            pending: combinedInvoices.filter((invoice) => invoice.status === 'PENDING' || invoice.status === 0).length
+            invoices: totalInvoices,
+            settled: settledCount,
+            pending: pendingCount,
+            totalPayments,
+            settlementRate: settlementRate.toFixed(1),
+            averagePaymentsPerInvoice: averagePaymentsPerInvoice.toFixed(2),
+            mainPaymentShare: mainPaymentShare.toFixed(1),
+            burnerPaymentShare: burnerPaymentShare.toFixed(1),
+            averageInvoiceAmountCredits: averageInvoiceAmountForToken(0),
+            averageInvoiceAmountUSDCx: averageInvoiceAmountForToken(1),
+            averageInvoiceAmountUSAD: averageInvoiceAmountForToken(2),
+            mainInvoiceShare: mainInvoiceShare.toFixed(1),
+            burnerInvoiceShare: burnerInvoiceShare.toFixed(1),
+            multipayParticipationRate: multipayParticipationRate.toFixed(1),
+            multipayInvoiceCount: multipayInvoices.length,
+            engagedMultipayInvoices
         };
     }, [combinedInvoices, uniqueBurnerReceipts, uniqueMainReceipts]);
 
@@ -855,198 +932,388 @@ const Profile: React.FC = () => {
                 {/* BACKUP BANNER */}
                 <BackupBanner />
 
-                {/* TOP ROW: Stats & Charts */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
-                    {/* STATS */}
-                    <div className="xl:col-span-1">
-                        <StatsCards
-                            merchantStats={merchantStats}
-                            loadingReceipts={loadingReceipts}
-                            loadingCreated={loadingCreated}
-                            loadingBurner={loadingBurner}
-                            itemVariants={itemVariants}
-                        />
-                    </div>
-
-                    {/* CHARTS */}
-                    <motion.div variants={itemVariants} className="xl:col-span-1 grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
-                        <InvoiceDistributionChart invoices={loadingBurner ? [] : combinedInvoices} isLoading={loadingCreated || loadingBurner} />
-                        <TokenDistributionChart receipts={[...merchantReceipts, ...burnerMerchantReceipts]} isLoading={loadingReceipts || loadingBurner} />
-                    </motion.div>
+                {/* BURNER WALLET SETTINGS - FULL WIDTH - MOVED ABOVE TABS */}
+                <div className="mb-8">
+                    <BurnerWalletSettings itemVariants={itemVariants} transactions={transactions} />
                 </div>
 
-                {/* BURNER WALLET SETTINGS - FULL WIDTH */}
-                <BurnerWalletSettings itemVariants={itemVariants} transactions={transactions} />
-
-                {/* CardWalletPanel moved to dedicated /cards route */}
-
-                {/* INVOICE HISTORY */}
-                <GlassCard variants={itemVariants} className="p-0 overflow-hidden">
-                    <div className="p-6 border-b border-white/5 flex flex-col items-center justify-center gap-4">
-                        <div className="flex p-1 bg-black/40 backdrop-blur-xl rounded-full border border-white/10 relative">
-                            {['created', 'paid'].map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab as any)}
-                                    className={`relative z-10 px-6 py-2 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === tab ? 'text-black' : 'text-gray-400 hover:text-white'
+                {/* MAIN VIEW TABS - HYPER PREMIUM SPATIAL DESIGN */}
+                <motion.div variants={itemVariants} className="flex justify-center mb-12">
+                    <div className="flex p-1.5 bg-[#0A0A0A]/60 backdrop-blur-3xl rounded-[22px] border border-white/5 relative shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
+                        {[
+                            {
+                                id: 'statistics',
+                                label: 'Statistics',
+                                icon: (isActive: boolean) => (
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <motion.path
+                                            initial={false}
+                                            animate={{ d: isActive ? "M9 19V9m4 10V5m4 14V11m-12 8v-6" : "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10" }}
+                                            strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                                        />
+                                    </svg>
+                                )
+                            },
+                            {
+                                id: 'dashboard',
+                                label: 'Dashboard',
+                                icon: (isActive: boolean) => (
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <motion.path
+                                            initial={false}
+                                            animate={{ strokeWidth: isActive ? 2 : 1.5 }}
+                                            strokeLinecap="round" strokeLinejoin="round"
+                                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                                        />
+                                    </svg>
+                                )
+                            }
+                        ].map((tab) => {
+                            const isActive = mainViewTab === tab.id;
+                            return (
+                                <motion.button
+                                    key={tab.id}
+                                    onClick={() => {
+                                        setMainViewTab(tab.id as any);
+                                        navigate(`/profile/${tab.id}`);
+                                    }}
+                                    whileTap={{ scale: 0.97 }}
+                                    className={`relative z-10 flex items-center gap-3 px-10 py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-500 ${isActive
+                                        ? 'text-white'
+                                        : 'text-gray-500 hover:text-gray-300'
                                         }`}
                                 >
-                                    {activeTab === tab && (
+                                    <span className={`transition-all duration-500 ${isActive ? 'text-neon-primary drop-shadow-[0_0_8px_rgba(0,255,209,0.5)]' : 'opacity-50'}`}>
+                                        {tab.icon(isActive)}
+                                    </span>
+                                    <span className="relative">
+                                        {tab.label}
+                                    </span>
+
+                                    {isActive && (
                                         <motion.div
-                                            layoutId="activeTab"
-                                            className="absolute inset-0 bg-white rounded-full -z-10"
-                                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                            layoutId="mainViewTabAlt"
+                                            className="absolute inset-0 bg-white/10 backdrop-blur-md rounded-[18px] -z-10 border border-white/20 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)]"
+                                            transition={{
+                                                type: "spring",
+                                                stiffness: 300,
+                                                damping: 30,
+                                                mass: 1
+                                            }}
                                         />
                                     )}
-                                    {tab === 'created' ? 'My Invoices' : 'Paid Invoices'}
-                                </button>
-                            ))}
-                        </div>
+                                </motion.button>
+                            );
+                        })}
                     </div>
+                </motion.div>
 
-                    {/* SEARCH */}
-                    <div className="px-6 pb-4">
-                        <div className="mx-auto grid max-w-4xl grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px]">
-                            <div className="relative">
-                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input
-                                type="text"
-                                placeholder={searchPlaceholder}
-                                value={invoiceSearch}
-                                onChange={(e) => setInvoiceSearch(e.target.value)}
-                                className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-10 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-primary/50 focus:ring-1 focus:ring-neon-primary/30 transition-colors"
-                            />
-                            {invoiceSearch && (
-                                <button
-                                    onClick={() => setInvoiceSearch('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-                                >
-                                    ✕
-                                </button>
-                            )}
+                <AnimatePresence mode="wait">
+                    {mainViewTab === 'statistics' ? (
+                        <motion.div
+                            key="stats-view"
+                            initial="hidden"
+                            animate="visible"
+                            exit="hidden"
+                            variants={containerVariants}
+                            className="space-y-4"
+                        >
+                            {/* TOP ROW: Stats & Charts */}
+                            <div className="grid grid-cols-1 gap-4 mb-4">
+                                {/* STATS - FULL WIDTH */}
+                                <motion.div variants={itemVariants}>
+                                    <StatsCards
+                                        merchantStats={merchantStats}
+                                        loadingReceipts={loadingReceipts}
+                                        loadingCreated={loadingCreated}
+                                        loadingBurner={loadingBurner}
+                                        itemVariants={itemVariants}
+                                    />
+                                </motion.div>
+
+                                {/* CHARTS - SIDE BY SIDE */}
+                                <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <InvoiceDistributionChart invoices={loadingBurner ? [] : combinedInvoices} isLoading={loadingCreated || loadingBurner} />
+                                    <TokenDistributionChart receipts={[...merchantReceipts, ...burnerMerchantReceipts]} isLoading={loadingReceipts || loadingBurner} />
+                                </motion.div>
                             </div>
-                            <div className="relative" ref={filterDropdownRef}>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                                    className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-[9px] text-sm text-white focus:outline-none focus:border-neon-primary/50 focus:ring-1 focus:ring-neon-primary/30 transition-all hover:bg-white/10 group"
-                                >
-                                    <span className={valueFilterType === 'none' ? 'text-gray-400' : 'text-white'}>
-                                        {valueFilterType === 'none' ? 'No value filter' : 
-                                         valueFilterType === 'amount' ? 'By Amount' : 'By Earnings'}
-                                    </span>
-                                    <svg className={`w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-all duration-300 ${isFilterDropdownOpen ? 'rotate-180 translate-y-[-1px]' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-                                
-                                <AnimatePresence>
-                                    {isFilterDropdownOpen && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                                            transition={{ duration: 0.15, ease: "easeOut" }}
-                                            className="absolute top-full left-0 right-0 mt-2 z-[20] bg-[#0F0F0F]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-1.5"
-                                        >
+
+                            {/* PAYMENT TIMELINE CHART - FULL WIDTH */}
+                            <motion.div variants={itemVariants}>
+                                <PaymentTimelineChart
+                                    receipts={[...merchantReceipts, ...burnerMerchantReceipts]}
+                                    paymentTimestampsByTxId={paymentTimestampsByTxId}
+                                    isLoading={loadingReceipts || loadingBurner}
+                                />
+                            </motion.div>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="dashboard-view"
+                            initial="hidden"
+                            animate="visible"
+                            exit="hidden"
+                            variants={containerVariants}
+                        >
+                            {/* INVOICE HISTORY */}
+                            <GlassCard className="p-0 overflow-hidden">
+                                <div className="p-6 border-b border-white/5 flex flex-col items-center justify-center gap-4">
+                                    <div className="flex p-1 bg-black/40 backdrop-blur-xl rounded-full border border-white/10 relative">
+                                        {['created', 'paid'].map((tab) => (
                                             <button
-                                                type="button"
-                                                onClick={() => { setValueFilterType('none'); setIsFilterDropdownOpen(false); }}
-                                                className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between ${valueFilterType === 'none' ? 'text-neon-primary bg-white/[0.03]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                                key={tab}
+                                                onClick={() => setActiveTab(tab as any)}
+                                                className={`relative z-10 px-6 py-2 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === tab ? 'text-black' : 'text-gray-400 hover:text-white'
+                                                    }`}
                                             >
-                                                <span>No value filter</span>
-                                                {valueFilterType === 'none' && <div className="w-1 h-1 rounded-full bg-neon-primary shadow-[0_0_8px_rgba(5,213,250,0.8)]" />}
+                                                {activeTab === tab && (
+                                                    <motion.div
+                                                        layoutId="activeTab"
+                                                        className="absolute inset-0 bg-white rounded-full -z-10"
+                                                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                                    />
+                                                )}
+                                                {tab === 'created' ? 'My Invoices' : 'Paid Invoices'}
                                             </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setValueFilterType('amount'); setIsFilterDropdownOpen(false); }}
-                                                className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between ${valueFilterType === 'amount' ? 'text-neon-primary bg-white/[0.03]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                                            >
-                                                <span>By Amount</span>
-                                                {valueFilterType === 'amount' && <div className="w-1 h-1 rounded-full bg-neon-primary shadow-[0_0_8px_rgba(5,213,250,0.8)]" />}
-                                            </button>
-                                            {activeTab === 'created' && (
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* SEARCH */}
+                                <div className="px-6 pb-4">
+                                    <div className="mx-auto grid max-w-4xl grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px]">
+                                        <div className="relative">
+                                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                            <input
+                                                type="text"
+                                                placeholder={searchPlaceholder}
+                                                value={invoiceSearch}
+                                                onChange={(e) => setInvoiceSearch(e.target.value)}
+                                                className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-10 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-primary/50 focus:ring-1 focus:ring-neon-primary/30 transition-colors"
+                                            />
+                                            {invoiceSearch && (
                                                 <button
-                                                    type="button"
-                                                    onClick={() => { setValueFilterType('earnings'); setIsFilterDropdownOpen(false); }}
-                                                    className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between ${valueFilterType === 'earnings' ? 'text-neon-primary bg-white/[0.03]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                                    onClick={() => setInvoiceSearch('')}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
                                                 >
-                                                    <span>By Earnings</span>
-                                                    {valueFilterType === 'earnings' && <div className="w-1 h-1 rounded-full bg-neon-primary shadow-[0_0_8px_rgba(5,213,250,0.8)]" />}
+                                                    ✕
                                                 </button>
                                             )}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                                        </div>
+                                        <div className="relative" ref={filterDropdownRef}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+                                                className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-[9px] text-sm text-white focus:outline-none focus:border-neon-primary/50 focus:ring-1 focus:ring-neon-primary/30 transition-all hover:bg-white/10 group"
+                                            >
+                                                <span className={valueFilterType === 'none' ? 'text-gray-400' : 'text-white'}>
+                                                    {valueFilterType === 'none' ? 'No value filter' :
+                                                        valueFilterType === 'amount' ? 'By Amount' : 'By Earnings'}
+                                                </span>
+                                                <svg className={`w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-all duration-300 ${isFilterDropdownOpen ? 'rotate-180 translate-y-[-1px]' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
 
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder={valueFilterType === 'none' ? 'Optional min value' : `Enter min ${valueFilterType}...`}
-                                value={valueFilterInput}
-                                onChange={(e) => setValueFilterInput(e.target.value)}
-                                disabled={valueFilterType === 'none'}
-                                className={`w-full bg-white/5 border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 transition-all disabled:opacity-30 disabled:cursor-not-allowed ${hasInvalidValueFilter ? 'border-red-500/40 focus:border-red-500/60 focus:ring-red-500/10' : 'border-white/10 focus:border-neon-primary/40 focus:ring-neon-primary/20 hover:border-white/20'}`}
-                            />
-                        </div>
-                        {hasInvalidValueFilter ? (
-                            <p className="mt-2 text-center text-[11px] font-medium text-red-400/90 tracking-wide uppercase">
-                                Please enter a valid positive amount
-                            </p>
-                        ) : valueFilterType !== 'none' ? (
-                            <p className="mt-2 text-center text-[11px] font-medium text-gray-500 tracking-wide uppercase">
-                                Filtering {activeTab === 'created' && valueFilterType === 'earnings' ? 'earnings' : activeTab === 'paid' ? 'total paid' : 'invoice amount'} ≥ {valueFilterInput || '0'}
-                            </p>
-                        ) : null}
-                    </div>
+                                            <AnimatePresence>
+                                                {isFilterDropdownOpen && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                                                        transition={{ duration: 0.15, ease: "easeOut" }}
+                                                        className="absolute top-full left-0 right-0 mt-2 z-[20] bg-[#0F0F0F]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] py-1.5"
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { setValueFilterType('none'); setIsFilterDropdownOpen(false); }}
+                                                            className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between ${valueFilterType === 'none' ? 'text-neon-primary bg-white/[0.03]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                                        >
+                                                            <span>No value filter</span>
+                                                            {valueFilterType === 'none' && <div className="w-1 h-1 rounded-full bg-neon-primary shadow-[0_0_8px_rgba(5,213,250,0.8)]" />}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { setValueFilterType('amount'); setIsFilterDropdownOpen(false); }}
+                                                            className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between ${valueFilterType === 'amount' ? 'text-neon-primary bg-white/[0.03]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                                        >
+                                                            <span>By Amount</span>
+                                                            {valueFilterType === 'amount' && <div className="w-1 h-1 rounded-full bg-neon-primary shadow-[0_0_8px_rgba(5,213,250,0.8)]" />}
+                                                        </button>
+                                                        {activeTab === 'created' && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { setValueFilterType('earnings'); setIsFilterDropdownOpen(false); }}
+                                                                className={`w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between ${valueFilterType === 'earnings' ? 'text-neon-primary bg-white/[0.03]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                                            >
+                                                                <span>By Earnings</span>
+                                                                {valueFilterType === 'earnings' && <div className="w-1 h-1 rounded-full bg-neon-primary shadow-[0_0_8px_rgba(5,213,250,0.8)]" />}
+                                                            </button>
+                                                        )}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
 
-                    <div className="overflow-x-auto min-h-[300px]">
-                        {/* CREATED TAB */}
-                        <div style={{ display: activeTab === 'created' ? 'block' : 'none' }}>
-                            <InvoiceTable
-                                invoices={loadingBurner ? [] : combinedInvoices}
-                                loading={loadingCreated || loadingTransactions || loadingBurner}
-                                search={invoiceSearch}
-                                valueFilterType={valueFilterType}
-                                valueFilterAmount={appliedValueFilterAmount}
-                                currentPage={currentPage}
-                                itemsPerPage={itemsPerPage}
-                                setCurrentPage={setCurrentPage}
-                                onVerify={(inv) => {
-                                    setVerifyingInvoice(inv);
-                                    setVerifyInput('');
-                                    setVerifyStatus('IDLE');
-                                    setVerifiedRecord(null);
-                                    setShowVerifyModal(true);
-                                }}
-                                onSettle={handleSettle}
-                                settlingId={settling}
-                                onViewPayments={(ids) => setSelectedPaymentIds(ids)}
-                                transactions={transactions}
-                            />
-                        </div>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder={valueFilterType === 'none' ? 'Optional min value' : `Enter min ${valueFilterType}...`}
+                                            value={valueFilterInput}
+                                            onChange={(e) => setValueFilterInput(e.target.value)}
+                                            disabled={valueFilterType === 'none'}
+                                            className={`w-full bg-white/5 border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 transition-all disabled:opacity-30 disabled:cursor-not-allowed ${hasInvalidValueFilter ? 'border-red-500/40 focus:border-red-500/60 focus:ring-red-500/10' : 'border-white/10 focus:border-neon-primary/40 focus:ring-neon-primary/20 hover:border-white/20'}`}
+                                        />
+                                    </div>
+                                    <div className="mx-auto mt-3 flex flex-col md:flex-row items-center gap-3 max-w-4xl justify-center md:justify-start">
+                                        {activeTab === 'created' && (
+                                            <div className="flex rounded-xl border border-white/5 bg-[#0F0F0F]/60 backdrop-blur p-1 shadow-inner w-full md:w-auto">
+                                                {[
+                                                    { key: 'all', label: 'All Dates' },
+                                                    { key: 'single', label: 'Single Day' },
+                                                    { key: 'range', label: 'Date Range' }
+                                                ].map((option) => (
+                                                    <button
+                                                        key={option.key}
+                                                        type="button"
+                                                        onClick={() => setDateFilterMode(option.key as 'all' | 'single' | 'range')}
+                                                        className={`flex-1 md:flex-none rounded-lg px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all duration-300 ${dateFilterMode === option.key ? 'bg-white text-black shadow-md shadow-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
 
-                        {/* PAID TAB */}
-                        <div style={{ display: activeTab === 'paid' ? 'block' : 'none' }}>
-                            <PaidInvoicesTable
-                                receipts={payerReceipts}
-                                loading={loadingPayerReceipts}
-                                search={invoiceSearch}
-                                valueFilterAmount={valueFilterType === 'none' ? null : appliedValueFilterAmount}
-                                onViewReceipts={(receipts) => setSelectedReceipts(receipts)}
-                                onViewNotes={(notes) => setSelectedNotes(notes)}
-                            />
-                        </div>
-                    </div>
-                    {/* PRIVACY FOOTER */}
-                    <div className="p-4 bg-white/5 border-t border-white/5 text-center text-xs text-gray-500 italic">
-                        All this information is fetched from your private account records.
-                    </div>
-                </GlassCard>
+                                        <AnimatePresence mode="popLayout">
+                                            {activeTab === 'created' && dateFilterMode !== 'all' && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, x: -10, scale: 0.95 }}
+                                                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                                                    exit={{ opacity: 0, x: -10, scale: 0.95 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="flex w-full md:w-auto items-center gap-2 bg-[#0F0F0F]/40 backdrop-blur border border-white/10 rounded-xl p-1 shadow-inner"
+                                                >
+                                                    <div className="relative">
+                                                        <input
+                                                            type="date"
+                                                            value={dateFilterMode === 'single' ? singleDateFilter : rangeStartDateFilter}
+                                                            onChange={(e) => {
+                                                                if (dateFilterMode === 'single') {
+                                                                    setSingleDateFilter(e.target.value);
+                                                                    return;
+                                                                }
+                                                                setRangeStartDateFilter(e.target.value);
+                                                            }}
+                                                            className="w-full md:w-[140px] bg-transparent border-none text-sm text-white focus:outline-none focus:ring-1 focus:ring-neon-primary/30 rounded-lg px-3 py-1.5 [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 transition-all font-medium placeholder-gray-500"
+                                                        />
+                                                    </div>
+
+                                                    {dateFilterMode === 'range' && (
+                                                        <>
+                                                            <svg className="w-4 h-4 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                                            </svg>
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="date"
+                                                                    value={rangeEndDateFilter}
+                                                                    onChange={(e) => setRangeEndDateFilter(e.target.value)}
+                                                                    className="w-full md:w-[140px] bg-transparent border-none text-sm text-white focus:outline-none focus:ring-1 focus:ring-neon-primary/30 rounded-lg px-3 py-1.5 [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 transition-all font-medium placeholder-gray-500"
+                                                                />
+                                                            </div>
+                                                        </>
+                                                    )}
+
+                                                    <div className="h-4 w-px bg-white/10 mx-1 border-r border-white/5"></div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setDateFilterMode('all');
+                                                            setSingleDateFilter('');
+                                                            setRangeStartDateFilter('');
+                                                            setRangeEndDateFilter('');
+                                                        }}
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                                                        title="Clear Dates"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                    {hasInvalidValueFilter ? (
+                                        <p className="mt-2 text-center text-[11px] font-medium text-red-400/90 tracking-wide uppercase">
+                                            Please enter a valid positive amount
+                                        </p>
+                                    ) : valueFilterType !== 'none' ? (
+                                        <p className="mt-2 text-center text-[11px] font-medium text-gray-500 tracking-wide uppercase">
+                                            Filtering {activeTab === 'created' && valueFilterType === 'earnings' ? 'earnings' : activeTab === 'paid' ? 'total paid' : 'invoice amount'} ≥ {valueFilterInput || '0'}
+                                        </p>
+                                    ) : null}
+                                </div>
+
+                                <div className="overflow-x-auto min-h-[300px]">
+                                    {/* CREATED TAB */}
+                                    <div style={{ display: activeTab === 'created' ? 'block' : 'none' }}>
+                                        <InvoiceTable
+                                            invoices={loadingBurner ? [] : combinedInvoices}
+                                            loading={loadingCreated || loadingTransactions || loadingBurner}
+                                            search={invoiceSearch}
+                                            valueFilterType={valueFilterType}
+                                            valueFilterAmount={appliedValueFilterAmount}
+                                            dateFilterMode={dateFilterMode}
+                                            singleDateFilter={singleDateFilter}
+                                            rangeStartDateFilter={rangeStartDateFilter}
+                                            rangeEndDateFilter={rangeEndDateFilter}
+                                            currentPage={currentPage}
+                                            itemsPerPage={itemsPerPage}
+                                            setCurrentPage={setCurrentPage}
+                                            onVerify={(inv) => {
+                                                setVerifyingInvoice(inv);
+                                                setVerifyInput('');
+                                                setVerifyStatus('IDLE');
+                                                setVerifiedRecord(null);
+                                                setShowVerifyModal(true);
+                                            }}
+                                            onSettle={handleSettle}
+                                            settlingId={settling}
+                                            onViewPayments={(ids) => setSelectedPaymentIds(ids)}
+                                            transactions={transactions}
+                                        />
+                                    </div>
+
+                                    {/* PAID TAB */}
+                                    <div style={{ display: activeTab === 'paid' ? 'block' : 'none' }}>
+                                        <PaidInvoicesTable
+                                            receipts={payerReceipts}
+                                            loading={loadingPayerReceipts}
+                                            search={invoiceSearch}
+                                            valueFilterAmount={valueFilterType === 'none' ? null : appliedValueFilterAmount}
+                                            dateFilterMode="all"
+                                            singleDateFilter=""
+                                            rangeStartDateFilter=""
+                                            rangeEndDateFilter=""
+                                            onViewReceipts={(receipts) => setSelectedReceipts(receipts)}
+                                            onViewNotes={(notes) => setSelectedNotes(notes)}
+                                        />
+                                    </div>
+                                </div>
+                                {/* PRIVACY FOOTER */}
+                                <div className="p-4 bg-white/5 border-t border-white/5 text-center text-xs text-gray-500 italic">
+                                    All this information is fetched from your private account records.
+                                </div>
+                            </GlassCard>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </motion.div>
 
             <DashboardChatbot

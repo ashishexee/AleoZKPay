@@ -12,6 +12,10 @@ interface InvoiceTableProps {
     search: string;
     valueFilterType: 'none' | 'amount' | 'earnings';
     valueFilterAmount: number | null;
+    dateFilterMode: 'all' | 'single' | 'range';
+    singleDateFilter: string;
+    rangeStartDateFilter: string;
+    rangeEndDateFilter: string;
     currentPage: number;
     itemsPerPage: number;
     setCurrentPage: (page: number | ((prev: number) => number)) => void;
@@ -42,6 +46,10 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
     search,
     valueFilterType,
     valueFilterAmount,
+    dateFilterMode,
+    singleDateFilter,
+    rangeStartDateFilter,
+    rangeEndDateFilter,
     currentPage,
     itemsPerPage,
     setCurrentPage,
@@ -54,6 +62,41 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
     const navigate = useNavigate();
     const [initialGrace, setInitialGrace] = useState(true);
     const normalizedSearch = search.trim().toLowerCase();
+
+    const getDayRange = (value: string) => {
+        if (!value) return null;
+
+        const start = new Date(`${value}T00:00:00`);
+        if (Number.isNaN(start.getTime())) return null;
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+
+        return { start: start.getTime(), end: end.getTime() };
+    };
+
+    const matchesDateFilter = (value?: string | null) => {
+        if (dateFilterMode === 'all') return true;
+        if (!value) return false;
+
+        const timestamp = new Date(value).getTime();
+        if (Number.isNaN(timestamp)) return false;
+
+        if (dateFilterMode === 'single') {
+            const selectedDay = getDayRange(singleDateFilter);
+            if (!selectedDay) return true;
+            return timestamp >= selectedDay.start && timestamp < selectedDay.end;
+        }
+
+        const startDay = getDayRange(rangeStartDateFilter);
+        const endDay = getDayRange(rangeEndDateFilter);
+
+        if (!startDay && !endDay) return true;
+        if (startDay && timestamp < startDay.start) return false;
+        if (endDay && timestamp >= endDay.end) return false;
+
+        return true;
+    };
 
     const renderTokenTotals = (
         totals: { credits?: number; usdcx?: number; usad?: number } | undefined,
@@ -124,6 +167,10 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
             return false;
         }
 
+        if (!matchesDateFilter(inv.createdAt || inv.created_at || null)) {
+            return false;
+        }
+
         if (valueFilterAmount === null) {
             return true;
         }
@@ -171,7 +218,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                             <ShimmerRow />
                         </>
                     ) : showEmpty ? (
-                        <tr><td colSpan={9} className="text-center py-12 text-gray-500 italic">{search ? 'No invoices match your search.' : 'No created invoices found.'}</td></tr>
+                        <tr><td colSpan={9} className="text-center py-12 text-gray-500 italic">{search || dateFilterMode !== 'all' ? 'No invoices match the active filters.' : 'No created invoices found.'}</td></tr>
                     ) : (
                         paginatedInvoices.map((inv, i) => {
                             // Base Params

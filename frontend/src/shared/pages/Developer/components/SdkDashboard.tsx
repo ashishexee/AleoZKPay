@@ -14,6 +14,7 @@ import {
 } from '../../../utils/aleo-utils';
 import { InvoiceDistributionChart } from '../../Profile/components/Charts/InvoiceDistributionChart';
 import { TokenDistributionChart } from '../../Profile/components/Charts/TokenDistributionChart';
+import { PaymentTimelineChart } from '../../Profile/components/Charts/PaymentTimelineChart';
 import { InvoiceTable } from '../../Profile/components/InvoiceTable';
 import { VerifyModal } from '../../Profile/components/modals/VerifyModal';
 import { PaymentHistoryModal } from '../../Profile/components/modals/PaymentHistoryModal';
@@ -586,6 +587,10 @@ export const SdkDashboard: React.FC = () => {
                 <SdkStatCard label="Settled" value={sdkStats.settled} tone="green" />
             </div>
 
+            <div className="grid grid-cols-1 gap-4">
+                <PaymentTimelineChart receipts={filteredMerchantReceipts} isLoading={loadingReceipts} />
+            </div>
+
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 <InvoiceDistributionChart invoices={combinedInvoices as unknown as InvoiceRecord[]} isLoading={loadingCreated} />
                 <TokenDistributionChart receipts={filteredMerchantReceipts} isLoading={loadingReceipts} />
@@ -645,6 +650,10 @@ export const SdkDashboard: React.FC = () => {
                             search={invoiceSearch}
                             valueFilterType="none"
                             valueFilterAmount={null}
+                            dateFilterMode="all"
+                            singleDateFilter=""
+                            rangeStartDateFilter=""
+                            rangeEndDateFilter=""
                             currentPage={currentPage}
                             itemsPerPage={itemsPerPage}
                             setCurrentPage={setCurrentPage}
