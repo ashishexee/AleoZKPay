@@ -187,3 +187,57 @@ export async function findSpendableRecord(
     }
     return null;
 }
+
+export async function listSpendableRecords(
+    session: ScannerSession,
+    programFilter: string,
+    recordName: string,
+    isCredits: boolean,
+): Promise<Array<{ plaintext: string; microcredits: number }>> {
+    const { scannerBase, scannerHeaders, scannerUuid, account } = session;
+    const res = await fetch(`${scannerBase}/records/owned`, {
+        method: 'POST', headers: scannerHeaders,
+        body: JSON.stringify({ uuid: scannerUuid, unspent: true, decrypt: true, filter: { program: programFilter, record: recordName } }),
+    });
+    if (res.status === 422) throw new Error('Scanner UUID expired. Please try again.');
+    if (!res.ok) throw new Error(`Records fetch failed: ${await res.text()}`);
+
+    const data = await res.json();
+    const list: any[] = Array.isArray(data) ? data : data?.data || [];
+    const spendable: Array<{ plaintext: string; microcredits: number }> = [];
+
+    for (const rec of list) {
+        try {
+            const recProgram: string = rec.program_name || rec.program || '';
+            if (recProgram && recProgram !== programFilter) continue;
+
+            if (!rec.record_plaintext && rec.record_ciphertext) {
+                const ct = RecordCiphertext.fromString(rec.record_ciphertext);
+                rec.record_plaintext = ct.decrypt(account.viewKey()).toString();
+            }
+
+            const pt: string = rec.record_plaintext || '';
+            if (!pt) continue;
+
+            if (isCredits) {
+                const match = pt.match(/microcredits\s*:\s*(\d+)u64/);
+                if (match) {
+                    spendable.push({ plaintext: pt.trim(), microcredits: Number(match[1]) });
+                }
+                continue;
+            }
+
+            if (/amount\s*:\s*\d+u128/.test(pt) && !/invoice_hash/.test(pt)) {
+                const match = pt.match(/amount\s*:\s*(\d+)u128/);
+                if (match) {
+                    spendable.push({ plaintext: pt.trim(), microcredits: Number(match[1]) });
+                }
+            }
+        } catch {
+            // Skip unreadable records
+        }
+    }
+
+    spendable.sort((a, b) => b.microcredits - a.microcredits);
+    return spendable;
+}

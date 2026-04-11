@@ -26,6 +26,8 @@ interface InvoiceFormProps {
     setWalletType: (val: number) => void;
     forSdk: boolean;
     setForSdk: (val: boolean) => void;
+    selectedAllowedTokens?: string[];
+    setSelectedAllowedTokens?: (tokens: string[]) => void;
     hasBurnerWallet: boolean;
     items: InvoiceItem[];
     showItems: boolean;
@@ -54,6 +56,8 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setWalletType,
     forSdk,
     setForSdk,
+    selectedAllowedTokens,
+    setSelectedAllowedTokens,
     hasBurnerWallet,
     items,
     showItems,
@@ -243,6 +247,50 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         </span>
                     )}
                 </div>
+
+                {tokenType !== 3 && setSelectedAllowedTokens && selectedAllowedTokens && (
+                    <div className="bg-orange-500/5 border border-orange-500/10 rounded-xl p-4">
+                        <label className="block text-xs font-bold text-orange-400 uppercase tracking-wider mb-2">
+                            Enable Real-time Oracle Conversion
+                        </label>
+                        <p className="text-xs text-gray-400 mb-3">
+                            Allow payers to use other tokens. An on-chain ZK oracle will calculate the real-time exact equivalent to your selected base currency.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {['CREDITS', 'USDCX', 'USAD'].map(t => {
+                                const baseTokenStr = tokenType === 0 ? 'CREDITS' : tokenType === 1 ? 'USDCX' : 'USAD';
+                                const isBaseToken = baseTokenStr === t;
+                                const isSelected = selectedAllowedTokens.includes(t);
+                                return (
+                                    <button
+                                        key={t}
+                                        onClick={() => {
+                                            if (isBaseToken) return;
+                                            setSelectedAllowedTokens(
+                                                isSelected 
+                                                    ? selectedAllowedTokens.filter(x => x !== t) 
+                                                    : [...selectedAllowedTokens, t]
+                                            );
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                                            isSelected 
+                                                ? isBaseToken 
+                                                    ? 'bg-white/10 text-white border-white/20 cursor-not-allowed opacity-80'
+                                                    : 'bg-orange-500/20 text-orange-300 border-orange-500/30 hover:bg-orange-500/30'
+                                                : 'bg-black/30 text-gray-500 border-white/5 hover:bg-white/5 hover:text-gray-300'
+                                        }`}
+                                    >
+                                        {isSelected && (
+                                            <span className="inline-block mr-1">✓</span>
+                                        )}
+                                        {t === 'CREDITS' ? 'Aleo Credits' : t === 'USDCX' ? 'USDCx' : 'USAD'}
+                                        {isBaseToken && ' (Base)'}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {invoiceType !== 'donation' && (
                     <Input

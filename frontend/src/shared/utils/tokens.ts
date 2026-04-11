@@ -20,6 +20,8 @@ export const TOKEN_LABELS: Record<TokenCode, string> = {
 
 export const ANY_ALLOWED_TOKENS: TokenCode[] = ['CREDITS', 'USDCX', 'USAD'];
 
+const isTokenCode = (value: string): value is TokenCode => value === 'CREDITS' || value === 'USDCX' || value === 'USAD';
+
 export const getDefaultAllowedTokens = (tokenType: number): TokenCode[] => {
     if (tokenType === 3) {
         return [...ANY_ALLOWED_TOKENS];
@@ -31,9 +33,18 @@ export const getDefaultAllowedTokens = (tokenType: number): TokenCode[] => {
 
 export const getAllowedTokensForInvoice = (
     tokenType: number,
-    invoiceType?: number
+    invoiceType?: number,
+    allowedTokens?: readonly string[] | null
 ): TokenCode[] => {
     void invoiceType;
+    if (Array.isArray(allowedTokens) && allowedTokens.length > 0) {
+        const normalized = allowedTokens
+            .map((token) => token?.toUpperCase?.())
+            .filter(isTokenCode);
+        if (normalized.length > 0) {
+            return normalized;
+        }
+    }
     return getDefaultAllowedTokens(tokenType);
 };
 

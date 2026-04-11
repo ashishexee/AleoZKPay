@@ -19,6 +19,7 @@ import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../shared/u
 import { looksLikeAleoAddress, normalizeAleoAddress } from '../../../shared/utils/aleo-address';
 
 const SingleInvoicePaymentPage = () => {
+    const getTokenCodeFromType = (tokenType: number): TokenCode => tokenType === 1 ? 'USDCX' : tokenType === 2 ? 'USAD' : 'CREDITS';
     const {
         step,
         status,
@@ -36,6 +37,9 @@ const SingleInvoicePaymentPage = () => {
         receiptSearchFailed,
         donationAmount,
         setDonationAmount,
+        quote,
+        quoteTimeRemaining,
+        checkOracleQuote,
         giftCardRedeemOption,
         redeemGiftCardBalance,
         statusLog,
@@ -46,6 +50,7 @@ const SingleInvoicePaymentPage = () => {
     const [customConvertAmount, setCustomConvertAmount] = useState<string>('');
     const [showConvertModal, setShowConvertModal] = useState(false);
     const [selectedToken, setSelectedToken] = useState<number>(0);
+    const [selectedTokenInitializedFor, setSelectedTokenInitializedFor] = useState<string | null>(null);
     const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card' | 'giftcard'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
     const [giftCardPayerAddress, setGiftCardPayerAddress] = useState('');
@@ -59,14 +64,30 @@ const SingleInvoicePaymentPage = () => {
     const { address } = useWallet();
     const isProcess = loading;
     const allowedTokens: TokenCode[] = invoice
-        ? getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType)
+        ? getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType, invoice.allowedTokens)
         : ['CREDITS', 'USDCX', 'USAD'];
+    const hasSelectableTokens = allowedTokens.length > 1;
+    const baseTokenType = invoice?.tokenType ?? 0;
+    const hasCrossTokenSelection = hasSelectableTokens && invoice && invoice.amount > 0 && baseTokenType !== 3 && selectedToken !== baseTokenType;
 
     useEffect(() => {
-        if (!invoice || invoice.tokenType !== 3) return;
-        const nextToken = getTokenTypeFromCode(allowedTokens[0]);
+        if (!invoice || !hasSelectableTokens) return;
+        const nextToken = allowedTokens.includes(getTokenCodeFromType(invoice.tokenType))
+            ? invoice.tokenType
+            : getTokenTypeFromCode(allowedTokens[0]);
+        if (selectedTokenInitializedFor !== invoice.hash) {
+            setSelectedToken(nextToken);
+            setSelectedTokenInitializedFor(invoice.hash);
+            return;
+        }
         setSelectedToken((current) => allowedTokens.some((token) => getTokenTypeFromCode(token) === current) ? current : nextToken);
-    }, [invoice?.hash, invoice?.tokenType, allowedTokens.join(',')]);
+    }, [invoice?.hash, invoice?.tokenType, invoice?.allowedTokens?.join(','), hasSelectableTokens, allowedTokens.join(','), selectedTokenInitializedFor]);
+
+    useEffect(() => {
+        if (!invoice || !hasSelectableTokens || invoice.amount <= 0 || baseTokenType === 3) return;
+        if (selectedToken === baseTokenType) return;
+        checkOracleQuote?.(getTokenCodeFromType(baseTokenType), getTokenCodeFromType(selectedToken), invoice.amount);
+    }, [invoice?.hash, invoice?.amount, hasSelectableTokens, baseTokenType, selectedToken, checkOracleQuote]);
 
     useEffect(() => {
         if (paymentMethod !== 'card') {
@@ -84,7 +105,7 @@ const SingleInvoicePaymentPage = () => {
         if (step === 'CONVERT') {
             setShowConvertModal(true);
         } else {
-            await payInvoice(invoice?.tokenType === 3 ? selectedToken : undefined, {
+            await payInvoice(hasSelectableTokens ? selectedToken : undefined, {
                 payerNote,
                 merchantNote: shareMerchantNote ? merchantNote : null
             });
@@ -93,7 +114,7 @@ const SingleInvoicePaymentPage = () => {
 
     const handleGiftCardPay = async () => {
         if (!giftCode) return;
-        await payWithGiftCard(giftCode, invoice?.tokenType === 3 ? selectedToken : undefined, {
+        await payWithGiftCard(giftCode, hasSelectableTokens ? selectedToken : undefined, {
             payerNote,
             merchantNote: shareMerchantNote ? merchantNote : null
         }, giftCardPayerAddress);
@@ -103,7 +124,7 @@ const SingleInvoicePaymentPage = () => {
         if (!cardNumber || !cardPin || !cardSecret) return;
         resetPaymentFeedback();
         setShowCardOverlay(true);
-        await payWithCard(cardNumber, cardPin, cardSecret, invoice?.tokenType === 3 ? selectedToken : undefined, {
+        await payWithCard(cardNumber, cardPin, cardSecret, hasSelectableTokens ? selectedToken : undefined, {
             payerNote,
             merchantNote: shareMerchantNote ? merchantNote : null
         });
@@ -124,7 +145,7 @@ const SingleInvoicePaymentPage = () => {
     const confirmConversion = async () => {
         setShowConvertModal(false);
         const amountToConvert = customConvertAmount ? Number(customConvertAmount) : undefined;
-        await convertPublicToPrivate(amountToConvert, invoice?.tokenType === 3 ? selectedToken : undefined);
+        await convertPublicToPrivate(amountToConvert, hasSelectableTokens ? selectedToken : undefined);
     };
 
     const steps: { key: PaymentStep; label: string }[] = [
@@ -134,9 +155,10 @@ const SingleInvoicePaymentPage = () => {
     ];
 
     const isMultiPay = programId === PROGRAM_ID;
-    const activeTokenType = invoice?.tokenType === 3 ? selectedToken : (invoice?.tokenType ?? 0);
+    const activeTokenType = hasSelectableTokens ? selectedToken : (invoice?.tokenType ?? 0);
     const currencyLabel = getTokenLabel(activeTokenType);
-    const paymentAmountLabel = `${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`;
+    const displayAmount = hasCrossTokenSelection && quote?.expected_amount ? quote.expected_amount : ((invoice?.amount || 0) > 0 ? invoice?.amount : Number(donationAmount || '0'));
+    const paymentAmountLabel = `${displayAmount} ${currencyLabel}`;
     const payerNoteBytes = getUtf8ByteLength(payerNote);
     const merchantNoteBytes = getUtf8ByteLength(merchantNote);
     const payerNoteTooLong = payerNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;
@@ -287,13 +309,21 @@ const SingleInvoicePaymentPage = () => {
                                         />
                                     </div>
                                 ) : (
-                                    <span className="text-2xl font-bold text-white tracking-tight">{invoice?.amount || '0'} <span className="text-sm text-gray-500 font-normal">{currencyLabel}</span></span>
+                                    <div className="text-right">
+                                        <span className="text-2xl font-bold text-white tracking-tight">{displayAmount} <span className="text-sm text-gray-500 font-normal">{currencyLabel}</span></span>
+                                        {hasCrossTokenSelection && quote && (
+                                            <p className="text-xs text-amber-300 mt-1">
+                                                Equivalent to {invoice?.amount} {getTokenLabel(baseTokenType)}
+                                                {quoteTimeRemaining > 0 ? ` • quote refreshes in ${quoteTimeRemaining}s` : ''}
+                                            </p>
+                                        )}
+                                    </div>
                                 )
                             )}
                         </div>
 
                         {/* ANY TOKEN SELECTOR */}
-                        {invoice?.tokenType === 3 && step !== 'SUCCESS' && step !== 'ALREADY_PAID' && (
+                        {hasSelectableTokens && step !== 'SUCCESS' && step !== 'ALREADY_PAID' && (
                             <div className="pt-4 border-t border-white/5">
                                 <span className="text-sm font-medium text-gray-400 uppercase tracking-widest block mb-2">Select Payment Token</span>
                                 <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
@@ -516,7 +546,7 @@ const SingleInvoicePaymentPage = () => {
                                                     Processing...
                                                 </span>
                                             ) : (
-                                                `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`
+                                                `Pay ${displayAmount} ${currencyLabel}`
                                             )}
                                         </Button>
                                     </div>
@@ -579,7 +609,7 @@ const SingleInvoicePaymentPage = () => {
                                                 ) : step === 'CONVERT' ? (
                                                     'Convert Public to Private'
                                                 ) : (
-                                                    `Pay ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')} ${currencyLabel}`
+                                                    `Pay ${displayAmount} ${currencyLabel}`
                                                 )}
                                             </Button>
                                         )}
@@ -633,7 +663,7 @@ const SingleInvoicePaymentPage = () => {
                                 <div className="relative flex items-center justify-center">
                                     <input
                                         type="number"
-                                        placeholder={`Default needed: ${(invoice?.amount || 0) > 0 ? invoice?.amount : (donationAmount || '0')}`}
+                                        placeholder={`Default needed: ${displayAmount}`}
                                         value={customConvertAmount}
                                         onChange={(e) => setCustomConvertAmount(e.target.value)}
                                         className="w-full bg-transparent text-center text-3xl font-medium text-white placeholder:text-white/20 focus:outline-none focus:ring-0 border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"

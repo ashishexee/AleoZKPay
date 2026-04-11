@@ -100,7 +100,7 @@ const getInvoiceByHash = async (req, res) => {
 };
 
 const createInvoice = async (req, res) => {
-    const { invoice_hash, merchant_address, designated_address, merchant_address_hash, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk } = req.body;
+    const { invoice_hash, merchant_address, designated_address, merchant_address_hash, is_burner, amount, memo, status, invoice_transaction_id, salt, invoice_type, token_type, invoice_items, for_sdk, allowed_tokens } = req.body;
 
     if (!invoice_hash || !merchant_address) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -116,12 +116,13 @@ const createInvoice = async (req, res) => {
                 designated_address: designated_address || merchant_address,
                 is_burner: is_burner || false,
                 status: status || 'PENDING',
-                invoice_transaction_id,  
-                salt: salt || null,  
-                invoice_type: invoice_type !== undefined ? invoice_type : 0,  
-                token_type: token_type !== undefined ? token_type : 0,  
+                invoice_transaction_id,
+                salt: salt || null,
+                invoice_type: invoice_type !== undefined ? invoice_type : 0,
+                token_type: token_type !== undefined ? token_type : 0,
                 for_sdk: for_sdk === true,
-                invoice_items: invoice_items || null,  
+                invoice_items: invoice_items || null,
+                allowed_tokens: allowed_tokens || null,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             })
@@ -195,7 +196,7 @@ const updateInvoice = async (req, res) => {
             if (status === 'SETTLED') {
                 try {
                     let intentIdToSync = session_id;
-                    
+
                     if (!intentIdToSync) {
                         const { data: intentInfo } = await supabase
                             .from('payment_intents')
@@ -207,7 +208,7 @@ const updateInvoice = async (req, res) => {
 
                     if (intentIdToSync) {
                         console.log(`🔗 Matching SDK Session found (${intentIdToSync}). Triggering direct sync & webhooks...`);
-                        
+
                         const { data: intent, error: updateError } = await supabase
                             .from('payment_intents')
                             .update({ status: 'SETTLED' })
@@ -224,7 +225,7 @@ const updateInvoice = async (req, res) => {
 
                         if (!updateError && intent) {
                             console.log(`✅ SDK Session ${intent.id} synced directly in DB.`);
-                            
+
                             if (intent.merchants && intent.merchants.encrypted_webhook_url) {
                                 try {
                                     const secretKey = readMerchantStoredValue(intent.merchants.encrypted_secret_key);

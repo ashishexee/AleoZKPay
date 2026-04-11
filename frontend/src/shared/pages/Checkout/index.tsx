@@ -24,7 +24,10 @@ export const CheckoutPage = () => {
         publicKey,
         convertPublicToPrivate,
         giftCardRedeemOption,
-        redeemGiftCardBalance
+        redeemGiftCardBalance,
+        quote,
+        quoteTimeRemaining,
+        checkOracleQuote
     } = useCheckoutPayment(session);
 
     // Call payment monitor. If the session isn't processing anymore, we have a real hash
@@ -34,7 +37,7 @@ export const CheckoutPage = () => {
         if (step === 'CONVERT') {
             setShowConvertModal(true);
         } else {
-            pay(donationAmount, selectedToken, notes);
+            pay(donationAmount, selectedToken, notes, quote || undefined);
         }
     };
 
@@ -60,10 +63,13 @@ export const CheckoutPage = () => {
                 txId={txId}
                 success={success}
                 onPay={handlePay}
-                onPayWithCard={payWithCard}
-                onPayWithGiftCard={payWithGiftCard}
+                onPayWithCard={(card, pin, secret, amt, tok, notes) => payWithCard(card, pin, secret, amt, tok, notes, quote || undefined)}
+                onPayWithGiftCard={(gc, amt, tok, notes, addr) => payWithGiftCard(gc, amt, tok, notes, addr, quote || undefined)}
                 giftCardRedeemOption={giftCardRedeemOption}
                 onRedeemGiftCardBalance={redeemGiftCardBalance}
+                quote={quote}
+                quoteTimeRemaining={quoteTimeRemaining}
+                checkOracleQuote={checkOracleQuote}
             />
 
             {/* CONVERSION MODAL */}

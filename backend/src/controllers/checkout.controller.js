@@ -146,6 +146,16 @@ const getSession = async (req, res) => {
             intent.merchants.aleo_address = intent.merchants.encrypted_aleo_address;
         }
 
+        let allowedTokens = null;
+        if (intent.invoice_hash) {
+            const { data: invoice } = await supabase
+                .from('invoices')
+                .select('allowed_tokens')
+                .eq('invoice_hash', intent.invoice_hash)
+                .single();
+            allowedTokens = invoice?.allowed_tokens || null;
+        }
+
         const sessionData = {
             id: intent.id,
             amount: intent.amount,
@@ -157,7 +167,8 @@ const getSession = async (req, res) => {
             success_url: intent.success_url || null,
             cancel_url: intent.cancel_url || null,
             merchant_name: intent.merchants ? intent.merchants.name : 'Unknown Merchant',
-            merchant_address: intent.merchants ? intent.merchants.encrypted_aleo_address : null
+            merchant_address: intent.merchants ? intent.merchants.encrypted_aleo_address : null,
+            allowed_tokens: allowedTokens
         };
 
         res.json(sessionData);

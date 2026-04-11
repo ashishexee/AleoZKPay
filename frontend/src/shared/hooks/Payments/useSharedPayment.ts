@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { estimateExecutionFee, getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
+import { estimateExecutionFee, getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, WALLET_PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
 import { useWalletErrorHandler } from '../Wallet/WalletErrorBoundary';
 import type { PaymentStep, InvoiceState, PaymentNoteInput } from './types';
@@ -51,11 +51,87 @@ export const useSharedPayment = () => {
     const [receiptSearchFailed, setReceiptSearchFailed] = useState(false);
     const [giftCardRedeemOption, setGiftCardRedeemOption] = useState<GiftCardRedeemOption | null>(null);
     const [statusLog, setStatusLog] = useState<string[]>([]);
+    const [quote, setQuote] = useState<{ expected_amount: number, expires_at: number, signature: string, from_token: string, to_token: string } | null>(null);
+    const [quoteTimeRemaining, setQuoteTimeRemaining] = useState<number>(0);
+    const quoteCacheRef = useRef(new Map<string, { expected_amount: number, expires_at: number, signature: string, from_token: string, to_token: string }>());
+    const inFlightQuoteRef = useRef(new Map<string, Promise<any>>());
     const resolveActiveTokenType = (selectedTokenOverride?: number) => {
         if (!invoice) return 0;
         if (selectedTokenOverride !== undefined) return selectedTokenOverride;
-        const allowedTokens = getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType);
+        const allowedTokens = getAllowedTokensForInvoice(invoice.tokenType, invoice.invoiceType, invoice.allowedTokens);
         return getTokenTypeFromCode(allowedTokens[0]);
+    };
+
+    const getTokenCodeFromType = (tokenType: number): 'CREDITS' | 'USDCX' | 'USAD' => {
+        if (tokenType === 1) return 'USDCX';
+        if (tokenType === 2) return 'USAD';
+        return 'CREDITS';
+    };
+
+    const getBalance = (record: any, tokenType: number): number => {
+        try {
+            const fieldName = tokenType === 0 ? 'microcredits' : 'amount';
+            let valStr = '';
+
+            if (record.data && record.data[fieldName]) {
+                valStr = record.data[fieldName];
+            } else if (record.plaintext) {
+                const regex = new RegExp(`${fieldName}:\\s*([\\d_]+)u(64|128)`);
+                const match = record.plaintext.match(regex);
+                if (match && match[1]) {
+                    valStr = match[1];
+                }
+            }
+            if (valStr) {
+                return parseInt(valStr.replace(/_/g, '').replace(/u(64|128)/, ''));
+            }
+        } catch {
+            return 0;
+        }
+        return 0;
+    };
+
+    const checkOracleQuote = async (fromToken: string, toToken: string, amount: number) => {
+        const normalizedAmount = Number(amount);
+        if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+            return null;
+        }
+        const cacheKey = `${fromToken}->${toToken}:${normalizedAmount}`;
+        const now = Math.floor(Date.now() / 1000);
+        const cachedQuote = quoteCacheRef.current.get(cacheKey);
+        if (cachedQuote && (cachedQuote.expires_at === 0 || cachedQuote.expires_at > now + 5)) {
+            setQuote(cachedQuote);
+            setQuoteTimeRemaining(cachedQuote.expires_at > 0 ? Math.max(0, cachedQuote.expires_at - now) : 0);
+            return cachedQuote;
+        }
+
+        const existingRequest = inFlightQuoteRef.current.get(cacheKey);
+        if (existingRequest) {
+            return existingRequest;
+        }
+
+        const request = (async () => {
+        try {
+            const API_URL = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+            const res = await fetch(`${API_URL}/oracle/quote?from_token=${fromToken}&to_token=${toToken}&amount=${normalizedAmount}`);
+            if (!res.ok) throw new Error('Quote fetch failed');
+            const data = await res.json();
+            quoteCacheRef.current.set(cacheKey, data);
+            setQuote(data);
+            setQuoteTimeRemaining(Math.max(0, data.expires_at - Math.floor(Date.now() / 1000)));
+            return data;
+        } catch (e) {
+            console.error('Oracle fetch error', e);
+            setQuote(null);
+            setQuoteTimeRemaining(0);
+            return null;
+        } finally {
+            inFlightQuoteRef.current.delete(cacheKey);
+        }
+        })();
+
+        inFlightQuoteRef.current.set(cacheKey, request);
+        return request;
     };
 
     const encodePaymentNote = (value?: string | null, label: string = 'Payment note') => {
@@ -79,6 +155,14 @@ export const useSharedPayment = () => {
         const errorMessage = `ERROR: ${error}`;
         setStatusLog((current) => current[current.length - 1] === errorMessage ? current : [...current, errorMessage]);
     }, [error]);
+
+    useEffect(() => {
+        if (quoteTimeRemaining <= 0) return;
+        const interval = setInterval(() => {
+            setQuoteTimeRemaining((current) => Math.max(0, current - 1));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [quoteTimeRemaining]);
 
     const clearStatusLog = () => setStatusLog([]);
 
@@ -200,6 +284,7 @@ export const useSharedPayment = () => {
                         memo,
                         tokenType: tokenTypeOnChain,
                         invoiceType: finalInvoiceType,
+                        allowedTokens: dbInvoice?.allowed_tokens || undefined,
                         items: dbInvoice?.invoice_items || undefined,
                         sessionId: sessionId || undefined
                     });
@@ -217,6 +302,7 @@ export const useSharedPayment = () => {
                     memo,
                     tokenType: tokenTypeOnChain,
                     invoiceType: finalInvoiceType,
+                    allowedTokens: dbInvoice?.allowed_tokens || undefined,
                     items: dbInvoice?.invoice_items || undefined,
                     sessionId: sessionId || undefined
                 });
@@ -448,8 +534,9 @@ export const useSharedPayment = () => {
             setStatus(`Converting Public ${tokenName} to Private...`);
             const parsedDonation = Number(donationAmount);
             const invoiceAmount = (invoice.amount === 0 && parsedDonation > 0) ? parsedDonation : invoice.amount;
-
-            const finalAmount = (overrideAmount !== undefined && overrideAmount > 0) ? overrideAmount : invoiceAmount;
+            const isCrossToken = invoice.amount > 0 && invoice.tokenType !== 3 && invoice.tokenType !== activeTokenType;
+            const quoteAmount = isCrossToken && quote?.expected_amount ? quote.expected_amount : undefined;
+            const finalAmount = (overrideAmount !== undefined && overrideAmount > 0) ? overrideAmount : (quoteAmount ?? invoiceAmount);
             const amountMicro = Math.round(finalAmount * 1_000_000);
             const inputs = [publicKey, `${amountMicro}${typeSuffix}`];
             const estimatedFee = await estimateExecutionFee({
@@ -645,6 +732,13 @@ export const useSharedPayment = () => {
             if (finalAmount <= 0) throw new Error("Amount must be greater than zero.");
 
             const activeTokenType = resolveActiveTokenType(selectedTokenOverride);
+            const baseTokenType = invoice.tokenType === 3 ? activeTokenType : invoice.tokenType;
+            const isCrossToken = !isDonationType && invoice.tokenType !== 3 && baseTokenType !== activeTokenType;
+            let quoteOverride = null;
+            if (isCrossToken) {
+                quoteOverride = await checkOracleQuote(getTokenCodeFromType(baseTokenType), getTokenCodeFromType(activeTokenType), finalAmount);
+                if (!quoteOverride) throw new Error('Could not fetch conversion quote for this token switch.');
+            }
 
             let tokenProgram = 'credits.aleo';
             let tokenName = 'Credits';
@@ -652,15 +746,22 @@ export const useSharedPayment = () => {
             let typeSuffix = 'u64';
             let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
 
+            if (isCrossToken && quoteOverride?.expected_amount) {
+                amountMicro = Math.round(quoteOverride.expected_amount * 1_000_000);
+                const baseKey = getTokenCodeFromType(baseTokenType).toLowerCase();
+                const payerKey = getTokenCodeFromType(activeTokenType).toLowerCase();
+                funcName = `pay_invoice_${baseKey}_via_${payerKey}`;
+            }
+
             if (activeTokenType === 1) {
                 tokenProgram = 'test_usdcx_stablecoin.aleo';
                 typeSuffix = 'u128';
-                funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+                if (!isCrossToken) funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
                 tokenName = 'USDCx';
             } else if (activeTokenType === 2) {
                 tokenProgram = 'test_usad_stablecoin.aleo';
                 typeSuffix = 'u128';
-                funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
+                if (!isCrossToken) funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
                 tokenName = 'USAD';
             }
 
@@ -718,22 +819,40 @@ export const useSharedPayment = () => {
             const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
             const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
 
-            const inputs = [
-                payRecordStr,
-                invoice.merchant,
-                payerOwner,
-                `${amountMicro}${typeSuffix}`,
-                invoice.salt || '',
-                paymentSecret || '',
-                payerNoteField,
-                merchantNoteField,
-                invoice.hash || ''
-            ];
+            const paymentSecretValue = paymentSecret || generateSalt();
+            const inputs = isCrossToken && quoteOverride
+                ? [
+                    payRecordStr,
+                    invoice.merchant,
+                    payerOwner,
+                    `${Math.round(finalAmount * 1_000_000)}${(baseTokenType === 1 || baseTokenType === 2) ? 'u128' : 'u64'}`,
+                    `${amountMicro}${typeSuffix}`,
+                    invoice.salt || '',
+                    paymentSecretValue,
+                    payerNoteField,
+                    merchantNoteField,
+                    invoice.hash || ''
+                ]
+                : [
+                    payRecordStr,
+                    invoice.merchant,
+                    payerOwner,
+                    `${amountMicro}${typeSuffix}`,
+                    invoice.salt || '',
+                    paymentSecretValue,
+                    payerNoteField,
+                    merchantNoteField,
+                    invoice.hash || ''
+                ];
 
             if (proofsInput) inputs.push(proofsInput);
+            if (isCrossToken && quoteOverride) {
+                inputs.push(quoteOverride.signature);
+                inputs.push(`${Math.floor(quoteOverride.expires_at)}u32`);
+            }
 
             const authorization = await programManager.buildAuthorization({
-                programName: programId || PROGRAM_ID,
+                programName: isCrossToken ? WALLET_PROGRAM_ID : (programId || PROGRAM_ID),
                 functionName: funcName,
                 inputs
             });
@@ -743,7 +862,7 @@ export const useSharedPayment = () => {
             const sponsorRes = await fetch(`${API_URL}/dps/sponsor-sweep`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ execution_authorization_string: authorization.toString(), programName: programId || PROGRAM_ID }),
+                body: JSON.stringify({ execution_authorization_string: authorization.toString(), programName: isCrossToken ? WALLET_PROGRAM_ID : (programId || PROGRAM_ID) }),
             });
             const response = await sponsorRes.json();
             if (!sponsorRes.ok) throw new Error(response?.error || response?.message || 'Payment sponsorship failed.');
@@ -834,20 +953,34 @@ export const useSharedPayment = () => {
             if (finalAmount <= 0) throw new Error('Amount must be greater than zero.');
 
             const activeTokenType = resolveActiveTokenType(selectedTokenOverride);
+            const baseTokenType = invoice.tokenType === 3 ? activeTokenType : invoice.tokenType;
+            const isCrossToken = !isDonationType && invoice.tokenType !== 3 && baseTokenType !== activeTokenType;
+            let quoteOverride = null;
+            if (isCrossToken) {
+                quoteOverride = await checkOracleQuote(getTokenCodeFromType(baseTokenType), getTokenCodeFromType(activeTokenType), finalAmount);
+                if (!quoteOverride) throw new Error('Could not fetch conversion quote for this token switch.');
+            }
 
             let tokenProgram = 'credits.aleo';
             let amountMicro = Math.round(finalAmount * 1_000_000);
             let typeSuffix = 'u64';
             let funcName = isDonationType ? 'pay_donation' : 'pay_invoice';
 
+            if (isCrossToken && quoteOverride?.expected_amount) {
+                amountMicro = Math.round(quoteOverride.expected_amount * 1_000_000);
+                const baseKey = getTokenCodeFromType(baseTokenType).toLowerCase();
+                const payerKey = getTokenCodeFromType(activeTokenType).toLowerCase();
+                funcName = `pay_invoice_${baseKey}_via_${payerKey}`;
+            }
+
             if (activeTokenType === 1) {
                 tokenProgram = 'test_usdcx_stablecoin.aleo';
                 typeSuffix = 'u128';
-                funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+                if (!isCrossToken) funcName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
             } else if (activeTokenType === 2) {
                 tokenProgram = 'test_usad_stablecoin.aleo';
                 typeSuffix = 'u128';
-                funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
+                if (!isCrossToken) funcName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
             }
 
             setStatus('Scanning your NullPay card balance...');
@@ -898,22 +1031,40 @@ export const useSharedPayment = () => {
             const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
 
             setStatus('Authorizing secure card payment...');
-            const inputs = [
-                payRecordStr,
-                invoice.merchant,
-                cardProfile.mainOwner,
-                `${amountMicro}${typeSuffix}`,
-                invoice.salt || '',
-                paymentSecret || '',
-                payerNoteField,
-                merchantNoteField,
-                invoice.hash || ''
-            ];
+            const paymentSecretValue = paymentSecret || generateSalt();
+            const inputs = isCrossToken && quoteOverride
+                ? [
+                    payRecordStr,
+                    invoice.merchant,
+                    cardProfile.mainOwner,
+                    `${Math.round(finalAmount * 1_000_000)}${(baseTokenType === 1 || baseTokenType === 2) ? 'u128' : 'u64'}`,
+                    `${amountMicro}${typeSuffix}`,
+                    invoice.salt || '',
+                    paymentSecretValue,
+                    payerNoteField,
+                    merchantNoteField,
+                    invoice.hash || ''
+                ]
+                : [
+                    payRecordStr,
+                    invoice.merchant,
+                    cardProfile.mainOwner,
+                    `${amountMicro}${typeSuffix}`,
+                    invoice.salt || '',
+                    paymentSecretValue,
+                    payerNoteField,
+                    merchantNoteField,
+                    invoice.hash || ''
+                ];
 
             if (proofsInput) inputs.push(proofsInput);
+            if (isCrossToken && quoteOverride) {
+                inputs.push(quoteOverride.signature);
+                inputs.push(`${Math.floor(quoteOverride.expires_at)}u32`);
+            }
 
             const authorization = await programManager.buildAuthorization({
-                programName: programId || PROGRAM_ID,
+                programName: isCrossToken ? WALLET_PROGRAM_ID : (programId || PROGRAM_ID),
                 functionName: funcName,
                 inputs
             });
@@ -925,7 +1076,7 @@ export const useSharedPayment = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     execution_authorization_string: authorization.toString(),
-                    programName: programId || PROGRAM_ID
+                    programName: isCrossToken ? WALLET_PROGRAM_ID : (programId || PROGRAM_ID)
                 }),
             });
             const response = await sponsorRes.json();
@@ -939,6 +1090,202 @@ export const useSharedPayment = () => {
             if (handleWalletError(err)) return;
             console.error(err);
             setError(err.message || 'An error occurred during card payment.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const payInvoice = async (selectedTokenOverride?: number, notes?: PaymentNoteInput) => {
+        if (!invoice || !publicKey || !executeTransaction || !wallet?.adapter) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+            setStatus('Searching your wallet for private balance...');
+
+            const isDonationType = invoice.invoiceType === 2 || invoice.amount === 0;
+            const parsedDonation = Number(donationAmount) || 0;
+            const finalAmount = (isDonationType && parsedDonation > 0) ? parsedDonation : invoice.amount;
+            if (finalAmount <= 0) {
+                throw new Error('Amount must be greater than zero.');
+            }
+
+            const actualTokenType = resolveActiveTokenType(selectedTokenOverride);
+            const baseTokenType = invoice.tokenType === 3 ? actualTokenType : invoice.tokenType;
+            const isCrossToken = !isDonationType && invoice.tokenType !== 3 && baseTokenType !== actualTokenType;
+
+            let quoteOverride = null;
+            if (isCrossToken) {
+                const fromToken = getTokenCodeFromType(baseTokenType);
+                const toToken = getTokenCodeFromType(actualTokenType);
+                const currentTime = Math.floor(Date.now() / 1000);
+                const existingQuoteMatches = quote
+                    && quote.from_token === fromToken
+                    && quote.to_token === toToken
+                    && quote.expires_at > currentTime;
+
+                quoteOverride = existingQuoteMatches ? quote : await checkOracleQuote(fromToken, toToken, finalAmount);
+                if (!quoteOverride) {
+                    throw new Error('Could not fetch conversion quote for this token switch.');
+                }
+            }
+
+            let tokenProgram = 'credits.aleo';
+            let amountMicro = Math.round(finalAmount * 1_000_000);
+            let typeSuffix = 'u64';
+            let functionName = isDonationType ? 'pay_donation' : 'pay_invoice';
+
+            if (isCrossToken && quoteOverride?.expected_amount) {
+                amountMicro = Math.round(quoteOverride.expected_amount * 1_000_000);
+                const baseKey = getTokenCodeFromType(baseTokenType).toLowerCase();
+                const payerKey = getTokenCodeFromType(actualTokenType).toLowerCase();
+                functionName = `pay_invoice_${baseKey}_via_${payerKey}`;
+            } else if (actualTokenType === 1) {
+                tokenProgram = 'test_usdcx_stablecoin.aleo';
+                typeSuffix = 'u128';
+                functionName = isDonationType ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+            } else if (actualTokenType === 2) {
+                tokenProgram = 'test_usad_stablecoin.aleo';
+                typeSuffix = 'u128';
+                functionName = isDonationType ? 'pay_donation_usad' : 'pay_invoice_usad';
+            }
+
+            if (isCrossToken) {
+                if (actualTokenType === 1) {
+                    tokenProgram = 'test_usdcx_stablecoin.aleo';
+                    typeSuffix = 'u128';
+                } else if (actualTokenType === 2) {
+                    tokenProgram = 'test_usad_stablecoin.aleo';
+                    typeSuffix = 'u128';
+                }
+            }
+
+            const records = await requestRecords(tokenProgram, false);
+            let payRecord = null;
+            for (const record of (records as any[])) {
+                if (record.spent) continue;
+                if (record.recordCiphertext && !record.plaintext && decrypt) {
+                    try { record.plaintext = await decrypt(record.recordCiphertext); } catch { }
+                }
+                const balance = getBalance(record, actualTokenType);
+                if (balance >= amountMicro) {
+                    payRecord = record;
+                    break;
+                }
+            }
+
+            if (!payRecord) {
+                let totalPrivateBalance = 0;
+                for (const record of (records as any[])) {
+                    if (!record.spent) {
+                        totalPrivateBalance += getBalance(record, actualTokenType);
+                    }
+                }
+
+                setStep('CONVERT');
+                if (totalPrivateBalance >= amountMicro) {
+                    setStatus('Privacy Protocol requires a single consolidated record. Please merge records.');
+                } else {
+                    setStatus(`Insufficient Private ${getTokenCodeFromType(actualTokenType)} balance. Please convert public tokens.`);
+                }
+                setLoading(false);
+                return;
+            }
+
+            let proofsInput = undefined;
+            if (actualTokenType !== 0) {
+                setStatus('Generating Compliance Proofs for Stablecoin...');
+                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
+                await getFreezeListRoot();
+                await getFreezeListCount();
+                const firstIndex = await getFreezeListIndex(0);
+                const { Address } = await import('@provablehq/wasm');
+                let index0FieldStr = undefined;
+                if (firstIndex) {
+                    try {
+                        index0FieldStr = Address.from_string(firstIndex).toGroup().toXCoordinate().toString();
+                    } catch { }
+                }
+                const proof = await generateFreezeListProof(1, index0FieldStr);
+                proofsInput = `[${proof}, ${proof}]`;
+            }
+
+            if (!invoice.merchant) {
+                throw new Error('Merchant address is missing from invoice details.');
+            }
+
+            const paymentSecretValue = paymentSecret || generateSalt();
+            const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
+            const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
+
+            let inputs: string[] = [];
+            if (isCrossToken && quoteOverride) {
+                const originalAmountMicro = Math.round(finalAmount * 1_000_000);
+                const baseTypeSuffix = (baseTokenType === 1 || baseTokenType === 2) ? 'u128' : 'u64';
+                inputs = [
+                    payRecord.plaintext || payRecord.ciphertext || payRecord,
+                    invoice.merchant,
+                    publicKey,
+                    `${originalAmountMicro}${baseTypeSuffix}`,
+                    `${amountMicro}${typeSuffix}`,
+                    invoice.salt || '',
+                    paymentSecretValue,
+                    payerNoteField,
+                    merchantNoteField,
+                    invoice.hash || ''
+                ];
+
+                if (proofsInput) inputs.push(proofsInput);
+                inputs.push(quoteOverride.signature);
+                inputs.push(`${Math.floor(quoteOverride.expires_at)}u32`);
+            } else {
+                inputs = [
+                    payRecord.plaintext || payRecord.ciphertext || payRecord,
+                    invoice.merchant,
+                    publicKey,
+                    `${amountMicro}${typeSuffix}`,
+                    invoice.salt || '',
+                    paymentSecretValue,
+                    payerNoteField,
+                    merchantNoteField,
+                    invoice.hash || ''
+                ];
+
+                if (proofsInput) inputs.push(proofsInput);
+            }
+
+            const targetProgramId = isCrossToken ? WALLET_PROGRAM_ID : (programId || PROGRAM_ID);
+            const estimatedFee = await estimateExecutionFee({
+                programName: targetProgramId,
+                functionName,
+                inputs,
+                fallbackMicrocredits: 100_000
+            });
+
+            const transaction: TransactionOptions = {
+                program: targetProgramId,
+                function: functionName,
+                inputs,
+                fee: estimatedFee,
+                privateFee: false
+            };
+
+            const result = await executeWithShieldRetry(
+                () => executeTransaction(transaction),
+                { onRetry: () => setStatus('Shield Wallet gave no response. Retrying payment request...') }
+            );
+
+            if (!result?.transactionId) {
+                throw new Error('Transaction execution failed to return a Transaction ID.');
+            }
+
+            setTxId(result.transactionId);
+            setStatus('Transaction Broadcasted! Waiting for network...');
+            pollTransaction(result.transactionId);
+        } catch (err: any) {
+            if (handleWalletError(err)) return;
+            console.error(err);
+            setError(err.message || 'An error occurred during payment.');
         } finally {
             setLoading(false);
         }
@@ -983,6 +1330,10 @@ export const useSharedPayment = () => {
         // Helpers
         pollTransaction,
         convertPublicToPrivate,
+        payInvoice,
+        quote,
+        quoteTimeRemaining,
+        checkOracleQuote,
         handleConnect,
         payWithCard,
         payWithGiftCard,

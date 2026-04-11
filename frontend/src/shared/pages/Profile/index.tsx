@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useTransactions } from '../../hooks/useTransactions';
-import { PROGRAM_ID, estimateExecutionFee, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
+import { PROGRAM_ID, WALLET_PROGRAM_ID, estimateExecutionFee, parseMerchantReceipt, MerchantReceipt, parseInvoice, InvoiceRecord, parsePayerReceipt, PayerReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
 import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
 import { useWalletErrorHandler } from '../../hooks/Wallet/WalletErrorBoundary';
 import { StatsCards } from './components/StatsCards';
@@ -280,11 +280,15 @@ const Profile: React.FC = () => {
         setLoadingReceipts(true);
         console.log("Fetching Merchant Receipts...");
         try {
-            const records = await requestRecords(PROGRAM_ID, true);
+            const [coreRecords, walletRecords] = await Promise.all([
+                requestRecords(PROGRAM_ID, true),
+                requestRecords(WALLET_PROGRAM_ID, true)
+            ]);
             const validReceipts: MerchantReceipt[] = [];
+            const allRecords = [...((coreRecords as any[]) || []), ...((walletRecords as any[]) || [])];
 
-            if (records) {
-                for (const r of (records as any[])) {
+            if (allRecords.length > 0) {
+                for (const r of allRecords) {
                     if (r.spent) continue;
 
                     let plaintext = r.plaintext;
@@ -302,7 +306,10 @@ const Profile: React.FC = () => {
                 }
             }
             console.log("Merchant Receipts Found:", validReceipts.length);
-            setMerchantReceipts(validReceipts.reverse());
+            const dedupedReceipts = Array.from(
+                new Map(validReceipts.map((receipt) => [receipt.receiptHash, receipt])).values()
+            );
+            setMerchantReceipts(dedupedReceipts.reverse());
         } catch (e) {
             handleWalletError(e);
             console.error("Error fetching merchant receipts:", e);
@@ -376,6 +383,7 @@ const Profile: React.FC = () => {
             if (sdkHashSet.has(record.invoiceHash)) return; // Filter explicitly SDK invoices from the Main Dashboard!
 
             const dbTx = dbMap.get(record.invoiceHash);
+            if (!dbTx) return;
 
             merged.set(record.invoiceHash, {
                 invoiceHash: record.invoiceHash,
@@ -405,6 +413,7 @@ const Profile: React.FC = () => {
             if (sdkHashSet.has(record.invoiceHash)) return; // Filter explicitly SDK invoices from the Main Dashboard!
 
             const dbTx = dbMap.get(record.invoiceHash);
+            if (!dbTx) return;
 
             merged.set(record.invoiceHash, {
                 invoiceHash: record.invoiceHash,

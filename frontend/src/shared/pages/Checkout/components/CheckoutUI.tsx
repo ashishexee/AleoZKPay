@@ -26,6 +26,9 @@ interface CheckoutUIProps {
     onPayWithGiftCard: (giftCode: string, donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }, payerAddress?: string) => void;
     giftCardRedeemOption?: { giftCode: string; availableAmount: number; tokenLabel: string } | null;
     onRedeemGiftCardBalance: () => void;
+    quote?: { expected_amount: number; expires_at: number; signature: string; from_token: string; to_token: string } | null;
+    quoteTimeRemaining?: number;
+    checkOracleQuote?: (from: string, to: string, amount: number) => void;
 }
 
 export const CheckoutUI: React.FC<CheckoutUIProps> = ({
@@ -40,7 +43,10 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     onPayWithCard,
     onPayWithGiftCard,
     giftCardRedeemOption,
-    onRedeemGiftCardBalance
+    onRedeemGiftCardBalance,
+    quote,
+    quoteTimeRemaining,
+    checkOracleQuote
 }) => {
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
@@ -59,16 +65,48 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
 
     const isDonation = session?.amount === 0;
     const allowedTokens = session
-        ? getAllowedTokensForInvoice(session.token_type === 'ANY' ? 3 : 0, session.invoice_type)
+        ? (session.allowed_tokens && session.allowed_tokens.length > 0 ? session.allowed_tokens as string[] : getAllowedTokensForInvoice(session.token_type === 'ANY' ? 3 : 0, session.invoice_type))
         : ['CREDITS', 'USDCX', 'USAD'];
-    const displayToken = session?.token_type === 'ANY' ? selectedPayerToken : session?.token_type;
+    const hasSelectableTokens = allowedTokens.length > 1;
+        
+    const displayToken = selectedPayerToken || session?.token_type || 'CREDITS';
     const displayTokenLabel = displayToken ? getTokenLabel(getTokenTypeFromCode(displayToken as 'CREDITS' | 'USDCX' | 'USAD')) : 'Tokens';
 
     useEffect(() => {
-        if (!session || session.token_type !== 'ANY') return;
-        const nextToken = allowedTokens[0] || 'CREDITS';
+        if (!session) return;
+        if (!hasSelectableTokens) {
+            if (!selectedPayerToken || selectedPayerToken !== session.token_type) {
+                setSelectedPayerToken(session.token_type);
+            }
+            return;
+        }
+
+        const nextToken = allowedTokens.includes(session.token_type)
+            ? session.token_type
+            : (allowedTokens[0] || 'CREDITS');
         setSelectedPayerToken((current) => allowedTokens.includes(current as any) ? current : nextToken);
-    }, [session, allowedTokens.join(',')]);
+    }, [session, hasSelectableTokens, allowedTokens, selectedPayerToken]);
+
+    // Decrease the countdown timer purely inside CheckoutUI visually
+    const [localTimeRemaining, setLocalTimeRemaining] = useState<number>(0);
+    useEffect(() => {
+        setLocalTimeRemaining(quoteTimeRemaining || 0);
+    }, [quoteTimeRemaining]);
+
+    useEffect(() => {
+        if (localTimeRemaining <= 0) return;
+        const interval = setInterval(() => {
+            setLocalTimeRemaining(t => Math.max(0, t - 1));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [localTimeRemaining]);
+
+    useEffect(() => {
+        if (!session || isDonation || !hasSelectableTokens) return;
+        if (selectedPayerToken !== session.token_type && session.amount > 0) {
+            checkOracleQuote?.(session.token_type, selectedPayerToken, session.amount);
+        }
+    }, [selectedPayerToken, session, isDonation, hasSelectableTokens, checkOracleQuote]);
 
     const paymentLink = typeof window !== 'undefined' && session ? (() => {
         const amtStr = isDonation && donationAmount ? `${Math.round(parseFloat(donationAmount) * 1_000_000)}` : `${Math.round(session.amount * 1_000_000)}`;
@@ -89,7 +127,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     })() : '';
 
     const handlePayClick = () => {
-        const tokenToPass = session?.token_type === 'ANY' ? selectedPayerToken : undefined;
+        const tokenToPass = hasSelectableTokens ? selectedPayerToken : undefined;
         const notes = {
             payerNote,
             merchantNote: shareMerchantNote ? merchantNote : null
@@ -103,7 +141,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
 
     const handleGiftCardPayClick = () => {
         if (!giftCode) return;
-        const tokenToPass = session?.token_type === 'ANY' ? selectedPayerToken : undefined;
+        const tokenToPass = hasSelectableTokens ? selectedPayerToken : undefined;
         const notes = {
             payerNote,
             merchantNote: shareMerchantNote ? merchantNote : null
@@ -117,7 +155,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
 
     const handleCardPayClick = () => {
         if (!cardNumber || !cardPin || !cardSecret) return;
-        const tokenToPass = session?.token_type === 'ANY' ? selectedPayerToken : undefined;
+        const tokenToPass = hasSelectableTokens ? selectedPayerToken : undefined;
         const notes = {
             payerNote,
             merchantNote: shareMerchantNote ? merchantNote : null
@@ -203,12 +241,30 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         </div>
                                     </div>
                                 ) : (
-                                    <p className="text-4xl font-black text-white tracking-tighter mb-1">
-                                        {session.amount} <span className="text-sm font-medium text-gray-500">{displayTokenLabel}</span>
-                                    </p>
+                                    <div className="flex flex-col items-center justify-center space-y-2">
+                                        <p className="text-4xl font-black text-white tracking-tighter mb-1 relative">
+                                            {quote ? quote.expected_amount : session.amount} 
+                                            <span className="text-sm font-medium text-gray-500 ml-2">{displayTokenLabel}</span>
+                                            {quote && (
+                                                <span className="absolute -top-6 right-0 text-[10px] text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full border border-orange-400/20 whitespace-nowrap">
+                                                    ~ {session.amount} {session.token_type}
+                                                </span>
+                                            )}
+                                        </p>
+                                        {quote && localTimeRemaining > 0 && (
+                                            <p className="text-xs text-orange-400/80 font-mono">
+                                                Quote expires in {Math.floor(localTimeRemaining / 60)}:{(localTimeRemaining % 60).toString().padStart(2, '0')}
+                                            </p>
+                                        )}
+                                        {quote && localTimeRemaining === 0 && (
+                                            <p className="text-xs text-red-400 font-mono animate-pulse">
+                                                Quote expired. Please refresh the page to update.
+                                            </p>
+                                        )}
+                                    </div>
                                 )}
                                 
-                                {session.token_type === 'ANY' && (
+                                {allowedTokens.length > 1 && (
                                     <div className="mt-4 flex flex-col items-center justify-center space-y-2 animate-fade-in">
                                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-left w-full max-w-[200px] pl-1">Select Token</p>
                                         <select

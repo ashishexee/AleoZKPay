@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateInvoicePdf } from '../../utils/generateInvoicePdf';
-import { PROGRAM_ID, parseInvoice, parseMerchantReceipt, MerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
+import { PROGRAM_ID, WALLET_PROGRAM_ID, parseInvoice, parseMerchantReceipt, MerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
 import { VerifyModal } from '../Profile/components/modals/VerifyModal';
 import { hashAddress } from '../../utils/crypto';
 import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
@@ -328,10 +328,24 @@ const InvoiceDetailsPage: React.FC = () => {
         if (!requestRecords || !decrypt || !invoice) return;
         setScanningReceipts(true);
         try {
-            const records = await requestRecords(PROGRAM_ID, true);
             const found: MerchantReceipt[] = [];
-            if (records) {
-                for (const r of records as any[]) {
+            const allRecords: any[] = [];
+
+            if (invoice.is_burner && decryptedBurnerKey) {
+                for (const txId of paymentTxIds) {
+                    const burnerRecords = await fetchBurnerRecordsFromTx(txId, decryptedBurnerKey);
+                    allRecords.push(...burnerRecords);
+                }
+            }
+
+            const [coreRecords, walletRecords] = await Promise.all([
+                requestRecords(PROGRAM_ID, true),
+                requestRecords(WALLET_PROGRAM_ID, true)
+            ]);
+            allRecords.push(...((coreRecords as any[]) || []), ...((walletRecords as any[]) || []));
+
+            if (allRecords.length > 0) {
+                for (const r of allRecords) {
                     let plaintext = r.plaintext;
                     const cipher = r.recordCiphertext || r.ciphertext;
                     if (!plaintext && cipher) { try { plaintext = await decrypt(cipher); } catch { } }
@@ -591,7 +605,8 @@ const InvoiceDetailsPage: React.FC = () => {
                                     });
                                     const hasAny = totals.credits > 0 || totals.usdcx > 0 || totals.usad > 0;
                                     return hasAny ? (
-                                        <div className="flex flex-wrap items-baseline gap-5">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex flex-wrap items-baseline gap-5">
                                             {totals.credits > 0 && (
                                                 <div className="flex items-baseline gap-2">
                                                     <span className="font-black tabular-nums leading-none" style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', color: '#ffffff', textShadow: '0 0 60px rgba(0,243,255,0.2)' }}>
@@ -616,6 +631,10 @@ const InvoiceDetailsPage: React.FC = () => {
                                                     <span className="font-bold uppercase tracking-widest" style={{ fontSize: 'clamp(0.85rem, 2vw, 1.4rem)', color: 'rgba(249,168,212,0.75)' }}>USAD</span>
                                                 </div>
                                             )}
+                                            </div>
+                                            <span className="font-bold uppercase tracking-widest text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                                                {receipts.length} receipt{receipts.length !== 1 ? 's' : ''}
+                                            </span>
                                         </div>
                                     ) : (
                                         <div className="flex items-baseline gap-4">
