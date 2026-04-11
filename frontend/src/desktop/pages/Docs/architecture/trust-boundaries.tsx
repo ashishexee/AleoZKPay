@@ -1,4 +1,4 @@
-import { Shield, Lock, Zap, UserCheck, EyeOff, Globe } from 'lucide-react';
+import { Lock, Zap, UserCheck, EyeOff, Globe } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';

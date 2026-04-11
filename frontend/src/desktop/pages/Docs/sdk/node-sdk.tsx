@@ -1,4 +1,4 @@
-import { Code2, Key, Package, Settings, ShieldCheck, Zap } from 'lucide-react';
+import { Package, Settings, ShieldCheck, Zap } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
@@ -35,34 +35,6 @@ const nullpay = new NullPay({
     // Takes precedence over projectRoot if provided. Useful for non-standard file names.
     configPath: path.join(__dirname, 'nullpay.json'),
 });`;
-
-const configInterfaceExample = `// TypeScript interface — the full NullPayConfig type:
-
-export interface NullPayConfig {
-    /** 
-     * Mandatory secret key from the NullPay Dashboard. 
-     * Starts with sk_test_ or sk_live_.
-     */
-    secretKey: string;      
-
-    /** 
-     * Custom backend API URL. Defaults to the NullPay production cluster.
-     */
-    baseURL?: string;       
-
-    /** 
-     * Directory to search for nullpay.json. Defaults to process.cwd().
-     */
-    projectRoot?: string;   
-
-    /** 
-     * Explicit path to the nullpay.json file.
-     */
-    configPath?: string;    
-}
-
-// The SDK performs strict validation on initialization:
-// Throws "NullPay API Key is required." if secretKey is empty.`;
 
 const sdkApiSurfaceExample = `// Top-level API surface of the NullPay class:
 // The class is structured into logical namespaces for clarity.

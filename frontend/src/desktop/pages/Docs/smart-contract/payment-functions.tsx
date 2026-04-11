@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle, ShieldCheck, Zap, Shield, Globe } from 'lucide-react';
+import { ShieldCheck, Zap, Shield, Globe } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, CodeBlock } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';

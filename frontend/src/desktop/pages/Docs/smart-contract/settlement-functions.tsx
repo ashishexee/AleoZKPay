@@ -1,4 +1,4 @@
-import { Download, Eye, Lock, Shield, RefreshCw, Key } from 'lucide-react';
+import { Eye, Lock, Shield, RefreshCw, Key } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, CodeBlock } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';

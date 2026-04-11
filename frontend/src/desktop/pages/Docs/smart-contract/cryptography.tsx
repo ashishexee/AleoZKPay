@@ -1,4 +1,4 @@
-import { Hash, Lock, Zap, Shield, Cpu, Binary } from 'lucide-react';
+import { Hash, Lock, Shield, Cpu, Binary } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';

@@ -1,4 +1,4 @@
-import { Database, Zap, Activity, Bot, ArrowRight, Shield } from 'lucide-react';
+import { Database, Zap, Activity, Bot, ArrowRight } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 import { Callout } from '../ui';

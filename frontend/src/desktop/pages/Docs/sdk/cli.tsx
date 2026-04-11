@@ -1,4 +1,4 @@
-import { Package, Rocket, Sparkles, Terminal, Shield, Zap, Info } from 'lucide-react';
+import { Sparkles, Terminal, Shield, Zap, Info } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { installCliCommand } from '../examples';
 import { CodeBlock, MetricCard, Callout } from '../ui';

@@ -1,4 +1,4 @@
-import { AlertTriangle, Lock, Shield, Zap, RefreshCw, Key } from 'lucide-react';
+import { AlertTriangle, Lock, Shield, RefreshCw, Key } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';

@@ -1,6 +1,5 @@
 import { FileJson, Layers, Shield, Database, Cpu } from 'lucide-react';
 import type { DocsSection } from '../types';
-import { nullpayJsonExample } from '../examples';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 

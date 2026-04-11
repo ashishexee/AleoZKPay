@@ -1,4 +1,4 @@
-import { Code2, FileCode, Terminal, Server, ShieldCheck, Zap } from 'lucide-react';
+import { FileCode, Server, ShieldCheck, Zap } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { testingWebsiteBackendExample } from '../examples';
 import { Callout, CodeBlock, MetricCard } from '../ui';
