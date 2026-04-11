@@ -732,13 +732,13 @@ const Home = () => {
                                                 </span>
                                             </h3>
                                             <p className="text-white/35 text-sm leading-relaxed font-light mb-4">
-                                                The NullPay MCP lets AI agents create invoices, verify payments, and settle transactions — all with zero-knowledge privacy. Compatible with any tool that supports the stdio MCP package.
+                                                The NullPay MCP lets AI agents create invoices, verify payments, and settle transactions — all with zero-knowledge privacy.
+                                                <br />
+                                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-amber-500 font-medium tracking-wide">
+                                                    Compatible with any tool that supports the stdio MCP package.
+                                                </span>
                                             </p>
-                                            <span className="inline-flex items-center gap-1.5 text-[11px] text-orange-400/70 font-mono tracking-wide">
-                                                <span className="w-3 h-px bg-orange-400/40" />
-                                                + any other agent that supports <code className="text-orange-300/80">@nullpay/mcp</code>
-                                                <span className="w-3 h-px bg-orange-400/40" />
-                                            </span>
+
                                         </div>
 
                                         <div className="flex items-center gap-6 md:gap-10 shrink-0 px-4">

@@ -1,12 +1,14 @@
+import React from 'react';
 import { cn } from '../../utils/cn';
 
 interface ShimmerProps {
     className?: string;
     width?: string | number;
     height?: string | number;
+    style?: React.CSSProperties;
 }
 
-export const Shimmer = ({ className, width, height }: ShimmerProps) => {
+export const Shimmer = ({ className, width, height, style }: ShimmerProps) => {
     return (
         <div
             className={cn(
@@ -16,7 +18,8 @@ export const Shimmer = ({ className, width, height }: ShimmerProps) => {
             )}
             style={{
                 width: width,
-                height: height
+                height: height,
+                ...style
             }}
         />
     );

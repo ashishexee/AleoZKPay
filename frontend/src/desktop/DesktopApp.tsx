@@ -24,14 +24,15 @@ import Docs from './pages/Docs';
 
 const DesktopAnimatedRoutes = () => {
     const location = useLocation();
+    const routeKey = location.pathname.startsWith('/profile') ? '/profile' : location.pathname;
 
     return (
         <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
+            <Routes location={location} key={routeKey}>
                 <Route path="/explorer" element={<Explorer />} />
                 <Route path="/create" element={<ProtectedRoute><CreateInvoice /></ProtectedRoute>} />
                 <Route path="/pay" element={<PaymentPage />} />
-                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/profile/*" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
                 <Route path="/profile-qr" element={<ProtectedRoute><ProfileQRPage /></ProtectedRoute>} />
                 <Route path="/vision" element={<Vision />} />

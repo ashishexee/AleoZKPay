@@ -3,6 +3,21 @@ const crypto = require('crypto');
 const { readMerchantStoredValue, sha256Hex } = require('../utils/crypto');
 const { normalizePaymentTxIds } = require('../utils/invoices');
 
+const normalizePaymentTimestamps = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return {};
+    }
+
+    return Object.fromEntries(
+        Object.entries(value).filter(([txId, timestamp]) => {
+            return typeof txId === 'string'
+                && txId.length > 0
+                && typeof timestamp === 'string'
+                && !Number.isNaN(Date.parse(timestamp));
+        })
+    );
+};
+
 const getInvoices = async (req, res) => {
     const { status, limit = 50, merchant_hash } = req.query;
     let query = supabase.from('invoices').select('*').order('created_at', { ascending: false }).limit(limit);
@@ -129,7 +144,7 @@ const updateInvoice = async (req, res) => {
     try {
         const { data: current, error: fetchError } = await supabase
             .from('invoices')
-            .select('payment_tx_ids, invoice_type, status, merchant_address') 
+            .select('payment_tx_ids, payment_timestamps, invoice_type, status, merchant_address') 
             .eq('invoice_hash', hash)
             .single();
 
@@ -144,6 +159,18 @@ const updateInvoice = async (req, res) => {
             const currentIds = normalizePaymentTxIds(current.payment_tx_ids);
             const incomingIds = normalizePaymentTxIds(payment_tx_ids);
             updates.payment_tx_ids = Array.from(new Set([...currentIds, ...incomingIds]));
+
+            const currentTimestamps = normalizePaymentTimestamps(current.payment_timestamps);
+            const mergedTimestamps = { ...currentTimestamps };
+            const recordedAt = new Date().toISOString();
+
+            incomingIds.forEach((txId) => {
+                if (!mergedTimestamps[txId]) {
+                    mergedTimestamps[txId] = recordedAt;
+                }
+            });
+
+            updates.payment_timestamps = mergedTimestamps;
         }
 
         if (status) updates.status = status;

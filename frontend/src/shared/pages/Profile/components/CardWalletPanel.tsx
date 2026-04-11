@@ -22,7 +22,7 @@ const TOKEN_OPTIONS: Array<{
 }> = [
         { code: 'CREDITS', label: 'Credits', key: 'credits', tint: 'text-orange-400', muted: 'text-orange-300' },
         { code: 'USDCX', label: 'USDCx', key: 'usdcx', tint: 'text-purple-400', muted: 'text-purple-300' },
-        { code: 'USAD', label: 'USAD', key: 'usad', tint: 'text-emerald-400', muted: 'text-emerald-300' }
+        { code: 'USAD', label: 'USAD', key: 'usad', tint: 'text-amber-400', muted: 'text-amber-300' }
     ];
 
 const formatAmount = (amount: number) =>
