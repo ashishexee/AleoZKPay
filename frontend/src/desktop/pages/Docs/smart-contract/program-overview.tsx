@@ -8,7 +8,7 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v27.aleo {
+program zk_pay_proofs_privacy_v28.aleo {
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     constructor() { ... }
 
@@ -64,7 +64,7 @@ export const programOverviewSection: DocsSection = {
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                 <MetricCard
                     icon={Code2}
-                    title="zk_pay_proofs_privacy_v27"
+                    title="zk_pay_proofs_privacy_v28"
                     description="The core payment program. Handles invoice creation, all payment transitions, settlement, and status reads."
                 />
                 <MetricCard

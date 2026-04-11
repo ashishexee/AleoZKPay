@@ -1,5 +1,5 @@
 {
-  "program": "zk_pay_proofs_privacy_v27.aleo",
+  "program": "zk_pay_proofs_privacy_v28.aleo",
   "structs": [
     {
       "path": [
@@ -262,7 +262,7 @@
           "path": [
             "InvoiceData"
           ],
-          "program": "zk_pay_proofs_privacy_v27.aleo"
+          "program": "zk_pay_proofs_privacy_v28.aleo"
         }
       }
     },
@@ -273,17 +273,6 @@
       },
       "value": {
         "Primitive": "Field"
-      }
-    },
-    {
-      "name": "oracle_address",
-      "key": {
-        "Primitive": {
-          "UInt": "U8"
-        }
-      },
-      "value": {
-        "Primitive": "Address"
       }
     }
   ],
@@ -381,7 +370,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -492,7 +481,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -603,7 +592,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -714,7 +703,7 @@
               "path": [
                 "Invoice"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -853,7 +842,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -864,7 +853,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -995,7 +984,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -1006,7 +995,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -1167,7 +1156,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -1178,7 +1167,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -1339,7 +1328,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -1350,7 +1339,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -1511,7 +1500,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -1522,7 +1511,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -1683,7 +1672,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -1694,1186 +1683,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "set_oracle_address",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "oracle_addr",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "pay_invoice_credits_via_usdcx",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "pay_record",
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usdcx_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "merchant",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payer_owner",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "original_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U64"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "converted_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U128"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "salt",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payment_secret",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "payer_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "merchant_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "message",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "proofs",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Struct": {
-                    "path": [
-                      "MerkleProof"
-                    ],
-                    "program": "test_usdcx_stablecoin.aleo"
-                  }
-                },
-                "length": 2
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "oracle_sig",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Signature"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "expires_at",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U32"
-              }
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usdcx_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usdcx_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "ComplianceRecord"
-              ],
-              "program": "test_usdcx_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "PayerReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "MerchantReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "pay_invoice_credits_via_usad",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "pay_record",
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usad_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "merchant",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payer_owner",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "original_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U64"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "converted_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U128"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "salt",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payment_secret",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "payer_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "merchant_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "message",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "proofs",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Struct": {
-                    "path": [
-                      "MerkleProof"
-                    ],
-                    "program": "test_usad_stablecoin.aleo"
-                  }
-                },
-                "length": 2
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "oracle_sig",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Signature"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "expires_at",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U32"
-              }
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usad_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usad_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "ComplianceRecord"
-              ],
-              "program": "test_usad_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "PayerReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "MerchantReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "pay_invoice_usdcx_via_credits",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "pay_record",
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "merchant",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payer_owner",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "original_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U128"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "converted_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U64"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "salt",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payment_secret",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "payer_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "merchant_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "message",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "oracle_sig",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Signature"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "expires_at",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U32"
-              }
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "PayerReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "MerchantReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "pay_invoice_usdcx_via_usad",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "pay_record",
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usad_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "merchant",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payer_owner",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "original_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U128"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "converted_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U128"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "salt",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payment_secret",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "payer_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "merchant_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "message",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "proofs",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Struct": {
-                    "path": [
-                      "MerkleProof"
-                    ],
-                    "program": "test_usad_stablecoin.aleo"
-                  }
-                },
-                "length": 2
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "oracle_sig",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Signature"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "expires_at",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U32"
-              }
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usad_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usad_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "ComplianceRecord"
-              ],
-              "program": "test_usad_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "PayerReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "MerchantReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "pay_invoice_usad_via_credits",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "pay_record",
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "merchant",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payer_owner",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "original_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U128"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "converted_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U64"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "salt",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payment_secret",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "payer_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "merchant_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "message",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "oracle_sig",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Signature"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "expires_at",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U32"
-              }
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "credits"
-              ],
-              "program": "credits.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "PayerReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "MerchantReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": "Final",
-          "mode": "None"
-        }
-      ]
-    },
-    {
-      "name": "pay_invoice_usad_via_usdcx",
-      "is_final": true,
-      "inputs": [
-        {
-          "name": "pay_record",
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usdcx_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "merchant",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payer_owner",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Address"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "original_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U128"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "converted_amount",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U128"
-              }
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "salt",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "payment_secret",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "payer_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "merchant_note",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "message",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Field"
-            }
-          },
-          "mode": "Public"
-        },
-        {
-          "name": "proofs",
-          "ty": {
-            "Plaintext": {
-              "Array": {
-                "element": {
-                  "Struct": {
-                    "path": [
-                      "MerkleProof"
-                    ],
-                    "program": "test_usdcx_stablecoin.aleo"
-                  }
-                },
-                "length": 2
-              }
-            }
-          },
-          "mode": "Private"
-        },
-        {
-          "name": "oracle_sig",
-          "ty": {
-            "Plaintext": {
-              "Primitive": "Signature"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "name": "expires_at",
-          "ty": {
-            "Plaintext": {
-              "Primitive": {
-                "UInt": "U32"
-              }
-            }
-          },
-          "mode": "Public"
-        }
-      ],
-      "outputs": [
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usdcx_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "Token"
-              ],
-              "program": "test_usdcx_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "ComplianceRecord"
-              ],
-              "program": "test_usdcx_stablecoin.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "PayerReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
-            }
-          },
-          "mode": "None"
-        },
-        {
-          "ty": {
-            "Record": {
-              "path": [
-                "MerchantReceipt"
-              ],
-              "program": "zk_pay_proofs_privacy_v27.aleo"
+              "program": "zk_pay_proofs_privacy_v28.aleo"
             }
           },
           "mode": "None"
@@ -2907,6 +1717,30 @@
             }
           },
           "mode": "Private"
+        }
+      ],
+      "outputs": [
+        {
+          "ty": "Final",
+          "mode": "None"
+        }
+      ]
+    },
+    {
+      "name": "delete_invoice",
+      "is_final": true,
+      "inputs": [
+        {
+          "name": "invoice",
+          "ty": {
+            "Record": {
+              "path": [
+                "Invoice"
+              ],
+              "program": "zk_pay_proofs_privacy_v28.aleo"
+            }
+          },
+          "mode": "None"
         }
       ],
       "outputs": [

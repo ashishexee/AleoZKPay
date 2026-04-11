@@ -60,7 +60,7 @@ export const structsSection: DocsSection = {
         <div className="space-y-6">
             <GlassCard className="overflow-hidden p-0">
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v28.aleo</p>
                     <h3 className="mt-1 text-xl font-bold text-white">struct InvoiceData</h3>
                     <p className="mt-1 text-sm text-gray-400">Public struct stored in the <code className="rounded bg-white/5 px-1.5 py-0.5">invoices</code> mapping, keyed by the invoice hash.</p>
                 </div>

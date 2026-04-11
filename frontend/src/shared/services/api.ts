@@ -75,6 +75,22 @@ export const updateInvoiceStatus = async (hash: string, data: Partial<Invoice>):
     return response.json();
 };
 
+export const deleteInvoice = async (
+    hash: string,
+    data: { merchant_address_hash: string; deletion_transaction_id?: string }
+): Promise<{ success: boolean; invoice_hash: string; deletion_transaction_id: string | null }> => {
+    const response = await fetch(`${API_URL}/invoices/${hash}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to delete invoice');
+    }
+    return response.json();
+};
+
 export const fetchInvoicesByMerchant = async (merchant: string): Promise<Invoice[]> => {
     const hash = await hashAddress(merchant);
     console.log(`📡 [API CALL] Fetching invoices for merchant: ${merchant} (Hash: ${hash})`);
@@ -358,6 +374,34 @@ export const submitCardLimitChange = async (
     if (!response.ok) {
         const err = await response.json().catch(() => null);
         throw new Error(err?.error || 'Failed to update card limits');
+    }
+
+    return response.json();
+};
+
+export const deleteCardWallet = async (
+    address: string,
+    mainAddress: string,
+    message: string,
+    signatureBase64: string,
+    deletionTransactionId?: string
+): Promise<{ success: boolean; deletion_transaction_id: string | null; card: CardWalletProfile | null }> => {
+    const address_hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/users/card`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            address_hash,
+            main_address: mainAddress,
+            message,
+            signature_base64: signatureBase64,
+            deletion_transaction_id: deletionTransactionId || null
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to delete card wallet');
     }
 
     return response.json();

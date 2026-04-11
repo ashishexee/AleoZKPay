@@ -158,6 +158,12 @@ program zk_pay_proofs_privacy_wallet_v4.aleo {
         };
     }
 
+    fn delete_card_profile(
+        card_profile: CardProfileRecord
+    ) {
+        assert_eq(card_profile.owner, self.caller);
+    }
+
     // ─── Admin: Set Oracle Address ─────────────────────────────────
     fn set_oracle_address(
         public oracle_addr: address

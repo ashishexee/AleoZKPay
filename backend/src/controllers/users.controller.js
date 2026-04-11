@@ -524,6 +524,78 @@ const verifyCardLimitChange = async (req, res) => {
     }
 };
 
+const deleteCardWallet = async (req, res) => {
+    const { address_hash, main_address, message, signature_base64, deletion_transaction_id } = req.body || {};
+
+    if (!address_hash || !main_address || !message || !signature_base64) {
+        return res.status(400).json({ error: 'Missing card deletion fields' });
+    }
+
+    try {
+        if (sha256Hex(main_address) !== address_hash) {
+            return res.status(400).json({ error: 'Main wallet address does not match address hash.' });
+        }
+
+        const profile = await getUserByAddressHash(address_hash);
+        if (!profile || !hasStoredCardWallet(profile)) {
+            return res.status(404).json({ error: 'Card wallet not found' });
+        }
+
+        const payload = JSON.parse(message);
+        if (payload?.action !== 'nullpay_card_delete_v1') {
+            return res.status(400).json({ error: 'Invalid card deletion action.' });
+        }
+
+        const requestedAt = new Date(payload.timestamp).getTime();
+        if (!Number.isFinite(requestedAt) || Math.abs(Date.now() - requestedAt) > 10 * 60 * 1000) {
+            return res.status(400).json({ error: 'Card deletion approval expired. Please sign again.' });
+        }
+
+        if (payload.card_number_hash && profile.card_number_hash && payload.card_number_hash !== profile.card_number_hash) {
+            return res.status(409).json({ error: 'Card changed before this deletion was submitted.' });
+        }
+
+        const sdk = await import('@provablehq/sdk');
+        const encoder = new TextEncoder();
+        const signature = parseAleoSignature(sdk, signature_base64);
+        const address = sdk.Address.from_string(main_address);
+        const isValid = address.verify(encoder.encode(message), signature);
+
+        if (!isValid) {
+            return res.status(401).json({ error: 'Main wallet signature verification failed.' });
+        }
+
+        const updates = {
+            card_main_address: null,
+            card_address: null,
+            encrypted_card_number: null,
+            card_number_hash: null,
+            card_last4: null,
+            encrypted_card_private_key: null,
+            card_kdf_salt: null,
+            card_kdf_algorithm: null,
+            card_kdf_params: null,
+            card_status: null,
+            card_label: null,
+            card_hint: null,
+            card_credits_max_balance: 0,
+            card_usdcx_max_balance: 0,
+            card_usad_max_balance: 0,
+            card_limits_updated_at: null
+        };
+
+        const data = await saveUser(address_hash, updates);
+        return res.json({
+            success: true,
+            deletion_transaction_id: deletion_transaction_id || null,
+            card: buildCardResponse(data)
+        });
+    } catch (err) {
+        console.error('Error deleting card wallet:', err);
+        return res.status(500).json({ error: err.message });
+    }
+};
+
 const recordCardSpend = async (req, res) => {
     const { address_hash } = req.body;
     if (!address_hash) return res.status(400).json({ error: 'Missing card spend fields' });
@@ -550,5 +622,6 @@ module.exports = {
     upsertCardWallet,
     lookupCardWallet,
     verifyCardLimitChange,
+    deleteCardWallet,
     recordCardSpend
 };

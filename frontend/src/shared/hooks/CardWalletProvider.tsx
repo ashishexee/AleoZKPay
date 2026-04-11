@@ -5,6 +5,7 @@ import { PrivateKey } from '@provablehq/sdk';
 import {
     type CardTokenCode,
     type CardWalletProfile,
+    deleteCardWallet as deleteCardWalletEntry,
     getCardWallet,
     submitCardLimitChange,
     upsertCardWallet
@@ -16,12 +17,14 @@ import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../utils/card-input-lim
 import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../utils/leo-input-limits';
 import {
     buildCreateCardRecordInputs,
+    parseCardProfileRecord,
     sha256HexToField
 } from '../utils/card-chain';
 import { estimateExecutionFee, fetchBurnerRecordsFromTx, WALLET_PROGRAM_ID } from '../utils/aleo-utils';
 import { fetchAllPrivateBalances } from '../pages/Profile/components/BurnerWallet/scanner';
 import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
 import { useBurnerWallet } from './BurnerWalletProvider';
+import { sweepBurnerFundsToDestination } from '../utils/burnerSweep';
 
 type BalanceKey = 'ALEO' | 'USDCx' | 'USAD';
 
@@ -52,6 +55,8 @@ interface CardWalletContextValue {
     ) => Promise<Record<BalanceKey, number> | null>;
     topUpCard: (token: CardTokenCode, amount: number, pin?: string, cardSecret?: string) => Promise<string>;
     requestCardLimitChange: (token: CardTokenCode, nextLimits: CardLimitDraft) => Promise<CardWalletProfile>;
+    sweepCardFundsToMain: (pin?: string, cardSecret?: string) => Promise<string[]>;
+    deleteCard: () => Promise<void>;
 }
 
 const CardWalletContext = createContext<CardWalletContextValue | undefined>(undefined);
@@ -186,6 +191,16 @@ function buildLimitChangeMessage(card: CardWalletProfile, token: CardTokenCode, 
             max_balance: card.limits[token].max_balance
         },
         next_limits: nextLimits,
+        nonce: window.crypto.randomUUID(),
+        timestamp: new Date().toISOString()
+    });
+}
+
+function buildCardDeletionMessage(card: CardWalletProfile) {
+    return JSON.stringify({
+        action: 'nullpay_card_delete_v1',
+        card_address: card.card_address,
+        card_number_hash: card.card_number_hash || null,
         nonce: window.crypto.randomUUID(),
         timestamp: new Date().toISOString()
     });
@@ -914,6 +929,152 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw new Error('Card limit update response was empty.');
     };
 
+    const sweepCardFundsToMain = async (pin?: string, cardSecret?: string) => {
+        if (!address || !card) {
+            throw new Error('Connect your main wallet and create a card first.');
+        }
+
+        const shouldUseTempUnlock = !decryptedCardKey && pin && cardSecret;
+        const activeCardKey = decryptedCardKey || (shouldUseTempUnlock ? await unlockCard(pin!, cardSecret!, { persist: false }) : null);
+        if (!activeCardKey) {
+            throw new Error('Unlock the card before sweeping funds.');
+        }
+
+        try {
+            const latestBalances = await fetchAllPrivateBalances(activeCardKey);
+            const transfers: Array<{ currency: 'ALEO' | 'USDCx' | 'USAD'; amount: number }> = [];
+
+            if ((latestBalances.ALEO || 0) > 0) {
+                transfers.push({ currency: 'ALEO', amount: latestBalances.ALEO });
+            }
+            if ((latestBalances.USDCx || 0) > 0) {
+                transfers.push({ currency: 'USDCx', amount: latestBalances.USDCx });
+            }
+            if ((latestBalances.USAD || 0) > 0) {
+                transfers.push({ currency: 'USAD', amount: latestBalances.USAD });
+            }
+
+            if (transfers.length === 0) {
+                throw new Error('This card has no private funds to sweep.');
+            }
+
+            const txIds: string[] = [];
+            for (const transfer of transfers) {
+                const result = await sweepBurnerFundsToDestination({
+                    decryptedBurnerKey: activeCardKey,
+                    amount: transfer.amount,
+                    currency: transfer.currency,
+                    destination: address
+                });
+                txIds.push(...result.txIds);
+            }
+
+            if (decryptedCardKey) {
+                await refreshCardBalances(undefined, undefined, { retryOnZero: true });
+            } else if (pin && cardSecret) {
+                await refreshCardBalances(pin, cardSecret, { retryOnZero: true });
+            }
+
+            return txIds;
+        } finally {
+            if (shouldUseTempUnlock && activeCardKey) {
+                resetKeyMaterial(activeCardKey);
+            }
+        }
+    };
+
+    const findCardProfileRecord = async () => {
+        if (!card) {
+            throw new Error('Create your NullPay card first.');
+        }
+        if (!requestRecords) {
+            throw new Error('Wallet record access is unavailable.');
+        }
+
+        const records = await requestRecords(WALLET_PROGRAM_ID, true);
+        const expectedHashField = card.card_number_hash_field
+            || (card.card_number_hash ? sha256HexToField(card.card_number_hash) : null);
+
+        if (!expectedHashField) {
+            throw new Error('Card hash metadata is missing. Refresh the card and try again.');
+        }
+
+        for (const record of (records as any[]) || []) {
+            if (record.spent) continue;
+
+            let plaintext = record.plaintext;
+            if (!plaintext && record.recordCiphertext && decrypt) {
+                try {
+                    plaintext = await decrypt(record.recordCiphertext);
+                } catch {
+                    plaintext = undefined;
+                }
+            }
+
+            const parsed = parseCardProfileRecord({ plaintext });
+            if (!parsed) continue;
+
+            if (String(parsed.cardNumberHashField).trim() === String(expectedHashField).trim()) {
+                return plaintext || record.ciphertext || record.recordCiphertext || record;
+            }
+        }
+
+        throw new Error('Could not locate an unspent on-chain card profile record.');
+    };
+
+    const deleteCard = async () => {
+        if (!address || !executeTransaction || !wallet?.adapter?.signMessage) {
+            throw new Error('Connect your main wallet first.');
+        }
+        if (!card) {
+            throw new Error('Create your NullPay card first.');
+        }
+
+        const cardRecord = await findCardProfileRecord();
+        const inputs = [cardRecord];
+
+        const estimatedDeleteFee = await estimateExecutionFee({
+            programName: WALLET_PROGRAM_ID,
+            functionName: 'delete_card_profile',
+            inputs,
+            fallbackMicrocredits: DEFAULT_TOP_UP_FEE
+        });
+
+        const result = await executeWithShieldRetry(
+            () => executeTransaction({
+                program: WALLET_PROGRAM_ID,
+                function: 'delete_card_profile',
+                inputs,
+                fee: estimatedDeleteFee,
+                privateFee: false
+            } as TransactionOptions),
+            { onRetry: () => void 0 }
+        );
+
+        if (!result?.transactionId) {
+            throw new Error('The wallet did not return a transaction id for card deletion.');
+        }
+
+        const finalTransactionId = await pollForFinalTransactionId(result.transactionId);
+        const message = buildCardDeletionMessage(card);
+        const signatureResult = await wallet.adapter.signMessage(new TextEncoder().encode(message));
+        const signatureBytes = signatureResult instanceof Uint8Array
+            ? signatureResult
+            : (signatureResult as any)?.signature;
+
+        if (!signatureBytes) {
+            throw new Error('Main wallet did not return a usable signature for card deletion.');
+        }
+
+        const signatureBase64 = toBase64(signatureBytes);
+        await deleteCardWalletEntry(address, address, message, signatureBase64, finalTransactionId);
+
+        clearCachedCard(address);
+        setCard(null);
+        setCardBalances(null);
+        lockCard();
+    };
+
     return (
         <CardWalletContext.Provider
             value={{
@@ -929,7 +1090,9 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 refreshCard,
                 refreshCardBalances,
                 topUpCard,
-                requestCardLimitChange
+                requestCardLimitChange,
+                sweepCardFundsToMain,
+                deleteCard
             }}
         >
             {children}

@@ -14,7 +14,7 @@ import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 
 const MobileAnimatedRoutes = () => {
     const location = useLocation();
-    const routeKey = location.pathname.startsWith('/profile') ? '/profile' : location.pathname;
+    const routeKey = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/profile') ? '/dashboard' : location.pathname;
 
     return (
         <AnimatePresence mode="wait">
@@ -23,7 +23,8 @@ const MobileAnimatedRoutes = () => {
                 <Route path="/create" element={<ProtectedRoute><CreateInvoice /></ProtectedRoute>} />
                 <Route path="/pay" element={<PaymentPage />} />
                 <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
-                <Route path="/profile/*" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/dashboard/*" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/profile/*" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/telegram-bot" element={<TelegramBotPage />} />
                 <Route path="/telegram/link" element={<TelegramLinkPage />} />
                 <Route path="/audit/verify" element={<AuditVerifyPage />} />

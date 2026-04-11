@@ -1,217 +1,142 @@
-import { Database } from 'lucide-react';
+import { Database, Shield, Zap, Search, Lock } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, CodeBlock } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
-const invoicesMappingExample = `// Core contract mapping #1
-// Key: invoice_hash (a field element — the BHP256 sum)
-// Value: InvoiceData struct (fully public on-chain)
+const invoicesMappingExample = `/**
+ * CORE STATE: mapping invoices
+ * Key: invoice_hash (BHP256 sum)
+ * Value: InvoiceData Struct
+ * 
+ * This mapping is the source of truth for every payment request.
+ * Even though the value is public, the 'salt' within the InvoiceData
+ * is NOT stored here—it is only used to compute the key.
+ */
 
 mapping invoices: field => InvoiceData;
 
-// Written by: create_invoice, create_invoice_usdcx,
-//             create_invoice_usad, create_invoice_any
-//   → invoices.set(invoice_hash, invoice_data)
-//
-// Read by: pay_invoice, pay_invoice_usdcx, pay_invoice_usad,
-//          pay_donation, pay_donation_usdcx, pay_donation_usad,
-//          settle_invoice, get_invoice_status
-//   → let invoice_data: InvoiceData = invoices.get(stored_hash);
-//
-// Updated by: pay_invoice (for Standard type only, status 0→1)
-//             pay_invoice_usdcx (same)
-//             pay_invoice_usad (same)
-//             settle_invoice (forces status 1 regardless of type)
-//
-// NOTE: All reads and writes happen inside 'final' blocks.
-// Transitions cannot read mappings — only finalize/async can.`;
+/**
+ * Access Lifecycle:
+ * 1. set() -> Called during invoice creation (sponsored by relayer).
+ * 2. get() -> Called during payment to verify amount and merchant.
+ * 3. set() -> Called after payment to mark standard invoices as 'Settled'.
+ */`;
 
-const saltToInvoiceMappingExample = `// Core contract mapping #2
-// Key: salt (the raw random field used when creating the invoice)
-// Value: invoice_hash (a field element — the BHP256 sum)
+const saltToInvoiceMappingExample = `/**
+ * PRIVACY BRIDGE: mapping salt_to_invoice
+ * Key: salt (128-bit private field)
+ * Value: invoice_hash (256-bit public field)
+ * 
+ * This mapping allows the buyer to prove they know a specific
+ * 'salt' without revealing the product details (stored in 'invoices').
+ */
 
 mapping salt_to_invoice: field => field;
 
-// Written by: create_invoice, create_invoice_usdcx,
-//             create_invoice_usad, create_invoice_any
-//   → salt_to_invoice.set(salt, invoice_hash)
-//
-// Read by: ALL 6 pay_* functions and settle_invoice
-//   → let stored_hash: field = salt_to_invoice.get(salt);
-//
-// Purpose:
-//   Payment transitions receive 'salt' as a private parameter but need
-//   to verify the invoice hash against what was stored on-chain.
-//   The mapping bridges: salt → stored invoice_hash
-//
-//   The transition recomputes:
-//     let invoice_hash = hash(merchant) + hash(amount) + hash(salt);
-//   Then asserts:
-//     assert_eq(invoice_hash, stored_hash);
-//
-//   This proves the payer knows the correct combination of merchant,
-//   amount, and salt — the zero-knowledge payment validation.`;
+// Transition Logic (ZK Proof):
+// The buyer provides 'salt' as a PRIVATE input.
+// The contract recomputes the hash using the merchant and amount.
+// Then, it looks up this mapping to ensure the resulting hash 
+// matches the one the merchant committed to.`;
 
-const cardLookupMappingExample = `// Wallet program mapping
-// Key: card_number_hash (BHP256 hash of card material)
-// Value: CardLookupData struct (public)
-
-mapping card_lookup: field => CardLookupData;
-
-// Written by: create_card_profile
-//   → card_lookup.set(card_number_hash, lookup_data)
-//     where lookup_data = { main_owner: caller, card_status: 0u8, profile_version }
-//
-// Read + Updated by: set_card_status
-//   → let current_lookup: CardLookupData = card_lookup.get(card_number_hash);
-//     assert_eq(caller, current_lookup.main_owner);  // ownership check
-//   → card_lookup.set(card_number_hash, updated_lookup);
-//
-// NOTE: card_status validation inside set_card_status:
-//   if next_status != 0u8 {
-//       assert_eq(next_status, 1u8);  // only 0 or 1 are valid
-//   }`;
-
-const finalBlockPatternExample = `// All mapping operations in NullPay happen inside 'final' blocks.
-// This is an Aleo/Leo architectural requirement.
-//
-// 'final' blocks (also called async finalizers) run AFTER the ZK proof
-// is verified and the transition output records are committed.
-// They have access to:
-//   - block.height  (current chain height)
-//   - mapping reads (invoices.get, salt_to_invoice.get, card_lookup.get)
-//   - mapping writes (invoices.set, card_lookup.set)
-//
-// Example from create_invoice:
-fn create_invoice(...) -> (Invoice, public field, Final) {
-    // ZK transition body: computes the hash, creates the record
-    let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
-    let invoice_record: Invoice = Invoice { ... };
-    
-    return (
-        invoice_record,
-        invoice_hash,
-        final {
-            // On-chain finalize: writes mapping state
-            let expiry_height: u32 = expiry_hours != 0u32 
-                ? block.height + (expiry_hours * 360u32) 
-                : 0u32;
-            invoices.set(invoice_hash, invoice_data);
-            salt_to_invoice.set(salt, invoice_hash);
-        }
-    );
-}`;
+const securityDeepDiveExample = `/**
+ * THE ZERO-KNOWLEDGE HANDSHAKE
+ * 
+ * By separating state into two mappings, NullPay achieves:
+ * 1. Data Integrity: The merchant cannot change the price (invoices mapping).
+ * 2. Buyer Privacy: Observers see a 'salt' lookup, but they don't know
+ *    which 'invoice_hash' it corresponds to unless they already have the salt.
+ * 
+ * This prevents "Sales Scraping" where competitors could otherwise 
+ * monitor a merchant's total volume by watching a single mapping.
+ */`;
 
 export const mappingsSection: DocsSection = {
     id: 'sc-mappings',
-    group: 'Contract Layout',
+    group: 'Contract Architecture',
     label: 'Mappings',
     eyebrow: 'Smart Contract',
-    title: 'Mappings — on-chain public state',
+    title: 'Mappings — The On-Chain Ledger',
     summary:
-        'NullPay uses three mappings across its two programs: invoices and salt_to_invoice in the core program, and card_lookup in the wallet program. All mapping reads and writes happen exclusively inside "final" (async finalizer) blocks — not in the ZK transition body itself.',
+        'Mappings represent the persistent, public state of the NullPay protocol. They act as the "Global Key-Value Store" where ZK-Proof commitments are recorded and verified by the Aleo network.',
     content: (
         <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-3">
-                {[
-                    { program: 'v26 — Core', name: 'invoices', key: 'field', val: 'InvoiceData', color: 'text-orange-300' },
-                    { program: 'v26 — Core', name: 'salt_to_invoice', key: 'field', val: 'field', color: 'text-orange-300' },
-                    { program: 'v1 — Wallet', name: 'card_lookup', key: 'field', val: 'CardLookupData', color: 'text-blue-300' },
-                ].map(({ program, name, key, val, color }) => (
-                    <div key={name} className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
-                        <p className={`mb-2 text-[10px] font-black uppercase tracking-widest ${color}`}>{program}</p>
-                        <code className="mb-1 block text-sm font-bold text-white">{name}</code>
-                        <p className="text-xs text-gray-400"><span className="text-orange-300">{key}</span> → <span className="text-emerald-300">{val}</span></p>
+            <div className="grid gap-4 md:grid-cols-2">
+                <GlassCard className="p-6">
+                    <div className="mb-4 flex items-center gap-2">
+                        <Lock className="h-5 w-5 text-emerald-400" />
+                        <h3 className="text-lg font-bold text-white">Privacy Boundaries</h3>
                     </div>
-                ))}
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                        Aleo mappings are public. However, NullPay obfuscates the relationship between a payer and a product by using <b>Salted Hashes</b> as the primary keys. An external observer may see a change in mapping state, but cannot determine the merchant or amount without the corresponding private salt.
+                    </p>
+                </GlassCard>
+                <GlassCard className="p-6">
+                    <div className="mb-4 flex items-center gap-2">
+                        <Zap className="h-5 w-5 text-blue-400" />
+                        <h3 className="text-lg font-bold text-white">Finalizer Performance</h3>
+                    </div>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                        All mapping operations occur within <code className="text-white/80">final</code> blocks. These blocks execute asynchronously from the ZK circuit, ensuring that the heavy lifting of proof generation doesn't slow down the actual state commitment on the ledger.
+                    </p>
+                </GlassCard>
             </div>
 
             <GlassCard className="overflow-hidden p-0">
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Database className="h-4 w-4 text-orange-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">Program: zk_pay.aleo</p>
                     </div>
-                    <h3 className="mt-1 text-xl font-bold text-white">mapping invoices</h3>
-                    <p className="mt-1 text-sm text-gray-400">The primary invoice state store. Public — anyone with the invoice hash can read the full <code className="rounded bg-white/5 px-1.5 py-0.5">InvoiceData</code>.</p>
+                    <h3 className="mt-1 text-xl font-bold text-white">The Invoice Registry</h3>
                 </div>
                 <div className="px-6 py-5">
+                    <p className="mb-4 text-sm text-gray-400">
+                        The <code className="text-orange-300">invoices</code> mapping stores the static data for every payment request. This includes the <code className="text-white/80">merchant_address</code> and the <code className="text-white/80">amount_paid</code>.
+                    </p>
                     <CodeBlock title="invoices: field => InvoiceData" language="leo" code={invoicesMappingExample} />
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
-                            <p className="mb-1 text-sm font-bold text-white">Status mutation behaviour</p>
-                            <p className="text-xs leading-relaxed text-gray-400">
-                                Standard invoices (<code className="rounded bg-white/5 px-1 py-0.5">invoice_type == 0u8</code>) have their <code className="rounded bg-white/5 px-1 py-0.5">status</code> flipped from <code className="rounded bg-white/5 px-1 py-0.5">0u8</code> to <code className="rounded bg-white/5 px-1 py-0.5">1u8</code> inside the pay_invoice finalizer. Multi-pay (<code className="rounded bg-white/5 px-1 py-0.5">1u8</code>) and donation (<code className="rounded bg-white/5 px-1 py-0.5">2u8</code>) invoices are never set to settled — they remain open and can receive repeated payments.
-                            </p>
-                        </div>
-                        <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
-                            <p className="mb-1 text-sm font-bold text-white">settle_invoice override</p>
-                            <p className="text-xs leading-relaxed text-gray-400">
-                                The <code className="rounded bg-white/5 px-1 py-0.5">settle_invoice</code> transition allows the merchant to manually flip <code className="rounded bg-white/5 px-1 py-0.5">status</code> to <code className="rounded bg-white/5 px-1 py-0.5">1u8</code> for any invoice type — bypassing the payment transition. This is a merchant-only operation — the finalizer asserts the recomputed hash matches the stored one, proving <code className="rounded bg-white/5 px-1 py-0.5">self.caller</code> knows the salt and amount.
-                            </p>
-                        </div>
-                    </div>
                 </div>
             </GlassCard>
 
             <GlassCard className="overflow-hidden p-0">
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
-                        <Database className="h-4 w-4 text-orange-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">zk_pay_proofs_privacy_v27.aleo</p>
+                        <Shield className="h-4 w-4 text-emerald-300" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Program: zk_pay.aleo</p>
                     </div>
-                    <h3 className="mt-1 text-xl font-bold text-white">mapping salt_to_invoice</h3>
-                    <p className="mt-1 text-sm text-gray-400">The salt→hash bridge. Enables payment validation without exposing the hash directly in the transaction inputs.</p>
+                    <h3 className="mt-1 text-xl font-bold text-white">The Salt-to-Invoice Bridge</h3>
                 </div>
                 <div className="px-6 py-5">
+                    <p className="mb-4 text-sm text-gray-400">
+                        This is the most critical mapping for privacy. It links a random 128-bit salt to a 256-bit BHP hash. The salt is passed privately during payment, ensuring the link is only discoverable by the payer and merchant.
+                    </p>
                     <CodeBlock title="salt_to_invoice: field => field" language="leo" code={saltToInvoiceMappingExample} />
-                    <Callout title="Why this mapping is the core security primitive" tone="orange">
-                        The <code className="rounded bg-white/10 px-1.5 py-0.5">salt_to_invoice</code> mapping is what allows NullPay's payment proofs to be sound. Because the payer passes <code className="rounded bg-white/10 px-1.5 py-0.5">salt</code> as a private input, and the finalizer independently fetches the on-chain <code className="rounded bg-white/10 px-1.5 py-0.5">invoice_hash</code> from this mapping and asserts equality with the recomputed hash, the proof guarantees the payer knows the exact (merchant, amount, salt) triple — without revealing any of them publicly.
-                    </Callout>
-                </div>
-            </GlassCard>
-
-            <GlassCard className="overflow-hidden p-0">
-                <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
-                    <div className="flex items-center gap-3">
-                        <Database className="h-4 w-4 text-blue-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">zk_pay_proofs_privacy_wallet_v3.aleo</p>
-                    </div>
-                    <h3 className="mt-1 text-xl font-bold text-white">mapping card_lookup</h3>
-                    <p className="mt-1 text-sm text-gray-400">Minimal public state for the gift card system. Keyed by a BHP256 hash of card material, not the card number itself.</p>
-                </div>
-                <div className="px-6 py-5">
-                    <CodeBlock title="card_lookup: field => CardLookupData" language="leo" code={cardLookupMappingExample} />
                 </div>
             </GlassCard>
 
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">The finalizer pattern</h3>
-                <p className="mb-3 text-sm leading-relaxed text-gray-400">
-                    Understanding Aleo's <code className="rounded bg-white/5 px-1.5 py-0.5">final</code> block pattern is critical for reading any NullPay contract logic correctly. All mapping state — reads and writes — happen asynchronously after the ZK proof is verified.
-                </p>
-                <CodeBlock title="final block pattern" language="leo" code={finalBlockPatternExample} />
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
-                        <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-emerald-300">Available inside transitions</p>
-                        <ul className="space-y-1 text-xs text-gray-300">
-                            <li>• Private inputs/outputs</li>
-                            <li>• Record field access</li>
-                            <li>• BHP256 hash computations</li>
-                            <li>• Arithmetic and assertions</li>
-                        </ul>
-                    </div>
-                    <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
-                        <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-blue-300">Available only inside final blocks</p>
-                        <ul className="space-y-1 text-xs text-gray-300">
-                            <li>• <code className="rounded bg-white/5 px-1 py-0.5">block.height</code> access</li>
-                            <li>• Mapping reads (<code className="rounded bg-white/5 px-1 py-0.5">.get()</code>)</li>
-                            <li>• Mapping writes (<code className="rounded bg-white/5 px-1 py-0.5">.set()</code>)</li>
-                            <li>• <code className="rounded bg-white/5 px-1 py-0.5">assert_eq()</code> on mapping results</li>
-                        </ul>
+                <div className="flex items-center gap-3 mb-4">
+                    <Search className="h-5 w-5 text-purple-400" />
+                    <h3 className="text-xl font-bold text-white">Security Deep-Dive</h3>
+                </div>
+                <CodeBlock title="Zero-Knowledge Handshake Logic" language="js" code={securityDeepDiveExample} />
+                <div className="mt-6 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                            <p className="text-xs text-gray-400"><b>Immutability:</b> Mappings cannot be edited except by the program creator using strictly defined transitions.</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                            <p className="text-xs text-gray-400"><b>Resolution:</b> The SDK polls these mappings to verify when a transition has reached "Final" state on the chain.</p>
+                        </div>
                     </div>
                 </div>
             </GlassCard>
+
+            <Callout title="Aleo Explorer Integration" tone="blue">
+                You can manually inspect these mappings by searching for the <code className="text-blue-200">zk_pay.aleo</code> program on any Aleo block explorer. Look for the "Mappings" tab to see the live size and state updates of the protocol registry.
+            </Callout>
         </div>
     ),
 };

@@ -278,11 +278,58 @@ const updateInvoice = async (req, res) => {
     }
 };
 
+const deleteInvoice = async (req, res) => {
+    const { hash } = req.params;
+    const { merchant_address_hash, deletion_transaction_id } = req.body || {};
+
+    if (!merchant_address_hash) {
+        return res.status(400).json({ error: 'Missing merchant_address_hash' });
+    }
+
+    try {
+        const { data: current, error: fetchError } = await supabase
+            .from('invoices')
+            .select('invoice_hash, merchant_address_hash, status, payment_tx_ids')
+            .eq('invoice_hash', hash)
+            .single();
+
+        if (fetchError || !current) {
+            return res.status(404).json({ error: 'Invoice not found' });
+        }
+
+        if (current.merchant_address_hash !== merchant_address_hash) {
+            return res.status(403).json({ error: 'Invoice does not belong to this merchant.' });
+        }
+
+        const paymentTxIds = normalizePaymentTxIds(current.payment_tx_ids);
+        if (current.status === 'SETTLED' || paymentTxIds.length > 0) {
+            return res.status(409).json({ error: 'Invoices with recorded payments cannot be deleted.' });
+        }
+
+        const { error: deleteError } = await supabase
+            .from('invoices')
+            .delete()
+            .eq('invoice_hash', hash);
+
+        if (deleteError) throw deleteError;
+
+        res.json({
+            success: true,
+            invoice_hash: hash,
+            deletion_transaction_id: deletion_transaction_id || null
+        });
+    } catch (err) {
+        console.error('Error deleting invoice:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
 module.exports = {
     getInvoices,
     getInvoicesByMerchant,
     getRecentInvoices,
     getInvoiceByHash,
     createInvoice,
-    updateInvoice
+    updateInvoice,
+    deleteInvoice
 };

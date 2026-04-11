@@ -6,7 +6,7 @@ function getProvableCredentials() {
 
 let cachedProgramSource = null;
 const cachedImportSources = new Map();
-const CORE_PROGRAM_NAME = 'zk_pay_proofs_privacy_v27.aleo';
+const CORE_PROGRAM_NAME = 'zk_pay_proofs_privacy_v28.aleo';
 const LEO_SINGLE_FIELD_MAX_BYTES = 31;
 
 function encodeSingleField(value, label) {

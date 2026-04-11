@@ -4,12 +4,14 @@ import { TransactionOptions } from '@provablehq/aleo-types';
 import { estimateExecutionFee, generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../utils/aleo-utils';
 import { executeWithShieldRetry } from '../utils/shieldRetry';
 import { useBurnerWallet } from './BurnerWalletProvider';
+import { useLeaveGuard } from './LeaveGuardProvider';
 import { updateUserProfile, getUserProfile, createInvoice, fetchInvoiceByHash } from '../services/api';
 import { encryptWithPassword, hashAddress } from '../utils/crypto';
 
 export const useProfileQR = () => {
     const { address, executeTransaction, transactionStatus } = useWallet();
     const { burnerAddress, appPassword, userProfileMainAddress } = useBurnerWallet();
+    const { setGuard, clearGuard } = useLeaveGuard();
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
     const [mainHash, setMainHash] = useState<string | null>(null);
@@ -93,6 +95,13 @@ export const useProfileQR = () => {
         if (!finalTxId) throw new Error("Failed to get transaction ID");
 
         setStatus(`Waiting for ${isBurner ? 'Burner' : 'Main'} invoice confirmation...`);
+        setGuard({
+            active: true,
+            title: 'Profile QR Is Syncing',
+            message: `NullPay is waiting for your ${isBurner ? 'burner' : 'main'} profile invoice to confirm and sync. Leaving now can interrupt setup.`,
+            confirmLabel: 'Leave Anyway',
+            cancelLabel: 'Stay'
+        });
 
         // PHASE 1: Poll transactionStatus for up to 4 minutes (2s interval × 120 attempts)
         let isPending = true;
@@ -192,6 +201,7 @@ export const useProfileQR = () => {
             is_burner: isBurner,
         });
 
+        clearGuard();
         return { hash, salt };
     };
 
@@ -243,6 +253,7 @@ export const useProfileQR = () => {
             console.error("Initialization failed", e);
             setStatus(`Error: ${e.message}`);
         } finally {
+            clearGuard();
             setLoading(false);
         }
     };

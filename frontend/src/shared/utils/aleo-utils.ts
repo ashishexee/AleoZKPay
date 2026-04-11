@@ -1,6 +1,6 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
 import { FIXED_FEE_MICROCREDITS, getFeePreferenceMode } from './feePreference';
-export const CORE_PROGRAM_ID = "zk_pay_proofs_privacy_v27.aleo";
+export const CORE_PROGRAM_ID = "zk_pay_proofs_privacy_v28.aleo";
 export const WALLET_PROGRAM_ID = "zk_pay_proofs_privacy_wallet_v4.aleo";
 export const PROGRAM_ID = CORE_PROGRAM_ID;
 export const FREEZELIST_PROGRAM_ID = "test_usdcx_freezelist.aleo";

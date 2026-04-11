@@ -241,3 +241,46 @@ export async function listSpendableRecords(
     spendable.sort((a, b) => b.microcredits - a.microcredits);
     return spendable;
 }
+
+export async function findOwnedInvoiceRecord(
+    session: ScannerSession,
+    programFilter: string,
+    invoiceHash: string,
+): Promise<string | null> {
+    const { scannerBase, scannerHeaders, scannerUuid, account } = session;
+    const res = await fetch(`${scannerBase}/records/owned`, {
+        method: 'POST', headers: scannerHeaders,
+        body: JSON.stringify({ uuid: scannerUuid, unspent: true, decrypt: true, filter: { program: programFilter, record: 'Invoice' } }),
+    });
+    if (res.status === 422) throw new Error('Scanner UUID expired. Please try again.');
+    if (!res.ok) throw new Error(`Records fetch failed: ${await res.text()}`);
+
+    const data = await res.json();
+    const list: any[] = Array.isArray(data) ? data : data?.data || [];
+    const normalizedTargetHash = String(invoiceHash || '').trim();
+
+    for (const rec of list) {
+        try {
+            const recProgram: string = rec.program_name || rec.program || '';
+            if (recProgram && recProgram !== programFilter) continue;
+
+            if (!rec.record_plaintext && rec.record_ciphertext) {
+                const ct = RecordCiphertext.fromString(rec.record_ciphertext);
+                rec.record_plaintext = ct.decrypt(account.viewKey()).toString();
+            }
+
+            const pt: string = rec.record_plaintext || '';
+            if (!pt || !/invoice_hash\s*:\s*/.test(pt)) continue;
+
+            const match = pt.match(/invoice_hash\s*:\s*([\w\d\.]+)/);
+            const recordHash = match?.[1]?.replace('.private', '').replace('.public', '').trim();
+            if (recordHash === normalizedTargetHash) {
+                return pt.trim();
+            }
+        } catch {
+            // Skip unreadable records
+        }
+    }
+
+    return null;
+}

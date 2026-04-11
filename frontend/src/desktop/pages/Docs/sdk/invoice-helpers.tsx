@@ -1,151 +1,150 @@
-import { CheckCircle, GitBranch, RefreshCw } from 'lucide-react';
+import { CheckCircle, GitBranch, RefreshCw, Layers, ShieldCheck, AlertCircle } from 'lucide-react';
 import type { DocsSection } from '../types';
-import { Callout, CodeBlock } from '../ui';
+import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
-const invoiceTypesExample = `// ── TypeScript types for nullpay.json ────────────────────────────────────
+const invoiceTypesExample = `// TypeScript Type Definitions
+// Exported from @nullpay/node
 
 export interface NullPayInvoice {
-    name:      string;              // Developer-defined identifier (e.g. "pro-plan")
-    type:      'multipay' | 'donation';  // The invoice type
-    amount:    number | null;       // null = any amount (donation only)
-    currency:  string;              // 'CREDITS' | 'USDCX' | 'USAD' | 'ANY'
-    label?:    string;              // Optional display label
-    hash:      string;              // BHP256 invoice hash (field element as string)
-    salt:      string;              // Invoice salt (field element as string)
-}
+    /** The dev-defined string for SDK lookups */
+    name:      string;              
+    
+    /** multipay | donation (Standard invoices are dynamic) */
+    type:      'multipay' | 'donation';  
+    
+    /** Fixed amount (e.g. 19.99). Null for donation-type. */
+    amount:    number | null;       
+    
+    /** The token ticker (CREDITS, USDCX, etc.) */
+    currency:  string;              
+    
+    /** Display text for the payer */
+    label?:    string;              
+    
+    /** BHP256 commitment of the invoice state */
+    hash:      string;              
+    
+    /** Privacy-preserving 128-bit salt */
+    salt:      string;              
+}`;
 
-export interface NullPayJson {
-    merchant:     string;          // Merchant's Aleo address
-    generated_at: string;          // ISO 8601 timestamp of when the CLI ran
-    invoices:     NullPayInvoice[]; // Array of pre-generated invoice entries
-}
+const methodsWalkthroughExample = `/**
+ * THE INVOICE NAMESPACE (Local Controller)
+ * 
+ * Unlike the 'checkout' namespace, the 'invoices' namespace is 
+ * completely synchronous and makes ZERO network requests. 
+ * It acts as a wrapper around the nullpay.json manifest.
+ */
 
-// Note: 'standard' invoices are not stored in nullpay.json.
-// The CLI only generates multipay and donation entries —
-// standard invoices are always created dynamically via sessions.create().`;
+// 1. Precise Lookup
+const plan = nullpay.invoices.getByName('premium-tier');
 
-const invoiceMethodsExample = `// ── nullpay.invoices.* — all four methods ────────────────────────────────
+// 2. Collection Filters
+const subscriptions = nullpay.invoices.getByType('multipay');
 
-// 1. getAll() — returns all invoices from nullpay.json
-//    Throws if nullpay.json is not found.
-const allInvoices = nullpay.invoices.getAll();
-// → NullPayInvoice[]
+// 3. Batch Retrieval
+const all = nullpay.invoices.getAll();
 
-// 2. getByName(name) — recommended for route handlers
-//    Throws with descriptive message listing all available names if not found.
-const plan = nullpay.invoices.getByName('pro-plan');
-// → NullPayInvoice { name: 'pro-plan', hash: '...field', salt: '...field', ... }
+// ERROR HANDLING:
+// If "premium-tier" is missing, getByName() throws an error:
+// "Invoice 'premium-tier' not found in nullpay.json. Available: intro, middle, elite"
+// This prevents silent failures in production.`;
 
-// Error example if name not found:
-//   Invoice "pro-plan" not found in nullpay.json. 
-//   Available: "basic-usdcx", "support-any"
+const routeAutomationExample = `/**
+ * PRODUCTION PATTERN: Zero-Touch Deployment
+ * 
+ * By iterating over the manifest during startup, you can add 
+ * new products by simply running the CLI and restarting the app.
+ */
 
-// 3. getByIndex(i) — fallback for index-based workflows
-//    Throws if i is out of bounds.
-const first = nullpay.invoices.getByIndex(0);
-
-// 4. getByType(type) — filter by type
-//    Returns empty array if none match (never throws).
-const donations = nullpay.invoices.getByType('donation');
-// → NullPayInvoice[] (all donation-type invoices)`;
-
-const iterationPatternExample = `// ─── Common pattern: dynamically register routes for all invoices ──────────
-// From the testing-website backend:
-
-for (const invoice of nullpay.invoices.getAll()) {
-    app.post(\`/api/\${invoice.name}\`, async (req, res) => {
+nullpay.invoices.getAll().forEach(invoice => {
+    app.post(\`/pay/\${invoice.name}\`, async (req, res) => {
         const session = await nullpay.checkout.sessions.create({
-            // nullpay_invoice_name reads hash, salt, type, amount, currency
-            // from nullpay.json automatically:
             nullpay_invoice_name: invoice.name,
-            success_url: \`\${frontendUrl}?session_id={CHECKOUT_SESSION_ID}\`,
-            cancel_url:  \`\${frontendUrl}?cancel=true\`,
+            success_url: \`\${BASE}/done?id={CHECKOUT_SESSION_ID}\`,
+            cancel_url:  \`\${BASE}/cancel\`,
         });
-
-        res.json({ checkoutUrl: session.checkout_url });
+        
+        res.json({ url: session.checkout_url });
     });
-}
-// This creates one POST handler per named invoice in nullpay.json.
-// Adding a new invoice to nullpay.json (via the CLI) automatically
-// creates a new route on the next server restart — no code changes needed.`;
-
-const loadNullPayConfigExample = `// loadNullPayConfig is also exported as a standalone utility.
-// Useful if you need to read nullpay.json without instantiating NullPay.
-
-import { loadNullPayConfig } from '@nullpay/node';
-
-const config = loadNullPayConfig(
-    __dirname,                              // projectRoot
-    path.join(__dirname, 'nullpay.json')    // configPath (optional override)
-);
-
-if (!config) {
-    console.warn('nullpay.json not found — skipping invoice registration');
-} else {
-    console.log('Merchant:', config.merchant);
-    console.log('Invoices:', config.invoices.length);
-}
-
-// Resolution priority:
-// 1. configPath (if provided and exists)
-// 2. path.join(projectRoot, 'nullpay.json')
-// 3. path.join(process.cwd(), 'nullpay.json')`;
+});`;
 
 export const invoiceHelpersSection: DocsSection = {
     id: 'sdk-invoice-helpers',
     group: 'SDK Reference',
     label: 'Invoice Helpers',
     eyebrow: 'SDK',
-    title: 'nullpay.invoices.* — reading and querying the manifest',
+    title: 'Invoice Helpers — Local Manifest Controllers',
     summary:
-        'The invoices namespace provides four synchronous methods for reading and querying your local nullpay.json manifest. These are helper utilities — they do not make any network requests. They throw descriptive errors if the file is missing or the requested invoice is not found.',
+        'The invoices namespace provides high-performance, synchronous utilities for interacting with your local nullpay.json manifest. These methods are designed to simplify route handling and invoice lookups.',
     content: (
         <div className="space-y-6">
+            <div className="grid gap-5 md:grid-cols-4">
+                <MetricCard
+                    icon={Layers}
+                    title="0ms Latency"
+                    description="Synchronous lookups from memory. No database I/O or network round-trips required."
+                />
+                <MetricCard
+                    icon={ShieldCheck}
+                    title="Type-Safe"
+                    description="Full TypeScript interface support for all invoice properties including hashes and salts."
+                />
+                <MetricCard
+                    icon={RefreshCw}
+                    title="Dynamic Sync"
+                    description="Automatically refreshes based on the content of nullpay.json on server startup."
+                />
+                <MetricCard
+                    icon={AlertCircle}
+                    title="Fail-Fast"
+                    description="Throws descriptive errors if an invoice is referenced but missing from the manifest."
+                />
+            </div>
+
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">NullPayInvoice and NullPayJson types</h3>
-                <CodeBlock title="Type definitions (from SDK source)" language="ts" code={invoiceTypesExample} />
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
-                        <p className="mb-1 text-sm font-bold text-white">Why nullpay.json only has multipay and donation</p>
-                        <p className="text-xs leading-relaxed text-gray-400">
-                            Standard invoices are one-time — they settle after a single payment and become invalid. Pre-generating them in <code className="rounded bg-white/5 px-1 py-0.5">nullpay.json</code> would require re-running the CLI after every purchase. Standard invoices are always created dynamically via <code className="rounded bg-white/5 px-1 py-0.5">sessions.create()</code> with inline amount and currency.
-                        </p>
-                    </div>
-                    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
-                        <p className="mb-1 text-sm font-bold text-white">hash and salt are field element strings</p>
-                        <p className="text-xs leading-relaxed text-gray-400">
-                            The <code className="rounded bg-white/5 px-1 py-0.5">hash</code> and <code className="rounded bg-white/5 px-1 py-0.5">salt</code> values are Aleo field element strings — 30–40 digit numbers followed by <code className="rounded bg-white/5 px-1 py-0.5">field</code>. These are passed directly to the backend API without modification.
-                        </p>
-                    </div>
-                </div>
+                <h3 className="mb-4 text-xl font-bold text-white">The Invoice Interface</h3>
+                <p className="mb-4 text-sm text-gray-400">
+                    Each <code className="text-white/80">NullPayInvoice</code> object represents a unique, on-chain commitment that the merchant has pre-generated.
+                </p>
+                <CodeBlock title="SDK Type Definition" language="ts" code={invoiceTypesExample} />
             </GlassCard>
 
             <GlassCard className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <GitBranch className="h-5 w-5 text-orange-300" />
-                    <h3 className="text-xl font-bold text-white">All four invoice methods</h3>
-                </div>
-                <CodeBlock title="nullpay.invoices.* — all methods" language="js" code={invoiceMethodsExample} />
+                <h3 className="mb-4 text-xl font-bold text-white">Full Method Suite</h3>
+                <p className="mb-4 text-sm text-gray-400">
+                    The <code className="text-white/80">nullpay.invoices</code> namespace maps your developer-friendly names to Aleo blockchain identifiers.
+                </p>
+                <CodeBlock title="API Surface Walkthrough" language="js" code={methodsWalkthroughExample} />
             </GlassCard>
 
             <GlassCard className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <RefreshCw className="h-5 w-5 text-orange-300" />
-                    <h3 className="text-xl font-bold text-white">Route iteration pattern</h3>
+                <div className="mb-4 flex items-center gap-2">
+                    <GitBranch className="h-5 w-5 text-blue-400" />
+                    <h3 className="text-xl font-bold text-white">Pattern: Automatic Route Scaling</h3>
                 </div>
-                <CodeBlock title="Register one route per invoice at startup" language="js" code={iterationPatternExample} />
-                <Callout title="No code change needed when adding invoices" tone="blue">
-                    Because routes are registered dynamically from <code className="rounded bg-white/10 px-1.5 py-0.5">nullpay.json</code>, running the CLI to add a new invoice and restarting the server is all it takes to expose a new payment endpoint. Your route-handling code stays constant.
+                <p className="mb-4 text-sm text-gray-400">
+                    For merchants with dynamic product lists, the best practice is to iterate the manifest during application startup. This turns your <code className="text-white/80">nullpay.json</code> into a configuration-driven routing table.
+                </p>
+                <CodeBlock title="Dynamic Express.js Registration" language="js" code={routeAutomationExample} />
+                <Callout title="Why not use these for 'Standard' invoices?" tone="orange">
+                    Standard (one-time) invoices are physically spent after a single payment. Storing them in a static JSON file would result in "Already Spent" errors for all subsequent users. **Standard invoices must always use Pattern 2 (Dynamic Session Creation).**
                 </Callout>
             </GlassCard>
 
-            <GlassCard className="p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <CheckCircle className="h-5 w-5 text-orange-300" />
-                    <h3 className="text-xl font-bold text-white">Standalone loadNullPayConfig</h3>
+            <GlassCard className="p-6 border-blue-500/20 bg-blue-500/5">
+                <div className="flex items-start gap-4">
+                    <div className="rounded-full bg-blue-500/20 p-2">
+                        <ShieldCheck className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-white text-lg">Integrity Validation</h4>
+                        <p className="mt-1 text-sm text-gray-400 leading-relaxed">
+                            Every time the SDK loads an invoice from the manifest, it validates the structure of the <code className="text-white/80">hash</code> and <code className="text-white/80">salt</code>. If a field element string is malformed or missing the <code className="text-emerald-400">"field"</code> suffix, the SDK will throw an immediate descriptive error, preventing invalid payment requests from being displayed to your customers.
+                        </p>
+                    </div>
                 </div>
-                <CodeBlock title="loadNullPayConfig utility" language="ts" code={loadNullPayConfigExample} />
             </GlassCard>
         </div>
     ),

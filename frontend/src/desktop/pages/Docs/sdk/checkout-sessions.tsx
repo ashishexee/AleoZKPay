@@ -1,15 +1,28 @@
-import { ArrowRight, Clock, Globe, Zap } from 'lucide-react';
+import { ArrowRight, Clock, Globe, Zap, Shield, Search } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, CodeBlock } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
 const sessionTypesExample = `// TypeScript types for checkout sessions
+// These types are exported from @nullpay/node
 
 export interface CreateCheckoutSessionParams {
-    // ─── Amount and token ───────────────────────────────────────────────
-    amount?:    number;                           // Required for non-donation invoices
-    currency?:  'CREDITS' | 'USDCX' | 'USAD' | 'ANY';  // Token type
-    type?:      'standard' | 'donation' | 'multipay';   // Invoice type
+    /** 
+     * The fiat-equivalent amount in major units (e.g. 1.00 instead of 1000000).
+     * Required for non-donation invoices.
+     */
+    amount?:    number;                           
+
+    /**
+     * The token ticker. If not provided, defaults to CREDITS.
+     * ANY allows the buyer to choose between Credits, USDCx, and USAD.
+     */
+    currency?:  'CREDITS' | 'USDCX' | 'USAD' | 'ANY';  
+
+    /**
+     * Standard (one-time), Multipay (recurring/reusable), or Donation (variable).
+     */
+    type?:      'standard' | 'donation' | 'multipay';   
 
     // ─── Redirect URLs ──────────────────────────────────────────────────
     success_url?: string;  // {CHECKOUT_SESSION_ID} template placeholder supported
@@ -25,196 +38,173 @@ export interface CreateCheckoutSessionParams {
 }
 
 export interface CheckoutSession {
-    id:            string;   // Session UUID — use this for retrieve() and webhook reconciliation
-    checkout_url:  string;   // Hosted checkout page URL — redirect buyer here
-    status:        string;   // 'PENDING' | 'SETTLED' | 'FAILED' | 'PROCESSING'
-    invoice_hash?: string;   // The resolved invoice hash used for this session
-    salt?:         string;   // The resolved salt used for this session
+    /** Unique UUID for the checkout session. */
+    id:            string;   
+    
+    /** The URL where you should redirect your user to complete payment. */
+    checkout_url:  string;   
+    
+    /** current state: PENDING, PROCESSING, SETTLED, or FAILED. */
+    status:        string;   
+    
+    /** The resolved invoice hash used for this session. */
+    invoice_hash?: string;   
+    
+    /** The resolved salt used for this session. */
+    salt?:         string;   
 }`;
 
-const createWithNameExample = `// ─── Pattern 1: Pre-generated invoice (recommended) ─────────────────────
-// Uses nullpay.json. SDK reads hash, salt, type, amount, currency from disk.
+const createWithNameExample = `// ─── Pattern 1: Pre-generated (Ultra Fast) ────────────────────────────────
+// Recommended for 90% of use cases. Uses pre-configured invoices from nullpay.json.
 
 const session = await nullpay.checkout.sessions.create({
-    nullpay_invoice_name: 'pro-plan',
+    nullpay_invoice_name: 'basic-monthly',
     success_url: 'https://yourapp.com/success?session_id={CHECKOUT_SESSION_ID}',
     cancel_url:  'https://yourapp.com/cancel',
 });
 
-// What happens inside create():
-//   1. Finds invoice in nullpay.json by name
-//   2. Resolves: hash, salt, type, amount, currency from the manifest entry
-//   3. POSTs to /checkout/sessions with the resolved values
-//   4. Returns { id, checkout_url, status, invoice_hash, salt }
+// Implementation details:
+// 1. SDK reads 'basic-monthly' from your local nullpay.json file.
+// 2. Extracts merchant_address, hash, salt, and amount.
+// 3. Submits to NullPay Cloud APIs immediately.
+// 4. Response is near-instant (< 200ms).
 
-// redirect buyer:
-res.redirect(303, session.checkout_url);
+// Redirecting the user:
+res.redirect(303, session.checkout_url);`;
 
-// The success_url supports {CHECKOUT_SESSION_ID} substitution:
-//   → becomes: https://yourapp.com/success?session_id=sess_abc123...`;
-
-const createDynamicExample = `// ─── Pattern 2: Dynamic session (no pre-generated invoice) ───────────────
-// When no invoice_hash/salt is provided, the SDK calls the DPS relayer
-// to create the invoice on-chain first, then creates the session.
-//
-// ⚠️ This is slower than Pattern 1 (up to 120 seconds for aleo confirmation)
-//    Use Pattern 1 for any fixed-price product.
-//    Use Pattern 2 for variable-price checkouts.
+const createDynamicExample = `// ─── Pattern 2: Dynamic (Complete Blockchain Flow) ────────────────────────
+// Use this for variable-price checkouts or dynamic service fees.
 
 const session = await nullpay.checkout.sessions.create({
-    amount:      99.99,          // Variable price
+    amount:      42.50,          // User-defined or dynamic amount
     currency:    'USDCX',
-    type:        'standard',     // 'standard' | 'multipay' | 'donation'
+    type:        'standard',
     success_url: 'https://yourapp.com/success?session_id={CHECKOUT_SESSION_ID}',
     cancel_url:  'https://yourapp.com/cancel',
 });
 
-// What happens inside create() with no hash/salt:
-//   1. Generates a random 128-bit salt (crypto.randomBytes(16))
-//   2. POSTs to /dps/relayer/create-invoice to create on-chain
-//   3. Polls https://api.provable.com/v2/testnet/program/.../mapping/salt_to_invoice/{salt}
-//      every 2 seconds, up to 60 retries (120 seconds max)
-//   4. Once hash is available: syncs invoice to dashboard (POST /invoices)
-//   5. Creates the checkout session with the confirmed hash
-//
-// Amount validation:
-//   Non-donation sessions with amount <= 0 throw immediately:
-//   "Amount is required and must be greater than 0 for standard invoices."`;
+/**
+ * UNDER THE HOOD: The Automatic Relayer Proxy
+ * 
+ * When 'invoice_hash' or 'salt' are missing, the SDK executes:
+ * 1. Salt Generation: A cryptographically secure 128-bit 'field' salt is created.
+ * 2. Relayer Request: Calls the NullPay Relayer to sponsor the transaction.
+ * 3. Gas Coverage: NullPay pays the gas fee to create the invoice on Aleo.
+ * 4. Polling Lifecycle:
+ *    - The SDK enters a polling loop (2s intervals).
+ *    - It queries the Aleo Mapping: salt_to_invoice[your_salt].
+ *    - Waiting for block confirmation (avg 30-90s).
+ * 5. Dashboard Sync: Once confirmed, it notifies the dashboard of the new invoice.
+ * 6. Session Finalization: Finally, the checkout session is created.
+ */`;
 
-const retrieveExample = `// ─── sessions.retrieve(sessionId) ────────────────────────────────────────
-// Use after buyer returns to your success_url to confirm settlement.
+const retrieveExample = `// ─── sessions.retrieve(id) ───────────────────────────────────────────────
+// Critical for fulfillment. Never trust frontend redirects alone.
 
-app.get('/api/verify', async (req, res) => {
-    const { session_id } = req.query;
+const session = await nullpay.checkout.sessions.retrieve(sessionId);
 
-    const session = await nullpay.checkout.sessions.retrieve(session_id);
-    // → CheckoutSession { id, status, checkout_url, invoice_hash, salt }
-
-    if (session.status === 'SETTLED') {
-        // Safe to fulfill — settlement confirmed server-side
-        await fulfillOrder(session_id);
-        res.json({ success: true });
-    } else {
-        res.status(402).json({ error: 'Payment not yet confirmed', status: session.status });
-    }
-});
-
-// Possible statuses:
-//   PENDING    → Invoice created, waiting for buyer payment
-//   PROCESSING → Payment submitted, waiting for Aleo confirmation
-//   SETTLED    → Payment confirmed on-chain — safe to fulfill
-//   FAILED     → Payment failed or expired`;
-
-const mergeRulesExample = `// ─── nullpay_invoice_name resolution — merge rules ───────────────────────
-// When nullpay_invoice_name is provided, the SDK reads the manifest and merges:
-
-// From nullpay.json manifest entry:
-//   inv.hash    → resolvedParams.invoice_hash (if invoice_hash not explicitly passed)
-//   inv.salt    → resolvedParams.salt
-//   inv.type    → resolvedParams.type
-//   inv.amount  → resolvedParams.amount (if amount not explicitly passed)
-//   inv.currency → resolvedParams.currency
-
-// Explicit params ALWAYS take precedence over manifest values.
-// After merging, nullpay_invoice_name and nullpay_invoice_index are
-// deleted before the payload is sent to the API.
-
-// Example: override amount for a custom price on a multipay invoice:
-const session = await nullpay.checkout.sessions.create({
-    nullpay_invoice_name: 'basic-plan',
-    amount: 149.99,  // ← overrides the amount in nullpay.json
-    success_url: '...',
-    cancel_url:  '...',
-});`;
+switch (session.status) {
+    case 'SETTLED':
+        // ✅ Fulfillment logic here.
+        // Payment is confirmed on the Aleo blockchain.
+        break;
+    case 'PROCESSING':
+        // 🔄 Payment found, but block inclusion is pending.
+        break;
+    case 'PENDING':
+        // ⏳ Waiting for user to complete the wallet signature.
+        break;
+    case 'FAILED':
+        // ❌ Transaction failed or was manually cancelled.
+        break;
+}`;
 
 export const checkoutSessionsSection: DocsSection = {
     id: 'sdk-checkout-sessions',
     group: 'SDK Reference',
     label: 'Checkout Sessions',
     eyebrow: 'SDK',
-    title: 'nullpay.checkout.sessions.* — create and retrieve sessions',
+    title: 'Checkout Sessions — The Merchant Portal Entryway',
     summary:
-        'The checkout sessions namespace has two methods: create() for starting a payment flow and retrieve() for confirming settlement. The create() method supports two patterns: pre-generated (from nullpay.json) and fully dynamic with automatic on-chain invoice creation via the DPS relayer.',
+        'Checkout Sessions are the fundamental unit of commerce in NullPay. They represent a single "Hosted Checkout" intent, linking a merchant invoice (on-chain) to a specific payment request (off-chain).',
     content: (
         <div className="space-y-6">
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">TypeScript interfaces</h3>
-                <CodeBlock title="CreateCheckoutSessionParams and CheckoutSession types" language="ts" code={sessionTypesExample} />
-            </GlassCard>
-
-            <div className="grid gap-4 md:grid-cols-3">
-                {[
-                    {
-                        icon: Globe,
-                        title: 'Pre-generated (fast)',
-                        desc: 'Uses nullpay_invoice_name. Reads hash and salt from nullpay.json. No blockchain wait. Recommended for fixed-price products.',
-                        color: 'text-emerald-300',
-                    },
-                    {
-                        icon: Zap,
-                        title: 'Dynamic (slower)',
-                        desc: 'No nullpay_invoice_name. SDK calls DPS relayer and waits for on-chain confirmation (up to 120s). Required for variable-price checkouts.',
-                        color: 'text-orange-300',
-                    },
-                    {
-                        icon: Clock,
-                        title: 'retrieve() — verify settlement',
-                        desc: 'Call with the session_id from your success_url query param. Returns current status. SETTLED = safe to fulfill.',
-                        color: 'text-blue-300',
-                    },
-                ].map(({ icon: Icon, title, desc, color }) => (
-                    <div key={title} className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
-                        <Icon className={`mb-3 h-5 w-5 ${color}`} />
-                        <p className="mb-2 text-sm font-bold text-white">{title}</p>
-                        <p className="text-xs leading-relaxed text-gray-400">{desc}</p>
+            <div className="grid gap-4 md:grid-cols-2">
+                <GlassCard className="p-6">
+                    <div className="mb-4 flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-emerald-400" />
+                        <h3 className="text-lg font-bold text-white">Security Model</h3>
                     </div>
-                ))}
+                    <p className="text-sm text-gray-400">
+                        Sessions are linked to your <code className="text-white/80">invoice_hash</code>. This hash is a commitment on the Aleo blockchain that ensures nobody can modify the amount or recipient address once the session is created. The SDK verifies this commitment before generating the checkout URL.
+                    </p>
+                </GlassCard>
+                <GlassCard className="p-6">
+                    <div className="mb-4 flex items-center gap-2">
+                        <Search className="h-5 w-5 text-blue-400" />
+                        <h3 className="text-lg font-bold text-white">Transparency</h3>
+                    </div>
+                    <p className="text-sm text-gray-400">
+                        The SDK uses the <code className="text-white/80">salt_to_invoice</code> mapping to verify that the invoice exists on-chain. This mapping is public, allowing the buyer to verify the authenticity of the payment request using the Aleo Explorer.
+                    </p>
+                </GlassCard>
             </div>
 
+            <GlassCard className="p-6">
+                <h3 className="mb-4 text-xl font-bold text-white">Creation Parameters</h3>
+                <CodeBlock title="CreateCheckoutSessionParams" language="ts" code={sessionTypesExample} />
+            </GlassCard>
+
             <GlassCard className="overflow-hidden p-0">
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Pattern 1 — Fast</span>
-                        <ArrowRight className="h-3 w-3 text-gray-500" />
-                        <span className="text-[10px] text-gray-500">nullpay_invoice_name</span>
+                        <Globe className="h-4 w-4 text-emerald-300" />
+                        <h3 className="text-xl font-bold text-white">1. Pre-generated Workflow</h3>
                     </div>
-                    <h3 className="mt-1 text-xl font-bold text-white">sessions.create — pre-generated invoice</h3>
                 </div>
                 <div className="px-6 py-5">
-                    <CodeBlock title="Create session with named invoice" language="js" code={createWithNameExample} />
-                    <div className="mt-4 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
-                        <p className="mb-2 text-sm font-bold text-white">Merge order diagram</p>
-                        <CodeBlock title="nullpay_invoice_name merge rules" language="js" code={mergeRulesExample} />
-                    </div>
+                    <p className="mb-4 text-sm text-gray-400">
+                        This is the high-performance path. By using <code className="text-emerald-300">nullpay_invoice_name</code>, the SDK skips all blockchain interaction. It assumes the invoice already exists on-chain (created via CLI) and generates the session immediately.
+                    </p>
+                    <CodeBlock title="Instant Checkout" language="js" code={createWithNameExample} />
                 </div>
             </GlassCard>
 
             <GlassCard className="overflow-hidden p-0">
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-orange-300">Pattern 2 — Dynamic</span>
-                        <ArrowRight className="h-3 w-3 text-gray-500" />
-                        <span className="text-[10px] text-gray-500">DPS relayer + Aleo polling</span>
+                        <Zap className="h-4 w-4 text-orange-300" />
+                        <h3 className="text-xl font-bold text-white">2. Automatic Relayer Proxy (Sponsored)</h3>
                     </div>
-                    <h3 className="mt-1 text-xl font-bold text-white">sessions.create — dynamic invoice creation</h3>
                 </div>
                 <div className="px-6 py-5">
-                    <CodeBlock title="Dynamic session with inline amount" language="js" code={createDynamicExample} />
-                    <Callout title="Dynamic creation can take up to 120 seconds" tone="orange">
-                        The SDK polls the Aleo network every 2 seconds for up to 60 retries (120 seconds total) waiting for the invoice hash to appear at <code className="rounded bg-white/10 px-1.5 py-0.5">salt_to_invoice[salt]</code>. If the hash is not found within that window, the SDK throws a timeout error. For time-sensitive flows, prefer pre-generated invoices.
+                    <Callout title="NullPay Sponsors the Gas" tone="orange">
+                        In the dynamic flow, NullPay covers the transaction fees for creating the invoice on-chain. 
+                        This means your merchant wallet does not need to hold Credits to create new invoices.
                     </Callout>
+                    <p className="my-4 text-sm text-gray-400">
+                        The SDK will enter a complex polling loop, waiting for the Aleo network to reach consensus on your new invoice. 
+                        The <code className="text-white/80">create()</code> promise will only resolve once the invoice is physically confirmed on-chain.
+                    </p>
+                    <CodeBlock title="Relayer-backed Dynamic Creation" language="js" code={createDynamicExample} />
                 </div>
             </GlassCard>
 
-            <GlassCard className="overflow-hidden p-0">
-                <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
-                    <h3 className="mt-1 text-xl font-bold text-white">sessions.retrieve — confirm settlement</h3>
-                </div>
-                <div className="px-6 py-5">
-                    <CodeBlock title="Verify payment on redirect return" language="js" code={retrieveExample} />
-                    <Callout title="Always verify server-side on the success URL return" tone="blue">
-                        The <code className="rounded bg-white/10 px-1.5 py-0.5">session_id</code> in the success_url is not a proof of payment — it is just an identifier. Always call <code className="rounded bg-white/10 px-1.5 py-0.5">sessions.retrieve(id)</code> server-side and check that <code className="rounded bg-white/10 px-1.5 py-0.5">status === 'SETTLED'</code> before fulfilling orders.
-                    </Callout>
+            <GlassCard className="p-6">
+                <h3 className="mb-4 text-xl font-bold text-white">Verification & Settlement</h3>
+                <p className="mb-4 text-sm text-gray-400">
+                    Once the user is redirected back to your <code className="text-white/80">success_url</code>, you must verify the session status. 
+                    The SDK provides a deterministic way to poll current state via <code className="text-blue-300">sessions.retrieve()</code>.
+                </p>
+                <CodeBlock title="Retrieving Session State" language="js" code={retrieveExample} />
+                <div className="mt-4 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+                    <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-500">Status Lifecycle</p>
+                    <ul className="space-y-2 text-xs text-gray-400">
+                        <li>• <b className="text-white">PENDING</b>: The initial state. No payment attempt detected.</li>
+                        <li>• <b className="text-white">PROCESSING</b>: The buyer has submitted the transaction. Waiting for Aleo confirmations.</li>
+                        <li>• <b className="text-white">SETTLED</b>: The funds have arrived in the merchant's sub-pool. Safe to fulfill.</li>
+                        <li>• <b className="text-white">FAILED</b>: The transaction was rejected by the network or the session expired.</li>
+                    </ul>
                 </div>
             </GlassCard>
         </div>

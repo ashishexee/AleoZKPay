@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Copy, Eye, EyeOff, Lock, ShieldCheck, Unlock, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Copy, Eye, EyeOff, Lock, ShieldCheck, Trash2, Unlock, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Shimmer } from '../../../components/ui/Shimmer';
+import ConfirmModal from '../../../components/ConfirmModal';
 import { useCardWallet } from '../../../hooks/CardWalletProvider';
 import type { CardTokenCode } from '../../../services/api';
 import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../../utils/card-input-limits';
@@ -159,7 +160,9 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
         lockCard,
         refreshCardBalances,
         topUpCard,
-        requestCardLimitChange
+        requestCardLimitChange,
+        sweepCardFundsToMain,
+        deleteCard
     } = useCardWallet();
 
     const [pin, setPin] = useState('');
@@ -177,6 +180,9 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
         USAD: ''
     });
     const [limitSavingToken, setLimitSavingToken] = useState<CardTokenCode | null>(null);
+    const [isDeletingCard, setIsDeletingCard] = useState(false);
+    const [isSweepingCard, setIsSweepingCard] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     const balances = {
         credits: cardBalances?.ALEO || 0,
@@ -308,6 +314,34 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
             toast.error(err.message || 'Limit update failed');
         } finally {
             setLimitSavingToken(null);
+        }
+    };
+
+    const handleDeleteCard = async () => {
+        setShowDeleteModal(false);
+
+        try {
+            setIsDeletingCard(true);
+            await deleteCard();
+            toast.success('NullPay Card deleted successfully.');
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to delete the card.');
+        } finally {
+            setIsDeletingCard(false);
+        }
+    };
+
+    const handleSweepToMain = async () => {
+        try {
+            setIsSweepingCard(true);
+            const txIds = await sweepCardFundsToMain(pin || undefined, secret || undefined);
+            toast.success(`Sweep submitted across ${txIds.length} transaction${txIds.length === 1 ? '' : 's'}.`);
+            setPin('');
+            setSecret('');
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to sweep card funds.');
+        } finally {
+            setIsSweepingCard(false);
         }
     };
 
@@ -513,7 +547,46 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
     }
 
     return (
-        <div className="space-y-4">
+        <>
+            <ConfirmModal
+                open={showDeleteModal}
+                tone="danger"
+                title="Delete NullPay Card"
+                description={
+                    <div className="space-y-3">
+                        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-100/90">
+                            <div className="flex items-start gap-3">
+                                <div className="mt-0.5 rounded-2xl border border-red-400/20 bg-red-500/10 p-2 text-red-300">
+                                    <AlertTriangle className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-300">Irreversible Action</div>
+                                    <p className="mt-2 leading-relaxed">
+                                        This removes the live on-chain card record and clears the encrypted database mirror.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {Object.values(balances).some((value) => value > 0) ? (
+                            <p className="leading-relaxed text-red-100/85">
+                                This card still holds funds. If you delete it now, you may <span className="font-semibold text-white">lose access to that money permanently</span>.
+                                Use <span className="font-semibold text-white">Transfer All To Main Wallet</span> first if you want the safest path.
+                            </p>
+                        ) : (
+                            <p className="leading-relaxed text-gray-300">
+                                The card currently shows zero balance, so it is safe to remove the record and clear the mirror if you no longer need this card.
+                            </p>
+                        )}
+                    </div>
+                }
+                confirmLabel="Delete Card"
+                cancelLabel="Keep Card"
+                onConfirm={handleDeleteCard}
+                onClose={() => setShowDeleteModal(false)}
+                loading={isDeletingCard}
+            />
+
+            <div className="space-y-4">
             <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
                 <GlassCard className="p-6">
                     <div className="w-full">
@@ -587,6 +660,48 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-300">
                                     <span className={`h-2 w-2 rounded-full ${isRefreshingBalances ? 'bg-orange-400 animate-pulse' : 'bg-emerald-400'}`} />
                                     {isRefreshingBalances ? 'Scanning Records' : 'Ready'}
+                                </div>
+                                <button
+                                    onClick={handleSweepToMain}
+                                    disabled={isSweepingCard}
+                                    className="inline-flex items-center gap-2 rounded-full border border-neon-primary/20 bg-neon-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-neon-primary transition-colors hover:bg-neon-primary/20 disabled:opacity-60"
+                                >
+                                    {isSweepingCard ? (
+                                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neon-primary/30 border-t-neon-primary" />
+                                    ) : (
+                                        <ArrowUpRight className="h-3.5 w-3.5" />
+                                    )}
+                                    Transfer All To Main Wallet
+                                </button>
+                                <button
+                                    onClick={() => setShowDeleteModal(true)}
+                                    disabled={isDeletingCard}
+                                    className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-red-200 transition-colors hover:bg-red-500/20 disabled:opacity-60"
+                                >
+                                    {isDeletingCard ? (
+                                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-200/30 border-t-red-200" />
+                                    ) : (
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    )}
+                                    Delete Card
+                                </button>
+                            </div>
+
+                            <div className="mt-5 rounded-3xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100/90">
+                                <div className="flex items-start gap-3">
+                                    <div className="mt-0.5 rounded-2xl border border-red-400/20 bg-red-500/10 p-2 text-red-300">
+                                        <AlertTriangle className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-300">Important Warning</div>
+                                        <p className="mt-2 leading-relaxed text-red-100/85">
+                                            Deleting the card removes the live on-chain card record and clears the encrypted database mirror. If the card still holds funds,
+                                            you may not be able to recover that money afterward.
+                                        </p>
+                                        <p className="mt-2 leading-relaxed text-red-100/75">
+                                            Use <span className="font-semibold text-white">Transfer All To Main Wallet</span> first if you want the safest exit path. NullPay will sponsor the sweep transactions.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -772,6 +887,7 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                     </div>
                 </GlassCard>
             </motion.div>
-        </div>
+            </div>
+        </>
     );
 };

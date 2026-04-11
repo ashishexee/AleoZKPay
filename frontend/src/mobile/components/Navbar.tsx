@@ -5,12 +5,14 @@ import { cn } from '../../shared/utils/cn';
 
 const MobileNavbar = () => {
     const location = useLocation();
-    const isActive = (path: string) => location.pathname === path;
+    const isActive = (path: string) => path.startsWith('/dashboard')
+        ? location.pathname.startsWith('/dashboard')
+        : location.pathname === path;
     const navItems = [
         { path: '/create', label: 'Create' },
         { path: '/pay', label: 'Pay' },
         { path: '/giftcards', label: 'Gift Cards' },
-        { path: '/profile', label: 'Dashboard' },
+        { path: '/dashboard/stats', label: 'Dashboard' },
         { path: '/profile-qr', label: 'QR' },
     ];
 

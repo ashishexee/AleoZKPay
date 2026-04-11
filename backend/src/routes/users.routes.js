@@ -7,6 +7,7 @@ const {
     upsertCardWallet,
     lookupCardWallet,
     verifyCardLimitChange,
+    deleteCardWallet,
     recordCardSpend
 } = require('../controllers/users.controller');
 
@@ -19,6 +20,7 @@ router.get('/card/:address', getCardWallet);
 router.post('/card', upsertCardWallet);
 router.post('/card/lookup', lookupCardWallet);
 router.post('/card/limits', verifyCardLimitChange);
+router.delete('/card', deleteCardWallet);
 router.post('/card/spend', recordCardSpend);
 
 module.exports = router;

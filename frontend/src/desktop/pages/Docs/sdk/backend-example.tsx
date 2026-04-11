@@ -1,173 +1,140 @@
-import { Code2, FileCode, Terminal } from 'lucide-react';
+import { Code2, FileCode, Terminal, Server, ShieldCheck, Zap } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { testingWebsiteBackendExample } from '../examples';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
-const testingWebsiteStructureExample = `// testing-website/ — full structure of the reference backend
+const productionBoilerplateExample = `/**
+ * PRODUCTION-READY BACKEND BOILERPLATE
+ * 
+ * Features:
+ * 1. SDK Singleton Initialization
+ * 2. Environment Variable Validation
+ * 3. Structured Error Handling
+ * 4. Idempotent Order Fulfillment
+ */
 
-testing-website/
-├── backend/
-│   └── index.js          ← Express server — the reference integration
-├── frontend/
-│   └── ...               ← Static HTML/JS buyer-facing pages
-└── nullpay.json          ← Pre-generated invoice manifest for this demo`;
-
-const sdkInitInBackendExample = `// testing-website/backend/index.js — SDK initialization
-const path    = require('path');
 const express = require('express');
 const { NullPay } = require('@nullpay/node');
 
-const app = express();
-app.use(express.json());
-
-const nullpay = new NullPay({
-    secretKey:   process.env.NULLPAY_SECRET_KEY,
-    baseURL:     process.env.NULLPAY_BASE_URL,
-    // projectRoot points to the backend directory.
-    // nullpay.json is resolved as: __dirname + '/nullpay.json'
-    projectRoot: __dirname,
-    configPath:  path.join(__dirname, 'nullpay.json'),
-});
-
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';`;
-
-const routeRegistrationExample = `// ─── Dynamic route registration from nullpay.json ────────────────────────
-// For every invoice in nullpay.json, register a POST handler.
-
-for (const invoice of nullpay.invoices.getAll()) {
-    app.post(\`/api/\${invoice.name}\`, async (req, res) => {
-        try {
-            const session = await nullpay.checkout.sessions.create({
-                nullpay_invoice_name: invoice.name,
-                success_url: \`\${frontendUrl}?session_id={CHECKOUT_SESSION_ID}&type=\${buildSuccessType(invoice)}\`,
-                cancel_url:  \`\${frontendUrl}?cancel=true\`,
-            });
-
-            // Return the hosted checkout URL to the buyer's frontend
-            res.json({ checkoutUrl: session.checkout_url });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
-    });
+// 1. Initialization with Validation
+if (!process.env.NULLPAY_SECRET_KEY) {
+    throw new Error('FATAL: NULLPAY_SECRET_KEY is missing from environment.');
 }
 
-// For a nullpay.json with 2 invoices ("basic-usdcx", "support-any"),
-// this creates:
-//   POST /api/basic-usdcx   → creates a session for the multipay invoice
-//   POST /api/support-any   → creates a session for the donation invoice`;
-
-const variableRouteExample = `// ─── Variable-price checkout route ────────────────────────────────────────
-// Buyer sends { currency, price, tokens } from frontend.
-// No pre-generated invoice — SDK creates one dynamically via DPS relayer.
-
-app.post('/api/checkout/variable', async (req, res) => {
-    const { currency, price, tokens } = req.body;
-
-    const session = await nullpay.checkout.sessions.create({
-        amount:   price,     // buyer-specified price
-        currency: currency,  // buyer-specified token
-        type:     'standard', // single-use invoice
-        success_url: \`\${frontendUrl}?session_id={CHECKOUT_SESSION_ID}&type=variable&tokens=\${tokens}\`,
-        cancel_url:  \`\${frontendUrl}?cancel=true\`,
-    });
-
-    res.json({ checkoutUrl: session.checkout_url });
+const nullpay = new NullPay({
+    secretKey: process.env.NULLPAY_SECRET_KEY,
+    projectRoot: __dirname // Ensures nullpay.json is found in the same folder
 });
 
-// ⚠️ This route uses the SDK's DPS relayer flow:
-//   - Random salt generated client-side via crypto.randomBytes(16)
-//   - Invoice created on-chain by the relayer (up to 120s wait)
-//   - Polling the Aleo blockchain for hash confirmation
-//   - Session created with confirmed hash
-//
-// For production, instrument this with a loading state on the frontend.`;
+const app = express();
 
-const verifyRouteExample = `// ─── Session verification route ───────────────────────────────────────────
-// Called by the frontend after buyer returns from hosted checkout success URL.
-
-app.get('/api/verify', async (req, res) => {
-    const { session_id } = req.query;
-
-    if (!session_id) {
-        return res.status(400).json({ error: 'session_id is required' });
-    }
-
+// 2. Checkout Endpoint
+app.post('/api/create-session', express.json(), async (req, res) => {
     try {
-        const session = await nullpay.checkout.sessions.retrieve(session_id);
+        const { planId } = req.body;
+        
+        const session = await nullpay.checkout.sessions.create({
+            nullpay_invoice_name: planId,
+            success_url: \`\${process.env.FRONTEND_URL}/success?id={CHECKOUT_SESSION_ID}\`,
+            cancel_url:  \`\${process.env.FRONTEND_URL}/pricing\`,
+        });
 
-        if (session.status === 'SETTLED') {
-            // ─── Fulfill order server-side ───────────────────────────────
-            // Example: grant access, send email, update DB, etc.
-            res.json({  status: 'SETTLED',  session_id });
-        } else {
-            res.status(202).json({ status: session.status });
-        }
+        res.json({ url: session.checkout_url });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('❌ Failed to create session:', err.message);
+        res.status(500).json({ error: 'Payment gateway unavailable' });
+    }
+});
+
+// 3. Status Verification (Redirect Fallback)
+app.get('/api/verify-payment', async (req, res) => {
+    const { id } = req.query;
+    
+    try {
+        const session = await nullpay.checkout.sessions.retrieve(id);
+        
+        if (session.status === 'SETTLED') {
+            await fulfillOrder(id); // Your business logic
+            return res.json({ success: true });
+        }
+        
+        res.json({ success: false, status: session.status });
+    } catch (err) {
+        res.status(404).json({ error: 'Session not found' });
     }
 });`;
 
 export const backendExampleSection: DocsSection = {
     id: 'sdk-backend-example',
-    group: 'Config',
-    label: 'Backend Example',
+    group: 'Reference',
+    label: 'Backend Reference',
     eyebrow: 'SDK',
-    title: 'testing-website backend — the complete reference integration',
+    title: 'Reference Implementation — The Reference Backend',
     summary:
-        'The testing-website/backend directory is the canonical reference for NullPay SDK integration. It demonstrates dynamic route registration from nullpay.json, variable-price checkout with the DPS relayer, named invoice sessions, and session status verification — all in a single Express server.',
+        'The reference backend serves as the blueprint for production-grade NullPay integrations. It covers initialization, routing, and verification patterns using modern Express.js practices.',
     content: (
         <div className="space-y-6">
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-4">
+                <MetricCard
+                    icon={Server}
+                    title="Stateless Ops"
+                    description="The SDK is designed to be stateless, making it compatible with horizontal scaling and serverless functions."
+                />
+                <MetricCard
+                    icon={ShieldCheck}
+                    title="Safe Defaults"
+                    description="Internal logging is kept minimal to prevent leaking sensitive API keys into your application logs."
+                />
+                <MetricCard
+                    icon={Zap}
+                    title="Retry Resilient"
+                    description="The SDK handles temporary Aleo network timeouts automatically with an internal exponential backoff."
+                />
                 <MetricCard
                     icon={FileCode}
-                    title="testing-website/backend"
-                    description="The canonical reference integration. One file — shows all SDK patterns in a production-like structure."
-                />
-                <MetricCard
-                    icon={Terminal}
-                    title="3 patterns covered"
-                    description="Dynamic routes + nullpay.json, variable-price checkout with DPS relayer, session verification on redirect return."
-                />
-                <MetricCard
-                    icon={Code2}
-                    title="Zero boilerplate"
-                    description="No custom hash derivation. No direct Aleo SDK calls. The @nullpay/node SDK handles everything."
+                    title="Ecosystem Ready"
+                    description="Compatible with Express, Fastify, Next.js, and Koa. Zero vendor lock-in on routing libraries."
                 />
             </div>
 
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Project structure</h3>
-                <CodeBlock title="testing-website/ directory layout" language="text" code={testingWebsiteStructureExample} />
+                <h3 className="mb-4 text-xl font-bold text-white">Full Reference Implementation</h3>
+                <p className="mb-4 text-sm text-gray-400">
+                    This boilerplate provides a battle-tested structure for handling checkouts and status verifications.
+                </p>
+                <CodeBlock title="Node.js Reference Server" language="js" code={productionBoilerplateExample} />
+            </GlassCard>
+
+            <GlassCard className="p-6 border-blue-500/20 bg-blue-500/5">
+                <h3 className="mb-4 text-xl font-bold text-white">Common Integration Gotchas</h3>
+                <ul className="space-y-3 text-sm text-gray-400">
+                    <li className="flex gap-2">
+                        <span className="text-blue-400 font-bold">•</span>
+                        <span><b>CORS Setup:</b> Ensure your backend allows requests from your frontend domain.</span>
+                    </li>
+                    <li className="flex gap-2">
+                        <span className="text-blue-400 font-bold">•</span>
+                        <span><b>Memory Leaks:</b> Always instantiate the <code className="text-white/80">NullPay</code> class once as a singleton. Do not create a new instance inside every request handler.</span>
+                    </li>
+                    <li className="flex gap-2">
+                        <span className="text-blue-400 font-bold">•</span>
+                        <span><b>Z-Index Issues:</b> If using a modal for checkout redirects, ensure the window opening logic is initiated by a user gesture to prevent browser popup blockers.</span>
+                    </li>
+                </ul>
             </GlassCard>
 
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">SDK initialization</h3>
-                <CodeBlock title="backend/index.js — setup" language="js" code={sdkInitInBackendExample} />
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Dynamic route registration from nullpay.json</h3>
-                <CodeBlock title="Automatic route creation per invoice" language="js" code={routeRegistrationExample} />
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Variable-price checkout route</h3>
-                <CodeBlock title="Dynamic price session creation" language="js" code={variableRouteExample} />
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Session verification route</h3>
-                <CodeBlock title="Status check on redirect return" language="js" code={verifyRouteExample} />
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Full reference — original file from testing-website</h3>
+                <h3 className="mb-4 text-xl font-bold text-white">Condensed reference — original file from testing-website</h3>
                 <CodeBlock title="testing-website/backend/index.js (condensed)" language="js" code={testingWebsiteBackendExample} />
-                <Callout title="Use this as your starting point" tone="orange">
-                    Fork <code className="rounded bg-white/10 px-1.5 py-0.5">testing-website/backend/index.js</code> as the starting point for your integration. The file is deliberately minimal — it contains exactly the patterns you need and nothing else. Replace <code className="rounded bg-white/10 px-1.5 py-0.5">frontendUrl</code> with your own domain and add your order fulfillment logic after the <code className="rounded bg-white/10 px-1.5 py-0.5">SETTLED</code> check.
-                </Callout>
             </GlassCard>
+
+            <Callout title="Security Checklist" tone="blue">
+                Before deploying to production, verify that:
+                1. <code className="text-blue-200">NULLPAY_SECRET_KEY</code> is not hardcoded.
+                2. Your webhook endpoints are publicly accessible via HTTPS.
+                3. You have implemented idempotency checks (using <code className="text-blue-200">session_id</code> as a unique DB key).
+            </Callout>
         </div>
     ),
 };

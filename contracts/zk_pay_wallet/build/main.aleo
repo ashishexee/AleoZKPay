@@ -105,6 +105,10 @@ function create_gift_card_record:
     cast self.caller r0 r1 r2 into r3 as GiftCardRecord.record;
     output r3 as GiftCardRecord.record;
 
+function delete_card_profile:
+    input r0 as CardProfileRecord.record;
+    assert.eq r0.owner self.caller;
+
 function set_oracle_address:
     input r0 as address.public;
     assert.eq self.caller aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge;

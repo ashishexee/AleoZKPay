@@ -3,7 +3,7 @@ import { Currency, InvoiceRecord, InvoiceStatusData, InvoiceType, ParsedOwnedInv
 import { dynamicImport } from './esm';
 import { getProvableConfig } from './env';
 
-export const PROGRAM_ID = 'zk_pay_proofs_privacy_v27.aleo';
+export const PROGRAM_ID = 'zk_pay_proofs_privacy_v28.aleo';
 export const WALLET_PROGRAM_ID = 'zk_pay_proofs_privacy_wallet_v4.aleo';
 const USDCX_FREEZELIST_PROGRAM_ID = 'test_usdcx_freezelist.aleo';
 const USAD_FREEZELIST_PROGRAM_ID = 'test_usad_freezelist.aleo';

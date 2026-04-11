@@ -220,7 +220,7 @@ export class NullPay {
                     while (!hashStr && retries < MAX_RETRIES) {
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         try {
-                            const mapRes = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v27.aleo/mapping/salt_to_invoice/${finalSalt}`);
+                            const mapRes = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v28.aleo/mapping/salt_to_invoice/${finalSalt}`);
                             if (mapRes.ok) {
                                 const textVal = await mapRes.json();
                                 if (textVal) hashStr = textVal.toString().replace(/(['"'])/g, '');

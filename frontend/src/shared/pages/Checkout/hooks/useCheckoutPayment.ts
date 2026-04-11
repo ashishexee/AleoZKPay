@@ -14,6 +14,7 @@ import { resolveCardLookupByHashHex } from '../../../utils/card-chain';
 import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../../utils/card-input-limits';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/leo-input-limits';
 import { isValidAleoAddress, normalizeAleoAddress } from '../../../utils/aleo-address';
+import { useLeaveGuard } from '../../../hooks/LeaveGuardProvider';
 
 // Convert Hex back to String
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
@@ -62,6 +63,7 @@ const resolveCheckoutToken = (session: CheckoutSession | null, selectedTokenOver
 export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const { address: publicKey, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
+    const { setGuard, clearGuard } = useLeaveGuard();
     const [status, setStatus] = useState<string>('');
     const [txId, setTxId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -331,6 +333,13 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             if (result && result.transactionId) {
                 setTxId(result.transactionId);
                 setStatus(`Transaction Broadcasted! Waiting for network...`);
+                setGuard({
+                    active: true,
+                    title: 'Payment Is Syncing',
+                    message: 'NullPay is waiting for the final payment result and syncing it with the backend. Leaving now can interrupt the confirmation flow.',
+                    confirmLabel: 'Leave Anyway',
+                    cancelLabel: 'Stay'
+                });
 
                 // 4. Poll for Success
                 let isPending = true;
@@ -416,6 +425,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             console.error(err);
             setError(err.message || "An error occurred during payment.");
         } finally {
+            clearGuard();
             setLoading(false);
         }
     };
@@ -472,6 +482,13 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             if (result && result.transactionId) {
                 setTxId(result.transactionId);
                 setStatus(`Converting... TxID: ${result.transactionId.slice(0, 10)}...`);
+                setGuard({
+                    active: true,
+                    title: 'Conversion Is Syncing',
+                    message: 'NullPay is confirming your conversion before continuing the payment flow. Leaving now can interrupt the process.',
+                    confirmLabel: 'Leave Anyway',
+                    cancelLabel: 'Stay'
+                });
 
                 if (!wallet || !wallet.adapter) {
                     await new Promise(r => setTimeout(r, 2000));
@@ -512,6 +529,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             console.error(err);
             setError(err.message || 'Conversion failed');
         } finally {
+            clearGuard();
             setLoading(false);
         }
     };

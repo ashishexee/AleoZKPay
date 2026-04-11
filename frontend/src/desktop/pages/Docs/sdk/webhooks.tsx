@@ -1,203 +1,186 @@
-import { AlertTriangle, Lock, Shield, Zap } from 'lucide-react';
+import { AlertTriangle, Lock, Shield, Zap, RefreshCw, Key } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
 const webhookEventTypeExample = `// TypeScript type for a verified webhook event
+// Exported from @nullpay/node
 
 export interface WebhookEvent {
-    id:         string;                                    // Session UUID
-    amount:     number;                                    // Amount paid
-    token_type: string;                                    // 'CREDITS' | 'USDCX' | 'USAD'
+    /** Unique UUID for the checkout session */
+    id:         string;                                    
+    
+    /** The fiat amount (e.g., 99.99) */
+    amount:     number;                                    
+    
+    /** 'CREDITS' | 'USDCX' | 'USAD' */
+    token_type: string;                                    
+    
+    /** Result: SETTLED | FAILED | PROCESSING | PENDING */
     status:     'SETTLED' | 'FAILED' | 'PROCESSING' | 'PENDING';
-    tx_id:      string | null;                             // Aleo tx ID ('at1...') or null
-    timestamp:  string;                                    // ISO 8601 string
+    
+    /** Aleo transaction ID (at1...). Null if payment not yet submitted. */
+    tx_id:      string | null;                             
+    
+    /** ISO 8601 timestamp of when NullPay cloud received the on-chain event. */
+    timestamp:  string;                                    
 }`;
 
-const hmacVerificationExample = `// ─── How HMAC-SHA256 signature is computed by NullPay ────────────────────
-//
-// The NullPay backend signs the webhook payload using HMAC-SHA256:
-//   signature = HMAC-SHA256(rawBody, NULLPAY_SECRET_KEY)
-//
-// The signature is attached as the header:
-//   x-nullpay-signature: <hex string>
-//
-// ─── How the SDK verifies it ──────────────────────────────────────────────
-//
-// From the SDK source (webhooks.verifySignature):
-//
-//   const expectedSignature = crypto
-//       .createHmac('sha256', this.secretKey)
-//       .update(payload)   // payload = raw request body as string
-//       .digest('hex');
-//
-//   return crypto.timingSafeEqual(
-//       Buffer.from(signature, 'utf8'),        // received signature
-//       Buffer.from(expectedSignature, 'utf8') // computed signature
-//   );
-//
-// timingSafeEqual prevents timing-attack-based signature forgery.
-// An early-exit string comparison would leak info about how many
-// characters match — timingSafeEqual always takes constant time.
-//
-// Note: length check is done first (fast path):
-//   if (expectedSignature.length !== signature.length) return false;`;
+const securityArchitectureExample = `/**
+ * THE MATHEMATICS OF THE SIGNATURE
+ * 
+ * 1. Payload: The JSON body of the POST request sent to your endpoint.
+ * 2. Secret: Your NULLPAY_SECRET_KEY as the HMAC key.
+ * 3. Algorithm: HMAC-SHA256.
+ * 
+ * Signature = HMAC_SHA256(Raw_Body_String, Secret_Key)
+ * 
+ * WHY TIMING-SAFE EQUALITY?
+ * Standard string comparison \`a === b\` returns 'false' immediately at the 
+ * first mismatch. An attacker can measure this tiny timing difference to 
+ * brute-force the signature character by character. 
+ * 
+ * crypto.timingSafeEqual() ensures the comparison always takes the same 
+ * amount of time, regardless of how many characters match.
+ */`;
 
-const webhookFullExample = `// ─── Complete webhook handler (Express) ─────────────────────────────────
-// CRITICAL: Use raw body parser — do NOT parse as JSON before verification.
+const fullExpressExample = `/**
+ * COMPLETE EXPRESS.JS WEBHOOK IMPLEMENTATION
+ * 
+ * This example demonstrates:
+ * 1. Raw body parsing (Critical for signature verification)
+ * 2. Signature verification using constructEvent
+ * 3. Idempotent fulfillment logic
+ */
 
 const express = require('express');
-const app = express();
+const { NullPay } = require('@nullpay/node');
 
-// Raw body parser for webhook route:
-app.post('/api/webhook', 
-    express.raw({ type: 'application/json' }),  // ← raw string, not parsed JSON
-    (req, res) => {
-        const signature = req.headers['x-nullpay-signature'];
-        const rawBody = req.body.toString('utf8');
+const app = express();
+const nullpay = new NullPay({ secretKey: process.env.NULLPAY_SECRET_KEY });
+
+// STEP 1: Route with raw body parser
+app.post('/webhooks/nullpay', 
+    express.raw({ type: 'application/json' }), 
+    async (req, res) => {
+        const sig = req.headers['x-nullpay-signature'];
+        const body = req.body.toString('utf8');
 
         let event;
         try {
-            // verifies HMAC + parses JSON in one call
-            event = nullpay.webhooks.constructEvent(rawBody, signature);
+            // STEP 2: Verify and Parse
+            event = nullpay.webhooks.constructEvent(body, sig);
         } catch (err) {
-            // Invalid signature — reject the request
-            return res.status(400).send(\`Webhook Error: \${err.message}\`);
+            console.error('⚠️ Invalid Webhook Signature:', err.message);
+            return res.status(400).send('Webhook verification failed');
         }
 
-        // ── Process event ────────────────────────────────────────────────
-        switch (event.status) {
-            case 'SETTLED':
-                console.log('Payment confirmed:', event.id, event.tx_id);
-                await fulfillOrder(event.id);
-                break;
-            case 'FAILED':
-                console.warn('Payment failed:', event.id);
-                await cancelOrder(event.id);
-                break;
-            case 'PROCESSING':
-                // On-chain, but not yet finalized
-                break;
+        // STEP 3: Idempotent Fulfillment
+        // We use the event.id (Session ID) as a unique constraint.
+        if (event.status === 'SETTLED') {
+            const alreadyProcessed = await db.orders.findUnique({ 
+                where: { externalId: event.id } 
+            });
+
+            if (!alreadyProcessed) {
+                await db.orders.update({
+                    where: { externalId: event.id },
+                    data: { status: 'PAID', txHash: event.tx_id }
+                });
+                console.log(\`✅ Order \${event.id} fulfilled.\`);
+            }
         }
 
-        // Always respond 200 to prevent retries
+        // STEP 4: Always return 200 OK
         res.status(200).json({ received: true });
     }
 );`;
 
-const verifySignatureExample = `// ─── Low-level: verifySignature (separate from constructEvent) ───────────
-// Use when you want to verify first and parse separately.
-
-const isValid = nullpay.webhooks.verifySignature(
-    req.body.toString('utf8'),              // raw payload string
-    req.headers['x-nullpay-signature']      // header value
-);
-
-if (!isValid) {
-    return res.status(400).send('Invalid signature');
-}
-
-const event = JSON.parse(req.body.toString('utf8'));
-
-// vs. constructEvent (does both atomically):
-const event = nullpay.webhooks.constructEvent(
-    req.body.toString('utf8'),
-    req.headers['x-nullpay-signature']
-);
-// Throws: "Invalid NullPay Webhook Signature. This request might be spoofed."`;
-
-const webhookVsRedirectExample = `// ─── Webhook vs. session retrieve — when to use which ───────────────────
-
-// Option A: Session retrieve on redirect return
-//   - User returns to success_url with ?session_id=...
-//   - Your backend calls sessions.retrieve(id) and checks status
-//   - ✓ Simple to implement
-//   - ✗ Fails if user closes the browser before redirect
-//   - ✗ Fails if redirect page is closed mid-load
-
-// Option B: Webhook (event-driven, server-side)
-//   - NullPay backend POSTs to your registered webhook URL on settlement
-//   - Your backend verifies signature and fulfills
-//   - ✓ Reliable — works even if buyer never returns
-//   - ✓ Decoupled from browser state
-//   - ✗ Requires a public HTTPS endpoint
-
-// Recommendation: Use BOTH
-//   1. Webhook as the primary fulfillment path (reliable)
-//   2. Session retrieve as the fallback check on redirect return
-//   3. Make fulfillment idempotent (safe to call twice with the same session_id)`;
+const retryPolicyExample = `/**
+ * DELIVERY RETRY POLICY
+ * 
+ * If your server returns anything other than 2xx (e.g., 500, 404, 503),
+ * NullPay Cloud will retry the delivery following an exponential backoff:
+ * 
+ * 1. 5 minutes after first failure
+ * 2. 30 minutes after second
+ * 3. 2 hours after third
+ * 4. 12 hours after fourth
+ * 5. Discarded after 24 hours
+ * 
+ * NOTE: Events may arrive out of order (e.g., SETTLED before PROCESSING).
+ * Always check session state before acting.
+ */`;
 
 export const webhooksSection: DocsSection = {
     id: 'sdk-webhooks',
     group: 'SDK Reference',
     label: 'Webhooks',
     eyebrow: 'SDK',
-    title: 'nullpay.webhooks.* — HMAC verification and event handling',
+    title: 'Webhooks — Real-time Fulfillment Architecture',
     summary:
-        'The webhooks namespace provides two methods: verifySignature() (returns boolean) and constructEvent() (verifies and parses in one call, throws on invalid signature). Both use HMAC-SHA256 with crypto.timingSafeEqual to prevent timing attacks. Always verify before processing.',
+        'Webhooks are the heartbeat of asynchronous payment systems. They allow your backend to receive real-time, on-chain settlement notifications without the need for manual polling.',
     content: (
         <div className="space-y-6">
             <div className="grid gap-5 md:grid-cols-4">
                 <MetricCard
                     icon={Shield}
-                    title="HMAC-SHA256"
-                    description="Webhooks are signed using HMAC-SHA256 with your NULLPAY_SECRET_KEY. The signature is in the x-nullpay-signature header."
+                    title="Cryptographic Guard"
+                    description="HMAC-SHA256 signatures ensure that every incoming request originated from the NullPay cloud infrastructure."
                 />
                 <MetricCard
                     icon={Lock}
-                    title="timingSafeEqual"
-                    description="The SDK uses Node's crypto.timingSafeEqual for constant-time comparison — preventing timing-attack-based signature forgery."
+                    title="Anti-Timing Protection"
+                    description="Bitwise constant-time comparison prevents attackers from sniffing your secret key character-by-character."
                 />
                 <MetricCard
-                    icon={Zap}
-                    title="Raw body required"
-                    description="Verification must happen on the raw string body before JSON parsing. Use express.raw() or the equivalent raw body middleware."
+                    icon={RefreshCw}
+                    title="Reliable Delivery"
+                    description="Automatic exponential backoff retries ensure your system stays in sync even during server downtime."
                 />
                 <MetricCard
-                    icon={AlertTriangle}
-                    title="Always return 200"
-                    description="Even for events you don't handle, return 200. Otherwise NullPay retries the event delivery and you get duplicates."
+                    icon={Key}
+                    title="Secret Key Bound"
+                    description="Signatures are unique to your environment. Test keys and Live keys generate distinct signature chains."
                 />
             </div>
 
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">WebhookEvent type</h3>
-                <CodeBlock title="WebhookEvent TypeScript interface" language="ts" code={webhookEventTypeExample} />
-                <div className="mt-4 grid gap-3 md:grid-cols-4">
-                    {[
-                        { field: 'status = SETTLED', desc: 'Payment confirmed on-chain. Safe to fulfill.' },
-                        { field: 'status = FAILED', desc: 'Payment failed or expired. Cancel/refund if needed.' },
-                        { field: 'status = PROCESSING', desc: 'Transaction submitted, not yet finalized on-chain.' },
-                        { field: 'tx_id', desc: 'Aleo transaction ID (at1...). Null until on-chain confirmation.' },
-                    ].map(({ field, desc }) => (
-                        <div key={field} className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
-                            <code className="mb-1 block text-[11px] font-bold text-orange-300">{field}</code>
-                            <p className="text-[11px] leading-relaxed text-gray-400">{desc}</p>
-                        </div>
-                    ))}
+                <h3 className="mb-4 text-xl font-bold text-white">Security Deep-Dive</h3>
+                <p className="mb-4 text-sm text-gray-400">
+                    Understanding why we use <code className="text-white/80">timingSafeEqual</code>. Verification is not just about checking equality; it's about checking equality without leaking information.
+                </p>
+                <CodeBlock title="Cryptographic Principles" language="js" code={securityArchitectureExample} />
+            </GlassCard>
+
+            <GlassCard className="p-6">
+                <h3 className="mb-4 text-xl font-bold text-white">Event Object Schema</h3>
+                <p className="mb-4 text-sm text-gray-400">
+                    The webhook event contains the "Triple Proof": The Session ID, the On-chain Status, and the Aleo Transaction Hash.
+                </p>
+                <CodeBlock title="WebhookEvent Interface" language="ts" code={webhookEventTypeExample} />
+            </GlassCard>
+
+            <GlassCard className="p-6">
+                <h3 className="mb-4 text-xl font-bold text-white">Production Implementation</h3>
+                <Callout title="The 'Raw Body' Requirement" tone="orange">
+                    Most web frameworks (Express, Fastify, NestJS) parse the incoming JSON by default. Once parsed, the exact spacing and character order of the original HTTP request is lost, making signature verification impossible. **You must access the RAW Buffer.**
+                </Callout>
+                <div className="my-4" />
+                <CodeBlock title="Express.js boilerplate" language="js" code={fullExpressExample} />
+            </GlassCard>
+
+            <GlassCard className="p-6">
+                <div className="mb-4 flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-orange-400" />
+                    <h3 className="text-xl font-bold text-white">Handling Failures & Retries</h3>
                 </div>
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">HMAC-SHA256 — how it works</h3>
-                <CodeBlock title="Signature algorithm (from SDK source)" language="js" code={hmacVerificationExample} />
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Complete webhook handler</h3>
-                <CodeBlock title="Full webhook route (Express)" language="js" code={webhookFullExample} />
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">verifySignature vs. constructEvent</h3>
-                <CodeBlock title="Two verification methods compared" language="js" code={verifySignatureExample} />
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Webhook vs. session retrieve</h3>
-                <CodeBlock title="Which approach to use when" language="js" code={webhookVsRedirectExample} />
-                <Callout title="Make fulfillment idempotent" tone="blue">
-                    It's possible for both the redirect and the webhook to trigger fulfillment. Design your <code className="rounded bg-white/10 px-1.5 py-0.5">fulfillOrder(sessionId)</code> to be idempotent — check if the order is already fulfilled before acting. Using the <code className="rounded bg-white/10 px-1.5 py-0.5">session.id</code> as a unique key in your database prevents double-fulfillment.
+                <p className="mb-4 text-sm text-gray-400">
+                    Blockchain events are permanent, but your server might not be. NullPay handles volatility with a robust delivery queue.
+                </p>
+                <CodeBlock title="Retry Backoff Logic" language="js" code={retryPolicyExample} />
+                <Callout title="Idempotency is Mandatory" tone="blue">
+                    Since NullPay retries deliveries, your server might receive the same <code className="text-white/80">SETTLED</code> event twice. Always check your database to see if a session has already been fulfilled before granting access or shipping products.
                 </Callout>
             </GlassCard>
         </div>

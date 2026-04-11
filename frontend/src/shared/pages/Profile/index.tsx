@@ -27,11 +27,17 @@ import { DashboardChatbot } from './components/DashboardChatbot';
 import { buildMerchantAuditReportHtmlAsset, downloadMerchantCreditReportHtml, ReportOptions } from '../../utils/generateMerchantReportsPdf';
 import { generateMerchantAuditPackage } from '../../utils/auditPackage';
 import { GeneratedAuditAssets, ReportConfigModal } from './components/modals/ReportConfigModal';
+import { deleteInvoice as deleteInvoiceEntry } from '../../services/api';
+import { hashAddress } from '../../utils/crypto';
+import { sponsorBurnerInvoiceDeletion } from '../../utils/invoiceDeletion';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useLeaveGuard } from '../../hooks/LeaveGuardProvider';
 // CardWalletPanel import moved to dedicated route
 
 const Profile: React.FC = () => {
-    const { address, requestRecords, decrypt, executeTransaction, wallet } = useWallet();
+    const { address, requestRecords, decrypt, executeTransaction, transactionStatus, wallet } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
+    const { setGuard, clearGuard } = useLeaveGuard();
     const { decryptedBurnerKey, decryptedBurnerAddress } = useBurnerWallet();
     const publicKey = address;
     const { transactions: mainTransactions, loading: loadingTransactions, fetchTransactions } = useTransactions(publicKey || undefined);
@@ -67,6 +73,8 @@ const Profile: React.FC = () => {
         return timestamps;
     }, [transactions]);
     const [settling, setSettling] = useState<string | null>(null);
+    const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
+    const [invoicePendingDeletion, setInvoicePendingDeletion] = useState<any>(null);
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const [verifyInput, setVerifyInput] = useState('');
     const [verifyStatus, setVerifyStatus] = useState<'IDLE' | 'CHECKING' | 'FOUND' | 'NOT_FOUND' | 'ERROR' | 'MISMATCH'>('IDLE');
@@ -90,9 +98,9 @@ const Profile: React.FC = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (location.pathname === '/profile/dashboard') {
+        if (location.pathname === '/dashboard/dashboard' || location.pathname === '/dashboard') {
             setMainViewTab('dashboard');
-        } else if (location.pathname === '/profile/statistics' || location.pathname === '/profile') {
+        } else if (location.pathname === '/dashboard/statistics' || location.pathname === '/dashboard/stats' || location.pathname === '/profile/statistics' || location.pathname === '/profile/stats' || location.pathname === '/profile') {
             setMainViewTab('statistics');
         }
     }, [location.pathname]);
@@ -101,12 +109,72 @@ const Profile: React.FC = () => {
     const [payerReceipts, setPayerReceipts] = useState<PayerReceipt[]>([]);
     const [burnerCreatedInvoices, setBurnerCreatedInvoices] = useState<InvoiceRecord[]>([]);
     const [burnerMerchantReceipts, setBurnerMerchantReceipts] = useState<MerchantReceipt[]>([]);
+    const timelineReceipts = useMemo(() => {
+        const invoiceTimestampMap = new Map<string, string[]>();
+
+        transactions.forEach((tx: any) => {
+            const paymentTimestamps = tx.payment_timestamps;
+            if (!tx.invoice_hash || !paymentTimestamps || typeof paymentTimestamps !== 'object' || Array.isArray(paymentTimestamps)) {
+                return;
+            }
+
+            const timestamps = Object.values(paymentTimestamps)
+                .filter((timestamp): timestamp is string => typeof timestamp === 'string' && !Number.isNaN(Date.parse(timestamp)))
+                .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+            if (timestamps.length > 0) {
+                invoiceTimestampMap.set(tx.invoice_hash, timestamps);
+            }
+        });
+
+        const enrichReceipts = (receipts: MerchantReceipt[]) => {
+            const receiptsByInvoice = new Map<string, MerchantReceipt[]>();
+
+            receipts.forEach((receipt) => {
+                const bucket = receiptsByInvoice.get(receipt.invoiceHash) || [];
+                bucket.push(receipt);
+                receiptsByInvoice.set(receipt.invoiceHash, bucket);
+            });
+
+            return Array.from(receiptsByInvoice.entries()).flatMap(([invoiceHash, invoiceReceipts]) => {
+                const invoiceTimestamps = invoiceTimestampMap.get(invoiceHash) || [];
+                const sortedReceipts = [...invoiceReceipts].sort((a, b) => {
+                    const timeA = a.created_at ? new Date(a.created_at).getTime() : (a.timestamp || 0);
+                    const timeB = b.created_at ? new Date(b.created_at).getTime() : (b.timestamp || 0);
+                    if (timeA !== timeB) return timeA - timeB;
+                    return a.receiptHash.localeCompare(b.receiptHash);
+                });
+
+                return sortedReceipts.map((receipt, index) => {
+                    if (receipt.transactionId && paymentTimestampsByTxId[receipt.transactionId]) {
+                        return receipt;
+                    }
+
+                    const fallbackTimestamp = invoiceTimestamps[Math.min(index, invoiceTimestamps.length - 1)];
+                    if (!fallbackTimestamp) {
+                        return receipt;
+                    }
+
+                    return {
+                        ...receipt,
+                        created_at: receipt.created_at || fallbackTimestamp,
+                        timestamp: receipt.timestamp && receipt.timestamp > 0
+                            ? receipt.timestamp
+                            : new Date(fallbackTimestamp).getTime()
+                    };
+                });
+            });
+        };
+
+        return enrichReceipts([...merchantReceipts, ...burnerMerchantReceipts]);
+    }, [burnerMerchantReceipts, merchantReceipts, paymentTimestampsByTxId, transactions]);
     const [loadingReceipts, setLoadingReceipts] = useState(false);
     const [loadingCreated, setLoadingCreated] = useState(false);
     const [loadingBurner, setLoadingBurner] = useState(true);
     const [loadingPayerReceipts, setLoadingPayerReceipts] = useState(false);
     const [creditReportLoading, setCreditReportLoading] = useState(false);
     const [auditReportLoading, setAuditReportLoading] = useState(false);
+    const [timelineRefreshing, setTimelineRefreshing] = useState(false);
     const [showReportConfigModal, setShowReportConfigModal] = useState(false);
     const [currentReportType, setCurrentReportType] = useState<'audit' | 'credit'>('audit');
     const [currentPage, setCurrentPage] = useState(1);
@@ -251,6 +319,8 @@ const Profile: React.FC = () => {
             if (records) {
                 console.log("Fetching created invoices from records...");
                 for (const r of (records as any[])) {
+                    if (r.spent) continue;
+
                     let plaintext = r.plaintext;
                     const cipher = r.recordCiphertext || r.ciphertext;
                     if (!plaintext && cipher && decrypt) {
@@ -359,6 +429,20 @@ const Profile: React.FC = () => {
                 setLoadingPayerReceipts(false);
                 console.log(`[fetchPayerReceipts #${fetchId}] Loading set to false.`);
             }
+        }
+    };
+
+    const refreshPaymentTimeline = async () => {
+        if (!publicKey || timelineRefreshing) return;
+
+        setTimelineRefreshing(true);
+        try {
+            await Promise.all([
+                fetchTransactions(),
+                fetchMerchantReceipts()
+            ]);
+        } finally {
+            setTimelineRefreshing(false);
         }
     };
 
@@ -748,10 +832,226 @@ const Profile: React.FC = () => {
         }
     };
 
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const waitForWalletTransaction = async (txId: string): Promise<string> => {
+        if (!transactionStatus) {
+            return txId;
+        }
+
+        let finalTransactionId = txId;
+        let attempts = 0;
+
+        while (attempts < 120) {
+            attempts += 1;
+            await wait(1000);
+
+            try {
+                const statusResponse: any = await transactionStatus(txId);
+                const currentStatus = typeof statusResponse === 'string'
+                    ? statusResponse.toLowerCase()
+                    : String(statusResponse?.status || '').toLowerCase();
+
+                if (statusResponse?.transactionId) {
+                    finalTransactionId = statusResponse.transactionId;
+                }
+
+                if (!currentStatus || currentStatus === 'pending' || currentStatus === 'processing' || currentStatus === 'submitted') {
+                    continue;
+                }
+
+                if (currentStatus === 'completed' || currentStatus === 'finalized' || currentStatus === 'accepted') {
+                    return finalTransactionId;
+                }
+
+                throw new Error(`Delete transaction failed with status: ${currentStatus}`);
+            } catch (error: any) {
+                if (error?.message?.includes('failed with status')) {
+                    throw error;
+                }
+            }
+        }
+
+        throw new Error('Timed out waiting for on-chain delete confirmation.');
+    };
+
+    const waitForSponsoredTransaction = async (txId: string): Promise<void> => {
+        let attempts = 0;
+
+        while (attempts < 120) {
+            attempts += 1;
+            await wait(1000);
+
+            try {
+                const response = await fetch(`https://api.explorer.provable.com/v1/testnet/transaction/${txId}`);
+                if (response.ok) {
+                    return;
+                }
+            } catch {
+                // Keep polling until the explorer sees the transaction.
+            }
+        }
+
+        throw new Error('Timed out waiting for sponsored delete confirmation.');
+    };
+
+    const findOwnedMainInvoiceRecord = async (invoice: any): Promise<string | null> => {
+        if (!requestRecords) {
+            return null;
+        }
+
+        const records = await requestRecords(PROGRAM_ID, true);
+        const normalizedInvoiceHash = String(invoice?.invoiceHash || '').trim();
+
+        for (const record of (records as any[]) || []) {
+            if (record.spent) continue;
+
+            let plaintext = record.plaintext;
+            const cipher = record.recordCiphertext || record.ciphertext;
+            if (!plaintext && cipher && decrypt) {
+                try {
+                    plaintext = await decrypt(cipher);
+                } catch {
+                    plaintext = undefined;
+                }
+            }
+
+            const parsed = parseInvoice({ ...record, plaintext });
+            if (!parsed) continue;
+
+            if (String(parsed.invoiceHash || '').trim() === normalizedInvoiceHash) {
+                return plaintext || cipher || null;
+            }
+        }
+
+        return null;
+    };
+
+    const handleDeleteInvoice = async (invoice: any) => {
+        if (!invoice?.invoiceHash) return;
+
+        const earnings = invoice.earnings || {};
+        const earningsTotal = Number(earnings.credits || 0) + Number(earnings.usdcx || 0) + Number(earnings.usad || 0);
+        const hasRecordedPayments = (invoice.paymentTxIds?.length || 0) > 0 || earningsTotal > 0 || invoice.status === 'SETTLED';
+
+        if (hasRecordedPayments) {
+            toast.error('Invoices with recorded payments cannot be deleted.');
+            return;
+        }
+
+        if (invoice.walletType === 1 && !decryptedBurnerKey) {
+            toast.error('Unlock the burner wallet before deleting this burner-owned invoice.');
+            return;
+        }
+
+        setInvoicePendingDeletion(invoice);
+    };
+
+    const confirmDeleteInvoice = async () => {
+        const invoice = invoicePendingDeletion;
+        if (!invoice?.invoiceHash) {
+            setInvoicePendingDeletion(null);
+            return;
+        }
+
+        setInvoicePendingDeletion(null);
+
+        setDeletingInvoiceId(invoice.invoiceHash);
+        try {
+            let deletionTransactionId = '';
+            setGuard({
+                active: true,
+                title: 'Invoice Deletion Is Syncing',
+                message: 'NullPay is waiting for the invoice deletion transaction to confirm and then clearing the database entry. Leaving now can interrupt the sync flow.',
+                confirmLabel: 'Leave Anyway',
+                cancelLabel: 'Stay'
+            });
+
+            if (invoice.walletType === 1) {
+                toast.loading('Submitting burner invoice deletion...', { id: 'invoice-delete' });
+                deletionTransactionId = await sponsorBurnerInvoiceDeletion({
+                    decryptedBurnerKey: decryptedBurnerKey!,
+                    invoiceHash: invoice.invoiceHash
+                });
+                toast.loading('Waiting for burner delete confirmation...', { id: 'invoice-delete' });
+                await waitForSponsoredTransaction(deletionTransactionId);
+            } else {
+                if (!executeTransaction) {
+                    throw new Error('Connect your wallet before deleting invoices.');
+                }
+
+                const invoiceRecord = await findOwnedMainInvoiceRecord(invoice);
+                if (!invoiceRecord) {
+                    throw new Error('Could not locate an unspent on-chain invoice record for this invoice.');
+                }
+
+                const inputs = [invoiceRecord];
+                const estimatedFee = await estimateExecutionFee({
+                    programName: PROGRAM_ID,
+                    functionName: 'delete_invoice',
+                    inputs,
+                    fallbackMicrocredits: 200_000
+                });
+
+                toast.loading('Requesting wallet approval for invoice deletion...', { id: 'invoice-delete' });
+                const result = await executeWithShieldRetry(
+                    () => executeTransaction({
+                        program: PROGRAM_ID,
+                        function: 'delete_invoice',
+                        inputs,
+                        fee: estimatedFee,
+                        privateFee: false
+                    }),
+                    { onRetry: () => toast.loading('Shield Wallet gave no response. Retrying delete...', { id: 'shield-delete-retry' }) }
+                );
+
+                toast.dismiss('shield-delete-retry');
+                deletionTransactionId = result?.transactionId || '';
+                if (!deletionTransactionId) {
+                    throw new Error('Failed to get a transaction id for the delete operation.');
+                }
+
+                toast.loading('Waiting for on-chain delete confirmation...', { id: 'invoice-delete' });
+                deletionTransactionId = await waitForWalletTransaction(deletionTransactionId);
+            }
+
+            const merchantAddressHash = await hashAddress(invoice.owner);
+            await deleteInvoiceEntry(invoice.invoiceHash, {
+                merchant_address_hash: merchantAddressHash,
+                deletion_transaction_id: deletionTransactionId
+            });
+
+            toast.success('Invoice deleted successfully.', { id: 'invoice-delete' });
+
+            await Promise.all([
+                fetchTransactions(),
+                fetchCreatedInvoices(),
+                fetchMerchantReceipts(),
+                fetchPayerReceipts()
+            ]);
+        } catch (e: any) {
+            toast.dismiss('shield-delete-retry');
+            toast.dismiss('invoice-delete');
+            if (handleWalletError(e)) return;
+            console.error('Invoice deletion failed', e);
+            toast.error(`Failed to delete invoice: ${e?.message || 'Unknown error'}`);
+        } finally {
+            clearGuard();
+            setDeletingInvoiceId(null);
+        }
+    };
+
     const handleSettle = async (invoice: any) => {
         if (!invoice || !invoice.salt || !executeTransaction) return;
         setSettling(invoice.invoiceHash);
         try {
+            setGuard({
+                active: true,
+                title: 'Settlement Is Syncing',
+                message: 'NullPay is waiting for the settlement transaction and syncing invoice status. Leaving now can interrupt the flow before confirmation finishes.',
+                confirmLabel: 'Leave Anyway',
+                cancelLabel: 'Stay'
+            });
             // For Donation (Type 2), amount is 0. For others, use invoice amount (Major -> Micro).
             const isDonation = invoice.invoiceType === 2;
             const amountMicro = isDonation ? 0 : Math.round(invoice.amount * 1_000_000);
@@ -802,6 +1102,7 @@ const Profile: React.FC = () => {
             console.error("Settlement failed", e);
             toast.error("Failed to settle invoice: " + (e.message || "Unknown error"));
         } finally {
+            clearGuard();
             setSettling(null);
         }
     };
@@ -838,6 +1139,39 @@ const Profile: React.FC = () => {
                 verifiedRecord={verifiedRecord}
                 merchantReceipts={[...merchantReceipts, ...burnerMerchantReceipts]}
                 onVerify={handleVerifyReceipt}
+            />
+
+            <ConfirmModal
+                open={Boolean(invoicePendingDeletion)}
+                tone="danger"
+                title="Delete Invoice"
+                description={
+                    <div className="space-y-3">
+                        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-100/90">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-300">What Happens Next</div>
+                            <p className="mt-2 leading-relaxed">
+                                This removes the active on-chain invoice record and deletes the mirrored dashboard database entry.
+                            </p>
+                        </div>
+                        <p className="leading-relaxed text-gray-300">
+                            This only works for invoices with <span className="font-semibold text-white">no recorded payments</span>.
+                        </p>
+                        {invoicePendingDeletion?.walletType === 1 ? (
+                            <p className="leading-relaxed text-gray-300">
+                                This is a <span className="font-semibold text-white">burner-owned invoice</span>. NullPay will use the unlocked burner wallet to submit the on-chain deletion first, then clear the database entry.
+                            </p>
+                        ) : (
+                            <p className="leading-relaxed text-gray-300">
+                                NullPay will request approval from your connected main wallet, wait for on-chain confirmation, and then remove the database entry.
+                            </p>
+                        )}
+                    </div>
+                }
+                confirmLabel="Delete Invoice"
+                cancelLabel="Keep Invoice"
+                onConfirm={confirmDeleteInvoice}
+                onClose={() => setInvoicePendingDeletion(null)}
+                loading={Boolean(deletingInvoiceId && invoicePendingDeletion && deletingInvoiceId === invoicePendingDeletion.invoiceHash)}
             />
 
             {/* TRANSACTION HISTORY MODAL (Legacy) */}
@@ -937,9 +1271,10 @@ const Profile: React.FC = () => {
                     <BurnerWalletSettings itemVariants={itemVariants} transactions={transactions} />
                 </div>
 
-                {/* MAIN VIEW TABS - HYPER PREMIUM SPATIAL DESIGN */}
-                <motion.div variants={itemVariants} className="flex justify-center mb-12">
-                    <div className="flex p-1.5 bg-[#0A0A0A]/60 backdrop-blur-3xl rounded-[22px] border border-white/5 relative shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
+                {/* MAIN VIEW TABS */}
+                <motion.div variants={itemVariants} className="mb-12 flex justify-center px-2">
+                    <div className="relative w-full max-w-[560px] rounded-[24px] bg-black/20 p-1.5 shadow-[0_12px_40px_-28px_rgba(0,0,0,0.8)] backdrop-blur-xl">
+                        <div className="grid grid-cols-2 gap-2">
                         {[
                             {
                                 id: 'statistics',
@@ -975,25 +1310,29 @@ const Profile: React.FC = () => {
                                     key={tab.id}
                                     onClick={() => {
                                         setMainViewTab(tab.id as any);
-                                        navigate(`/profile/${tab.id}`);
+                                        navigate(tab.id === 'dashboard' ? '/dashboard' : '/dashboard/stats');
                                     }}
                                     whileTap={{ scale: 0.97 }}
-                                    className={`relative z-10 flex items-center gap-3 px-10 py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-500 ${isActive
+                                    className={`relative z-10 flex min-h-[52px] items-center justify-center gap-3 overflow-hidden rounded-[18px] px-6 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] transition-all duration-300 ${isActive
                                         ? 'text-white'
-                                        : 'text-gray-500 hover:text-gray-300'
+                                        : 'text-white/45 hover:text-white/70'
                                         }`}
                                 >
-                                    <span className={`transition-all duration-500 ${isActive ? 'text-neon-primary drop-shadow-[0_0_8px_rgba(0,255,209,0.5)]' : 'opacity-50'}`}>
+                                    {!isActive && (
+                                        <div className="absolute inset-0 rounded-[18px] border border-white/5 bg-white/[0.02]" />
+                                    )}
+
+                                    <span className={`relative transition-all duration-300 ${isActive ? 'text-white' : 'opacity-60'}`}>
                                         {tab.icon(isActive)}
                                     </span>
-                                    <span className="relative">
+                                    <span className="relative whitespace-nowrap">
                                         {tab.label}
                                     </span>
 
                                     {isActive && (
                                         <motion.div
                                             layoutId="mainViewTabAlt"
-                                            className="absolute inset-0 bg-white/10 backdrop-blur-md rounded-[18px] -z-10 border border-white/20 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)]"
+                                            className="absolute inset-0 -z-10 rounded-[18px] border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                                             transition={{
                                                 type: "spring",
                                                 stiffness: 300,
@@ -1005,6 +1344,7 @@ const Profile: React.FC = () => {
                                 </motion.button>
                             );
                         })}
+                        </div>
                     </div>
                 </motion.div>
 
@@ -1041,9 +1381,11 @@ const Profile: React.FC = () => {
                             {/* PAYMENT TIMELINE CHART - FULL WIDTH */}
                             <motion.div variants={itemVariants}>
                                 <PaymentTimelineChart
-                                    receipts={[...merchantReceipts, ...burnerMerchantReceipts]}
+                                    receipts={timelineReceipts}
                                     paymentTimestampsByTxId={paymentTimestampsByTxId}
                                     isLoading={loadingReceipts || loadingBurner}
+                                    isRefreshing={timelineRefreshing}
+                                    onRefresh={refreshPaymentTimeline}
                                 />
                             </motion.div>
                         </motion.div>
@@ -1284,9 +1626,12 @@ const Profile: React.FC = () => {
                                                 setShowVerifyModal(true);
                                             }}
                                             onSettle={handleSettle}
+                                            onDelete={handleDeleteInvoice}
                                             settlingId={settling}
+                                            deletingId={deletingInvoiceId}
                                             onViewPayments={(ids) => setSelectedPaymentIds(ids)}
                                             transactions={transactions}
+                                            burnerDeleteReady={Boolean(decryptedBurnerKey)}
                                         />
                                     </div>
 

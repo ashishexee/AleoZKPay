@@ -132,25 +132,26 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({
     }, [receipts, search, valueFilterAmount, dateFilterMode, singleDateFilter, rangeStartDateFilter, rangeEndDateFilter]);
 
     return (
+        <div className="overflow-x-auto min-h-[300px]">
         <table className="w-full">
             <thead>
-                <tr className="border-b border-white/10 bg-gradient-to-r from-orange-500/8 via-amber-400/5 to-cyan-400/8 text-left">
-                    <th className="py-5 px-6 text-xs font-bold text-orange-100/90 uppercase tracking-[0.24em]">Invoice Hash</th>
-                    <th className="py-5 px-6 text-xs font-bold text-amber-100/90 uppercase tracking-[0.24em] text-center">Amount Paid</th>
-                    <th className="py-5 px-6 text-xs font-bold text-cyan-100/90 uppercase tracking-[0.24em]">Your Note</th>
-                    <th className="py-5 px-6 text-xs font-bold text-blue-100/90 uppercase tracking-[0.24em] text-center">Transaction ID</th>
-                    <th className="py-5 px-6 text-xs font-bold text-emerald-100/90 uppercase tracking-[0.24em] text-right">Receipt Hash</th>
+                <tr className="border-b border-white/10 text-left">
+                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest">Invoice Hash</th>
+                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Amount Paid</th>
+                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest">Your Note</th>
+                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Transaction ID</th>
+                    <th className="py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">Receipt Hash</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
                 {loading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                         <tr key={i} className="animate-pulse">
-                            <td className="py-5 px-6"><Shimmer className="h-6 w-48 bg-white/5 rounded" /></td>
-                            <td className="py-5 px-6 text-center"><Shimmer className="h-6 w-24 bg-white/5 rounded mx-auto" /></td>
-                            <td className="py-5 px-6"><Shimmer className="h-6 w-36 bg-white/5 rounded" /></td>
-                            <td className="py-5 px-6 text-center"><Shimmer className="h-6 w-40 bg-white/5 rounded mx-auto" /></td>
-                            <td className="py-5 px-6 text-right"><Shimmer className="h-6 w-48 bg-white/5 rounded ml-auto" /></td>
+                            <td className="py-4 px-6"><Shimmer className="h-4 w-28 bg-white/10 rounded" /></td>
+                            <td className="py-4 px-6 text-center"><Shimmer className="h-4 w-24 bg-white/10 rounded mx-auto" /></td>
+                            <td className="py-4 px-6"><Shimmer className="h-4 w-36 bg-white/10 rounded" /></td>
+                            <td className="py-4 px-6 text-center"><Shimmer className="h-4 w-24 bg-white/10 rounded mx-auto" /></td>
+                            <td className="py-4 px-6 text-right"><Shimmer className="h-4 w-28 bg-white/10 rounded ml-auto" /></td>
                         </tr>
                     ))
                 ) : groupedReceipts.length === 0 ? (
@@ -173,52 +174,52 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({
 
                         return (
                             <tr key={invoiceHash} className="group hover:bg-white/5 transition-colors">
-                                <td className="py-5 px-6">
+                                <td className="py-4 px-6">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-mono text-sm text-orange-200/90" title={invoiceHash}>
+                                        <span className="font-mono text-xs text-blue-400" title={invoiceHash}>
                                             {formatFieldHash(invoiceHash)}
                                         </span>
-                                        <CopyButton text={invoiceHash} title="Copy Invoice Hash" className="opacity-0 group-hover:opacity-100 transition-opacity text-orange-200/50 hover:text-orange-100" />
+                                        <CopyButton text={invoiceHash} title="Copy Invoice Hash" className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-300/50 hover:text-blue-200" />
                                     </div>
                                     <span className="mt-1 block text-[10px] uppercase tracking-[0.2em] text-gray-500">{receipts.length} payments</span>
                                 </td>
-                                <td className="py-5 px-6 text-center">
+                                <td className="py-4 px-6 text-center">
                                     <div className="flex flex-col items-center gap-2">
                                         {totalCredits > 0 && (
-                                            <span className="font-bold text-white text-md">
+                                            <span className="font-bold text-white text-sm">
                                                 {formatTokenAmount(totalCredits)}
-                                                <span className="ml-1 text-[10px] uppercase tracking-[0.18em] text-amber-200/75">Credits</span>
+                                                <span className="ml-1 text-[10px] uppercase tracking-[0.18em] text-gray-500">Credits</span>
                                             </span>
                                         )}
                                         {totalUSDCx > 0 && (
-                                            <span className="font-bold text-white text-md">
+                                            <span className="font-bold text-white text-sm">
                                                 {formatTokenAmount(totalUSDCx)}
-                                                <span className="ml-1 text-[10px] uppercase tracking-[0.18em] text-cyan-200/75">USDCx</span>
+                                                <span className="ml-1 text-[10px] uppercase tracking-[0.18em] text-gray-500">USDCx</span>
                                             </span>
                                         )}
                                         {totalUSAD > 0 && (
-                                            <span className="font-bold text-white text-md">
+                                            <span className="font-bold text-white text-sm">
                                                 {formatTokenAmount(totalUSAD)}
-                                                <span className="ml-1 text-[10px] uppercase tracking-[0.18em] text-emerald-200/75">USAD</span>
+                                                <span className="ml-1 text-[10px] uppercase tracking-[0.18em] text-gray-500">USAD</span>
                                             </span>
                                         )}
                                         {totalCredits === 0 && totalUSDCx === 0 && totalUSAD === 0 && (
-                                            <span className="font-bold text-white text-md">0</span>
+                                            <span className="font-bold text-gray-500 text-sm">0</span>
                                         )}
                                     </div>
                                 </td>
-                                <td className="py-5 px-6">
+                                <td className="py-4 px-6">
                                     <div 
                                         className={`max-w-[220px] transition-all ${noteSummary.length > 0 ? 'cursor-pointer hover:opacity-80' : ''}`}
                                         onClick={() => noteSummary.length > 0 && onViewNotes(noteSummary)}
                                     >
                                         {noteSummary.length > 0 ? (
                                             <>
-                                                <span className="block truncate text-sm text-gray-200" title={noteSummary[0]}>
+                                                <span className="block truncate text-sm text-gray-300" title={noteSummary[0]}>
                                                     {noteSummary[0]}
                                                 </span>
                                                 {noteSummary.length > 1 && (
-                                                    <span className="mt-1 block text-[11px] text-cyan-200/60 font-semibold hover:text-cyan-100 transition-colors">
+                                                    <span className="mt-1 block text-[11px] text-blue-300/60 font-semibold hover:text-blue-200 transition-colors">
                                                         +{noteSummary.length - 1} more note{noteSummary.length > 2 ? 's' : ''}
                                                     </span>
                                                 )}
@@ -228,7 +229,7 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({
                                         )}
                                     </div>
                                 </td>
-                                <td className="py-5 px-6 text-center">
+                                <td className="py-4 px-6 text-center">
                                     {receipts.length === 1 && receipts[0].transactionId ? (
                                         <div className="flex justify-center items-center gap-2 group/tx">
                                             <a 
@@ -253,13 +254,13 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({
                                         <span className="text-xs text-gray-700 italic">No TX ID</span>
                                     )}
                                 </td>
-                                <td className="py-5 px-6 text-right font-mono text-neon-accent text-sm">
+                                <td className="py-4 px-6 text-right font-mono text-sm">
                                     {receipts.length === 1 ? (
                                         <div className="flex justify-end items-center gap-3 group/rh">
-                                            <span className="text-emerald-200/90 transition-colors group-hover:text-emerald-100" title={receipts[0].receiptHash}>
+                                            <span className="text-gray-300 transition-colors group-hover:text-white" title={receipts[0].receiptHash}>
                                                 {formatFieldHash(receipts[0].receiptHash)}
                                             </span>
-                                            <CopyButton text={receipts[0].receiptHash} title="Copy Receipt Hash" className="text-emerald-200/55 hover:text-emerald-100 transition-colors" />
+                                            <CopyButton text={receipts[0].receiptHash} title="Copy Receipt Hash" className="text-gray-500 hover:text-gray-300 transition-colors" />
                                         </div>
                                     ) : (
                                         <div className="flex justify-end">
@@ -278,5 +279,6 @@ export const PaidInvoicesTable: React.FC<PaidInvoicesTableProps> = ({
                 )}
             </tbody>
         </table>
+        </div>
     );
 };

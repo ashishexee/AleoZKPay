@@ -7,7 +7,9 @@ import ProfileQrNavButton from './ProfileQrNavButton';
 
 const Navbar = () => {
     const location = useLocation();
-    const isActive = (path: string) => location.pathname === path;
+    const isActive = (path: string) => path.startsWith('/dashboard')
+        ? location.pathname.startsWith('/dashboard')
+        : location.pathname === path;
 
     const isLanding = location.pathname === '/' || location.pathname === '/vision' || location.pathname === '/privacy' || location.pathname === '/docs';
 
@@ -21,7 +23,7 @@ const Navbar = () => {
     const appNavItems = [
         { path: '/explorer', label: 'Explorer' },
         { path: '/create', label: 'Create Invoice' },
-        { path: '/profile', label: 'Dashboard' },
+        { path: '/dashboard/stats', label: 'Dashboard' },
         { path: '/pay', label: 'Pay' },
         {
             label: 'Cards',

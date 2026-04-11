@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -24,7 +24,7 @@ import Docs from './pages/Docs';
 
 const DesktopAnimatedRoutes = () => {
     const location = useLocation();
-    const routeKey = location.pathname.startsWith('/profile') ? '/profile' : location.pathname;
+    const routeKey = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/profile') ? '/dashboard' : location.pathname;
 
     return (
         <AnimatePresence mode="wait">
@@ -32,7 +32,8 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/explorer" element={<Explorer />} />
                 <Route path="/create" element={<ProtectedRoute><CreateInvoice /></ProtectedRoute>} />
                 <Route path="/pay" element={<PaymentPage />} />
-                <Route path="/profile/*" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/dashboard/*" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/profile/*" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
                 <Route path="/profile-qr" element={<ProtectedRoute><ProfileQRPage /></ProtectedRoute>} />
                 <Route path="/vision" element={<Vision />} />

@@ -1,177 +1,130 @@
-import { Hash, Lock, Zap } from 'lucide-react';
+import { Hash, Lock, Zap, Shield, Cpu, Binary } from 'lucide-react';
 import type { DocsSection } from '../types';
-import { Callout, CodeBlock } from '../ui';
+import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
-const hashDerivationExample = `// === Invoice Hash Derivation ===
-// Used in: create_invoice, create_invoice_usdcx,
-//          create_invoice_usad, create_invoice_any
-// Also recomputed in every pay_* function for validation.
+const hashDerivationExample = `/**
+ * THE INVOICE HASH: BHP256 Homomorphic Addition
+ * 
+ * Unlike SHA3 or Keccak, NullPay uses the BHP256 Pedersen Hash 
+ * in a "Summation" pattern to anchor invoice commitments.
+ * 
+ * Formula:
+ * H(Invoice) = BHP256(Merchant) + BHP256(Amount) + BHP256(Salt)
+ */
 
-// Inputs:
-//   merchant: address  (private)
-//   amount:   u64/u128 (private)
-//   salt:     field    (private)
+// Implementation in Leo:
+let m_hash: field = BHP256::hash_to_field(merchant_address as field);
+let a_hash: field = BHP256::hash_to_field(amount_u64 as field);
+let s_hash: field = BHP256::hash_to_field(salt_field);
 
-let merchant_field: field = merchant as field;
-let amount_field: field   = amount as field;
+let invoice_hash: field = m_hash + a_hash + s_hash;
 
-let merchant_hash: field = BHP256::hash_to_field(merchant_field);
-let amount_hash:   field = BHP256::hash_to_field(amount_field);
-let salt_hash:     field = BHP256::hash_to_field(salt);
+/**
+ * WHY ADDITION?
+ * Arithmetic addition in the 254-bit prime field is extremely 
+ * efficient for ZK circuits. It allows the prover to show 
+ * knowledge of a sum without revealing the individual parts.
+ */`;
 
-// The invoice hash is the arithmetic SUM of three BHP256 hashes.
-// NOT a nested hash — a field element addition.
-let invoice_hash: field = merchant_hash + amount_hash + salt_hash;
+const commitmentExample = `/**
+ * PAYMENT RECEIPTS: Pedersen Commitment
+ * 
+ * To prove a payment happened without revealing the user, 
+ * NullPay uses a 'hiding and binding' commitment.
+ * 
+ * Key Variables:
+ * 1. payment_secret: The value being committed (Private).
+ * 2. salt: The randomness that blinds the value (Private).
+ * 
+ * BHP256::commit_to_field(message, randomness)
+ */
 
-// This hash is:
-//   - Returned publicly as the second output of the transition
-//   - Stored in invoices mapping (keyed by invoice_hash)
-//   - Also stored in salt_to_invoice (keyed by salt, value = invoice_hash)
-//   - Recomputed identically in every pay_* finalizer for assert_eq`;
+let r_scalar: scalar = BHP256::hash_to_scalar(salt);
+let receipt_hash: field = BHP256::commit_to_field(payment_secret, r_scalar);
 
-const receiptHashExample = `// === Receipt Hash Derivation (Standard payments) ===
-// Used in: pay_invoice, pay_invoice_usdcx, pay_invoice_usad
-
-// Inputs:
-//   payment_secret: field (private — known only to payer at time of payment)
-//   salt: field (private — same salt used when creating the invoice)
-
-let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
-let receipt_hash: field = BHP256::commit_to_field(payment_secret, salt_scalar);
-
-// BHP256::commit_to_field is a Pedersen-like vector commitment:
-//   commit(message, randomness) → field
-//
-// This produces a unique, binding, and hiding commitment:
-//   - Binding: two different (payment_secret, salt) pairs cannot produce the same hash
-//   - Hiding: the commitment reveals nothing about payment_secret or salt alone
-//
-// Both PayerReceipt and MerchantReceipt receive the SAME receipt_hash,
-// enabling cross-party reconciliation without revealing the secret.`;
-
-const donationReceiptHashExample = `// === Receipt Hash Derivation (Donation payments) ===
-// Used in: pay_donation, pay_donation_usdcx, pay_donation_usad
-// More complex because the amount is variable and must be committed.
-
-// Inputs:
-//   amount_to_donate: u64/u128 (the actual donated amount — private)
-//   payment_secret:   field    (private)
-//   token_type:       u8       (tied to the pay_donation variant)
-//   salt:             field    (private)
-
-// For pay_donation (Credits):
-let amount_hash_for_receipt: field = BHP256::hash_to_field(amount_to_donate as field);
-let token_hash: field = BHP256::hash_to_field(0u8 as field); // 0 = Credits
-let combined_secret: field = payment_secret + amount_hash_for_receipt + token_hash;
-let salt_scalar: scalar = BHP256::hash_to_scalar(salt);
-let receipt_hash: field = BHP256::commit_to_field(combined_secret, salt_scalar);
-
-// For pay_donation_usdcx:
-let token_hash: field = BHP256::hash_to_field(1u8 as field); // 1 = USDCx
-// combined_secret = payment_secret + hash(amount) + hash(1u8)
-// receipt_hash = commit(combined_secret, scalar(salt))
-
-// For pay_donation_usad:
-let token_hash: field = BHP256::hash_to_field(2u8 as field); // 2 = USAD
-// combined_secret = payment_secret + hash(amount) + hash(2u8)
-
-// Key insight: donation receipt_hash binds the token type and actual donated
-// amount into the commitment, making each donation uniquely traceable
-// by both payer and merchant — even though the amount was freely chosen.`;
-
-const donationAmountHashExample = `// === Donation Invoice: amount 0 convention ===
-// When creating a donation invoice, amount is 0 (the "any amount" signal).
-// When PAYING a donation, amount_to_donate is the real amount.
-//
-// This creates a deliberate asymmetry:
-//   create_invoice_any(amount = 0u128, ...) → hash uses hash(0 as field)
-//   pay_donation(..., amount_to_donate = 50)  → hash uses hash(0u64 as field)
-//
-// From pay_donation source:
-let amount_field: field = 0u64 as field; // Always 0 for donation invoices
-let merchant_hash:  field = BHP256::hash_to_field(merchant_field);
-let amount_hash:    field = BHP256::hash_to_field(amount_field);
-let salt_hash:      field = BHP256::hash_to_field(salt);
-let invoice_hash:   field = merchant_hash + amount_hash + salt_hash;
-// This recomputes the SAME hash as create_invoice_any with amount=0,
-// ensuring the salt_to_invoice assertion passes even though the donated
-// amount was unknown at invoice creation time.`;
+/**
+ * PROPERTY: BINDING
+ * Once the receipt_hash is on-chain, the payer cannot claim 
+ * the payment was for a different secret or salt.
+ * 
+ * PROPERTY: HIDING
+ * Looking at the receipt_hash gives zero information about 
+ * the underlying salt or secret.
+ */`;
 
 export const cryptographySection: DocsSection = {
     id: 'sc-cryptography',
-    group: 'Contract Layout',
+    group: 'Contract Architecture',
     label: 'Cryptography',
     eyebrow: 'Smart Contract',
-    title: 'BHP256 hashing and commitments',
+    title: 'The Cryptographic Core — BHP256 Primitives',
     summary:
-        'NullPay uses Aleo\'s native BHP256 primitives for all on-chain cryptographic operations. Invoice hashes are additive sums of three BHP256 hashes. Payment receipts use BHP256 Pedersen-style commitments. Donation payments extend the commitment scheme to bind variable amounts and token types.',
+        'NullPay relies on the BHP256 (Pedersen Hash) algorithm for all on-chain privacy guarantees. This section explains the mathematical choices behind the protocol hashing and commitment schemes.',
     content: (
         <div className="space-y-6">
-            <div className="grid gap-5 md:grid-cols-3">
-                {[
-                    {
-                        icon: Hash,
-                        title: 'BHP256::hash_to_field',
-                        desc: 'Maps any input to a deterministic 254-bit field element. Used three times per invoice: once for merchant, once for amount, once for salt.',
-                        color: 'text-orange-300',
-                    },
-                    {
-                        icon: Lock,
-                        title: 'BHP256::commit_to_field',
-                        desc: 'A hiding and binding commitment. Takes a message field and a scalar randomness. Produces the receipt_hash that both payer and merchant receive.',
-                        color: 'text-blue-300',
-                    },
-                    {
-                        icon: Zap,
-                        title: 'BHP256::hash_to_scalar',
-                        desc: 'Maps the salt to a scalar field element, which is used as the commitment randomness in commit_to_field. The salt bridges both hash and scalar domains.',
-                        color: 'text-emerald-300',
-                    },
-                ].map(({ icon: Icon, title, desc, color }) => (
-                    <div key={title} className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-                        <Icon className={`mb-3 h-5 w-5 ${color}`} />
-                        <p className="mb-2 text-sm font-bold text-white">{title}</p>
-                        <p className="text-xs leading-relaxed text-gray-400">{desc}</p>
-                    </div>
-                ))}
+            <div className="grid gap-5 md:grid-cols-4">
+                <MetricCard
+                    icon={Cpu}
+                    title="BHP256"
+                    description="Collision-resistant hash function optimized for Zero-Knowledge constraints."
+                />
+                <MetricCard
+                    icon={Binary}
+                    title="Prime Field"
+                    description="Operates on the BN254 elliptic curve field, offering 254 bits of security."
+                />
+                <MetricCard
+                    icon={Lock}
+                    title="Hiding"
+                    description="Prevents observers from linking hashes to original merchant or payer data."
+                />
+                <MetricCard
+                    icon={Shield}
+                    title="Binding"
+                    description="Ensures once a hash is committed, the price and merchant cannot be altered."
+                />
             </div>
 
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Invoice hash derivation</h3>
-                <p className="mb-3 text-sm leading-relaxed text-gray-400">
-                    The invoice hash is <strong className="text-white">not</strong> a standard nested hash — it is the arithmetic sum of three independent BHP256 hashes in the field. This is the exact same computation run at creation time <em>and</em> inside every payment finalizer.
+                <div className="flex items-center gap-3 mb-4 text-orange-300">
+                    <Hash className="h-5 w-5" />
+                    <h3 className="text-xl font-bold">The Hashing Strategy</h3>
+                </div>
+                <p className="mb-4 text-sm text-gray-400 leading-relaxed">
+                    NullPay uses **Homomorphic Hashing**. By hashing each component (Merchant, Amount, Salt) individually and then adding the results, we create a composite hash. This is more circuit-efficient than hashing a concatenated string of inputs.
                 </p>
-                <CodeBlock title="Invoice hash computation (Leo)" language="leo" code={hashDerivationExample} />
-
-                <GlassCard className="mt-4 p-5">
-                    <p className="mb-3 text-sm font-bold text-white">Why arithmetic sum instead of a nested hash?</p>
-                    <p className="text-xs leading-relaxed text-gray-400">
-                        An additive sum of precomputed hashes is cheaper in terms of Leo constraint count than a single nested BHP256 hash over concatenated inputs. Each individual BHP256 call is a fixed-size operation. The sum is a single field addition — one constraint. The result is still collision-resistant in practice because BHP256 is modeled as a random oracle, making independent collisions across all three components simultaneously computationally infeasible.
-                    </p>
-                </GlassCard>
+                <CodeBlock title="BHP256 field addition" language="leo" code={hashDerivationExample} />
             </GlassCard>
 
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Receipt hash — standard payment commitment</h3>
-                <CodeBlock title="receipt_hash derivation (pay_invoice variants)" language="leo" code={receiptHashExample} />
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Receipt hash — donation payment commitment</h3>
-                <p className="mb-3 text-sm leading-relaxed text-gray-400">
-                    Donation payments use a more complex commitment that binds the actual donated amount and the token type, even though neither was committed to at invoice creation time.
+            <GlassCard className="p-6 border-blue-500/20 bg-blue-500/5">
+                <div className="flex items-center gap-3 mb-4 text-blue-300">
+                    <Shield className="h-5 w-5" />
+                    <h3 className="text-xl font-bold">Atomic Receipts & Commitments</h3>
+                </div>
+                <p className="mb-4 text-sm text-gray-400 leading-relaxed">
+                    A receipt in NullPay is a <b>Pedersen Commitment</b>. It binds a payer-generated secret to the specific invoice salt. This creates a "dual-key" verification system where both parties can cryptographically prove the transaction occurred without revealing their addresses to the network.
                 </p>
-                <CodeBlock title="receipt_hash for donation (pay_donation variants)" language="leo" code={donationReceiptHashExample} />
+                <CodeBlock title="Pedersen Commitment Pattern" language="leo" code={commitmentExample} />
             </GlassCard>
 
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">The amount-zero convention for donations</h3>
-                <CodeBlock title="Donation amount handling" language="leo" code={donationAmountHashExample} />
-                <Callout title="Why donations use amount=0 in the hash" tone="blue">
-                    Because donation invoices accept any amount chosen by the payer, the invoice hash must be derivable at creation time when the future donated amount is unknown. Using <code className="rounded bg-white/10 px-1.5 py-0.5">0</code> as the amount in the hash derivation is the convention — all three <code className="rounded bg-white/10 px-1.5 py-0.5">pay_donation*</code> functions hardcode <code className="rounded bg-white/10 px-1.5 py-0.5">0u64 as field</code> when recomputing the invoice hash, so the <code className="rounded bg-white/10 px-1.5 py-0.5">assert_eq</code> in the finalizer always passes. The actual donated amount only appears in the receipt hash.
-                </Callout>
+                <h3 className="mb-4 text-xl font-bold text-white">Why not SHA-256 or Poseidon?</h3>
+                <div className="space-y-4 text-sm text-gray-400">
+                    <div className="relative pl-6">
+                        <div className="absolute left-0 top-1 h-2 w-2 rounded-full bg-orange-500" />
+                        <p><b>Constraint Cost:</b> SHA-256 requires thousands of boolean constraints, making it extremely slow for ZK proofs on mobile devices. BHP256 is native to Aleo and executes in milliseconds.</p>
+                    </div>
+                    <div className="relative pl-6">
+                        <div className="absolute left-0 top-1 h-2 w-2 rounded-full bg-blue-500" />
+                        <p><b>Bit Security:</b> While Poseidon is efficient, BHP256 provides a simpler "Hardware-friendly" path for the Pedersen commitments used in our escrow and refund circuits (Phase 2 Roadmap).</p>
+                    </div>
+                </div>
             </GlassCard>
+
+            <Callout title="Scalar Conversion" tone="blue">
+                In Aleo, <code className="text-white/80">commit_to_field</code> requires the randomness to be a <code className="text-emerald-300">scalar</code>. NullPay automatically handles this by converting the 254-bit salt using the <code className="text-white/80">BHP256::hash_to_scalar()</code> helper before committing.
+            </Callout>
         </div>
     ),
 };

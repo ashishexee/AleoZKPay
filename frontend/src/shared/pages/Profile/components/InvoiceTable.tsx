@@ -21,9 +21,12 @@ interface InvoiceTableProps {
     setCurrentPage: (page: number | ((prev: number) => number)) => void;
     onVerify: (invoice: any) => void;
     onSettle: (invoice: any) => void;
+    onDelete?: (invoice: any) => void;
     settlingId: string | null;
+    deletingId?: string | null;
     onViewPayments: (paymentIds: string[]) => void;
     transactions: any[];
+    burnerDeleteReady?: boolean;
 }
 
 const ShimmerRow: React.FC = () => (
@@ -55,9 +58,12 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
     setCurrentPage,
     onVerify,
     onSettle,
+    onDelete,
     settlingId,
+    deletingId = null,
     onViewPayments,
-    transactions
+    transactions,
+    burnerDeleteReady = false
 }) => {
     const navigate = useNavigate();
     const [initialGrace, setInitialGrace] = useState(true);
@@ -221,6 +227,14 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         <tr><td colSpan={9} className="text-center py-12 text-gray-500 italic">{search || dateFilterMode !== 'all' ? 'No invoices match the active filters.' : 'No created invoices found.'}</td></tr>
                     ) : (
                         paginatedInvoices.map((inv, i) => {
+                            const earningsTotal = getEarningsTotal(inv);
+                            const hasRecordedPayments = (inv.paymentTxIds?.length || 0) > 0 || earningsTotal > 0;
+                            const canDelete = inv.status !== 'SETTLED' && !hasRecordedPayments;
+                            const deleteDisabled = deletingId === inv.invoiceHash || (inv.walletType === 1 && !burnerDeleteReady);
+                            const deleteTitle = inv.walletType === 1 && !burnerDeleteReady
+                                ? 'Unlock the burner wallet to delete this burner-owned invoice.'
+                                : 'Delete invoice on-chain and off-chain';
+
                             // Base Params
                             const paymentParams = new URLSearchParams({
                                 merchant: inv.owner || '',
@@ -410,6 +424,24 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                                 </svg>
                                                 Verify
                                             </button>
+
+                                            {canDelete && onDelete && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onDelete(inv); }}
+                                                    disabled={deleteDisabled}
+                                                    className="flex items-center gap-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-md border border-red-500/20 hover:border-red-500/50 transition-all text-red-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title={deleteTitle}
+                                                >
+                                                    {deletingId === inv.invoiceHash ? (
+                                                        <span className="w-3 h-3 border-2 border-red-300 border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-7 0h8" />
+                                                        </svg>
+                                                    )}
+                                                    Delete
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

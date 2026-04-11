@@ -432,14 +432,14 @@ const InvoiceDetailsPage: React.FC = () => {
                 </div>
                 <h2 className="text-white font-black text-xl mb-2">Invoice Not Found</h2>
                 <p className="text-sm mb-6" style={{ color: '#f87171' }}>{error}</p>
-                <button onClick={() => navigate('/profile/dashboard')} className="px-5 py-2.5 rounded-xl text-sm border transition-all"
+                <button onClick={() => navigate('/dashboard')} className="px-5 py-2.5 rounded-xl text-sm border transition-all"
                     style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)' }}>← Dashboard</button>
             </div>
         </div>
     );
 
     if (authStatus === 'unauthorized' || authStatus === 'no-wallet')
-        return <Unauthorized noWallet={authStatus === 'no-wallet'} onBack={() => navigate('/profile/dashboard')} />;
+        return <Unauthorized noWallet={authStatus === 'no-wallet'} onBack={() => navigate('/dashboard')} />;
 
     if (!invoice) return null;
 
@@ -474,7 +474,7 @@ const InvoiceDetailsPage: React.FC = () => {
             >
                 <div className="max-w-screen-2xl mx-auto px-6 lg:px-10 h-16 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-5">
-                        <button onClick={() => navigate('/profile/dashboard', { replace: true })}
+                        <button onClick={() => navigate('/dashboard', { replace: true })}
                             className="flex items-center gap-2 text-sm font-semibold transition-colors group"
                             style={{ color: 'rgba(255,255,255,0.5)' }}
                             onMouseEnter={e => (e.currentTarget.style.color = '#fff')}

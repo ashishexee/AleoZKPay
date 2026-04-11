@@ -17,6 +17,7 @@ import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../utils/card-input-
 import { stringToField } from '../../utils/aleo-utils';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/leo-input-limits';
 import { isValidAleoAddress, normalizeAleoAddress } from '../../utils/aleo-address';
+import { useLeaveGuard } from '../LeaveGuardProvider';
 
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
 
@@ -36,6 +37,7 @@ export const useSharedPayment = () => {
     const [searchParams] = useSearchParams();
     const { address, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
+    const { setGuard, clearGuard } = useLeaveGuard();
     const publicKey = address;
     const [invoice, setInvoice] = useState<InvoiceState | null>(null);
     const [donationAmount, setDonationAmount] = useState<string>('');
@@ -412,98 +414,110 @@ export const useSharedPayment = () => {
 
 
     const pollTransaction = async (initialTxId: string) => {
+        setGuard({
+            active: true,
+            title: 'Payment Is Syncing',
+            message: 'NullPay is still waiting for the final transaction result and syncing the payment records. Leaving now can interrupt the flow before confirmation finishes.',
+            confirmLabel: 'Leave Anyway',
+            cancelLabel: 'Stay'
+        });
+
         let isPending = true;
         let attempts = 0;
         let onChainId = initialTxId;
 
-        while (isPending && attempts < 120) {
-            attempts++;
-            await new Promise(r => setTimeout(r, 1000));
-            try {
-                let statusStr = '';
-                if (wallet && wallet.adapter) {
-                    try {
-                        const statusRes = await wallet.adapter.transactionStatus(initialTxId);
-                        statusStr = typeof statusRes === 'string'
-                            ? (statusRes as string).toLowerCase()
-                            : (statusRes as any)?.status?.toLowerCase();
-                        if ((statusRes as any)?.transactionId) {
-                            onChainId = (statusRes as any).transactionId;
-                        }
-                    } catch (e) { }
-                }
-
-                if (!statusStr) {
-                    try {
-                        const res = await fetch(`https://api.explorer.provable.com/v1/testnet/transaction/${initialTxId}`);
-                        if (res.ok) {
-                            statusStr = 'completed';
-                        }
-                    } catch (e) { }
-                }
-
-                if (onChainId) {
-                    setTxId(onChainId);
-                }
-
-                if (statusStr === 'completed' || statusStr === 'finalized' || statusStr === 'accepted') {
-                    setStep('SUCCESS');
-                    setStatus('Payment Successful!');
-
-                    try {
-                        const { updateInvoiceStatus, fetchInvoiceByHash } = await import('../../services/api');
-                        console.log("📝 [usePayment] Updating Invoice in DB...", { onChainId, invoiceHash: invoice?.hash });
-
-                        const updatePayload: any = {
-                            payment_tx_ids: onChainId
-                        };
-
-                        if (invoice?.sessionId) {
-                            updatePayload.session_id = invoice.sessionId;
-                        }
-
-                        if (invoice?.hash) {
-                            const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
-                            if (currentDbInvoice && (currentDbInvoice.invoice_type === 1 || currentDbInvoice.invoice_type === 2)) {
-                                console.log("ℹ️ Multi Pay / Donation Invoice detected. Keeping status as PENDING.");
-                            } else {
-                                updatePayload.status = 'SETTLED';
+        try {
+            while (isPending && attempts < 120) {
+                attempts++;
+                await new Promise(r => setTimeout(r, 1000));
+                try {
+                    let statusStr = '';
+                    if (wallet && wallet.adapter) {
+                        try {
+                            const statusRes = await wallet.adapter.transactionStatus(initialTxId);
+                            statusStr = typeof statusRes === 'string'
+                                ? (statusRes as string).toLowerCase()
+                                : (statusRes as any)?.status?.toLowerCase();
+                            if ((statusRes as any)?.transactionId) {
+                                onChainId = (statusRes as any).transactionId;
                             }
-                            console.log("📤 Sending Update Payload:", updatePayload);
-                            await updateInvoiceStatus(invoice.hash, updatePayload);
-                            console.log("✅ DB Update Successful!");
-                        }
+                        } catch (e) { }
+                    }
 
-                        if (invoice?.sessionId) {
-                            try {
-                                console.log(`📢 [usePayment] Updating Checkout Session ${invoice.sessionId}`);
-                                const checkoutApiUrl = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
-                                await fetch(`${checkoutApiUrl}/checkout/sessions/${invoice.sessionId}`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ status: 'SETTLED', tx_id: onChainId })
-                                });
-                                console.log("✅ Checkout Session Updated!");
-                            } catch (checkoutErr) {
-                                console.error("❌ Failed to update checkout session:", checkoutErr);
+                    if (!statusStr) {
+                        try {
+                            const res = await fetch(`https://api.explorer.provable.com/v1/testnet/transaction/${initialTxId}`);
+                            if (res.ok) {
+                                statusStr = 'completed';
                             }
-                        }
+                        } catch (e) { }
+                    }
 
-                        if (programId && invoice?.hash) {
-                            setStatus('Syncing Receipt Record...');
-                            await new Promise(r => setTimeout(r, 1000));
-                            setReceiptSearchFailed(true);
-                        }
+                    if (onChainId) {
+                        setTxId(onChainId);
+                    }
 
-                    } catch (dbErr) { console.error("❌ DB Update Error:", dbErr); }
+                    if (statusStr === 'completed' || statusStr === 'finalized' || statusStr === 'accepted') {
+                        setStep('SUCCESS');
+                        setStatus('Payment Successful!');
 
-                    isPending = false;
-                } else if (statusStr === 'failed' || statusStr === 'rejected') {
-                    throw new Error('Transaction rejected on-chain.');
+                        try {
+                            const { updateInvoiceStatus, fetchInvoiceByHash } = await import('../../services/api');
+                            console.log("📝 [usePayment] Updating Invoice in DB...", { onChainId, invoiceHash: invoice?.hash });
+
+                            const updatePayload: any = {
+                                payment_tx_ids: onChainId
+                            };
+
+                            if (invoice?.sessionId) {
+                                updatePayload.session_id = invoice.sessionId;
+                            }
+
+                            if (invoice?.hash) {
+                                const currentDbInvoice = await fetchInvoiceByHash(invoice.hash);
+                                if (currentDbInvoice && (currentDbInvoice.invoice_type === 1 || currentDbInvoice.invoice_type === 2)) {
+                                    console.log("ℹ️ Multi Pay / Donation Invoice detected. Keeping status as PENDING.");
+                                } else {
+                                    updatePayload.status = 'SETTLED';
+                                }
+                                console.log("📤 Sending Update Payload:", updatePayload);
+                                await updateInvoiceStatus(invoice.hash, updatePayload);
+                                console.log("✅ DB Update Successful!");
+                            }
+
+                            if (invoice?.sessionId) {
+                                try {
+                                    console.log(`📢 [usePayment] Updating Checkout Session ${invoice.sessionId}`);
+                                    const checkoutApiUrl = import.meta.env.VITE_API_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api';
+                                    await fetch(`${checkoutApiUrl}/checkout/sessions/${invoice.sessionId}`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ status: 'SETTLED', tx_id: onChainId })
+                                    });
+                                    console.log("✅ Checkout Session Updated!");
+                                } catch (checkoutErr) {
+                                    console.error("❌ Failed to update checkout session:", checkoutErr);
+                                }
+                            }
+
+                            if (programId && invoice?.hash) {
+                                setStatus('Syncing Receipt Record...');
+                                await new Promise(r => setTimeout(r, 1000));
+                                setReceiptSearchFailed(true);
+                            }
+
+                        } catch (dbErr) { console.error("❌ DB Update Error:", dbErr); }
+
+                        isPending = false;
+                    } else if (statusStr === 'failed' || statusStr === 'rejected') {
+                        throw new Error('Transaction rejected on-chain.');
+                    }
+                } catch (err) {
+                    console.warn("Polling error:", err);
                 }
-            } catch (err) {
-                console.warn("Polling error:", err);
             }
+        } finally {
+            clearGuard();
         }
     };
 
@@ -562,6 +576,13 @@ export const useSharedPayment = () => {
             if (result && result.transactionId) {
                 setConversionTxId(result.transactionId);
                 setStatus(`Converting... TxID: ${result.transactionId.slice(0, 10)}... Polling for confirmation...`);
+                setGuard({
+                    active: true,
+                    title: 'Conversion Is Syncing',
+                    message: 'NullPay is confirming your conversion and preparing the private balance. Leaving now can interrupt the flow.',
+                    confirmLabel: 'Leave Anyway',
+                    cancelLabel: 'Stay'
+                });
 
                 if (!wallet || !wallet.adapter) {
                     await new Promise(r => setTimeout(r, 2000));
@@ -606,6 +627,8 @@ export const useSharedPayment = () => {
         } catch (e: any) {
             setError(e.message);
             setLoading(false);
+        } finally {
+            clearGuard();
         }
     };
 
