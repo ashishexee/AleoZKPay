@@ -429,6 +429,54 @@ function parseInvoiceArgsFromMessage(message, existingArgs = {}) {
     return nextArgs;
 }
 
+function buildOptionalReviewReply(mergedArgs, isDonation) {
+    const collected = [];
+    const remaining = [];
+    const title = typeof mergedArgs?.title === 'string' ? mergedArgs.title.trim() : '';
+    const memo = typeof mergedArgs?.memo === 'string' ? mergedArgs.memo.trim() : '';
+    const currency = mergedArgs?.currency ? normalizePromptCurrency(mergedArgs.currency) : null;
+
+    if (title) {
+        collected.push(`- ✓ Title: **${title}**`);
+    } else {
+        remaining.push('- Title (e.g. `title "Team dinner"`).');
+    }
+
+    if (memo) {
+        collected.push(`- ✓ Memo: **${memo}**`);
+    } else {
+        remaining.push('- Memo (e.g. `memo "April payout"`).');
+    }
+
+    if (isDonation) {
+        if (currency && currency !== 'ANY') {
+            collected.push(`- ✓ Token: **${currency}**`);
+        } else {
+            remaining.push('- Token restriction (`credits`, `usdcx`, `usad`, or `any token`).');
+        }
+    }
+
+    const lines = ['Your invoice draft is ready.', ''];
+
+    if (collected.length > 0) {
+        lines.push('Current invoice details:');
+        lines.push(...collected);
+        lines.push('');
+    }
+
+    if (remaining.length > 0) {
+        lines.push('You can still add:');
+        lines.push(...remaining);
+        lines.push('');
+    } else {
+        lines.push('Everything optional is already set.');
+        lines.push('');
+    }
+
+    lines.push('Say `continue` when you are ready to create the invoice.');
+    return lines.join('\n');
+}
+
 function normalizeMissingArgs(rawValue) {
     if (!Array.isArray(rawValue)) {
         return [];
@@ -441,6 +489,49 @@ function normalizeMissingArgs(rawValue) {
                 .filter(Boolean)
         )
     );
+}
+
+function getPlannerContext(context = {}) {
+    const safeContext = context && typeof context === 'object' ? { ...context } : {};
+    const pendingToolCall = safeContext.pendingToolCall && typeof safeContext.pendingToolCall === 'object'
+        ? safeContext.pendingToolCall
+        : null;
+
+    if (pendingToolCall?.name !== 'create_invoice') {
+        return safeContext;
+    }
+
+    const pendingArgs = pendingToolCall.args && typeof pendingToolCall.args === 'object'
+        ? pendingToolCall.args
+        : {};
+    const normalizedInvoiceType = pendingArgs.invoice_type
+        ? normalizePromptInvoiceType(pendingArgs.invoice_type)
+        : 'standard';
+    const normalizedCurrency = pendingArgs.currency
+        ? normalizePromptCurrency(pendingArgs.currency)
+        : (normalizedInvoiceType === 'donation' ? 'ANY' : null);
+    const amount = normalizedInvoiceType === 'donation'
+        ? 0
+        : parsePromptAmount(pendingArgs.amount);
+    const title = typeof pendingArgs.title === 'string' && pendingArgs.title.trim()
+        ? pendingArgs.title.trim()
+        : null;
+    const memo = typeof pendingArgs.memo === 'string' && pendingArgs.memo.trim()
+        ? pendingArgs.memo.trim()
+        : null;
+
+    return {
+        ...safeContext,
+        pendingToolCall,
+        currentCollectedInvoiceArgs: {
+            invoice_type: normalizedInvoiceType,
+            wallet: normalizePromptWallet(pendingArgs.wallet),
+            ...(amount != null ? { amount } : {}),
+            ...(normalizedCurrency ? { currency: normalizedCurrency } : {}),
+            ...(title ? { title } : {}),
+            ...(memo ? { memo } : {})
+        }
+    };
 }
 
 function extractJsonObject(text) {
@@ -631,18 +722,7 @@ function detectNullBotToolCall(message, context = {}) {
             }
 
             return {
-                reply: [
-                    'Your invoice draft is ready.',
-                    '',
-                    ...(isDonation ? [
-                        'Add a token if you want to restrict the donation.',
-                        'Examples: `credits`, `usdcx`, `usad`, or `any token`.',
-                        ''
-                    ] : []),
-                    'Add an optional title or memo if you want.',
-                    'Examples: `title "Team dinner"` or `memo "April payout"`.',
-                    `If you do not want ${isDonation ? 'any of these' : 'either'}, say \`continue\`.`
-                ].join('\n'),
+                reply: buildOptionalReviewReply(mergedArgs, isDonation),
                 toolCall: {
                     name: 'create_invoice',
                     args: {
@@ -688,18 +768,7 @@ function detectNullBotToolCall(message, context = {}) {
         }
 
         return {
-            reply: [
-                'Your invoice draft is ready.',
-                '',
-                ...(isDonation ? [
-                    'Add a token if you want to restrict the donation.',
-                    'Examples: `credits`, `usdcx`, `usad`, or `any token`.',
-                    ''
-                ] : []),
-                'Add an optional title or memo if you want.',
-                'Examples: `title "Team dinner"` or `memo "April payout"`.',
-                `If you do not want ${isDonation ? 'any of these' : 'either'}, say \`continue\`.`
-            ].join('\n'),
+            reply: buildOptionalReviewReply(mergedArgs, isDonation),
             toolCall: {
                 name: 'create_invoice',
                 args: {
@@ -720,6 +789,41 @@ function detectNullBotToolCall(message, context = {}) {
             reply: 'Connect your wallet first, then I can run NullPay actions from your prompts.',
             toolCall: {
                 name: 'connect_wallet',
+                args: {}
+            }
+        };
+    }
+
+    const invoiceHashMatch = rawMessage.match(/\b\d{40,}field\b/i);
+    const invoiceLookupIntent =
+        Boolean(invoiceHashMatch) &&
+        (
+            /\b(hash|invoice|info|details|detail|about|show|find|lookup|look up|status|check)\b/i.test(rawMessage) ||
+            rawMessage.trim() === invoiceHashMatch[0]
+        );
+
+    if (invoiceLookupIntent) {
+        const invoiceHash = invoiceHashMatch[0];
+        return {
+            reply: `I can look up invoice \`${invoiceHash}\`.`,
+            toolCall: {
+                name: 'get_transaction_info',
+                args: {
+                    invoice_hash: invoiceHash
+                }
+            }
+        };
+    }
+
+    const burnerBalanceIntent =
+        /\b(balance|balances|funds?)\b[\s\S]{0,30}\b(burner)\b/i.test(rawMessage) ||
+        /\b(burner)\b[\s\S]{0,30}\b(balance|balances|funds?)\b/i.test(rawMessage);
+
+    if (burnerBalanceIntent) {
+        return {
+            reply: 'I can check your burner wallet balances now.',
+            toolCall: {
+                name: 'check_burner_balance',
                 args: {}
             }
         };
@@ -768,16 +872,14 @@ function detectNullBotToolCall(message, context = {}) {
 
         if (invoiceType === 'donation') {
             return {
-                reply: [
-                    'Your invoice draft is ready.',
-                    '',
-                    'Add a token if you want to restrict the donation.',
-                    'Examples: `credits`, `usdcx`, `usad`, or `any token`.',
-                    '',
-                    'Add an optional title or memo if you want.',
-                    'Examples: `title "Team dinner"` or `memo "April payout"`.',
-                    'If you do not want any of these, say `continue`.'
-                ].join('\n'),
+                reply: buildOptionalReviewReply({
+                    amount: 0,
+                    ...(currency ? { currency } : { currency: 'ANY' }),
+                    ...(title ? { title } : {}),
+                    invoice_type: 'donation',
+                    wallet,
+                    ...(memo ? { memo } : {})
+                }, true),
                 toolCall: {
                     name: 'create_invoice',
                     args: {
@@ -795,13 +897,14 @@ function detectNullBotToolCall(message, context = {}) {
 
         if (amount != null && currency) {
             return {
-                reply: [
-                    'Your invoice draft is ready.',
-                    '',
-                    'Add an optional title or memo if you want.',
-                    'Examples: `title "Team dinner"` or `memo "April payout"`.',
-                    'If you do not want either, say `continue`.'
-                ].join('\n'),
+                reply: buildOptionalReviewReply({
+                    amount,
+                    currency,
+                    ...(title ? { title } : {}),
+                    invoice_type: invoiceType,
+                    wallet,
+                    ...(memo ? { memo } : {})
+                }, false),
                 toolCall: {
                     name: 'create_invoice',
                     args: {
@@ -849,6 +952,12 @@ function detectNullBotToolCall(message, context = {}) {
     return null;
 }
 
+function extractInvoiceHashFromToolCall(toolCall) {
+    return typeof toolCall?.args?.invoice_hash === 'string' && toolCall.args.invoice_hash.trim()
+        ? toolCall.args.invoice_hash.trim()
+        : null;
+}
+
 async function planNullBotToolCall(message, context) {
     const systemInstruction = [
         'You are the NullBot tool planner for the browser dashboard.',
@@ -863,6 +972,9 @@ async function planNullBotToolCall(message, context) {
         'When required invoice args are complete but the user may still want optional token/title/memo fields, keep the tool pending with missingArgs ["optional_review"] and ask what optional fields to add or whether to continue.',
         'When the pending create_invoice tool is in optional review and the user says continue/skip/no, finalize the tool call with no missingArgs so the frontend can execute it.',
         'If the user adds title, memo, or donation token during optional review, keep the same pending create_invoice tool and preserve previously collected args.',
+        'CRITICAL: Never re-ask for any create_invoice parameter that already exists in the collected state provided in the context.',
+        'CRITICAL: During optional_review, acknowledge the specific value the user just added and keep previously collected values intact.',
+        'CRITICAL: When replying during optional_review, reference what is already collected and only mention fields that are still missing or optional to add.',
         'Donation and multipay are invoice types, so prompts like "create a donation for me" or "create a multipay" should still map to create_invoice.',
         'For sweep_funds from burner to the connected main wallet, set wallet to burner and destination to main_wallet when the user says burner to main.',
         'For burner balance checks, use check_burner_balance.',
@@ -877,7 +989,7 @@ async function planNullBotToolCall(message, context) {
 
     const prompt = [
         'Dashboard tool context:',
-        JSON.stringify(context, null, 2),
+        JSON.stringify(getPlannerContext(context), null, 2),
         '',
         'User message:',
         message
@@ -905,11 +1017,83 @@ async function planNullBotToolCall(message, context) {
     };
 }
 
+function sanitizePlannedNullBotResponse(planned, fallback) {
+    const fallbackInvoiceHash = extractInvoiceHashFromToolCall(fallback?.toolCall);
+    const plannedInvoiceHash = extractInvoiceHashFromToolCall(planned?.toolCall);
+
+    if (fallback?.toolCall?.name === 'get_transaction_info' && fallbackInvoiceHash) {
+        if (
+            !planned?.toolCall ||
+            planned.toolCall.name !== 'get_transaction_info' ||
+            plannedInvoiceHash?.toLowerCase() !== fallbackInvoiceHash.toLowerCase()
+        ) {
+            return fallback;
+        }
+    }
+
+    if (fallback?.toolCall?.name === 'check_burner_balance') {
+        if (!planned?.toolCall || planned.toolCall.name !== 'check_burner_balance') {
+            return fallback;
+        }
+    }
+
+    if (!planned?.toolCall || planned.toolCall.name !== 'create_invoice') {
+        return planned;
+    }
+
+    const invoiceType = planned.toolCall.args?.invoice_type
+        ? normalizePromptInvoiceType(planned.toolCall.args.invoice_type)
+        : null;
+
+    if (invoiceType !== 'donation') {
+        return planned;
+    }
+
+    const missingArgs = normalizeMissingArgs(planned.toolCall.missingArgs);
+    const asksForAmount = /\bamount\b/i.test(planned.reply || '') || missingArgs.includes('amount');
+
+    if (!asksForAmount) {
+        return planned;
+    }
+
+    if (fallback?.toolCall?.name === 'create_invoice') {
+        const fallbackInvoiceType = fallback.toolCall.args?.invoice_type
+            ? normalizePromptInvoiceType(fallback.toolCall.args.invoice_type)
+            : null;
+
+        if (fallbackInvoiceType === 'donation') {
+            return fallback;
+        }
+    }
+
+    const sanitizedArgs = {
+        ...planned.toolCall.args,
+        amount: 0,
+        currency: planned.toolCall.args?.currency
+            ? normalizePromptCurrency(planned.toolCall.args.currency)
+            : 'ANY',
+        invoice_type: 'donation',
+        wallet: normalizePromptWallet(planned.toolCall.args?.wallet)
+    };
+
+    return {
+        reply: buildOptionalReviewReply(sanitizedArgs, true),
+        toolCall: {
+            ...planned.toolCall,
+            args: sanitizedArgs,
+            missingArgs: ['optional_review']
+        }
+    };
+}
+
 async function generateNullBotChat(message, context) {
     const fallback = detectNullBotToolCall(message, context);
 
     try {
-        const planned = await planNullBotToolCall(message, context);
+        const planned = sanitizePlannedNullBotResponse(
+            await planNullBotToolCall(message, context),
+            fallback
+        );
 
         if (planned.toolCall) {
             return planned;
