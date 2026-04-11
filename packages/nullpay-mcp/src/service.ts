@@ -167,18 +167,43 @@ export class NullPayMcpService {
             },
             {
                 name: 'create_invoice',
-                description: 'Create a NullPay invoice using the active main or burner wallet address.',
+                description: `Create a NullPay invoice. You MUST follow this exact conversational flow EVERY time — no exceptions:
+
+STEP 1 — DETERMINE INVOICE TYPE: Figure out the type from the user's message (standard, multipay, or donation). If unclear, ask once.
+
+STEP 2 — GATHER REQUIRED PARAMETERS:
+  - For standard or multipay: you need amount and currency. If the user already said them (e.g. "create a multipay for 0.1 credits"), use those. Otherwise ask: "What amount and token? For example: 0.1 credits, 2 usdcx."
+  - For donation: amount is 0, currency defaults to ANY. Do NOT ask for amount.
+
+STEP 3 — ASK ABOUT OPTIONAL PARAMETERS (ALWAYS DO THIS): Present ALL optional fields at once:
+  "Would you like to add any of these optional details?
+   - Title (shown to the payer, e.g. 'Team dinner')
+   - Memo (private note, e.g. 'April payout')
+   - Token restriction (credits, usdcx, usad, or any — only relevant for donation type)
+   - Wallet (main or burner — defaults to your active wallet if not mentioned)
+   Say 'continue' if you don't need any of these."
+
+STEP 4 — COLLECT AND REMEMBER: If the user provides values, save them. If they then add more info or change something, update your collected params — NEVER forget or discard previously provided values. Once the user says 'continue' or indicates they are done, proceed to Step 5.
+
+STEP 5 — CALL THIS TOOL EXACTLY ONCE: Pass ALL collected parameters (required + optional) in a single tool call. Do NOT call this tool multiple times for the same invoice.
+
+CRITICAL RULES:
+- NEVER skip Step 3. Always ask about optional parameters.
+- NEVER re-ask for parameters the user already provided. Remember everything from the conversation.
+- NEVER call this tool until the user confirms they are ready (says 'continue', 'go ahead', 'create it', etc.).
+- If the user provides extra info mid-conversation (e.g. "also allow all tokens"), just add it to your collected params and ask if there is anything else.`,
                 inputSchema: {
                     type: 'object',
                     properties: {
-                        amount: { type: 'number' },
-                        currency: { type: 'string', enum: ['CREDITS', 'USDCX', 'USAD', 'ANY'] },
+                        amount: { type: 'number', description: 'Invoice amount. Use 0 for donation invoices.' },
+                        currency: { type: 'string', enum: ['CREDITS', 'USDCX', 'USAD', 'ANY'], description: 'Token currency. Defaults to CREDITS for standard/multipay, ANY for donation.' },
                         title: { type: 'string', description: 'Optional invoice title shown to the payer.' },
-                        memo: { type: 'string' },
-                        invoice_type: { type: 'string', enum: ['standard', 'multipay', 'donation'] },
-                        wallet: { type: 'string', enum: ['main', 'burner'] },
+                        memo: { type: 'string', description: 'Optional private memo/note for the merchant.' },
+                        invoice_type: { type: 'string', enum: ['standard', 'multipay', 'donation'], description: 'Type of invoice. standard = one-time, multipay = reusable with fixed amount, donation = open amount.' },
+                        wallet: { type: 'string', enum: ['main', 'burner'], description: 'Which wallet to create the invoice from. Defaults to active wallet.' },
                         line_items: {
                             type: 'array',
+                            description: 'Optional itemized line items for the invoice.',
                             items: {
                                 type: 'object',
                                 properties: {

@@ -156,17 +156,43 @@ class NullPayMcpService {
             },
             {
                 name: 'create_invoice',
-                description: 'Create a NullPay invoice using the active main or burner wallet address.',
+                description: `Create a NullPay invoice. You MUST follow this exact conversational flow EVERY time — no exceptions:
+
+STEP 1 — DETERMINE INVOICE TYPE: Figure out the type from the user's message (standard, multipay, or donation). If unclear, ask once.
+
+STEP 2 — GATHER REQUIRED PARAMETERS:
+  - For standard or multipay: you need amount and currency. If the user already said them (e.g. "create a multipay for 0.1 credits"), use those. Otherwise ask: "What amount and token? For example: 0.1 credits, 2 usdcx."
+  - For donation: amount is 0, currency defaults to ANY. Do NOT ask for amount.
+
+STEP 3 — ASK ABOUT OPTIONAL PARAMETERS (ALWAYS DO THIS): Present ALL optional fields at once:
+  "Would you like to add any of these optional details?
+   - Title (shown to the payer, e.g. 'Team dinner')
+   - Memo (private note, e.g. 'April payout')
+   - Token restriction (credits, usdcx, usad, or any — only relevant for donation type)
+   - Wallet (main or burner — defaults to your active wallet if not mentioned)
+   Say 'continue' if you don't need any of these."
+
+STEP 4 — COLLECT AND REMEMBER: If the user provides values, save them. If they then add more info or change something, update your collected params — NEVER forget or discard previously provided values. Once the user says 'continue' or indicates they are done, proceed to Step 5.
+
+STEP 5 — CALL THIS TOOL EXACTLY ONCE: Pass ALL collected parameters (required + optional) in a single tool call. Do NOT call this tool multiple times for the same invoice.
+
+CRITICAL RULES:
+- NEVER skip Step 3. Always ask about optional parameters.
+- NEVER re-ask for parameters the user already provided. Remember everything from the conversation.
+- NEVER call this tool until the user confirms they are ready (says 'continue', 'go ahead', 'create it', etc.).
+- If the user provides extra info mid-conversation (e.g. "also allow all tokens"), just add it to your collected params and ask if there is anything else.`,
                 inputSchema: {
                     type: 'object',
                     properties: {
-                        amount: { type: 'number' },
-                        currency: { type: 'string', enum: ['CREDITS', 'USDCX', 'USAD', 'ANY'] },
-                        memo: { type: 'string' },
-                        invoice_type: { type: 'string', enum: ['standard', 'multipay', 'donation'] },
-                        wallet: { type: 'string', enum: ['main', 'burner'] },
+                        amount: { type: 'number', description: 'Invoice amount. Use 0 for donation invoices.' },
+                        currency: { type: 'string', enum: ['CREDITS', 'USDCX', 'USAD', 'ANY'], description: 'Token currency. Defaults to CREDITS for standard/multipay, ANY for donation.' },
+                        title: { type: 'string', description: 'Optional invoice title shown to the payer.' },
+                        memo: { type: 'string', description: 'Optional private memo/note for the merchant.' },
+                        invoice_type: { type: 'string', enum: ['standard', 'multipay', 'donation'], description: 'Type of invoice. standard = one-time, multipay = reusable with fixed amount, donation = open amount.' },
+                        wallet: { type: 'string', enum: ['main', 'burner'], description: 'Which wallet to create the invoice from. Defaults to active wallet.' },
                         line_items: {
                             type: 'array',
+                            description: 'Optional itemized line items for the invoice.',
                             items: {
                                 type: 'object',
                                 properties: {
@@ -496,6 +522,7 @@ class NullPayMcpService {
             amount: invoiceType === 'donation' ? 0 : Number(args.amount),
             currency,
             salt,
+            title: args.title,
             memo: args.memo,
             invoice_type: (0, aleo_1.invoiceTypeToNumber)(invoiceType),
         });
@@ -504,6 +531,7 @@ class NullPayMcpService {
             invoiceHash,
             merchantAddress,
             amount: invoiceType === 'donation' ? 0 : Number(args.amount),
+            title: args.title,
             memo: args.memo,
             invoiceType,
             currency,
@@ -511,12 +539,14 @@ class NullPayMcpService {
             invoiceTxId: relayResponse.tx_id,
             wallet,
             lineItems: args.line_items,
+            allowedTokens: args.allowed_tokens,
             merchantAddressHash: (0, crypto_1.hashAddress)(merchantAddress),
         }));
         const paymentLink = (0, aleo_1.buildPaymentLink)(this.publicBaseUrl, {
             merchant: merchantAddress,
             amount: invoiceType === 'donation' ? 0 : Number(args.amount),
             salt,
+            title: args.title,
             memo: args.memo,
             invoiceType,
             currency,
@@ -524,9 +554,9 @@ class NullPayMcpService {
         });
         return {
             content: [{
-                type: 'text',
-                text: `Invoice created with hash ${invoiceHash}. Active wallet ${wallet} was used. Payment link: ${paymentLink}`
-            }],
+                    type: 'text',
+                    text: `Invoice created with hash ${invoiceHash}. Active wallet ${wallet} was used. Payment link: ${paymentLink}`
+                }],
             structuredContent: {
                 invoice_hash: invoiceHash,
                 invoice_transaction_id: relayResponse.tx_id,
@@ -543,11 +573,36 @@ class NullPayMcpService {
         const walletPrivateKey = await this.resolveWalletPrivateKey(wallet);
         const resolved = await this.resolvePayInvoiceContext(args, wallet);
         const { invoice, sessionId, source } = resolved;
+        const paymentCurrency = normalizePaymentCurrency(args.currency);
+        let quoteSignature;
+        let quoteExpiresAt;
+        let paymentAmount = args.amount;
+        const invoiceBaseCurrency = tokenTypeLabel(invoice.token_type);
+        const invoiceAmount = invoice.amount ?? 0;
+        if (paymentCurrency && invoiceBaseCurrency !== paymentCurrency && invoiceAmount > 0) {
+            if (invoice.allowed_tokens && invoice.allowed_tokens.length > 0 && !invoice.allowed_tokens.includes(paymentCurrency)) {
+                throw new Error(`${paymentCurrency} is not an allowed token for this invoice. Allowed tokens: ${invoice.allowed_tokens.join(', ')}`);
+            }
+            else if (invoice.token_type !== 3 && (!invoice.allowed_tokens || invoice.allowed_tokens.length === 0)) {
+                throw new Error(`${paymentCurrency} cannot be used because this invoice is strictly denominated in ${invoiceBaseCurrency} and has no alternative allowed tokens.`);
+            }
+            const quote = await this.backend.getOracleQuote(invoiceBaseCurrency, paymentCurrency, invoiceAmount);
+            if (!quote || !quote.signature) {
+                throw new Error('Failed to fetch a valid Oracle quote for payment token override');
+            }
+            paymentAmount = quote.expected_amount;
+            quoteSignature = quote.signature;
+            quoteExpiresAt = quote.expires_at;
+        }
         const { authorization } = await (0, aleo_1.createSponsoredPaymentAuthorization)({
             walletPrivateKey,
             invoice,
-            amount: args.amount,
-            currency: normalizePaymentCurrency(args.currency),
+            amount: paymentAmount,
+            currency: paymentCurrency,
+            payerCurrency: paymentCurrency,
+            quoteSignature,
+            quoteExpiresAt,
+            quoteConvertedMicro: paymentAmount ? BigInt(Math.round(paymentAmount * 1000000)) : undefined,
         });
         const sponsored = await this.backend.sponsorExecution({
             execution_authorization_string: authorization,
@@ -576,9 +631,9 @@ class NullPayMcpService {
             : 'Payment recorded on the invoice while keeping the invoice open for additional multipay/donation activity.';
         return {
             content: [{
-                type: 'text',
-                text: `Invoice ${invoice.invoice_hash} was paid from ${wallet} wallet using ${invoice.amount ?? args.amount ?? 0} ${tokenTypeLabel(invoice.token_type)} to ${invoice.designated_address || invoice.merchant_address}. ${invoiceStatusNote}`
-            }],
+                    type: 'text',
+                    text: `Invoice ${invoice.invoice_hash} was paid from ${wallet} wallet using ${invoice.amount ?? args.amount ?? 0} ${tokenTypeLabel(invoice.token_type)} to ${invoice.designated_address || invoice.merchant_address}. ${invoiceStatusNote}`
+                }],
             structuredContent: {
                 invoice_hash: invoice.invoice_hash,
                 payment_tx_id: txId,
@@ -607,9 +662,9 @@ class NullPayMcpService {
                 : '';
             return {
                 content: [{
-                    type: 'text',
-                    text: `Transaction details: ${formatInvoiceSummary(invoice)}${onChainStatus}${amountHint}${missingAmountNote}`
-                }],
+                        type: 'text',
+                        text: `Transaction details: ${formatInvoiceSummary(invoice)}${onChainStatus}${amountHint}${missingAmountNote}`
+                    }],
                 structuredContent: {
                     invoice,
                     on_chain: onChain,
@@ -629,9 +684,9 @@ class NullPayMcpService {
             : `No transactions found for ${wallet} wallet ${walletAddress}.`;
         return {
             content: [{
-                type: 'text',
-                text: summaryText
-            }],
+                    type: 'text',
+                    text: summaryText
+                }],
             structuredContent: {
                 wallet,
                 wallet_address: walletAddress,
@@ -801,9 +856,9 @@ class NullPayMcpService {
         const balances = await (0, aleo_1.getWalletBalances)(session);
         return {
             content: [{
-                type: 'text',
-                text: `Your burner wallet balance is:\n- ${balances.credits} CREDITS\n- ${balances.usdcx} USDCX\n- ${balances.usad} USAD\n`
-            }],
+                    type: 'text',
+                    text: `Your burner wallet balance is:\n- ${balances.credits} CREDITS\n- ${balances.usdcx} USDCX\n- ${balances.usad} USAD\n`
+                }],
             structuredContent: balances
         };
     }
@@ -828,9 +883,9 @@ class NullPayMcpService {
         }
         return {
             content: [{
-                type: 'text',
-                text: `Successfully swept ${args.amount} ${currency} to ${args.destination}. Transaction ID: ${txId}`
-            }],
+                    type: 'text',
+                    text: `Successfully swept ${args.amount} ${currency} to ${args.destination}. Transaction ID: ${txId}`
+                }],
             structuredContent: {
                 transaction_id: txId,
                 amount: args.amount,
@@ -872,9 +927,9 @@ class NullPayMcpService {
         }
         return {
             content: [{
-                type: 'text',
-                text: `Giftcard payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
-            }],
+                    type: 'text',
+                    text: `Giftcard payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
+                }],
             structuredContent: {
                 invoice_hash: invoice.invoice_hash,
                 payment_tx_id: txId,
@@ -925,9 +980,9 @@ class NullPayMcpService {
         }
         return {
             content: [{
-                type: 'text',
-                text: `Card payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
-            }],
+                    type: 'text',
+                    text: `Card payment successful! Paid invoice ${invoice.invoice_hash}. TxID: ${txId}`
+                }],
             structuredContent: {
                 invoice_hash: invoice.invoice_hash,
                 payment_tx_id: txId,

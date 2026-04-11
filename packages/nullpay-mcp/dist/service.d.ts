@@ -35,6 +35,7 @@ export declare class NullPayMcpService {
                 };
                 amount?: undefined;
                 currency?: undefined;
+                title?: undefined;
                 memo?: undefined;
                 invoice_type?: undefined;
                 wallet?: undefined;
@@ -60,26 +61,34 @@ export declare class NullPayMcpService {
             properties: {
                 amount: {
                     type: string;
-                    description?: undefined;
+                    description: string;
                 };
                 currency: {
                     type: string;
                     enum: string[];
-                    description?: undefined;
+                    description: string;
+                };
+                title: {
+                    type: string;
+                    description: string;
                 };
                 memo: {
                     type: string;
+                    description: string;
                 };
                 invoice_type: {
                     type: string;
                     enum: string[];
+                    description: string;
                 };
                 wallet: {
                     type: string;
                     enum: string[];
+                    description: string;
                 };
                 line_items: {
                     type: string;
+                    description: string;
                     items: {
                         type: string;
                         properties: {
@@ -134,6 +143,7 @@ export declare class NullPayMcpService {
                 wallet: {
                     type: string;
                     enum: string[];
+                    description?: undefined;
                 };
                 amount: {
                     type: string;
@@ -153,6 +163,7 @@ export declare class NullPayMcpService {
                 main_private_key?: undefined;
                 create_burner_wallet?: undefined;
                 wallet_preference?: undefined;
+                title?: undefined;
                 memo?: undefined;
                 invoice_type?: undefined;
                 line_items?: undefined;
@@ -179,6 +190,7 @@ export declare class NullPayMcpService {
                 wallet: {
                     type: string;
                     enum: string[];
+                    description?: undefined;
                 };
                 limit: {
                     type: string;
@@ -190,6 +202,7 @@ export declare class NullPayMcpService {
                 wallet_preference?: undefined;
                 amount?: undefined;
                 currency?: undefined;
+                title?: undefined;
                 memo?: undefined;
                 invoice_type?: undefined;
                 line_items?: undefined;
@@ -226,12 +239,14 @@ export declare class NullPayMcpService {
                 wallet: {
                     type: string;
                     enum: string[];
+                    description?: undefined;
                 };
                 address?: undefined;
                 password?: undefined;
                 main_private_key?: undefined;
                 create_burner_wallet?: undefined;
                 wallet_preference?: undefined;
+                title?: undefined;
                 memo?: undefined;
                 invoice_type?: undefined;
                 line_items?: undefined;
@@ -283,6 +298,7 @@ export declare class NullPayMcpService {
                 main_private_key?: undefined;
                 create_burner_wallet?: undefined;
                 wallet_preference?: undefined;
+                title?: undefined;
                 memo?: undefined;
                 invoice_type?: undefined;
                 wallet?: undefined;
@@ -337,6 +353,7 @@ export declare class NullPayMcpService {
                 main_private_key?: undefined;
                 create_burner_wallet?: undefined;
                 wallet_preference?: undefined;
+                title?: undefined;
                 memo?: undefined;
                 invoice_type?: undefined;
                 wallet?: undefined;
@@ -357,6 +374,7 @@ export declare class NullPayMcpService {
                 wallet: {
                     type: string;
                     enum: string[];
+                    description?: undefined;
                 };
                 days: {
                     type: string;
@@ -369,6 +387,7 @@ export declare class NullPayMcpService {
                 wallet_preference?: undefined;
                 amount?: undefined;
                 currency?: undefined;
+                title?: undefined;
                 memo?: undefined;
                 invoice_type?: undefined;
                 line_items?: undefined;
@@ -397,6 +416,7 @@ export declare class NullPayMcpService {
                 wallet_preference?: undefined;
                 amount?: undefined;
                 currency?: undefined;
+                title?: undefined;
                 memo?: undefined;
                 invoice_type?: undefined;
                 wallet?: undefined;

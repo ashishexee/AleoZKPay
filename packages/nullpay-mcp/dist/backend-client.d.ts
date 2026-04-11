@@ -26,6 +26,7 @@ export declare class NullPayBackendClient {
         amount: number;
         currency: string;
         salt: string;
+        title?: string;
         memo?: string;
         invoice_type?: number;
     }): Promise<{
@@ -42,4 +43,12 @@ export declare class NullPayBackendClient {
         };
     }>;
     lookupCardWallet(cardNumberHash: string): Promise<CardWalletProfile | null>;
+    getOracleQuote(fromToken: string, toToken: string, amount: number): Promise<{
+        expected_amount: number;
+        amount_micro: string;
+        expires_at: number;
+        signature: string;
+        from_token: string;
+        to_token: string;
+    }>;
 }

@@ -61,6 +61,7 @@ export interface InvoiceRecord {
         unitPrice: number;
         total: number;
     }> | null;
+    allowed_tokens?: string[] | null;
     for_sdk?: boolean;
 }
 export interface SessionState {
@@ -87,6 +88,7 @@ export interface CreateInvoiceArgs {
     amount: number;
     currency?: Currency;
     memo?: string;
+    title?: string;
     invoice_type?: InvoiceType;
     wallet?: WalletPreference;
     line_items?: Array<{
@@ -95,6 +97,7 @@ export interface CreateInvoiceArgs {
         unitPrice: number;
         total: number;
     }>;
+    allowed_tokens?: string[];
 }
 export interface PayInvoiceArgs {
     payment_link?: string;

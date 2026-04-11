@@ -1,5 +1,6 @@
 import { Currency, InvoiceRecord, InvoiceStatusData, InvoiceType, ParsedOwnedInvoiceRecord } from './types';
-export declare const PROGRAM_ID = "zk_pay_proofs_privacy_v28.aleo";
+export declare const PROGRAM_ID = "zk_pay_proofs_privacy_v27.aleo";
+export declare const WALLET_PROGRAM_ID = "zk_pay_proofs_privacy_wallet_v4.aleo";
 export declare function generateSalt(): string;
 export declare function normalizeInvoiceHash(hash: string): string;
 export declare function getInvoiceHashFromMapping(salt: string): Promise<string | null>;
@@ -10,6 +11,7 @@ export declare function buildPaymentLink(baseUrl: string, args: {
     merchant: string;
     amount: number;
     salt: string;
+    title?: string;
     memo?: string;
     invoiceType: InvoiceType;
     currency: Currency;
@@ -19,6 +21,7 @@ export declare function createInvoiceDbRecord(args: {
     invoiceHash: string;
     merchantAddress: string;
     amount: number;
+    title?: string;
     memo?: string;
     invoiceType: InvoiceType;
     currency: Currency;
@@ -31,6 +34,7 @@ export declare function createInvoiceDbRecord(args: {
         unitPrice: number;
         total: number;
     }>;
+    allowedTokens?: string[];
     merchantAddressHash: string;
 }): {
     invoice_hash: string;
@@ -39,6 +43,7 @@ export declare function createInvoiceDbRecord(args: {
     merchant_address_hash: string;
     is_burner: boolean;
     amount: number;
+    title: string;
     memo: string;
     status: "PENDING";
     invoice_transaction_id: string;
@@ -51,6 +56,7 @@ export declare function createInvoiceDbRecord(args: {
         unitPrice: number;
         total: number;
     }[] | null;
+    allowed_tokens: string[] | null;
     for_sdk: boolean;
 };
 export interface ScannerSession {
@@ -91,6 +97,10 @@ export declare function createSponsoredPaymentAuthorization(args: {
     invoice: InvoiceRecord;
     amount?: number;
     currency?: Exclude<Currency, 'ANY'>;
+    payerCurrency?: Exclude<Currency, 'ANY'>;
+    quoteSignature?: string;
+    quoteExpiresAt?: number;
+    quoteConvertedMicro?: bigint;
 }): Promise<{
     authorization: string;
 }>;
