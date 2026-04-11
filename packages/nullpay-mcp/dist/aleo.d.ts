@@ -1,5 +1,5 @@
 import { Currency, InvoiceRecord, InvoiceStatusData, InvoiceType, ParsedOwnedInvoiceRecord } from './types';
-export declare const PROGRAM_ID = "zk_pay_proofs_privacy_v27.aleo";
+export declare const PROGRAM_ID = "zk_pay_proofs_privacy_v28.aleo";
 export declare const WALLET_PROGRAM_ID = "zk_pay_proofs_privacy_wallet_v4.aleo";
 export declare function generateSalt(): string;
 export declare function normalizeInvoiceHash(hash: string): string;
