@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
+import { Eye, EyeOff, KeyRound, LockKeyhole, Terminal } from 'lucide-react';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Button } from '../../../components/ui/Button';
 import { Shimmer } from '../../../components/ui/Shimmer';
@@ -19,6 +20,7 @@ interface CheckoutUIProps {
     error: string | null;
     publicKey: string | null | undefined;
     paymentStatus: string;
+    paymentStatusLog: string[];
     paymentLoading: boolean;
     txId: string | null;
     success: boolean;
@@ -38,6 +40,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     error,
     publicKey,
     paymentStatus,
+    paymentStatusLog,
     paymentLoading,
     success,
     onPay,
@@ -60,6 +63,8 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     const [cardNumber, setCardNumber] = useState<string>('');
     const [cardPin, setCardPin] = useState<string>('');
     const [cardSecret, setCardSecret] = useState<string>('');
+    const [showCardPin, setShowCardPin] = useState(false);
+    const [showCardSecret, setShowCardSecret] = useState(false);
     const [payerNote, setPayerNote] = useState('');
     const [shareMerchantNote, setShareMerchantNote] = useState(false);
     const [merchantNote, setMerchantNote] = useState('');
@@ -474,6 +479,29 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     </div>
                                 )}
 
+                                {paymentMethod === 'card' && paymentStatusLog.length > 0 && !success && (
+                                    <div className="rounded-xl border border-white/10 bg-black/30 p-4 animate-fade-in">
+                                        <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
+                                            <Terminal className="h-3.5 w-3.5" />
+                                            Live Card Updates
+                                        </div>
+                                        <div className="max-h-36 space-y-2 overflow-y-auto pr-1">
+                                            {paymentStatusLog.map((line, index) => {
+                                                const isErrorLine = line.startsWith('ERROR:');
+                                                return (
+                                                    <div
+                                                        key={`${line}-${index}`}
+                                                        className={`rounded-lg border px-3 py-2 font-mono text-[10px] leading-relaxed ${isErrorLine ? 'border-red-500/20 bg-red-500/5 text-red-300' : 'border-white/5 bg-white/[0.02] text-gray-400'}`}
+                                                    >
+                                                        <span className="mr-2 text-white/40">›</span>
+                                                        {line.replace(/^ERROR:\s*/, '')}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="grid grid-cols-3 bg-black/40 p-1 rounded-xl mb-6 border border-white/5 gap-1">
                                     <button
                                         onClick={() => setPaymentMethod('wallet')}
@@ -520,25 +548,37 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Card PIN</label>
-                                            <input
-                                                type="password"
-                                                inputMode="numeric"
-                                                maxLength={CARD_PIN_LENGTH}
-                                                value={cardPin}
-                                                onChange={(e) => setCardPin(e.target.value.replace(/\D/g, '').slice(0, CARD_PIN_LENGTH))}
-                                                placeholder="6-digit PIN"
-                                                className="w-full bg-black/40 border border-white/10 focus:border-white/50 outline-none rounded-xl text-sm text-white p-4 transition-colors tracking-[0.3em] text-center"
-                                            />
+                                            <div className="relative">
+                                                <input
+                                                    type={showCardPin ? 'text' : 'password'}
+                                                    inputMode="numeric"
+                                                    maxLength={CARD_PIN_LENGTH}
+                                                    value={cardPin}
+                                                    onChange={(e) => setCardPin(e.target.value.replace(/\D/g, '').slice(0, CARD_PIN_LENGTH))}
+                                                    placeholder="••••••"
+                                                    className="w-full rounded-xl border border-white/10 bg-black/30 px-10 py-3 text-center text-sm tracking-[0.28em] text-white outline-none transition-colors focus:border-white/20"
+                                                />
+                                                <LockKeyhole className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                                                <button type="button" onClick={() => setShowCardPin((current) => !current)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 transition-colors hover:text-white/70">
+                                                    {showCardPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </button>
+                                            </div>
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Card Secret</label>
-                                            <input
-                                                type="password"
-                                                value={cardSecret}
-                                                onChange={(e) => setCardSecret(e.target.value)}
-                                                placeholder="Longer card secret"
-                                                className="w-full bg-black/40 border border-white/10 focus:border-white/50 outline-none rounded-xl text-sm text-white p-4 transition-colors text-center"
-                                            />
+                                            <div className="relative">
+                                                <input
+                                                    type={showCardSecret ? 'text' : 'password'}
+                                                    value={cardSecret}
+                                                    onChange={(e) => setCardSecret(e.target.value)}
+                                                    placeholder="Card secret"
+                                                    className="w-full rounded-xl border border-white/10 bg-black/30 px-10 py-3 text-center text-sm text-white outline-none transition-colors focus:border-white/20"
+                                                />
+                                                <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                                                <button type="button" onClick={() => setShowCardSecret((current) => !current)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 transition-colors hover:text-white/70">
+                                                    {showCardSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </button>
+                                            </div>
                                         </div>
                                         <p className="text-xs text-gray-500 text-center">
                                             The card key is decrypted in-memory on this device, used to generate the payment authorization locally, and never sent to NullPay.

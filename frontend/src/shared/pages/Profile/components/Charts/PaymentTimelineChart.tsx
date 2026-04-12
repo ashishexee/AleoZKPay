@@ -182,12 +182,6 @@ function getBucketIndex(ts: number, range: Range, buckets: DataPoint[], timeZone
     return buckets.findIndex((bucket) => bucket.dateKey === dateKey);
 }
 
-function getDefaultZoomWindow(range: Range) {
-    if (range === '1D') return 16;
-    if (range === '1W') return 4;
-    return 10;
-}
-
 function getMinimumZoomWindow(range: Range) {
     if (range === '1D') return 6;
     if (range === '1W') return 3;
@@ -198,42 +192,6 @@ function canZoom(range: Range, pointCount: number) {
     return pointCount > getMinimumZoomWindow(range);
 }
 
-function getAutoZoomRange(data: DataPoint[], range: Range) {
-    if (!canZoom(range, data.length)) return null;
-
-    const activity = data.map((point) => point.credits + point.usdcx + point.usad);
-    const totalActivity = activity.reduce((sum, value) => sum + value, 0);
-    if (totalActivity <= 0) return null;
-
-    const windowSize = Math.min(getDefaultZoomWindow(range), data.length);
-    if (windowSize >= data.length) return null;
-
-    let bestStart = 0;
-    let currentSum = 0;
-    let bestSum = 0;
-
-    for (let index = 0; index < activity.length; index++) {
-        currentSum += activity[index];
-        if (index >= windowSize) {
-            currentSum -= activity[index - windowSize];
-        }
-
-        if (index >= windowSize - 1 && currentSum > bestSum) {
-            bestSum = currentSum;
-            bestStart = index - windowSize + 1;
-        }
-    }
-
-    const concentrationThreshold = range === '1D' ? 0.6 : 0.7;
-    if (bestSum / totalActivity < concentrationThreshold) {
-        return null;
-    }
-
-    return {
-        startIndex: bestStart,
-        endIndex: Math.min(data.length - 1, bestStart + windowSize - 1)
-    };
-}
 
 const CustomTooltip = ({ active, payload, label, filter }: any) => {
     if (!active || !payload || !payload.length) return null;
@@ -308,11 +266,9 @@ export const PaymentTimelineChart: React.FC<PaymentTimelineChartProps> = ({ rece
 
     const hasData = data.some((d) => d.credits > 0 || d.usdcx > 0 || d.usad > 0);
 
-    const autoZoomRange = useMemo(() => getAutoZoomRange(data, range), [data, range]);
-
     useEffect(() => {
-        setZoomRange(autoZoomRange);
-    }, [autoZoomRange]);
+        setZoomRange(null);
+    }, [range, timeZone, receipts, paymentTimestampsByTxId]);
 
     const visibleStartIndex = zoomRange?.startIndex ?? 0;
     const visibleEndIndex = zoomRange?.endIndex ?? Math.max(0, data.length - 1);

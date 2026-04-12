@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
+import { Callout } from '../ui';
 
 export const architectureOverviewSection: DocsSection = {
     id: 'arch-overview',
@@ -24,7 +25,7 @@ export const architectureOverviewSection: DocsSection = {
     summary:
         'NullPay is built on a modular four-layer architecture that separates sensitive ZK-proof generation from high-performance orchestration and on-chain settlement.',
     content: (
-        <div className="space-y-16">
+        <div className="space-y-6">
             {/* Layer 1: Core Protocol */}
             <section className="space-y-6">
                 <div className="flex items-center gap-3 border-b border-white/[0.05] pb-4">
@@ -37,21 +38,31 @@ export const architectureOverviewSection: DocsSection = {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-2 space-y-4">
                         <p className="text-sm text-gray-400 leading-relaxed">
-                            The foundation layer consists of optimized Leo circuits defining rules for payment validity, invoice settlement, and encrypted receipt generation.
+                            The foundation layer consists of optimized Leo circuits defining rules for payment validity, invoice settlement, and encrypted receipt generation. Two programs handle this:
                         </p>
-                        <div className="flex flex-wrap gap-2">
-                            <span className="px-2 py-0.5 rounded-md bg-orange-500/5 border border-orange-500/10 text-[10px] font-mono text-orange-300/70 uppercase tracking-wider">zk_pay_proofs_privacy_v28.aleo</span>
-                            <span className="px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.05] text-[10px] font-mono text-gray-400 uppercase tracking-wider">leolang v1.0</span>
+                        <div className="space-y-2">
+                            <div className="flex flex-wrap gap-2">
+                                <span className="px-2 py-0.5 rounded-md bg-orange-500/5 border border-orange-500/10 text-[10px] font-mono text-orange-300/70 uppercase tracking-wider">zk_pay_proofs_privacy_v28.aleo</span>
+                            </div>
+                            <p className="text-xs text-gray-500">Core payment program: invoice creation, payments, settlement</p>
+                            <div className="flex flex-wrap gap-2">
+                                <span className="px-2 py-0.5 rounded-md bg-orange-500/5 border border-orange-500/10 text-[10px] font-mono text-orange-300/70 uppercase tracking-wider">zk_pay_proofs_privacy_wallet_v5.aleo</span>
+                            </div>
+                            <p className="text-xs text-gray-500">Wallet helper: burner backup, card profiles, gift cards</p>
                         </div>
                     </div>
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 text-xs text-gray-300">
                             <FileCode2 className="w-3.5 h-3.5 text-orange-400/40" />
-                            <span>Private Receipts (ZK-Records)</span>
+                            <span>Invoice, PayerReceipt, MerchantReceipt</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-gray-300">
                             <Lock className="w-3.5 h-3.5 text-orange-400/40" />
-                            <span>BHP256 Deterministic Hashes</span>
+                            <span>BHP256 deterministic hashes</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-300">
+                            <Layers3 className="w-3.5 h-3.5 text-orange-400/40" />
+                            <span>credits, usdcx, usad tokens</span>
                         </div>
                     </div>
                 </div>
@@ -74,6 +85,11 @@ export const architectureOverviewSection: DocsSection = {
                         <p className="text-xs text-gray-500 leading-relaxed font-light">
                             Node.js nodes managing session lifecycles, gas sponsorship for gasless UX, and proof propagation to the Aleo L1 network.
                         </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">checkout.controller</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">invoices.controller</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">sdk.controller</span>
+                        </div>
                     </GlassCard>
                     <GlassCard className="p-6 border-white/[0.05] bg-white/[0.01] border-l-2 border-l-orange-500/10" hoverEffect={false}>
                         <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
@@ -82,6 +98,11 @@ export const architectureOverviewSection: DocsSection = {
                         <p className="text-xs text-gray-500 leading-relaxed font-light">
                             Private orchestration using Supabase. Minimal metadata storage; sensitive credentials remain isolated in secure local user sessions.
                         </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">supabase</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">users.controller</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">merchants.controller</span>
+                        </div>
                     </GlassCard>
                 </div>
             </section>
@@ -102,6 +123,10 @@ export const architectureOverviewSection: DocsSection = {
                             <div>
                                 <h4 className="text-white text-sm font-medium">Node.js SDK</h4>
                                 <p className="text-xs text-gray-500 mt-1 font-light leading-relaxed">Merchant-side library for automated invoice creation and settlement hooks.</p>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                    <span className="px-1.5 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">@nullpay/node</span>
+                                    <span className="px-1.5 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">webhooks</span>
+                                </div>
                             </div>
                         </div>
                         <div className="flex gap-4 group">
@@ -148,6 +173,30 @@ export const architectureOverviewSection: DocsSection = {
                     </div>
                 </div>
             </section>
+
+            <Callout title="Privacy Model" tone="blue">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div>
+                        <p className="text-xs font-semibold text-white mb-2">On-Chain (Private)</p>
+                        <ul className="text-xs text-gray-400 space-y-1">
+                            <li>• Invoice record (hashed details)</li>
+                            <li>• PayerReceipt (encrypted amount)</li>
+                            <li>• MerchantReceipt (encrypted amount)</li>
+                            <li>• Gift card records</li>
+                            <li>• Card profile records</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p className="text-xs font-semibold text-white mb-2">On-Chain (Public)</p>
+                        <ul className="text-xs text-gray-400 space-y-1">
+                            <li>• InvoiceData mapping (status, expiry)</li>
+                            <li>• salt_to_invoice (salt → hash)</li>
+                            <li>• oracle_address</li>
+                            <li>• Function signatures & fees</li>
+                        </ul>
+                    </div>
+                </div>
+            </Callout>
 
             <div className="pt-8 flex items-center justify-between border-t border-white/[0.05]">
                 <p className="text-xs text-gray-500 max-w-sm leading-relaxed">
