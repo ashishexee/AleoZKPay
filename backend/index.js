@@ -61,6 +61,7 @@ app.use('/api/telegram', telegramRoutes);
 app.use('/api/oracle', oracleRoutes);
 
 console.log('Backend initialized. (Relayer daemon removed, relayer is now on-demand)');
+console.log('Environment FRONTEND_URL is:', process.env.FRONTEND_URL);
 
 // Initialize Telegram Bot
 const { initBot } = require('./src/bot');
