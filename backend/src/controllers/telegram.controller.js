@@ -10,6 +10,7 @@ const {
     buildTelegramBotAppUrl,
     buildTelegramBotWebUrl
 } = require('../utils/telegram');
+const { TELEGRAM_WEBHOOK_SECRET } = require('../utils/constants');
 
 function handleTelegramError(res, error) {
     if (error instanceof TelegramServiceError) {
@@ -118,9 +119,33 @@ const unlinkTelegramAccount = async (req, res) => {
     }
 };
 
+const handleTelegramWebhook = async (req, res) => {
+    try {
+        if (TELEGRAM_WEBHOOK_SECRET) {
+            const headerSecret = String(req.get('x-telegram-bot-api-secret-token') || '').trim();
+            const paramSecret = String(req.params.secret || '').trim();
+            if (headerSecret !== TELEGRAM_WEBHOOK_SECRET || paramSecret !== TELEGRAM_WEBHOOK_SECRET) {
+                return res.status(403).json({ error: 'Invalid Telegram webhook secret.' });
+            }
+        }
+
+        const bot = getBotInstance();
+        if (!bot) {
+            return res.status(503).json({ error: 'Telegram bot is not initialized.' });
+        }
+
+        await bot.processUpdate(req.body);
+        return res.sendStatus(200);
+    } catch (error) {
+        console.error('Telegram webhook processing failed:', error);
+        return res.sendStatus(200);
+    }
+};
+
 module.exports = {
     createTelegramLinkSession,
     getTelegramLinkSession,
     completeTelegramLinkSession,
-    unlinkTelegramAccount
+    unlinkTelegramAccount,
+    handleTelegramWebhook
 };

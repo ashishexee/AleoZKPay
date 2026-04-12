@@ -8,24 +8,40 @@ const notificationsHandler = require('./handlers/notifications');
 const webappHandler = require('./handlers/webapp');
 const fallbackHandler = require('./handlers/fallback');
 const { startInvoiceNotificationWorker } = require('./notification-worker');
+const { BACKEND_URL, TELEGRAM_WEBHOOK_SECRET } = require('../utils/constants');
 
 let botInstance = null;
 
-const initBot = () => {
+function buildWebhookUrl() {
+    if (!BACKEND_URL) {
+        throw new Error('BACKEND_URL is required for Telegram webhook mode.');
+    }
+
+    const webhookPath = TELEGRAM_WEBHOOK_SECRET
+        ? `/api/telegram/webhook/${encodeURIComponent(TELEGRAM_WEBHOOK_SECRET)}`
+        : '/api/telegram/webhook';
+
+    return `${BACKEND_URL}${webhookPath}`;
+}
+
+const initBot = async () => {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token) {
         console.warn('⚠️ TELEGRAM_BOT_TOKEN not provided, skipping Telegram Bot initialization.');
         return null;
     }
 
+    if (botInstance) {
+        return botInstance;
+    }
+
     try {
         console.log('🤖 Initializing Telegram Bot...');
-        
-        // Use polling for ease of development/deployment in non-serverless environments
-        const bot = new TelegramBot(token, { polling: true });
+
+        const bot = new TelegramBot(token);
 
         // Initialize commands
-        bot.setMyCommands([
+        await bot.setMyCommands([
             { command: '/start', description: 'Start the bot' },
             { command: '/link', description: 'Link your merchant wallet securely' },
             { command: '/unlink', description: 'Remove the linked wallet' },
@@ -50,11 +66,17 @@ const initBot = () => {
         fallbackHandler(bot);
         startInvoiceNotificationWorker(bot);
 
+        const webhookUrl = buildWebhookUrl();
+        await bot.setWebHook(webhookUrl, TELEGRAM_WEBHOOK_SECRET
+            ? { secret_token: TELEGRAM_WEBHOOK_SECRET }
+            : undefined);
+
         botInstance = bot;
-        console.log('✅ Telegram Bot initialized successfully');
+        console.log(`✅ Telegram Bot initialized successfully in webhook mode: ${webhookUrl}`);
         return bot;
     } catch (err) {
         console.error('❌ Failed to initialize Telegram Bot:', err);
+        return null;
     }
 };
 
