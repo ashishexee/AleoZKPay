@@ -11,7 +11,7 @@ import { FEE_PREFERENCE_EVENT, FIXED_FEE_MICROCREDITS, FeePreferenceMode, getFee
 
 const ProfileQrNavButton = () => {
     const { address } = useWallet();
-    const { burnerAddress } = useBurnerWallet();
+    const { burnerAddress, decryptedBurnerAddress } = useBurnerWallet();
     const { initialized, loading, status, mainHash, mainSalt, burnerHash, burnerSalt } = useProfileQR();
     const [walletMode, setWalletMode] = useState<'main' | 'burner'>('main');
     const [feeMode, setFeeMode] = useState<FeePreferenceMode>(() => getFeePreferenceMode());
@@ -74,7 +74,7 @@ const ProfileQrNavButton = () => {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
     const activeHash = walletMode === 'burner' ? burnerHash : mainHash;
     const activeSalt = walletMode === 'burner' ? burnerSalt : mainSalt;
-    const activeAddress = walletMode === 'burner' ? burnerAddress : address;
+    const activeAddress = walletMode === 'burner' ? decryptedBurnerAddress : address;
     const paymentLink = activeHash
         ? activeSalt && activeAddress
             ? `${baseUrl}/pay?merchant=${activeAddress}&salt=${activeSalt}&hash=${activeHash}`
