@@ -142,8 +142,12 @@ const getSession = async (req, res) => {
             return res.status(404).json({ error: 'Checkout session not found.' });
         }
 
-        if (intent.merchants && intent.merchants.encrypted_aleo_address) {
-            intent.merchants.aleo_address = intent.merchants.encrypted_aleo_address;
+        const resolvedMerchantAddress = intent.merchants?.encrypted_aleo_address
+            ? readMerchantStoredValue(intent.merchants.encrypted_aleo_address)
+            : null;
+
+        if (intent.merchants && resolvedMerchantAddress) {
+            intent.merchants.aleo_address = resolvedMerchantAddress;
         }
 
         let allowedTokens = null;
@@ -167,7 +171,7 @@ const getSession = async (req, res) => {
             success_url: intent.success_url || null,
             cancel_url: intent.cancel_url || null,
             merchant_name: intent.merchants ? intent.merchants.name : 'Unknown Merchant',
-            merchant_address: intent.merchants ? intent.merchants.encrypted_aleo_address : null,
+            merchant_address: resolvedMerchantAddress,
             allowed_tokens: allowedTokens
         };
 

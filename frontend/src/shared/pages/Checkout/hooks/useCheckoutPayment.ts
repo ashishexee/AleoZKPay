@@ -262,6 +262,11 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 throw new Error("Merchant address is missing from session details.");
             }
 
+            const normalizedMerchantAddress = normalizeAleoAddress(session.merchant_address);
+            if (!normalizedMerchantAddress || !(await isValidAleoAddress(normalizedMerchantAddress))) {
+                throw new Error('Merchant address in checkout session is invalid. Refresh the page and try again.');
+            }
+
             let inputs: any[];
 
             if (isCrossToken && quoteOverride) {
@@ -274,7 +279,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
 
                 inputs = [
                     payRecord.plaintext || payRecord.ciphertext || payRecord,
-                    session.merchant_address,
+                    normalizedMerchantAddress,
                     publicKey,
                     `${originalAmountMicro}${baseTypeSuffix}`,  // original_amount (for hash)
                     `${amountMicro}${typeSuffix}`,              // converted_amount (actual transfer)
@@ -295,7 +300,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 // Same-token input order (existing)
                 inputs = [
                     payRecord.plaintext || payRecord.ciphertext || payRecord,
-                    session.merchant_address,
+                    normalizedMerchantAddress,
                     publicKey,
                     `${amountMicro}${typeSuffix}`,
                     session.salt,
