@@ -10,6 +10,7 @@ import GiftCardsPage from '../shared/pages/GiftCards';
 import TelegramLinkPage from '../shared/pages/TelegramLink';
 import TelegramBotPage from '../shared/pages/TelegramBot';
 import AuditVerifyPage from '../shared/pages/AuditVerify';
+import SupportFeedbackPage from '../shared/pages/SupportFeedback';
 import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 
 const MobileAnimatedRoutes = () => {
@@ -30,6 +31,7 @@ const MobileAnimatedRoutes = () => {
                 <Route path="/audit/verify" element={<AuditVerifyPage />} />
                 <Route path="/checkout/:id" element={<CheckoutPage />} />
                 <Route path="/invoice/:hash" element={<InvoiceDetails />} />
+                <Route path="/support-feedback" element={<ProtectedRoute><SupportFeedbackPage /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/create" replace />} />
             </Routes>
         </AnimatePresence>

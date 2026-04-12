@@ -292,7 +292,7 @@ const ProfileQrNavButton = () => {
                                 duration: 0.45,
                                 ease: [0.16, 1, 0.3, 1], // fluid easeOutQuart
                             }}
-                            className="absolute right-0 top-full z-50 mt-3 w-[260px] overflow-hidden rounded-[24px] border border-white/[0.1] bg-[#0A0A0A]/95 p-1.5 backdrop-blur-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] origin-top-right"
+                            className="absolute right-0 top-full z-50 mt-3 w-[320px] overflow-hidden rounded-[24px] border border-white/[0.1] bg-[#0A0A0A]/95 p-1.5 backdrop-blur-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] origin-top-right"
                         >
                             <div className="rounded-[20px] bg-white/[0.03] p-4">
                                 <div className="space-y-4 text-left">
@@ -329,6 +329,24 @@ const ProfileQrNavButton = () => {
                                                 ? 'Live fee estimation is active with a safety buffer.'
                                                 : `Fixed fee: ${(FIXED_FEE_MICROCREDITS / 1_000_000).toFixed(2)} credits per transaction.`}
                                         </p>
+                                    </div>
+
+                                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.04] p-3.5">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="text-[15px] font-semibold text-white">Register Complaint / Feedback</p>
+                                                <p className="mt-1 text-[12px] leading-5 text-white/60">
+                                                    Open the support page to send your issue or product feedback and receive a confirmation email.
+                                                </p>
+                                            </div>
+                                            <Link
+                                                to="/support-feedback"
+                                                onClick={() => setSettingsOpen(false)}
+                                                className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70 transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                                            >
+                                                Open
+                                            </Link>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
