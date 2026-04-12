@@ -10,7 +10,7 @@ import { encryptWithPassword, hashAddress } from '../utils/crypto';
 
 export const useProfileQR = () => {
     const { address, executeTransaction, transactionStatus } = useWallet();
-    const { burnerAddress, appPassword, userProfileMainAddress } = useBurnerWallet();
+    const { burnerAddress, decryptedBurnerAddress, appPassword, userProfileMainAddress } = useBurnerWallet();
     const { setGuard, clearGuard } = useLeaveGuard();
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('');
@@ -52,9 +52,10 @@ export const useProfileQR = () => {
     const generateSingleInvoice = async (isBurner: boolean): Promise<{ hash: string, salt: string }> => {
         if (!address || !executeTransaction) throw new Error("Wallet not connected");
         if (!appPassword) throw new Error("Please enter your password to unlock the application.");
+        if (isBurner && !decryptedBurnerAddress) throw new Error('Burner wallet is not unlocked yet. Unlock it first, then try again.');
 
         const salt = generateSalt();
-        const merchantAddress = isBurner && burnerAddress ? burnerAddress : address;
+        const merchantAddress = isBurner ? decryptedBurnerAddress! : address;
         
         const typeInput = '2u8';
         const amountInput = '0u128';
@@ -232,7 +233,7 @@ export const useProfileQR = () => {
             }
             
             let newBurnerHash = burnerHash;
-            if (!newBurnerHash && burnerAddress) {
+            if (!newBurnerHash && decryptedBurnerAddress) {
                 setStatus("Please approve the Burner Wallet invoice creation...");
                 const res = await generateSingleInvoice(true);
                 newBurnerHash = res.hash;

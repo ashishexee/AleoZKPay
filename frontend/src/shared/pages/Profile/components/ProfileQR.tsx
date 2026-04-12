@@ -20,13 +20,14 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
     const { address } = useWallet();
     const { initialized, loading, status, mainHash, mainSalt, burnerHash, burnerSalt, initializeQRs } = useProfileQR();
     const { unifiedPayments } = useProfilePayments(mainHash, burnerHash, initialMainReceipts, initialBurnerReceipts);
-    const { burnerAddress } = useBurnerWallet();
+    const { burnerAddress, decryptedBurnerAddress } = useBurnerWallet();
     const [qrType, setQrType] = useState<'direct' | 'private'>('direct');
 
-    const hasBurner = !!burnerAddress && !!burnerHash;
-    const activeHash = qrType === 'private' && hasBurner ? burnerHash : mainHash;
-    const activeSalt = qrType === 'private' && hasBurner ? burnerSalt : mainSalt;
-    const activeMerchant = qrType === 'private' && hasBurner ? burnerAddress : address;
+    const hasBurnerWallet = !!burnerAddress;
+    const hasBurnerQr = !!burnerHash && !!burnerSalt && !!decryptedBurnerAddress;
+    const activeHash = qrType === 'private' ? burnerHash : mainHash;
+    const activeSalt = qrType === 'private' ? burnerSalt : mainSalt;
+    const activeMerchant = qrType === 'private' ? decryptedBurnerAddress : address;
 
     // The payment link logic
     const baseUrl = window.location.origin;
@@ -94,7 +95,7 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
                 {status && <p className="text-red-400 text-sm bg-red-900/20 px-4 py-2 rounded-lg">{status}</p>}
                 <div className="flex justify-center w-full mt-6">
                     <Button variant="primary" glow onClick={initializeQRs} disabled={loading} className="px-8 min-w-[200px]">
-                        Initialize QR Codes
+                        {loading ? 'Opening Wallet...' : 'Initialize QR Codes'}
                     </Button>
                 </div>
             </GlassCard>
@@ -113,21 +114,19 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
                 </button>
                 <button
                     onClick={() => {
-                        if (hasBurner) {
+                        if (hasBurnerQr) {
                             setQrType('private');
                         } else if (burnerAddress && !burnerHash) {
                             setQrType('private');
-                            // Auto trigger Burner QR creation since they haven't generated it yet
-                            initializeQRs();
                         } else {
                             toast.error('Enable Burner Wallet in settings first!');
                         }
                     }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold uppercase tracking-wider rounded-full transition-all duration-300 ${qrType === 'private' ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'text-gray-400 hover:text-white'
-                        } ${(!hasBurner && !burnerAddress) && 'opacity-50 cursor-not-allowed'}`}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold uppercase tracking-wider rounded-full transition-all duration-300 ${qrType === 'private' ? 'bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.4)]' : 'text-gray-400 hover:text-white'
+                        } ${(!hasBurnerWallet) && 'opacity-50 cursor-not-allowed'}`}
                 >
                     Private
-                    {(!hasBurner && !burnerAddress) && (
+                    {(!hasBurnerWallet) && (
                         <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
@@ -135,50 +134,95 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
                 </button>
             </div>
 
-            <motion.div
-                key={qrType}
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className="flex justify-center mb-8 relative z-10"
-            >
-                {loading && !activeHash ? (
-                    <div className="p-8 w-[220px] h-[220px] bg-white/5 flex flex-col items-center justify-center rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] text-center">
-                        <div className="w-8 h-8 border-t-2 border-neon-primary border-solid rounded-full animate-spin mb-4"></div>
-                        <p className="text-neon-primary text-xs font-bold animate-pulse">{status || 'Initializing...'}</p>
+            {qrType === 'private' && !hasBurnerQr ? (
+                <div className="flex flex-col items-center justify-center space-y-8 py-6 px-4 w-full max-w-sm relative z-10">
+                    <div className="w-20 h-20 rounded-full bg-orange-500/20 flex items-center justify-center shadow-[0_0_30px_rgba(249,115,22,0.2)] animate-pulse">
+                        <svg className="w-10 h-10 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
                     </div>
-                ) : activeHash ? (
-                    <div className="p-4 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                        <QRCodeSVG value={paymentLink} size={220} level="H" includeMargin={false} />
+                    <div className="text-center space-y-2">
+                        <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+                            Initialize Private QR
+                        </h3>
+                        <p className="text-sm text-gray-400 leading-relaxed max-w-[280px] mx-auto">
+                            Receive fully private, end-to-end encrypted payments into your Shielded Burner Wallet.
+                            One-time setup for permanent privacy.
+                        </p>
                     </div>
-                ) : (
-                    <div className="w-[220px] h-[220px] bg-gray-100 flex items-center justify-center rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                        <Shimmer className="w-full h-full" />
+                    <div className="w-full pt-4 space-y-4">
+                        <Button
+                            variant="primary"
+                            glow
+                            onClick={initializeQRs}
+                            disabled={loading || !decryptedBurnerAddress}
+                            className="w-full py-4 text-md font-bold shadow-lg shadow-orange-500/20"
+                        >
+                            {loading 
+                                ? 'Opening Wallet...' 
+                                : decryptedBurnerAddress 
+                                    ? 'Initialize Private QR' 
+                                    : 'Unlock Burner Wallet First'}
+                        </Button>
+                        <div className="flex items-center justify-center gap-2 py-2 px-4 bg-white/5 rounded-lg border border-white/5">
+                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                                Zero-Knowledge Secured
+                            </span>
+                        </div>
                     </div>
-                )}
-            </motion.div>
+                </div>
+            ) : (
+                <>
+                    <motion.div
+                        key={qrType}
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        className="flex justify-center mb-8 relative z-10"
+                    >
+                        {loading && !activeHash ? (
+                            <div className="p-8 w-[220px] h-[220px] bg-white/5 flex flex-col items-center justify-center rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] text-center">
+                                <div className="w-8 h-8 border-t-2 border-neon-primary border-solid rounded-full animate-spin mb-4"></div>
+                                <p className="text-neon-primary text-xs font-bold animate-pulse">{status || 'Initializing...'}</p>
+                            </div>
+                        ) : activeHash ? (
+                            <div className="p-4 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                <QRCodeSVG value={paymentLink} size={220} level="H" includeMargin={false} />
+                            </div>
+                        ) : (
+                            <div className="w-[220px] h-[220px] bg-gray-100 flex items-center justify-center rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                <Shimmer className="w-full h-full" />
+                            </div>
+                        )}
+                    </motion.div>
 
-            <div className="mt-8 space-y-3 w-full max-w-sm relative z-10">
-                <button
-                    onClick={handleCopy}
-                    className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex items-center justify-between transition-colors group"
-                >
-                    <span className="text-sm font-mono text-gray-400 group-hover:text-white truncate pr-4">
-                        {paymentLink}
-                    </span>
-                    <svg className="w-5 h-5 text-gray-500 group-hover:text-neon-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 01-2-2v-8a2 2 0 01-2-2h-8a2 2 0 01-2 2v8a2 2 0 012 2z" />
-                    </svg>
-                </button>
-                <p className="text-xs text-gray-500">
-                    {qrType === 'direct'
-                        ? 'Payments sent here are visible through standard receipts.'
-                        : 'Payments sent here are fully private and only decryptable by your burner wallet.'}
-                </p>
-            </div>
+                    <div className="mt-8 space-y-3 w-full max-w-sm relative z-10">
+                        <button
+                            onClick={handleCopy}
+                            className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex items-center justify-between transition-colors group"
+                            disabled={!paymentLink}
+                        >
+                            <span className="text-sm font-mono text-gray-400 group-hover:text-white truncate pr-4">
+                                {paymentLink}
+                            </span>
+                            <svg className="w-5 h-5 text-gray-500 group-hover:text-neon-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 01-2-2v-8a2 2 0 01-2-2h-8a2 2 0 01-2 2v8a2 2 0 012 2z" />
+                            </svg>
+                        </button>
+                        <p className="text-xs text-gray-500">
+                            {qrType === 'direct'
+                                ? 'Payments sent here are visible through standard receipts.'
+                                : hasBurnerQr
+                                    ? 'Payments sent here are fully private and only decryptable by your burner wallet.'
+                                    : 'Create your burner QR to receive fully private payments.'}
+                        </p>
+                    </div>
+                </>
+            )}
 
             {/* Background glowing effects based on selection */}
-            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full blur-[100px] opacity-20 pointer-events-none transition-colors duration-500 z-0 ${qrType === 'private' ? 'bg-purple-500' : 'bg-neon-primary'
+            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full blur-[100px] opacity-20 pointer-events-none transition-colors duration-500 z-0 ${qrType === 'private' ? 'bg-orange-600' : 'bg-neon-primary'
                 }`} />
 
             {/* LIVE FEED SUB-SECTION */}
@@ -198,7 +242,7 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
                         unifiedPayments.map((payment, idx) => (
                             <div key={payment.receiptHash || idx} className="flex items-center justify-between bg-white/5 border border-white/5 rounded-xl p-3 hover:bg-white/10 transition-colors">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${payment.type === 'burner' ? 'bg-purple-500/20 text-purple-400' : 'bg-neon-primary/20 text-neon-primary'
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${payment.type === 'burner' ? 'bg-orange-500/20 text-orange-400' : 'bg-neon-primary/20 text-neon-primary'
                                         }`}>
                                         {payment.type === 'burner' ? (
                                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
