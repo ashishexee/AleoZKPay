@@ -524,6 +524,9 @@ function validateTelegramInvoiceDraft(draft) {
     const currency = String(draft.currency || 'CREDITS').toUpperCase();
     const title = normalizeSingleFieldString(draft.title, 'Invoice title');
     const memo = normalizeSingleFieldString(draft.memo, 'Invoice memo');
+    const baseToken = currency;
+    const allowedTokensInput = Array.isArray(draft.allowedTokens) ? draft.allowedTokens : [baseToken];
+    const allowedTokens = Array.from(new Set(allowedTokensInput.map((token) => String(token || '').toUpperCase()).filter(Boolean)));
     const amount = draft.amount === undefined || draft.amount === null || draft.amount === ''
         ? null
         : Number(draft.amount);
@@ -540,6 +543,14 @@ function validateTelegramInvoiceDraft(draft) {
         throw new TelegramServiceError('ANY token mode is only available for donation invoices.', 400);
     }
 
+    if (allowedTokens.some((token) => !['CREDITS', 'USDCX', 'USAD'].includes(token))) {
+        throw new TelegramServiceError('Unsupported allowed token selection.', 400);
+    }
+
+    if (currency !== 'ANY' && !allowedTokens.includes(baseToken)) {
+        throw new TelegramServiceError('The base invoice token must be included in allowed tokens.', 400);
+    }
+
     if (invoiceType !== 'donation' && (!Number.isFinite(amount) || amount <= 0)) {
         throw new TelegramServiceError('A positive amount is required for this invoice type.', 400);
     }
@@ -549,7 +560,8 @@ function validateTelegramInvoiceDraft(draft) {
         currency,
         title,
         memo,
-        amount: invoiceType === 'donation' ? 0 : Number(amount)
+        amount: invoiceType === 'donation' ? 0 : Number(amount),
+        allowedTokens: currency === 'ANY' ? ['CREDITS', 'USDCX', 'USAD'] : allowedTokens
     };
 }
 
@@ -590,6 +602,7 @@ async function createTelegramInvoice(user, draft) {
         salt,
         invoice_type: invoiceTypeNumber,
         token_type: tokenCodeToNumber(normalizedDraft.currency),
+        allowed_tokens: normalizedDraft.allowedTokens,
         for_sdk: false,
         created_at: now,
         updated_at: now
@@ -610,7 +623,8 @@ async function createTelegramInvoice(user, draft) {
         title: normalizedDraft.title,
         memo: normalizedDraft.memo,
         invoiceType: normalizedDraft.invoiceType,
-        currency: normalizedDraft.currency
+        currency: normalizedDraft.currency,
+        allowedTokens: normalizedDraft.allowedTokens
     });
 
     return {

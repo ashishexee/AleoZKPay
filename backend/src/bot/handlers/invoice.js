@@ -20,6 +20,7 @@ const {
 } = require('../utils');
 
 const userStates = new Map();
+const SUPPORTED_TOKENS = ['CREDITS', 'USDCX', 'USAD'];
 
 function setState(chatId, nextState) {
     userStates.set(chatId, nextState);
@@ -55,6 +56,97 @@ function parseTokenCallback(data, fallbackInvoiceType = null) {
     return fallbackInvoiceType
         ? { invoiceType: fallbackInvoiceType, currency: payload }
         : null;
+}
+
+function getBaseToken(currency) {
+    return String(currency || 'CREDITS').toUpperCase();
+}
+
+function getAllowedTokensForDraft(state) {
+    const baseToken = getBaseToken(state.currency);
+    const selected = Array.isArray(state.allowedTokens) ? state.allowedTokens : [baseToken];
+    return Array.from(new Set([baseToken, ...selected.filter((token) => SUPPORTED_TOKENS.includes(token))]));
+}
+
+function hasOracleSelection(state) {
+    const baseToken = getBaseToken(state.currency);
+    return getAllowedTokensForDraft(state).some((token) => token !== baseToken);
+}
+
+async function sendOraclePrompt(bot, chatId, state) {
+    const baseToken = getBaseToken(state.currency);
+    await bot.sendMessage(
+        chatId,
+        `Do you want to allow oracle-based conversion for this invoice?\n\nBase token: ${baseToken}\nIf enabled, payers can choose another supported token and NullPay will apply the live oracle conversion during payment.`,
+        {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: 'Base Token Only', callback_data: 'CREATE_ORACLE_OFF' },
+                        { text: 'Allow Other Tokens', callback_data: 'CREATE_ORACLE_ON' }
+                    ],
+                    [
+                        { text: 'Cancel', callback_data: 'CREATE_CANCEL' }
+                    ]
+                ]
+            }
+        }
+    );
+}
+
+async function sendAllowedTokensPrompt(bot, chatId, state) {
+    const baseToken = getBaseToken(state.currency);
+    const allowedTokens = getAllowedTokensForDraft(state);
+    const alternativeCount = allowedTokens.filter((token) => token !== baseToken).length;
+    const rows = SUPPORTED_TOKENS.map((token) => {
+        const isBaseToken = token === baseToken;
+        const isSelected = allowedTokens.includes(token);
+        const prefix = isBaseToken ? 'Base' : isSelected ? 'On' : 'Off';
+        return [{
+            text: `${prefix} · ${token}`,
+            callback_data: isBaseToken ? 'CREATE_ALLOWED_BASE' : `CREATE_ALLOWED_TOGGLE_${token}`
+        }];
+    });
+
+    rows.push([
+        { text: alternativeCount > 0 ? 'Continue' : 'Use Base Only', callback_data: 'CREATE_ALLOWED_DONE' },
+        { text: 'Cancel', callback_data: 'CREATE_CANCEL' }
+    ]);
+
+    await bot.sendMessage(
+        chatId,
+        `Select which currencies payers may use.\n\nBase token: ${baseToken}\nSelected: ${allowedTokens.join(', ')}\n\nThe base token is always included. Toggle the other supported tokens below, then continue.`,
+        {
+            reply_markup: {
+                inline_keyboard: rows
+            }
+        }
+    );
+}
+
+async function advanceAfterTokenSelection(bot, chatId, state) {
+    if (state.currency === 'ANY') {
+        state.allowedTokens = [...SUPPORTED_TOKENS];
+        state.step = state.invoiceType === 'donation' ? 'title' : 'amount';
+        setState(chatId, state);
+
+        if (state.invoiceType === 'donation') {
+            await bot.sendMessage(chatId, 'Add an optional invoice title to share with the payer, or send `skip`.', {
+                parse_mode: 'Markdown'
+            });
+            return;
+        }
+
+        await bot.sendMessage(chatId, 'Enter the amount you want to charge, for example `12.5`.', {
+            parse_mode: 'Markdown'
+        });
+        return;
+    }
+
+    state.allowedTokens = [getBaseToken(state.currency)];
+    state.step = 'oracle';
+    setState(chatId, state);
+    await sendOraclePrompt(bot, chatId, state);
 }
 
 function buildInvoiceActionRows(invoice, options = {}) {
@@ -128,6 +220,7 @@ async function sendTokenPrompt(bot, chatId, invoiceType) {
 }
 
 function buildDraftSummary(state) {
+    const allowedTokens = getAllowedTokensForDraft(state);
     const lines = [
         `Type: ${formatInvoiceTypeLabel(state.invoiceType === 'multipay' ? 1 : state.invoiceType === 'donation' ? 2 : 0)}`,
         `Token: ${state.currency}`
@@ -135,6 +228,8 @@ function buildDraftSummary(state) {
 
     if (state.currency === 'ANY') {
         lines.push(`Allowed Tokens: CREDITS, USDCX, USAD`);
+    } else if (hasOracleSelection(state)) {
+        lines.push(`Allowed Tokens: ${allowedTokens.join(', ')}`);
     }
 
     if (state.invoiceType !== 'donation') {
@@ -354,6 +449,7 @@ module.exports = (bot) => {
             amount: null,
             title: '',
             memo: '',
+            allowedTokens: ['CREDITS'],
             step: null,
             user
         });
@@ -559,16 +655,17 @@ module.exports = (bot) => {
                 if (!state || state.mode !== 'create') {
                     const user = await requireAuth(bot, syntheticMsg);
                     if (!user) return;
-                    state = {
-                        mode: 'create',
-                        invoiceType: null,
-                        currency: null,
-                        amount: null,
-                        title: '',
-                        memo: '',
-                        step: null,
-                        user
-                    };
+                        state = {
+                            mode: 'create',
+                            invoiceType: null,
+                            currency: null,
+                            amount: null,
+                            title: '',
+                            memo: '',
+                            allowedTokens: ['CREDITS'],
+                            step: null,
+                            user
+                        };
                 }
 
                 state.invoiceType = data.replace('CREATE_TYPE_', '');
@@ -576,6 +673,7 @@ module.exports = (bot) => {
                 state.amount = null;
                 state.title = '';
                 state.memo = '';
+                state.allowedTokens = ['CREDITS'];
                 state.step = null;
                 setState(chatId, state);
                 await bot.answerCallbackQuery(query.id);
@@ -593,39 +691,116 @@ module.exports = (bot) => {
                 if (!state || state.mode !== 'create') {
                     const user = await requireAuth(bot, syntheticMsg);
                     if (!user) return;
-                    state = {
-                        mode: 'create',
-                        invoiceType: parsedToken.invoiceType,
-                        currency: null,
-                        amount: null,
-                        title: '',
-                        memo: '',
-                        step: null,
-                        user
-                    };
+                        state = {
+                            mode: 'create',
+                            invoiceType: parsedToken.invoiceType,
+                            currency: null,
+                            amount: null,
+                            title: '',
+                            memo: '',
+                            allowedTokens: [parsedToken.currency],
+                            step: null,
+                            user
+                        };
                 }
 
                 state.invoiceType = parsedToken.invoiceType;
                 state.currency = parsedToken.currency;
                 state.title = '';
                 state.memo = '';
+                state.allowedTokens = [parsedToken.currency];
                 setState(chatId, state);
                 await bot.answerCallbackQuery(query.id);
+                await advanceAfterTokenSelection(bot, chatId, state);
+                return;
+            }
 
-                if (state.invoiceType === 'donation') {
-                    state.step = 'title';
-                    setState(chatId, state);
-                    await bot.sendMessage(chatId, 'Add an optional invoice title to share with the payer, or send `skip`.', {
-                        parse_mode: 'Markdown'
-                    });
+            if (data === 'CREATE_ORACLE_OFF') {
+                if (!state || state.mode !== 'create' || !state.currency) {
+                    await bot.answerCallbackQuery(query.id, { text: 'This invoice draft expired. Use /create again.' });
                     return;
                 }
 
-                state.step = 'amount';
+                state.allowedTokens = [getBaseToken(state.currency)];
+                state.step = state.invoiceType === 'donation' ? 'title' : 'amount';
                 setState(chatId, state);
-                await bot.sendMessage(chatId, 'Enter the amount you want to charge, for example `12.5`.', {
-                    parse_mode: 'Markdown'
-                });
+                await bot.answerCallbackQuery(query.id, { text: 'Base token only selected.' });
+
+                if (state.invoiceType === 'donation') {
+                    await bot.sendMessage(chatId, 'Add an optional invoice title to share with the payer, or send `skip`.', {
+                        parse_mode: 'Markdown'
+                    });
+                } else {
+                    await bot.sendMessage(chatId, 'Enter the amount you want to charge, for example `12.5`.', {
+                        parse_mode: 'Markdown'
+                    });
+                }
+                return;
+            }
+
+            if (data === 'CREATE_ORACLE_ON') {
+                if (!state || state.mode !== 'create' || !state.currency) {
+                    await bot.answerCallbackQuery(query.id, { text: 'This invoice draft expired. Use /create again.' });
+                    return;
+                }
+
+                state.step = 'allowed_tokens';
+                state.allowedTokens = [getBaseToken(state.currency)];
+                setState(chatId, state);
+                await bot.answerCallbackQuery(query.id, { text: 'Choose accepted currencies.' });
+                await sendAllowedTokensPrompt(bot, chatId, state);
+                return;
+            }
+
+            if (data === 'CREATE_ALLOWED_BASE') {
+                await bot.answerCallbackQuery(query.id, { text: 'The base token is always required.' });
+                return;
+            }
+
+            if (data.startsWith('CREATE_ALLOWED_TOGGLE_')) {
+                if (!state || state.mode !== 'create' || !state.currency) {
+                    await bot.answerCallbackQuery(query.id, { text: 'This invoice draft expired. Use /create again.' });
+                    return;
+                }
+
+                const token = data.replace('CREATE_ALLOWED_TOGGLE_', '').toUpperCase();
+                const baseToken = getBaseToken(state.currency);
+                if (!SUPPORTED_TOKENS.includes(token) || token === baseToken) {
+                    await bot.answerCallbackQuery(query.id, { text: 'That token cannot be toggled here.' });
+                    return;
+                }
+
+                const current = getAllowedTokensForDraft(state).filter((entry) => entry !== baseToken);
+                state.allowedTokens = current.includes(token)
+                    ? [baseToken, ...current.filter((entry) => entry !== token)]
+                    : [baseToken, ...current, token];
+                state.step = 'allowed_tokens';
+                setState(chatId, state);
+                await bot.answerCallbackQuery(query.id, { text: `${token} ${current.includes(token) ? 'removed' : 'added'}.` });
+                await sendAllowedTokensPrompt(bot, chatId, state);
+                return;
+            }
+
+            if (data === 'CREATE_ALLOWED_DONE') {
+                if (!state || state.mode !== 'create' || !state.currency) {
+                    await bot.answerCallbackQuery(query.id, { text: 'This invoice draft expired. Use /create again.' });
+                    return;
+                }
+
+                state.allowedTokens = getAllowedTokensForDraft(state);
+                state.step = state.invoiceType === 'donation' ? 'title' : 'amount';
+                setState(chatId, state);
+                await bot.answerCallbackQuery(query.id, { text: 'Accepted currencies saved.' });
+
+                if (state.invoiceType === 'donation') {
+                    await bot.sendMessage(chatId, 'Add an optional invoice title to share with the payer, or send `skip`.', {
+                        parse_mode: 'Markdown'
+                    });
+                } else {
+                    await bot.sendMessage(chatId, 'Enter the amount you want to charge, for example `12.5`.', {
+                        parse_mode: 'Markdown'
+                    });
+                }
                 return;
             }
 
