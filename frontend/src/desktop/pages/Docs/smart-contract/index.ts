@@ -6,6 +6,7 @@ import { mappingsSection } from './mappings';
 import { cryptographySection } from './cryptography';
 import { creationFunctionsSection } from './creation-functions';
 import { paymentFunctionsSection } from './payment-functions';
+import { oracleSection } from './oracle';
 import { settlementFunctionsSection } from './settlement-functions';
 import { functionsSection } from './functions';
 import { creditsSection } from './credits';
@@ -20,6 +21,7 @@ export const smartContractSections: DocsSection[] = [
     cryptographySection,
     creationFunctionsSection,
     paymentFunctionsSection,
+    oracleSection,
     settlementFunctionsSection,
     functionsSection,
     creditsSection,

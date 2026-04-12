@@ -16,6 +16,30 @@ NullPay is a decentralized invoice and payment system that leverages Aleo's zero
 
 ---
 
+## 🚀 What's New in Wave 5 (April 2026)
+
+This major update introduces cross-token liquidity via ZK-Oracles, enterprise-grade batching, and the revolutionary NullPay Card.
+
+### 🔮 ZK-Oracle & Multi-Token Liquidity
+- **Live Price Conversion**: Pay any invoice using your preferred token (Credits, USDCx, USAD). The protocol uses a live backend oracle and on-chain ZK-proofs to verify exchange rates during the payment transition.
+- **Oracle Verification**: Quotes are signed by a trusted feed and verified on-chain via `BHP256` hashing and native signature verification.
+
+### 💳 NullPay Card & Selective Disclosure
+- **NullPay Card**: Pay without a browser wallet. Use a physical-style card flow with a PIN and Secret for seamless, private payments.
+- **Selective Disclosure & Auditing**: Generate cryptographic audit reports for Credits. Auditing centers allow auditors to verify report correctness without revealing the entire wallet history.
+
+### 📦 Enterprise Batching & Bots
+- **Batch Payments**: Settle multiple invoices in a single execution using either the local Burner Wallet or contract-centered batching logic.
+- **Telegram Bot & OpenClaw**: Access NullPay via Telegram or 50+ messaging applications through the OpenClaw/MCP integration.
+- **MCP Expansion**: Support for Antigravity, Codex, Cursor, and Windsurf IDEs.
+
+### 📊 Dashboard & UI Evolution
+- **Advanced Metrics**: Real-time earnings display and payment timelines (Days/Weeks/Months) for accurate merchant tracking.
+- **Deep Search**: Search engine improved to filter by Invoice Hash, Salt, Memo, Merchant Notes, and Title.
+- **Fee Estimation**: Toggleable frontend fee estimation to preview gas costs before execution.
+
+---
+
 ## 🚀 What's New in Wave 4 (March 2026)
 
 This release expands NullPay's merchant lifecycle with AI-native tooling, broader payment methods, and delegated infrastructure.
@@ -95,11 +119,12 @@ Payments need to be instant and accessible anywhere. The mobile version bridges 
 ### Core Capabilities
 - **Zero-Knowledge Invoices**: Merchant addresses and amounts are hashed on-chain using BHP256, preserving privacy
 - **Private Transfers**: Payments executed via Aleo's `transfer_private` (Credits) and private programs for `USDCx` and `USAD`
-- **Standard Invoices**: Single-payment invoices that close upon settlement
-- **Multi Pay Campaigns**: Multi-contributor invoices with individual payment receipts
-- **Donation Invoices**: Open-ended invoices allowing variable payment amounts and **any token** type
-- **Tamper-Proof Verification**: Mathematical hash verification prevents invoice manipulation
-- **Encrypted Metadata**: Off-chain data encrypted with AES-256-GCM for additional security
+- **Standard & Multi-Pay**: Support for single-settlement invoices and multi-contributor campaigns
+- **Multi-Token Oracle**: Pay invoices in any token with live ZK-verified price conversion
+- **NullPay Card**: Wallet-less payments using Card PIN and Secret credentials
+- **Selective Disclosure**: Cryptographic audit reports for privacy-compliant financial tracking
+- **Batch Payments**: Settle dozens of records or invoices in a single transaction
+- **Encrypted Metadata**: Off-chain data encrypted with AES-256-GCM (now including Invoice Titles and Notes)
 - **Payment Receipts**: Unique receipt keys generated via cryptographic commitments for multi-pay tracking
 
 ### User Experience
