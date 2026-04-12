@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { PROGRAM_ID, WALLET_PROGRAM_ID, estimateExecutionFee, generateSalt, stringToField } from '../../../utils/aleo-utils';
@@ -66,6 +66,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const { setGuard, clearGuard } = useLeaveGuard();
     const shouldAutoSettleInvoice = session?.invoice_type !== 1 && session?.invoice_type !== 2;
     const [status, setStatus] = useState<string>('');
+    const [statusLog, setStatusLog] = useState<string[]>([]);
     const [txId, setTxId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -444,6 +445,17 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         }
     };
 
+    useEffect(() => {
+        if (!status) return;
+        setStatusLog((current: string[]) => current[current.length - 1] === status ? current : [...current, status]);
+    }, [status]);
+
+    useEffect(() => {
+        if (!error) return;
+        const errorMessage = `ERROR: ${error}`;
+        setStatusLog((current: string[]) => current[current.length - 1] === errorMessage ? current : [...current, errorMessage]);
+    }, [error]);
+
     const convertPublicToPrivate = async (overrideAmount?: number, selectedTokenOverride?: string) => {
         if (!session || !publicKey || !executeTransaction) return;
 
@@ -718,6 +730,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         try {
             setLoading(true);
             setError(null);
+            setStatusLog([]);
             setStatus('Looking up your NullPay card...');
 
             const normalizedCardNumber = cardNumber.replace(/\D/g, '');
@@ -815,8 +828,10 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 throw new Error(`The card needs a single ${actualTokenType} record large enough for this payment.`);
             }
 
+            setStatus('Preparing a spendable private card record...');
             let proofsInput = undefined;
             if (actualTokenType !== 'CREDITS') {
+                setStatus('Generating card proofs locally...');
                 const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../../utils/aleo-utils');
                 await getFreezeListRoot();
                 await getFreezeListCount();
@@ -856,6 +871,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 inputs.push(quoteOverride.signature);
             }
 
+            setStatus('Building private card payment authorization...');
             const authorization = await programManager.buildAuthorization({
                 programName: targetProgramId,
                 functionName: funcName,
@@ -1046,6 +1062,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         payWithGiftCard,
         convertPublicToPrivate,
         status,
+        statusLog,
         txId,
         loading,
         error,

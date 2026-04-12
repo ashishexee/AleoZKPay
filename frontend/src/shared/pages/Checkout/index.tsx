@@ -16,6 +16,7 @@ export const CheckoutPage = () => {
         payWithCard,
         payWithGiftCard,
         status: paymentStatus,
+        statusLog,
         txId,
         loading: paymentLoading,
         error: paymentError,
@@ -59,6 +60,7 @@ export const CheckoutPage = () => {
                 error={sessionError || paymentError}
                 publicKey={publicKey}
                 paymentStatus={paymentStatus}
+                paymentStatusLog={statusLog}
                 paymentLoading={paymentLoading}
                 txId={txId}
                 success={success}

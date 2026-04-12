@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Terminal, X, CreditCard, Lock, Key } from 'lucide-react';
+import { Terminal, X, CreditCard, Lock, Key, Eye, EyeOff } from 'lucide-react';
 import { CARD_PIN_LENGTH } from '../../utils/card-input-limits';
 import { Button } from '../ui/Button';
 import { GlassInput } from '../ui/GlassInput';
@@ -43,6 +44,8 @@ export const NullPayCardPaymentPanel = ({
     onSubmit,
     submitDisabled
 }: NullPayCardPaymentPanelProps) => {
+    const [showPin, setShowPin] = useState(false);
+    const [showSecret, setShowSecret] = useState(false);
     const cardDigits = cardNumber.replace(/\D/g, '');
     const canOpenOverlay = cardDigits.length === 16 && !isProcessing;
     const hasLogs = statusLog.length > 0 || Boolean(error);
@@ -122,29 +125,47 @@ export const NullPayCardPaymentPanel = ({
                                         <div className="grid gap-6">
                                             <div className="space-y-2">
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Card PIN</label>
-                                                <GlassInput
-                                                    variant="bw"
-                                                    type="password"
-                                                    inputMode="numeric"
-                                                    maxLength={CARD_PIN_LENGTH}
-                                                    value={cardPin}
-                                                    onChange={(e) => onCardPinChange(e.target.value.replace(/\D/g, '').slice(0, CARD_PIN_LENGTH))}
-                                                    placeholder="······"
-                                                    className={`text-center tracking-[0.5em] ${compact ? 'text-lg h-12' : 'h-16 text-xl'}`}
-                                                    icon={<Lock className="h-4 w-4" />}
-                                                />
+                                                <div className="relative">
+                                                    <GlassInput
+                                                        variant="bw"
+                                                        type={showPin ? 'text' : 'password'}
+                                                        inputMode="numeric"
+                                                        maxLength={CARD_PIN_LENGTH}
+                                                        value={cardPin}
+                                                        onChange={(e) => onCardPinChange(e.target.value.replace(/\D/g, '').slice(0, CARD_PIN_LENGTH))}
+                                                        placeholder="••••••"
+                                                        className={`text-center tracking-[0.35em] pr-11 ${compact ? 'text-sm h-10' : 'h-11 text-sm'}`}
+                                                        icon={<Lock className="h-4 w-4" />}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPin((current) => !current)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-white"
+                                                    >
+                                                        {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Private Secret</label>
-                                                <GlassInput
-                                                    variant="bw"
-                                                    type="password"
-                                                    value={cardSecret}
-                                                    onChange={(e) => onCardSecretChange(e.target.value)}
-                                                    placeholder="Enter your card secret"
-                                                    className={`text-center ${compact ? 'text-base h-12' : 'h-16 text-lg'}`}
-                                                    icon={<Key className="h-4 w-4" />}
-                                                />
+                                                <div className="relative">
+                                                    <GlassInput
+                                                        variant="bw"
+                                                        type={showSecret ? 'text' : 'password'}
+                                                        value={cardSecret}
+                                                        onChange={(e) => onCardSecretChange(e.target.value)}
+                                                        placeholder="Card secret"
+                                                        className={`text-center pr-11 ${compact ? 'text-sm h-10' : 'h-11 text-sm'}`}
+                                                        icon={<Key className="h-4 w-4" />}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowSecret((current) => !current)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-white"
+                                                    >
+                                                        {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 

@@ -927,6 +927,7 @@ export const useSharedPayment = () => {
             setLoading(true);
             setError(null);
             setGiftCardRedeemOption(null);
+            clearStatusLog();
             setStatus('Looking up your NullPay card...');
 
             const normalizedCardNumber = cardNumber.replace(/\D/g, '');
@@ -1039,6 +1040,7 @@ export const useSharedPayment = () => {
                 throw new Error('The card needs a single private record large enough for this payment.');
             }
 
+            setStatus('Preparing a spendable private card record...');
             setStatus('Generating card proofs locally...');
             let proofsInput = undefined;
             if (activeTokenType !== 0) {
@@ -1094,6 +1096,7 @@ export const useSharedPayment = () => {
                 inputs.push(`${Math.floor(quoteOverride.expires_at)}u32`);
             }
 
+            setStatus('Building private card payment authorization...');
             const authorization = await programManager.buildAuthorization({
                 programName: isCrossToken ? WALLET_PROGRAM_ID : (programId || PROGRAM_ID),
                 functionName: funcName,
