@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
     ResponsiveContainer,
     AreaChart,
@@ -458,22 +459,34 @@ export const PaymentTimelineChart: React.FC<PaymentTimelineChartProps> = ({ rece
                     </div>
                 </div>
 
-                <div className="flex self-start rounded-full border border-white/10 bg-black/40 p-1 lg:self-auto gap-0.5">
-                    {ranges.map((r) => (
-                        <button
-                            key={r}
-                            onClick={() => setRange(r)}
-                            className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-all duration-300 ${range === r ? 'bg-white text-black shadow-lg shadow-white/10' : 'text-gray-500 hover:text-white'}`}
-                        >
-                            {r}
-                        </button>
-                    ))}
+                <div className="flex self-start rounded-full border border-white/5 bg-black/60 backdrop-blur-xl p-1 lg:self-auto gap-1 shadow-2xl">
+                    {ranges.map((r) => {
+                        const isActive = range === r;
+                        return (
+                            <button
+                                key={r}
+                                onClick={() => setRange(r)}
+                                className={`relative rounded-full px-5 py-1.5 text-[11px] font-bold transition-colors duration-300 ${isActive ? 'text-black' : 'text-gray-500 hover:text-gray-200'}`}
+                            >
+                                {isActive && (
+                                    <motion.div
+                                        layoutId="activeRangeTab"
+                                        className="absolute inset-0 bg-white rounded-full shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                    />
+                                )}
+                                <span className="relative z-10">{r}</span>
+                            </button>
+                        );
+                    })}
+
+                    <div className="mx-1 h-4 w-[1px] self-center bg-white/10" />
 
                     <button
                         type="button"
                         onClick={() => void onRefresh?.()}
                         disabled={!onRefresh || isRefreshing}
-                        className={`ml-1 flex items-center justify-center rounded-full border px-3 py-1.5 transition-all duration-300 ${!onRefresh || isRefreshing ? 'cursor-not-allowed border-white/5 text-gray-600' : 'border-white/10 text-gray-400 hover:border-white/20 hover:text-white'}`}
+                        className={`flex h-7 w-7 items-center justify-center rounded-full transition-all duration-300 ${!onRefresh || isRefreshing ? 'cursor-not-allowed opacity-20' : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}
                         title="Refresh payments"
                     >
                         <svg className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -483,22 +496,18 @@ export const PaymentTimelineChart: React.FC<PaymentTimelineChartProps> = ({ rece
                 </div>
             </div>
 
-            {!isLoading && hasData && (
-                <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-                    {autoZoomRange && (
-                        <button
-                            type="button"
-                            onClick={() => setZoomRange(autoZoomRange)}
-                            className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[11px] font-bold text-cyan-200 transition-all hover:border-cyan-300/40 hover:bg-cyan-400/15"
-                        >
-                            Focus Activity
-                        </button>
-                    )}
+            {!isLoading && (
+                <div className="mb-4 flex min-h-[36px] flex-wrap items-center justify-end gap-2">
                     <button
                         type="button"
                         onClick={() => setZoomRange(null)}
-                        disabled={!isZoomed}
-                        className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all ${isZoomed ? 'border-white/10 bg-white/5 text-white hover:border-white/20 hover:bg-white/10' : 'cursor-not-allowed border-white/5 text-gray-600'}`}
+                        disabled={!hasData || !isZoomed}
+                        className={`min-w-[96px] rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all duration-200 ${hasData && isZoomed
+                            ? 'border-white/10 bg-white/5 text-white hover:border-white/20 hover:bg-white/10 opacity-100'
+                            : hasData
+                                ? 'cursor-not-allowed border-white/5 text-gray-600 opacity-100'
+                                : 'pointer-events-none border-transparent bg-transparent text-transparent opacity-0'
+                            }`}
                     >
                         Zoom Out
                     </button>

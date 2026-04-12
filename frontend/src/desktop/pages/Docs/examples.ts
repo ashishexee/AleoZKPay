@@ -81,12 +81,12 @@ export const nullpayJsonExample = `{
 export const claudeConfigExample = `{
   "mcpServers": {
     "nullpay": {
-      "command": "cmd",
-      "args": ["/c", "npx", "-y", "@nullpay/mcp", "server"],
+      "command": "npx",
+      "args": ["-y", "@nullpay/mcp", "server"],
       "env": {
-        "NULLPAY_MAIN_ADDRESS": "aleo1...",
-        "NULLPAY_MAIN_PRIVATE_KEY": "APrivateKey1...",
-        "NULLPAY_MAIN_PASSWORD": "optional"
+        "NULLPAY_MAIN_ADDRESS": "YOUR_ALEO_ADDRESS",
+        "NULLPAY_MAIN_PRIVATE_KEY": "YOUR_PRIVATE_KEY",
+        "NULLPAY_MAIN_PASSWORD": "YOUR_PASSWORD"
       }
     }
   }
@@ -96,17 +96,21 @@ export const openclawConfigExample = `{
   "mcp": {
     "servers": {
       "nullpay": {
-        "command": "cmd",
-        "args": ["/c", "npx", "-y", "@nullpay/mcp", "server"],
+        "command": "npx",
+        "args": ["-y", "@nullpay/mcp", "server"],
         "env": {
-          "NULLPAY_MAIN_ADDRESS": "aleo1...",
-          "NULLPAY_MAIN_PRIVATE_KEY": "APrivateKey1...",
-          "NULLPAY_MAIN_PASSWORD": "optional"
+          "NULLPAY_MAIN_ADDRESS": "YOUR_ALEO_ADDRESS",
+          "NULLPAY_MAIN_PRIVATE_KEY": "YOUR_PRIVATE_KEY",
+          "NULLPAY_MAIN_PASSWORD": "YOUR_PASSWORD"
         }
       }
     }
   }
 }`;
+
+export const openclawRestartCommand = 'openclaw restart';
+export const openclawGatewayCommand = 'openclaw gateway';
+export const openclawInitCommand = 'openclaw config init';
 
 export const codexConfigExample = `model = "gpt-5.4"
 
@@ -120,15 +124,29 @@ NULLPAY_MAIN_ADDRESS = "aleo1..."
 NULLPAY_MAIN_PRIVATE_KEY = "APrivateKey1..."
 NULLPAY_MAIN_PASSWORD = "optional"`;
 
+export const antigravityConfigExample = `{
+  "mcpServers": {
+    "nullpay": {
+      "command": "npx",
+      "args": ["-y", "@nullpay/mcp", "server"],
+      "env": {
+        "NULLPAY_MAIN_ADDRESS": "YOUR_ALEO_ADDRESS",
+        "NULLPAY_MAIN_PRIVATE_KEY": "YOUR_PRIVATE_KEY",
+        "NULLPAY_MAIN_PASSWORD": "YOUR_PASSWORD"
+      }
+    }
+  }
+}`;
+
 export const cursorConfigExample = `{
   "mcpServers": {
     "nullpay": {
-      "command": "cmd",
-      "args": ["/c", "npx", "-y", "@nullpay/mcp", "server"],
+      "command": "npx",
+      "args": ["-y", "@nullpay/mcp", "server"],
       "env": {
-        "NULLPAY_MAIN_ADDRESS": "aleo1...",
-        "NULLPAY_MAIN_PRIVATE_KEY": "APrivateKey1...",
-        "NULLPAY_MAIN_PASSWORD": "optional"
+        "NULLPAY_MAIN_ADDRESS": "YOUR_ALEO_ADDRESS",
+        "NULLPAY_MAIN_PRIVATE_KEY": "YOUR_PRIVATE_KEY",
+        "NULLPAY_MAIN_PASSWORD": "YOUR_PASSWORD"
       }
     }
   }

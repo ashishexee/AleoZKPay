@@ -232,7 +232,7 @@ function normalizeMaybeEncryptedValue(
 }
 
 export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { address, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
+    const { address, wallet, executeTransaction, requestRecords, decrypt, transactionStatus } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
     const { appPassword } = useBurnerWallet();
     const [card, setCard] = useState<CardWalletProfile | null>(null);
@@ -480,13 +480,14 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const pollForFinalTransactionId = async (initialTxId: string): Promise<string> => {
-        const statusReader = wallet?.adapter?.transactionStatus;
+        const primaryStatusReader = transactionStatus;
+        const fallbackStatusReader = wallet?.adapter?.transactionStatus;
         const isShieldPendingId = initialTxId.startsWith('shield_');
         let isPending = true;
         let attempts = 0;
         let finalTransactionId = initialTxId;
         const maxAttempts = 120;
-        let adapterFailureCount = 0;
+        let statusFailureCount = 0;
         let explorerNotFoundCount = 0;
 
         while (isPending && attempts < maxAttempts) {
@@ -495,41 +496,76 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
             try {
                 let currentStatus = '';
+                let statusResponse: any = null;
 
-                if (statusReader) {
+                if (primaryStatusReader) {
                     try {
-                        const statusResponse: any = await statusReader(initialTxId);
-                        currentStatus = typeof statusResponse === 'string'
-                            ? statusResponse.toLowerCase()
-                            : statusResponse?.status?.toLowerCase();
+                        statusResponse = await primaryStatusReader(initialTxId);
+                    } catch (error: any) {
+                        statusFailureCount += 1;
+                        if (!isShieldPendingId || statusFailureCount === 1 || statusFailureCount % 10 === 0) {
+                            console.warn('[CardWalletProvider] Primary status polling attempt failed:', error?.message || error);
+                        }
+                    }
+                }
 
-                        if (typeof statusResponse === 'object' && statusResponse?.transactionId) {
-                            finalTransactionId = statusResponse.transactionId;
+                if (!statusResponse && fallbackStatusReader) {
+                    try {
+                        statusResponse = await fallbackStatusReader(initialTxId);
+                    } catch (error: any) {
+                        statusFailureCount += 1;
+                        if (!isShieldPendingId || statusFailureCount === 1 || statusFailureCount % 10 === 0) {
+                            console.warn('[CardWalletProvider] Fallback status polling attempt failed:', error?.message || error);
+                        }
+                    }
+                }
+
+                if (statusResponse) {
+                    currentStatus = typeof statusResponse === 'string'
+                        ? statusResponse.toLowerCase()
+                        : statusResponse?.status?.toLowerCase();
+
+                    if (typeof statusResponse === 'object' && statusResponse?.transactionId) {
+                        finalTransactionId = statusResponse.transactionId;
+                    }
+                }
+
+                if (!currentStatus && !finalTransactionId.startsWith('shield_') && primaryStatusReader) {
+                    try {
+                        const finalStatusResponse: any = await primaryStatusReader(finalTransactionId);
+                        currentStatus = typeof finalStatusResponse === 'string'
+                            ? finalStatusResponse.toLowerCase()
+                            : finalStatusResponse?.status?.toLowerCase();
+                    } catch (error: any) {
+                        statusFailureCount += 1;
+                        if (statusFailureCount === 1 || statusFailureCount % 10 === 0) {
+                            console.warn('[CardWalletProvider] Final tx status polling attempt failed:', error?.message || error);
+                        }
+                    }
+                }
+
+                if (!currentStatus && !finalTransactionId.startsWith('shield_')) {
+                    try {
+                        const explorerResponse = await fetch(`https://api.explorer.provable.com/v1/testnet/transaction/${finalTransactionId}`);
+                        if (explorerResponse.ok) {
+                            currentStatus = 'completed';
+                        } else if (explorerResponse.status === 404) {
+                            explorerNotFoundCount += 1;
                         }
                     } catch (error: any) {
-                        adapterFailureCount += 1;
-                        if (!isShieldPendingId || adapterFailureCount === 1 || adapterFailureCount % 10 === 0) {
-                            console.warn('[CardWalletProvider] Status polling attempt failed:', error?.message || error);
-                        }
+                        console.warn('[CardWalletProvider] Explorer polling attempt failed:', error?.message || error);
                     }
                 }
 
                 if (!currentStatus) {
-                    const explorerLookupId = finalTransactionId && !finalTransactionId.startsWith('shield_')
-                        ? finalTransactionId
-                        : initialTxId;
-                    const explorerResponse = await fetch(`https://api.explorer.provable.com/v1/testnet/transaction/${explorerLookupId}`);
-                    if (explorerResponse.ok) {
-                        currentStatus = 'completed';
-                    } else if (explorerResponse.status === 404) {
-                        explorerNotFoundCount += 1;
-                    }
-                }
-
-                if (!currentStatus) {
-                    if (isShieldPendingId && adapterFailureCount >= 3 && explorerNotFoundCount >= 3 && attempts >= 8) {
+                    if (isShieldPendingId && statusFailureCount >= 3 && attempts >= 8) {
                         return finalTransactionId;
                     }
+
+                    if (!isShieldPendingId && statusFailureCount >= 3 && explorerNotFoundCount >= 3 && attempts >= 8) {
+                        return finalTransactionId;
+                    }
+
                     continue;
                 }
 
@@ -1104,7 +1140,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
                 console.log(`[CardWalletProvider] Record[${index}] matched expected card profile record.`);
                 console.groupEnd();
-                return plaintext || record.ciphertext || record.recordCiphertext || record;
+                return plaintext || record.ciphertext || record.recordCiphertext || null;
             }
         }
 
@@ -1125,6 +1161,19 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.log('[CardWalletProvider] Main address:', address);
         console.log('[CardWalletProvider] Card address:', card.card_address);
         console.log('[CardWalletProvider] Current scanned balances:', cardBalances);
+
+        const message = buildCardDeletionMessage(card);
+        console.log('[CardWalletProvider] Card deletion message payload:', message);
+        const signatureResult = await wallet.adapter.signMessage(new TextEncoder().encode(message));
+        const signatureBytes = signatureResult instanceof Uint8Array
+            ? signatureResult
+            : (signatureResult as any)?.signature;
+
+        if (!signatureBytes) {
+            console.groupEnd();
+            throw new Error('Main wallet did not return a usable signature for card deletion.');
+        }
+        console.log('[CardWalletProvider] Card deletion message signed successfully.');
 
         const cardRecord = await findCardProfileRecord();
         const inputs = [cardRecord];
@@ -1156,17 +1205,6 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.log('[CardWalletProvider] Initial deletion transaction id:', result.transactionId);
         const finalTransactionId = await pollForFinalTransactionId(result.transactionId);
         console.log('[CardWalletProvider] Final deletion transaction id:', finalTransactionId);
-        const message = buildCardDeletionMessage(card);
-        console.log('[CardWalletProvider] Card deletion message payload:', message);
-        const signatureResult = await wallet.adapter.signMessage(new TextEncoder().encode(message));
-        const signatureBytes = signatureResult instanceof Uint8Array
-            ? signatureResult
-            : (signatureResult as any)?.signature;
-
-        if (!signatureBytes) {
-            console.groupEnd();
-            throw new Error('Main wallet did not return a usable signature for card deletion.');
-        }
 
         const signatureBase64 = toBase64(signatureBytes);
         console.log('[CardWalletProvider] Sending signed deletion confirmation to backend.');

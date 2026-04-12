@@ -1,11 +1,6 @@
 import React from "react";
 import { motion, HTMLMotionProps } from "framer-motion";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: ClassValue[]) {
-    return twMerge(clsx(inputs));
-}
+import { cn } from "../../utils/cn";
 
 interface GlassCardProps extends HTMLMotionProps<"div"> {
     children: React.ReactNode;

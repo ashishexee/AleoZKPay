@@ -6,6 +6,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { useSearchParams } from 'react-router-dom';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
+import { GlassInput } from '../../../shared/components/ui/GlassInput';
 import { Button } from '../../../shared/components/ui/Button';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { Input } from '../../../shared/components/ui/Input';
@@ -510,19 +511,44 @@ const SingleInvoicePaymentPage = () => {
                                             onChange={setGiftCode}
                                             disabled={isProcess}
                                         />
-                                        <div>
-                                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-500">Payer Address Optional</label>
-                                            <Input
-                                                placeholder="aleo1..."
+                                        <div className="space-y-2">
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Payer Address (Optional)</label>
+                                            <GlassInput
+                                                variant="bw"
                                                 value={giftCardPayerAddress}
                                                 onChange={(e) => setGiftCardPayerAddress(e.target.value)}
-                                                className={giftCardPayerAddressInvalid ? '!border-red-500/60' : ''}
+                                                placeholder="aleo1..."
+                                                disabled={isProcess}
+                                                error={giftCardPayerAddressInvalid}
+                                                icon={
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                                                    </svg>
+                                                }
+                                                showStatus={normalizedGiftCardPayerAddress.length > 0}
+                                                statusElement={
+                                                    giftCardPayerAddressInvalid ? (
+                                                        <>
+                                                            <div className="h-1 w-1 rounded-full bg-red-500/50" />
+                                                            <span className="text-[10px] text-red-100/50 italic">
+                                                                Invalid Aleo address format
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="h-1 w-1 rounded-full bg-white/50" />
+                                                            <span className="text-[10px] text-white/50 italic">
+                                                                Valid Aleo address
+                                                            </span>
+                                                        </>
+                                                    )
+                                                }
                                             />
-                                            <p className={`mt-2 text-[11px] ${giftCardPayerAddressInvalid ? 'text-red-400' : 'text-gray-500'}`}>
-                                                {giftCardPayerAddressInvalid
-                                                    ? 'Enter a valid Aleo public address or leave this blank.'
-                                                    : 'If you leave this blank, the payment receipt hash will be minted on the gift card address.'}
-                                            </p>
+                                            {!giftCardPayerAddressInvalid && giftCardPayerAddress.length === 0 && (
+                                                <p className="px-1 text-[10px] leading-relaxed text-gray-500 italic">
+                                                    If left blank, the receipt will be minted to the gift card address.
+                                                </p>
+                                            )}
                                         </div>
                                         {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (
                                             <GiftCardRedeemPrompt

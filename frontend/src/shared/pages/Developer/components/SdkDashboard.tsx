@@ -332,6 +332,25 @@ export const SdkDashboard: React.FC = () => {
         return transactions.filter((invoice) => invoice.for_sdk && !invoice.is_burner);
     }, [transactions]);
 
+    const sdkPaymentTimestampsByTxId = useMemo(() => {
+        const timestamps: Record<string, string> = {};
+
+        sdkDbTransactions.forEach((invoice) => {
+            const paymentTimestamps = invoice.payment_timestamps;
+            if (!paymentTimestamps || typeof paymentTimestamps !== 'object' || Array.isArray(paymentTimestamps)) {
+                return;
+            }
+
+            Object.entries(paymentTimestamps).forEach(([txId, timestamp]) => {
+                if (typeof timestamp === 'string' && timestamp && !timestamps[txId]) {
+                    timestamps[txId] = timestamp;
+                }
+            });
+        });
+
+        return timestamps;
+    }, [sdkDbTransactions]);
+
     const sdkHashSet = useMemo(() => {
         return new Set(sdkDbTransactions.map((invoice) => normalizeHash(invoice.invoice_hash)));
     }, [sdkDbTransactions]);
@@ -598,7 +617,11 @@ export const SdkDashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-                <PaymentTimelineChart receipts={filteredMerchantReceipts} isLoading={loadingReceipts} />
+                <PaymentTimelineChart
+                    receipts={filteredMerchantReceipts}
+                    paymentTimestampsByTxId={sdkPaymentTimestampsByTxId}
+                    isLoading={loadingReceipts}
+                />
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

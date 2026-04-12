@@ -3,7 +3,7 @@ import { motion, HTMLMotionProps } from "framer-motion";
 import { cn } from "./GlassCard";
 
 interface ButtonProps extends HTMLMotionProps<"button"> {
-    variant?: "primary" | "secondary" | "outline" | "ghost";
+    variant?: "primary" | "secondary" | "outline" | "ghost" | "bw";
     size?: "sm" | "md" | "lg";
     glow?: boolean;
 }
@@ -15,6 +15,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             secondary: "bg-white/10 text-white border border-white/10 hover:bg-white/20 hover:border-white/20",
             outline: "bg-transparent border border-neon-primary/50 text-neon-primary hover:bg-neon-primary/10",
             ghost: "bg-transparent text-gray-400 hover:text-white hover:bg-white/5",
+            bw: "bg-white text-black font-bold border-none hover:bg-gray-100 shadow-[0_0_20px_rgba(255,255,255,0.3)]",
         };
 
         const sizes = {

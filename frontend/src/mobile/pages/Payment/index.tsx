@@ -585,18 +585,26 @@ const MobilePaymentPage = () => {
                                             onChange={setGiftCode}
                                             disabled={isProcess}
                                         />
-                                        <div>
-                                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-500">Payer Address Optional</label>
-                                            <Input
-                                                placeholder="aleo1..."
-                                                value={giftCardPayerAddress}
-                                                onChange={(e) => setGiftCardPayerAddress(e.target.value)}
-                                                className={giftCardPayerAddressInvalid ? '!border-red-500/60' : ''}
-                                            />
-                                            <p className={`mt-2 text-[11px] ${giftCardPayerAddressInvalid ? 'text-red-400' : 'text-gray-500'}`}>
+                                        <div className="space-y-2">
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Payer Address (Optional)</label>
+                                            <div className="relative group">
+                                                <input
+                                                    type="text"
+                                                    value={giftCardPayerAddress}
+                                                    onChange={(e) => setGiftCardPayerAddress(e.target.value)}
+                                                    placeholder="aleo1..."
+                                                    className={`w-full bg-black/40 border outline-none rounded-xl text-xs font-mono text-white p-4 transition-all ${giftCardPayerAddressInvalid ? 'border-red-500/40 focus:border-red-500/60 bg-red-500/5' : 'border-white/10 focus:border-white/20'}`}
+                                                />
+                                                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none opacity-40">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <p className={`px-1 text-[10px] leading-relaxed ${giftCardPayerAddressInvalid ? 'text-red-400' : 'text-gray-500'}`}>
                                                 {giftCardPayerAddressInvalid
-                                                    ? 'Enter a valid Aleo public address or leave this blank.'
-                                                    : 'If you leave this blank, the payment receipt hash will be minted on the gift card address.'}
+                                                    ? 'Please enter a valid Aleo public address.'
+                                                    : 'If left blank, the receipt will be minted to the gift card address.'}
                                             </p>
                                         </div>
                                         {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (

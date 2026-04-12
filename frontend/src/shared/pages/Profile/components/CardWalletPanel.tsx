@@ -330,7 +330,14 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
             await deleteCard();
             toast.success('NullPay Card deleted successfully.');
         } catch (err: any) {
-            toast.error(err.message || 'Failed to delete the card.');
+            console.error('[CardWalletPanel] Delete card failed:', err);
+            const errorMessage = err?.message
+                || err?.error
+                || err?.cause?.message
+                || err?.data?.message
+                || err?.data?.error
+                || 'Failed to delete the card.';
+            toast.error(errorMessage);
         } finally {
             setIsDeletingCard(false);
         }

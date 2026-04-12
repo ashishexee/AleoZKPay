@@ -427,6 +427,27 @@ export const DeveloperPortal = () => {
                             </div>
                         </motion.div>
                     </motion.div>
+
+                    <motion.div variants={fadeInUp} className="mt-12 mb-4">
+                        <div className="flex items-center justify-center gap-4 px-4">
+                            <div className="hidden md:block h-[1px] flex-1 bg-gradient-to-r from-transparent to-white/[0.08]" />
+                            <div className="flex items-center gap-4 py-2.5 px-6 rounded-full border border-white/[0.08] bg-white/[0.02] backdrop-blur-md">
+                                <div className="flex items-center gap-2">
+                                    <BookOpen className="w-3.5 h-3.5 text-orange-400/80" />
+                                    <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap">Ready for deeper integration?</span>
+                                </div>
+                                <div className="w-[1px] h-3 bg-white/10" />
+                                <a 
+                                    href="/docs?tab=sdk&section=sdk-node" 
+                                    className="group flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-white hover:text-orange-400 transition-all duration-300"
+                                >
+                                    Node.js SDK Docs
+                                    <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                                </a>
+                            </div>
+                            <div className="hidden md:block h-[1px] flex-1 bg-gradient-to-l from-transparent to-white/[0.08]" />
+                        </div>
+                    </motion.div>
                 </motion.div>
 
                 {/* ── Sticky Tab Nav ────────────────────────────────────── */}

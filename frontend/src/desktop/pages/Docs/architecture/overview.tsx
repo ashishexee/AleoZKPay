@@ -1,89 +1,166 @@
-import { Bot, FileCode2, Layers3, Package, Shield, Globe, Zap, Cpu } from 'lucide-react';
+import { 
+    Layers3, 
+    FileCode2, 
+    ShieldCheck, 
+    Database, 
+    Network, 
+    Smartphone, 
+    Terminal, 
+    Cpu as Chip, 
+    Zap, 
+    Lock,
+    Globe,
+    Workflow,
+} from 'lucide-react';
 import type { DocsSection } from '../types';
-import { MetricCard, Callout } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
 export const architectureOverviewSection: DocsSection = {
     id: 'arch-overview',
     group: 'System Architecture',
     label: 'Overview',
-    eyebrow: 'Architecture',
-    title: 'The NullPay Ecosystem — Architecture Overview',
+    eyebrow: 'System Design',
+    title: 'Architectural Hierarchy',
     summary:
-        'NullPay is a modular, layered protocol designed to bring Web2-style checkout performance to the Aleo blockchain. It bridges high-speed merchant APIs with high-privacy Zero-Knowledge execution.',
+        'NullPay is built on a modular four-layer architecture that separates sensitive ZK-proof generation from high-performance orchestration and on-chain settlement.',
     content: (
-        <div className="space-y-6">
-            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-                <MetricCard
-                    icon={Layers3}
-                    title="Frontend Layer"
-                    description="The buyer-facing surface. Handles proof generation and hosted UI components."
-                />
-                <MetricCard
-                    icon={Package}
-                    title="Backend Layer"
-                    description="The merchant-facing SDK. Manages session lifecycles and webhook verification."
-                />
-                <MetricCard
-                    icon={Bot}
-                    title="Agent Layer"
-                    description="The AI-facing MCP bridge. Enables autonomous payment flows via AI assistants."
-                />
-                <MetricCard
-                    icon={FileCode2}
-                    title="Chain Layer"
-                    description="The trustless source of truth. Enforces protocol rules on the Aleo L1."
-                />
-            </div>
+        <div className="space-y-16">
+            {/* Layer 1: Core Protocol */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3 border-b border-white/[0.05] pb-4">
+                    <Chip className="h-5 w-5 text-orange-400" />
+                    <h2 className="text-lg font-medium text-white tracking-tight">
+                        <span className="text-orange-400/80 mr-2">L1:</span> Core Protocol (ZK-Circuits)
+                    </h2>
+                </div>
 
-            <GlassCard className="p-6">
-                <h3 className="text-xl font-bold text-white mb-4">Design Philosophy: Layered Privacy</h3>
-                <p className="text-sm text-gray-400 leading-relaxed mb-6">
-                    Unlike traditional payment gateways that store user data in a central database, NullPay fragments data across multiple layers. No single entity—including NullPay itself—possesses enough information to reconstruct a user\'s entire financial history.
-                </p>
-                <div className="grid gap-6 md:grid-cols-2">
-                    <div className="flex gap-4">
-                        <div className="mt-1">
-                            <Shield className="h-5 w-5 text-emerald-400" />
-                        </div>
-                        <div>
-                            <h4 className="text-white font-bold text-sm">Non-Custodial by Design</h4>
-                            <p className="text-xs text-gray-500 mt-1">Funds move directly from the buyer to the merchant’s pool. NullPay never touches the money.</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2 space-y-4">
+                        <p className="text-sm text-gray-400 leading-relaxed">
+                            The foundation layer consists of optimized Leo circuits defining rules for payment validity, invoice settlement, and encrypted receipt generation.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            <span className="px-2 py-0.5 rounded-md bg-orange-500/5 border border-orange-500/10 text-[10px] font-mono text-orange-300/70 uppercase tracking-wider">zk_pay_proofs_privacy_v28.aleo</span>
+                            <span className="px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.05] text-[10px] font-mono text-gray-400 uppercase tracking-wider">leolang v1.0</span>
                         </div>
                     </div>
-                    <div className="flex gap-4">
-                        <div className="mt-1">
-                            <Zap className="h-5 w-5 text-yellow-400" />
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-xs text-gray-300">
+                            <FileCode2 className="w-3.5 h-3.5 text-orange-400/40" />
+                            <span>Private Receipts (ZK-Records)</span>
                         </div>
-                        <div>
-                            <h4 className="text-white font-bold text-sm">Deterministic Settlement</h4>
-                            <p className="text-xs text-gray-500 mt-1">On-chain mappings ensure that once a payment proof is verified, the invoice is permanently marked as settled.</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="mt-1">
-                            <Globe className="h-5 w-5 text-blue-400" />
-                        </div>
-                        <div>
-                            <h4 className="text-white font-bold text-sm">Global Scalability</h4>
-                            <p className="text-xs text-gray-500 mt-1">The relayer network handles gas sponsorship, allowing any merchant anywhere to start accepting Aleo tokens instantly.</p>
-                        </div>
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="mt-1">
-                            <Cpu className="h-5 w-5 text-purple-400" />
-                        </div>
-                        <div>
-                            <h4 className="text-white font-bold text-sm">ZK Proof Efficiency</h4>
-                            <p className="text-xs text-gray-500 mt-1">Optimized Leo circuits ensure that even complex multi-token payments can be proven in seconds.</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-300">
+                            <Lock className="w-3.5 h-3.5 text-orange-400/40" />
+                            <span>BHP256 Deterministic Hashes</span>
                         </div>
                     </div>
                 </div>
-            </GlassCard>
+            </section>
 
-            <Callout title="A Unified Experience" tone="emerald">
-                The architecture is designed to be invisible to the end user. To a buyer, it feels like a standard checkout. To a developer, it feels like an API-first platform. To the network, it is a series of cryptographically sound state transitions.
-            </Callout>
+            {/* Layer 2: Infrastructure */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3 border-b border-white/[0.05] pb-4">
+                    <Database className="h-5 w-5 text-orange-400" />
+                    <h2 className="text-lg font-medium text-white tracking-tight">
+                        <span className="text-orange-400/80 mr-2">L2:</span> Infrastructure (Secure Backend)
+                    </h2>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <GlassCard className="p-6 border-white/[0.05] bg-white/[0.01] border-l-2 border-l-orange-500/10" hoverEffect={false}>
+                        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
+                            <Zap className="h-3.5 w-3.5 text-orange-400/70" /> Relayer Network
+                        </h3>
+                        <p className="text-xs text-gray-500 leading-relaxed font-light">
+                            Node.js nodes managing session lifecycles, gas sponsorship for gasless UX, and proof propagation to the Aleo L1 network.
+                        </p>
+                    </GlassCard>
+                    <GlassCard className="p-6 border-white/[0.05] bg-white/[0.01] border-l-2 border-l-orange-500/10" hoverEffect={false}>
+                        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
+                            <ShieldCheck className="h-3.5 w-3.5 text-orange-400/70" /> Blind Database Model
+                        </h3>
+                        <p className="text-xs text-gray-500 leading-relaxed font-light">
+                            Private orchestration using Supabase. Minimal metadata storage; sensitive credentials remain isolated in secure local user sessions.
+                        </p>
+                    </GlassCard>
+                </div>
+            </section>
+
+            {/* Layer 3: Integration Layer */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3 border-b border-white/[0.05] pb-4">
+                    <Workflow className="h-5 w-5 text-orange-400" />
+                    <h2 className="text-lg font-medium text-white tracking-tight">
+                        <span className="text-orange-400/80 mr-2">L3:</span> Integration (SDKs & bridges)
+                    </h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div className="space-y-5">
+                        <div className="flex gap-4 group">
+                            <Terminal className="h-4 w-4 text-orange-400/40 mt-0.5" />
+                            <div>
+                                <h4 className="text-white text-sm font-medium">Node.js SDK</h4>
+                                <p className="text-xs text-gray-500 mt-1 font-light leading-relaxed">Merchant-side library for automated invoice creation and settlement hooks.</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-4 group">
+                            <Layers3 className="h-4 w-4 text-orange-400/40 mt-0.5" />
+                            <div>
+                                <h4 className="text-white text-sm font-medium">MCP Protocol</h4>
+                                <p className="text-xs text-gray-500 mt-1 font-light leading-relaxed">Local stdio bridge for AI assistants to generate ZK-proofs on client hardware.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="p-8 rounded-3xl border border-dashed border-orange-500/10 bg-orange-500/[0.01] flex flex-col items-center text-center space-y-3">
+                        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-orange-500/60 mb-1">Guiding Principle</div>
+                        <h4 className="text-white text-base font-light tracking-tight italic">"Local Proofing, Global Settlement"</h4>
+                        <p className="text-[10px] text-gray-500 font-light max-w-[200px]">Ensures private keys remain in the local environment, never reaching the relayer.</p>
+                    </div>
+                </div>
+            </section>
+
+            {/* Layer 4: Presentation Layer */}
+            <section className="space-y-6">
+                <div className="flex items-center gap-3 border-b border-white/[0.05] pb-4">
+                    <Globe className="h-5 w-5 text-orange-400" />
+                    <h2 className="text-lg font-medium text-white tracking-tight">
+                        <span className="text-orange-400/80 mr-2">L4:</span> Presentation (Consumer UI)
+                    </h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-2 group hover:border-orange-500/20 transition-colors">
+                        <Smartphone className="h-4 w-4 text-orange-400/30 mb-2 group-hover:text-orange-400 transition-colors" />
+                        <h4 className="text-white text-xs font-semibold">Vite + React</h4>
+                        <p className="text-[10px] text-gray-500 leading-relaxed font-light">Optimized builds for sub-second mobile load times and session persistence.</p>
+                    </div>
+                    <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-2 group hover:border-orange-500/20 transition-colors">
+                        <Layers3 className="h-4 w-4 text-orange-400/30 mb-2 group-hover:text-orange-400 transition-colors" />
+                        <h4 className="text-white text-xs font-semibold">Framer Motion</h4>
+                        <p className="text-[10px] text-gray-500 leading-relaxed font-light">Subtle interaction states that communicate proof-generation progress non-invasively.</p>
+                    </div>
+                    <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-2 group hover:border-orange-500/20 transition-colors">
+                        <Network className="h-4 w-4 text-orange-400/30 mb-2 group-hover:text-orange-400 transition-colors" />
+                        <h4 className="text-white text-xs font-semibold">Standard UI</h4>
+                        <p className="text-[10px] text-gray-500 leading-relaxed font-light">Modern visual language built on backdrop filters and minimalist typography.</p>
+                    </div>
+                </div>
+            </section>
+
+            <div className="pt-8 flex items-center justify-between border-t border-white/[0.05]">
+                <p className="text-xs text-gray-500 max-w-sm leading-relaxed">
+                    By decoupling proof generation from network propagation, NullPay maintains Web2 performance with ZK privacy.
+                </p>
+                <div className="flex items-center gap-3 text-[10px] font-mono text-gray-600">
+                    NETWORK STATUS
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500/80">
+                        <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                        OPERATIONAL
+                    </div>
+                </div>
+            </div>
         </div>
     ),
 };

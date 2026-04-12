@@ -7,6 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { Shimmer } from '../../../components/ui/Shimmer';
 import { CheckoutSession } from '../types';
 import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPrompt';
+import { GiftCodeInput } from '../../../components/ui/GiftCodeInput';
 import { CARD_PIN_LENGTH } from '../../../utils/card-input-limits';
 import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../utils/tokens';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/leo-input-limits';
@@ -548,31 +549,40 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     </div>
                                 )}
 
-                                {paymentMethod === 'giftcard' && (
+                                 {paymentMethod === 'giftcard' && (
                                     <div className="mb-4 animate-fade-in space-y-4">
-                                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Gift Card Code</label>
-                                        <input
-                                            type="text"
-                                            value={giftCode}
-                                            onChange={(e) => setGiftCode(e.target.value)}
-                                            placeholder="gift-..."
-                                            className="w-full bg-black/40 border border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors tracking-widest text-center shadow-inner"
-                                        />
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payer Address Optional</label>
-                                            <input
-                                                type="text"
-                                                value={giftCardPayerAddress}
-                                                onChange={(e) => setGiftCardPayerAddress(e.target.value)}
-                                                placeholder="aleo1..."
-                                                className={`w-full bg-black/40 border outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors text-center ${giftCardPayerAddressInvalid ? 'border-red-500/60 focus:border-red-500/70' : 'border-white/10 focus:border-neon-primary/50'}`}
+                                        <div className="space-y-2">
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Gift Card Code</label>
+                                            <GiftCodeInput
+                                                value={giftCode}
+                                                onChange={setGiftCode}
+                                                disabled={paymentLoading}
                                             />
-                                            <p className={`mt-2 text-[11px] ${giftCardPayerAddressInvalid ? 'text-red-400' : 'text-gray-500'}`}>
+                                        </div>
+                                        
+                                        <div className="space-y-2">
+                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Payer Address (Optional)</label>
+                                            <div className="relative group">
+                                                <input
+                                                    type="text"
+                                                    value={giftCardPayerAddress}
+                                                    onChange={(e) => setGiftCardPayerAddress(e.target.value)}
+                                                    placeholder="aleo1..."
+                                                    className={`w-full bg-black/40 border outline-none rounded-xl text-xs font-mono text-white p-4 transition-all ${giftCardPayerAddressInvalid ? 'border-red-500/40 focus:border-red-500/60 bg-red-500/5' : 'border-white/10 focus:border-white/20'}`}
+                                                />
+                                                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none opacity-40">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <p className={`px-1 text-[10px] leading-relaxed ${giftCardPayerAddressInvalid ? 'text-red-400' : 'text-gray-500'}`}>
                                                 {giftCardPayerAddressInvalid
-                                                    ? 'Enter a valid Aleo public address or leave this blank.'
-                                                    : 'If you leave this blank, the payment receipt hash will be minted on the gift card address.'}
+                                                    ? 'Please enter a valid Aleo public address.'
+                                                    : 'If left blank, the receipt will be minted to the gift card address.'}
                                             </p>
                                         </div>
+
                                         {giftCardRedeemOption && giftCardRedeemOption.giftCode === giftCode && (
                                             <GiftCardRedeemPrompt
                                                 availableAmount={giftCardRedeemOption.availableAmount}
