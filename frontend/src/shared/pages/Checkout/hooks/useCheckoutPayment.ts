@@ -64,6 +64,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
     const { address: publicKey, wallet, executeTransaction, requestRecords, decrypt } = useWallet();
     const { handleWalletError } = useWalletErrorHandler();
     const { setGuard, clearGuard } = useLeaveGuard();
+    const shouldAutoSettleInvoice = session?.invoice_type !== 1 && session?.invoice_type !== 2;
     const [status, setStatus] = useState<string>('');
     const [txId, setTxId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -386,7 +387,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
-                                        status: 'SETTLED',
+                                        ...(shouldAutoSettleInvoice ? { status: 'SETTLED' } : {}),
                                         payment_tx_ids: [onChainId],
                                         session_id: session.id
                                     })
@@ -674,7 +675,11 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
         await fetch(`${API_URL}/invoices/${session.invoice_hash}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'SETTLED', payment_tx_ids: [transactionId], session_id: session.id })
+            body: JSON.stringify({
+                ...(shouldAutoSettleInvoice ? { status: 'SETTLED' } : {}),
+                payment_tx_ids: [transactionId],
+                session_id: session.id
+            })
         });
         await fetch(`${API_URL}/checkout/sessions/${session.id}`, {
             method: 'PATCH',

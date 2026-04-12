@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, ArrowUpRight, Copy, Eye, EyeOff, Lock, ShieldCheck, Trash2, Unlock, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowUpRight, Copy, Eye, EyeOff, Lock, RefreshCw, ShieldCheck, Trash2, Unlock, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Shimmer } from '../../../components/ui/Shimmer';
@@ -195,6 +195,11 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
         usdcx: card?.limits?.USDCX?.max_balance || 0,
         usad: card?.limits?.USAD?.max_balance || 0
     };
+    const totalCardBalance = Object.values(balances).reduce((sum, value) => sum + value, 0);
+    const hasCardBalance = totalCardBalance > 0;
+    const deleteGuidance = hasCardBalance
+        ? 'Please first do Transfer All To Main Wallet.'
+        : 'There is no balance in your NullPay card. You can delete it from on-chain and off-chain both.';
 
     const maskedCardNumber = card?.card_last4 ? `**** **** **** ${card.card_last4}` : '**** **** **** ****';
     const fullCardNumber = formatCardNumber(card?.card_number);
@@ -335,13 +340,22 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
         try {
             setIsSweepingCard(true);
             const txIds = await sweepCardFundsToMain(pin || undefined, secret || undefined);
-            toast.success(`Sweep submitted across ${txIds.length} transaction${txIds.length === 1 ? '' : 's'}.`);
+            toast.success(`Sweep confirmed across ${txIds.length} transaction${txIds.length === 1 ? '' : 's'} and the card balance scan is updating.`);
             setPin('');
             setSecret('');
         } catch (err: any) {
             toast.error(err.message || 'Failed to sweep card funds.');
         } finally {
             setIsSweepingCard(false);
+        }
+    };
+
+    const handleRefreshCardScan = async () => {
+        try {
+            await refreshCardBalances(undefined, undefined, { retryOnZero: true });
+            toast.success('NullPay card records refreshed.');
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to refresh card records.');
         }
     };
 
@@ -570,11 +584,11 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                         {Object.values(balances).some((value) => value > 0) ? (
                             <p className="leading-relaxed text-red-100/85">
                                 This card still holds funds. If you delete it now, you may <span className="font-semibold text-white">lose access to that money permanently</span>.
-                                Use <span className="font-semibold text-white">Transfer All To Main Wallet</span> first if you want the safest path.
+                                <span className="font-semibold text-white"> Please first do Transfer All To Main Wallet.</span>
                             </p>
                         ) : (
                             <p className="leading-relaxed text-gray-300">
-                                The card currently shows zero balance, so it is safe to remove the record and clear the mirror if you no longer need this card.
+                                There is no balance in your NullPay card. You can delete it from on-chain and off-chain both.
                             </p>
                         )}
                     </div>
@@ -662,8 +676,17 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                     {isRefreshingBalances ? 'Scanning Records' : 'Ready'}
                                 </div>
                                 <button
+                                    onClick={handleRefreshCardScan}
+                                    disabled={isRefreshingBalances || isSweepingCard}
+                                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-gray-300 transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+                                >
+                                    <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingBalances ? 'animate-spin' : ''}`} />
+                                    Refresh Scan
+                                </button>
+                                <button
                                     onClick={handleSweepToMain}
-                                    disabled={isSweepingCard}
+                                    disabled={isSweepingCard || isRefreshingBalances || !hasCardBalance}
+                                    title={hasCardBalance ? 'Sweep all private card funds back into the main wallet.' : 'This NullPay card has zero balance.'}
                                     className="inline-flex items-center gap-2 rounded-full border border-neon-primary/20 bg-neon-primary/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-neon-primary transition-colors hover:bg-neon-primary/20 disabled:opacity-60"
                                 >
                                     {isSweepingCard ? (
@@ -699,7 +722,7 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                                             you may not be able to recover that money afterward.
                                         </p>
                                         <p className="mt-2 leading-relaxed text-red-100/75">
-                                            Use <span className="font-semibold text-white">Transfer All To Main Wallet</span> first if you want the safest exit path. NullPay will sponsor the sweep transactions.
+                                            {deleteGuidance}
                                         </p>
                                     </div>
                                 </div>

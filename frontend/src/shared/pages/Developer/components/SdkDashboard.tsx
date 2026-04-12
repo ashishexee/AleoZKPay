@@ -36,6 +36,11 @@ type SdkDashboardInvoice = InvoiceRecord & {
         usdcx: number;
         usad: number;
     };
+    earnings?: {
+        credits: number;
+        usdcx: number;
+        usad: number;
+    };
 };
 
 const normalizeHash = (hash?: string | null) => (hash || '').replace(/field$/, '');
@@ -349,14 +354,14 @@ export const SdkDashboard: React.FC = () => {
             dbMap.set(normalizeHash(transaction.invoice_hash), transaction);
         });
 
-        const donationTotals = new Map<string, { credits: number; usdcx: number; usad: number }>();
+        const receiptTotals = new Map<string, { credits: number; usdcx: number; usad: number }>();
         filteredMerchantReceipts.forEach((receipt) => {
             const hash = normalizeHash(receipt.invoiceHash);
-            if (!donationTotals.has(hash)) {
-                donationTotals.set(hash, { credits: 0, usdcx: 0, usad: 0 });
+            if (!receiptTotals.has(hash)) {
+                receiptTotals.set(hash, { credits: 0, usdcx: 0, usad: 0 });
             }
 
-            const totals = donationTotals.get(hash)!;
+            const totals = receiptTotals.get(hash)!;
             const amount = Number(receipt.amount) / 1_000_000;
             if (receipt.tokenType === 1) totals.usdcx += amount;
             else if (receipt.tokenType === 2) totals.usad += amount;
@@ -372,17 +377,22 @@ export const SdkDashboard: React.FC = () => {
                 const invoice: SdkDashboardInvoice = {
                     ...record,
                     amount: record.amount / 1_000_000,
-                    status: dbTx?.status === 'SETTLED' ? 'SETTLED' : 'PENDING',
+                    status: dbTx?.status || 'PENDING',
                     creationTx: dbTx?.invoice_transaction_id || null,
                     paymentTxIds: dbTx?.payment_tx_ids || (dbTx?.payment_tx_id ? [dbTx.payment_tx_id] : []),
                     memo: record.memo || dbTx?.memo || '',
                     isPending: false,
                     source: 'chain',
                     isValidOnChain: true,
+                    earnings: receiptTotals.get(normalizeHash(record.invoiceHash)) || {
+                        credits: 0,
+                        usdcx: 0,
+                        usad: 0,
+                    },
                 };
 
                 if (invoice.invoiceType === 2) {
-                    invoice.donations = donationTotals.get(normalizeHash(invoice.invoiceHash)) || {
+                    invoice.donations = receiptTotals.get(normalizeHash(invoice.invoiceHash)) || {
                         credits: 0,
                         usdcx: 0,
                         usad: 0,

@@ -222,12 +222,12 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                 <p className="text-lg font-bold text-white">{session.merchant_name}</p>
                             </div>
 
-                            {/* Amount Info */}
-                            <div className="text-center pb-6 border-b border-white/10">
+                            {/* Amount & Currency Info */}
+                            <div className="text-center pb-8 pt-2 border-b border-white/10 flex flex-col items-center">
                                 {isDonation ? (
-                                    <div className="flex flex-col items-center justify-center space-y-2">
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-left w-full max-w-[200px] pl-1">Donation Amount</p>
-                                        <div className="relative w-full max-w-[200px]">
+                                    <div className="w-full flex flex-col items-center animate-fade-in">
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">Amount to Donate</p>
+                                        <div className="relative flex items-center bg-white/[0.03] rounded-2xl border border-white/10 transition-all duration-300 focus-within:border-white/20 focus-within:bg-white/[0.05]">
                                             <input 
                                                 type="number" 
                                                 step="0.01"
@@ -235,47 +235,86 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 value={donationAmount}
                                                 onChange={(e) => setDonationAmount(e.target.value)}
                                                 placeholder="0.00"
-                                                className="w-full bg-black/40 border-2 border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-4xl font-black tracking-tighter text-white p-3 pr-16 text-right transition-colors"
+                                                className="w-[180px] sm:w-[220px] bg-transparent outline-none text-4xl sm:text-5xl font-bold tracking-tight text-white p-4 text-center placeholder:text-white/10"
                                             />
-                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500 uppercase">{displayToken === 'ANY' ? '' : displayTokenLabel}</span>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center space-y-2">
-                                        <p className="text-4xl font-black text-white tracking-tighter mb-1 relative">
-                                            {quote ? quote.expected_amount : session.amount} 
-                                            <span className="text-sm font-medium text-gray-500 ml-2">{displayTokenLabel}</span>
+                                    <div className="flex flex-col items-center animate-fade-in">
+                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Total Amount</p>
+                                        <div className="relative inline-block">
+                                            <p className="text-6xl sm:text-7xl font-black text-white tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.15)] leading-none">
+                                                {quote ? quote.expected_amount : session.amount} 
+                                            </p>
                                             {quote && (
-                                                <span className="absolute -top-6 right-0 text-[10px] text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full border border-orange-400/20 whitespace-nowrap">
+                                                <span className="absolute -top-3 -right-16 text-[10px] text-orange-400 bg-orange-400/10 px-2.5 py-1 rounded-full border border-orange-400/20 font-bold whitespace-nowrap shadow-[0_0_15px_rgba(249,115,22,0.15)] backdrop-blur-md">
                                                     ~ {session.amount} {session.token_type}
                                                 </span>
                                             )}
-                                        </p>
+                                        </div>
                                         {quote && localTimeRemaining > 0 && (
-                                            <p className="text-xs text-orange-400/80 font-mono">
-                                                Quote expires in {Math.floor(localTimeRemaining / 60)}:{(localTimeRemaining % 60).toString().padStart(2, '0')}
-                                            </p>
+                                            <div className="mt-5 inline-flex items-center gap-2 bg-orange-500/10 px-4 py-1.5 rounded-full border border-orange-500/20 shadow-inner">
+                                                <svg className="w-3.5 h-3.5 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                                <p className="text-xs text-orange-400 font-mono font-semibold">
+                                                    Quote expires in {Math.floor(localTimeRemaining / 60)}:{(localTimeRemaining % 60).toString().padStart(2, '0')}
+                                                </p>
+                                            </div>
                                         )}
                                         {quote && localTimeRemaining === 0 && (
-                                            <p className="text-xs text-red-400 font-mono animate-pulse">
-                                                Quote expired. Please refresh the page to update.
-                                            </p>
+                                            <div className="mt-5 inline-flex items-center gap-2 bg-red-500/10 px-4 py-1.5 rounded-full border border-red-500/20 shadow-inner">
+                                                <svg className="w-3.5 h-3.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                                <p className="text-xs text-red-400 font-mono animate-pulse font-semibold">
+                                                    Quote expired. Please refresh.
+                                                </p>
+                                            </div>
                                         )}
                                     </div>
                                 )}
                                 
-                                {allowedTokens.length > 1 && (
-                                    <div className="mt-4 flex flex-col items-center justify-center space-y-2 animate-fade-in">
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest text-left w-full max-w-[200px] pl-1">Select Token</p>
-                                        <select
-                                            value={selectedPayerToken}
-                                            onChange={(e) => setSelectedPayerToken(e.target.value)}
-                                            className="w-full max-w-[200px] bg-black/40 border-2 border-white/10 focus:border-neon-primary/50 outline-none rounded-xl text-lg font-bold text-white p-3 transition-colors text-center"
-                                        >
-                                            {allowedTokens.map((token) => (
-                                                <option key={token} value={token}>{token === 'CREDITS' ? 'Aleo Credits' : token === 'USDCX' ? 'USDCx' : 'USAD'}</option>
-                                            ))}
-                                        </select>
+                                {allowedTokens.length > 1 ? (
+                                    <div className="mt-8 w-full max-w-[320px] animate-fade-in">
+                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Pay With</p>
+                                        <div className="flex justify-center p-1.5 bg-[#0a0a0a] border border-white/5 rounded-2xl shadow-inner relative overflow-hidden">
+                                            {allowedTokens.map((token) => {
+                                                const isSelected = selectedPayerToken === token;
+                                                const tLabel = token === 'CREDITS' ? 'Aleo' : token === 'USDCX' ? 'USDCx' : 'USAD';
+                                                
+                                                const iconMap: Record<string, React.ReactElement> = {
+                                                    CREDITS: (
+                                                        <svg className={`w-4 h-4 mr-2 ${isSelected ? 'text-white' : 'text-gray-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                                    ),
+                                                    USDCX: (
+                                                        <svg className={`w-4 h-4 mr-2 ${isSelected ? 'text-blue-400' : 'text-gray-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 8a3.5 3 0 0 1 3.5 -3h1a3.5 3 0 0 1 3.5 3a3 3 0 0 1 -2 3a3 4 0 0 0 -2 4"/><line x1="12" y1="19" x2="12" y2="19.01" /></svg>
+                                                    ),
+                                                    USAD: (
+                                                        <svg className={`w-4 h-4 mr-2 ${isSelected ? 'text-emerald-400' : 'text-gray-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M16.7 8a3 3 0 0 0 -2.7 -2h-4a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6h-4a3 3 0 0 1 -2.7 -2"/><path d="M12 3v3m0 12v3"/></svg>
+                                                    )
+                                                };
+
+                                                return (
+                                                    <button
+                                                        key={token}
+                                                        onClick={() => setSelectedPayerToken(token)}
+                                                        className={`relative flex-1 flex justify-center items-center py-3 px-2 rounded-xl text-sm font-bold transition-all duration-300 z-10 ${
+                                                            isSelected 
+                                                                ? 'bg-gradient-to-b from-white/15 to-white/5 text-white shadow-[0_2px_10px_rgba(0,0,0,0.5)] border border-white/[0.15] scale-[1.02]' 
+                                                                : 'text-gray-500 hover:text-white/80 hover:bg-white/5 border border-transparent'
+                                                        }`}
+                                                    >
+                                                        {iconMap[token] || null}
+                                                        {tLabel}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mt-8 flex justify-center items-center gap-2 bg-white/[0.03] border border-white/10 px-5 py-2.5 rounded-full shadow-inner animate-fade-in">
+                                        <span className="relative flex h-2.5 w-2.5">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500"></span>
+                                        </span>
+                                        <span className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">{displayTokenLabel} Network</span>
                                     </div>
                                 )}
                             </div>

@@ -210,6 +210,10 @@ function hasPositiveBalance(balances: Record<BalanceKey, number>) {
     return Object.values(balances).some((value) => value > 0);
 }
 
+function sleep(ms: number) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 function normalizeMaybeEncryptedValue(
     value: string | null | undefined,
     appPassword: string | null,
@@ -422,27 +426,57 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const shouldUseTempUnlock = !decryptedCardKey && pin && cardSecret;
         const activeKey = decryptedCardKey || (shouldUseTempUnlock ? await unlockCard(pin!, cardSecret!, { persist: false }) : null);
         if (!activeKey) {
+            console.warn('[CardWalletProvider] Skipping card balance refresh because no decrypted card key is available.');
             return cardBalances;
         }
 
         try {
+            console.group('[CardWalletProvider] Refreshing card balances');
+            console.log('[CardWalletProvider] Card address:', card.card_address);
+            console.log('[CardWalletProvider] Using temporary unlock:', shouldUseTempUnlock);
+            console.log('[CardWalletProvider] Retry on zero:', Boolean(options?.retryOnZero));
             setIsRefreshingBalances(true);
             let balances = await fetchAllPrivateBalances(activeKey);
+            console.log('[CardWalletProvider] First scan balances:', balances);
 
             if (options?.retryOnZero && !hasPositiveBalance(balances)) {
-                await new Promise((resolve) => window.setTimeout(resolve, 1500));
+                console.warn('[CardWalletProvider] First scan returned zero balances. Retrying after delay.');
+                await sleep(1500);
                 balances = await fetchAllPrivateBalances(activeKey);
+                console.log('[CardWalletProvider] Retry scan balances:', balances);
             }
 
             setCardBalances(balances);
             if (decryptedCardKey) scheduleAutoLock();
             return balances;
         } finally {
+            console.groupEnd();
             setIsRefreshingBalances(false);
             if (shouldUseTempUnlock) {
                 resetKeyMaterial(activeKey);
             }
         }
+    };
+
+    const pollCardBalancesUntilEmpty = async (activeKey: string, maxAttempts = 12, delayMs = 2500) => {
+        let latestBalances: Record<BalanceKey, number> | null = null;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+            setIsRefreshingBalances(true);
+            try {
+                latestBalances = await fetchAllPrivateBalances(activeKey);
+                setCardBalances(latestBalances);
+                if (!hasPositiveBalance(latestBalances)) {
+                    return latestBalances;
+                }
+            } finally {
+                setIsRefreshingBalances(false);
+            }
+
+            await sleep(delayMs);
+        }
+
+        return latestBalances;
     };
 
     const pollForFinalTransactionId = async (initialTxId: string): Promise<string> => {
@@ -942,6 +976,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         try {
             const latestBalances = await fetchAllPrivateBalances(activeCardKey);
+            setCardBalances(latestBalances);
             const transfers: Array<{ currency: 'ALEO' | 'USDCx' | 'USAD'; amount: number }> = [];
 
             if ((latestBalances.ALEO || 0) > 0) {
@@ -969,11 +1004,11 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 txIds.push(...result.txIds);
             }
 
-            if (decryptedCardKey) {
-                await refreshCardBalances(undefined, undefined, { retryOnZero: true });
-            } else if (pin && cardSecret) {
-                await refreshCardBalances(pin, cardSecret, { retryOnZero: true });
+            for (const txId of txIds) {
+                await pollForFinalTransactionId(txId);
             }
+
+            await pollCardBalancesUntilEmpty(activeCardKey);
 
             return txIds;
         } finally {
@@ -991,34 +1026,90 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             throw new Error('Wallet record access is unavailable.');
         }
 
+        console.group('[CardWalletProvider] Locating on-chain card profile record for deletion');
+        console.log('[CardWalletProvider] Card address:', card.card_address);
+        console.log('[CardWalletProvider] Card hash hex:', card.card_number_hash);
+
         const records = await requestRecords(WALLET_PROGRAM_ID, true);
         const expectedHashField = card.card_number_hash_field
             || (card.card_number_hash ? sha256HexToField(card.card_number_hash) : null);
 
+        console.log('[CardWalletProvider] Wallet program:', WALLET_PROGRAM_ID);
+        console.log('[CardWalletProvider] requestRecords returned count:', Array.isArray(records) ? records.length : 0);
+        console.log('[CardWalletProvider] Expected card hash field:', expectedHashField);
+
         if (!expectedHashField) {
+            console.groupEnd();
             throw new Error('Card hash metadata is missing. Refresh the card and try again.');
         }
 
-        for (const record of (records as any[]) || []) {
+        for (const [index, record] of ((records as any[]) || []).entries()) {
+            console.log(`[CardWalletProvider] Record[${index}] summary`, {
+                spent: Boolean(record?.spent),
+                hasPlaintext: Boolean(record?.plaintext),
+                hasCiphertext: Boolean(record?.ciphertext),
+                hasRecordCiphertext: Boolean(record?.recordCiphertext),
+                id: record?.id || record?.recordId || null
+            });
             if (record.spent) continue;
 
             let plaintext = record.plaintext;
             if (!plaintext && record.recordCiphertext && decrypt) {
                 try {
                     plaintext = await decrypt(record.recordCiphertext);
-                } catch {
+                    console.log(`[CardWalletProvider] Record[${index}] decrypted successfully.`);
+                } catch (error) {
+                    console.warn(`[CardWalletProvider] Record[${index}] decrypt failed:`, error);
                     plaintext = undefined;
                 }
             }
 
             const parsed = parseCardProfileRecord({ plaintext });
-            if (!parsed) continue;
+            if (!parsed) {
+                if (plaintext) {
+                    console.log(`[CardWalletProvider] Record[${index}] is not a card profile record.`, plaintext.slice(0, 220));
+                }
+                continue;
+            }
 
-            if (String(parsed.cardNumberHashField).trim() === String(expectedHashField).trim()) {
+            console.log(`[CardWalletProvider] Record[${index}] parsed card hash field:`, parsed.cardNumberHashField);
+
+            const hashMatches = String(parsed.cardNumberHashField).trim() === String(expectedHashField).trim();
+            const encryptedAddressMatches = Boolean(
+                card.encrypted_card_address
+                && parsed.encryptedCardAddress
+                && String(parsed.encryptedCardAddress).trim() === String(card.encrypted_card_address).trim()
+            );
+
+            let decryptedAddressMatches = false;
+            if (!hashMatches && !encryptedAddressMatches && appPassword && parsed.encryptedCardAddress && card.card_address) {
+                try {
+                    const decryptedParsedAddress = await decryptWithPassword(parsed.encryptedCardAddress, appPassword);
+                    decryptedAddressMatches = decryptedParsedAddress === card.card_address;
+                    console.log(`[CardWalletProvider] Record[${index}] decrypted parsed card address:`, decryptedParsedAddress);
+                } catch (error) {
+                    console.warn(`[CardWalletProvider] Record[${index}] failed to decrypt parsed encrypted_card_address:`, error);
+                }
+            }
+
+            console.log(`[CardWalletProvider] Record[${index}] match status`, {
+                hashMatches,
+                encryptedAddressMatches,
+                decryptedAddressMatches
+            });
+
+            if (hashMatches || encryptedAddressMatches || decryptedAddressMatches) {
+                if (!hashMatches) {
+                    console.warn(`[CardWalletProvider] Record[${index}] matched by card address fallback because the stored card hash field differs from the on-chain record.`);
+                }
+                console.log(`[CardWalletProvider] Record[${index}] matched expected card profile record.`);
+                console.groupEnd();
                 return plaintext || record.ciphertext || record.recordCiphertext || record;
             }
         }
 
+        console.error('[CardWalletProvider] No matching unspent on-chain card profile record was found for deletion.');
+        console.groupEnd();
         throw new Error('Could not locate an unspent on-chain card profile record.');
     };
 
@@ -1030,8 +1121,14 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             throw new Error('Create your NullPay card first.');
         }
 
+        console.group('[CardWalletProvider] Delete card flow start');
+        console.log('[CardWalletProvider] Main address:', address);
+        console.log('[CardWalletProvider] Card address:', card.card_address);
+        console.log('[CardWalletProvider] Current scanned balances:', cardBalances);
+
         const cardRecord = await findCardProfileRecord();
         const inputs = [cardRecord];
+        console.log('[CardWalletProvider] delete_card_profile inputs prepared.');
 
         const estimatedDeleteFee = await estimateExecutionFee({
             programName: WALLET_PROGRAM_ID,
@@ -1052,27 +1149,35 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         );
 
         if (!result?.transactionId) {
+            console.groupEnd();
             throw new Error('The wallet did not return a transaction id for card deletion.');
         }
 
+        console.log('[CardWalletProvider] Initial deletion transaction id:', result.transactionId);
         const finalTransactionId = await pollForFinalTransactionId(result.transactionId);
+        console.log('[CardWalletProvider] Final deletion transaction id:', finalTransactionId);
         const message = buildCardDeletionMessage(card);
+        console.log('[CardWalletProvider] Card deletion message payload:', message);
         const signatureResult = await wallet.adapter.signMessage(new TextEncoder().encode(message));
         const signatureBytes = signatureResult instanceof Uint8Array
             ? signatureResult
             : (signatureResult as any)?.signature;
 
         if (!signatureBytes) {
+            console.groupEnd();
             throw new Error('Main wallet did not return a usable signature for card deletion.');
         }
 
         const signatureBase64 = toBase64(signatureBytes);
+        console.log('[CardWalletProvider] Sending signed deletion confirmation to backend.');
         await deleteCardWalletEntry(address, address, message, signatureBase64, finalTransactionId);
 
         clearCachedCard(address);
         setCard(null);
         setCardBalances(null);
         lockCard();
+        console.log('[CardWalletProvider] Card deletion completed successfully.');
+        console.groupEnd();
     };
 
     return (

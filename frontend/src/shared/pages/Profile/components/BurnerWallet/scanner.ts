@@ -41,6 +41,10 @@ export async function getScannerSession(decryptedBurnerKey: string): Promise<Sca
 
     // Register the burner wallet's view key with the scanner
     const account = new Account({ privateKey: decryptedBurnerKey });
+    console.group('[ShieldScanner] Creating scanner session');
+    console.log('[ShieldScanner] Scanner base:', scannerBase);
+    console.log('[ShieldScanner] Using bearer token:', Boolean(scannerApiKey && scannerApiKey.length > 50));
+    console.log('[ShieldScanner] Card/burner address:', account.address().to_string());
     const pubkeyRes = await fetch(`${scannerBase}/pubkey`, { 
         method: 'GET', 
         headers: scannerHeaders,
@@ -56,6 +60,8 @@ export async function getScannerSession(decryptedBurnerKey: string): Promise<Sca
     });
     if (!regRes.ok) throw new Error(`Scanner registration failed: ${regRes.status}`);
     const { uuid: scannerUuid } = await regRes.json();
+    console.log('[ShieldScanner] Scanner UUID:', scannerUuid);
+    console.groupEnd();
 
     return { scannerBase, scannerHeaders, scannerUuid, account };
 }
@@ -132,16 +138,20 @@ export async function scanProgramBalance(
 // Fetch all three private token balances
 // ─────────────────────────────────────────────
 export async function fetchAllPrivateBalances(decryptedBurnerKey: string): Promise<PrivateBalances> {
+    console.group('[ShieldScanner] fetchAllPrivateBalances start');
     const session = await getScannerSession(decryptedBurnerKey);
     // Run sequentially — scanner UUID session is not safe for concurrent requests
     const aleoMicro  = await scanProgramBalance(session, 'credits.aleo', 'credits');
     const usdcxMicro = await scanProgramBalance(session, 'test_usdcx_stablecoin.aleo', 'Token');
     const usadMicro  = await scanProgramBalance(session, 'test_usad_stablecoin.aleo', 'Token');
-    return {
+    const balances = {
         ALEO:  aleoMicro  / 1_000_000,
         USDCx: usdcxMicro / 1_000_000,
         USAD:  usadMicro  / 1_000_000,
     };
+    console.log('[ShieldScanner] Final balances:', balances);
+    console.groupEnd();
+    return balances;
 }
 
 

@@ -446,9 +446,15 @@ const Profile: React.FC = () => {
         }
     };
 
+    const normalizeHash = (hash?: string | null) => (hash || '').replace(/field$/, '');
+
     const sdkHashSet = useMemo(() => {
-        return new Set(transactions.filter(tx => tx.for_sdk).map(tx => tx.invoice_hash));
+        return new Set(transactions.filter(tx => tx.for_sdk).map(tx => normalizeHash(tx.invoice_hash)));
     }, [transactions]);
+
+    const mainDashboardPayerReceipts = useMemo(() => {
+        return payerReceipts.filter((receipt) => !sdkHashSet.has(normalizeHash(receipt.invoiceHash)));
+    }, [payerReceipts, sdkHashSet]);
 
     const combinedInvoices = useMemo(() => {
         const merged = new Map<string, any>();
@@ -457,16 +463,16 @@ const Profile: React.FC = () => {
         // 1. Index DB transactions for quick lookup (Metadata only)
         const dbMap = new Map<string, any>();
         transactions.forEach(tx => {
-            if (tx.invoice_hash) dbMap.set(tx.invoice_hash, tx);
+            if (tx.invoice_hash) dbMap.set(normalizeHash(tx.invoice_hash), tx);
         });
 
         // 2. Layer on On-Chain Records (Authoritative Data)
         // MAIN WALLET INVOICES
         createdInvoices.forEach(record => {
-            if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
-            if (sdkHashSet.has(record.invoiceHash)) return; // Filter explicitly SDK invoices from the Main Dashboard!
+            if (normalizeHash(record.invoiceHash) === normalizeHash(profileMainHash) || normalizeHash(record.invoiceHash) === normalizeHash(profileBurnerHash)) return; // Filter explicitly only Profile QRs from the Dashboard!
+            if (sdkHashSet.has(normalizeHash(record.invoiceHash))) return; // Filter explicitly SDK invoices from the Main Dashboard!
 
-            const dbTx = dbMap.get(record.invoiceHash);
+            const dbTx = dbMap.get(normalizeHash(record.invoiceHash));
             if (!dbTx) return;
 
             merged.set(record.invoiceHash, {
@@ -493,10 +499,10 @@ const Profile: React.FC = () => {
 
         // BURNER WALLET INVOICES
         burnerCreatedInvoices.forEach(record => {
-            if (record.invoiceHash === profileMainHash || record.invoiceHash === profileBurnerHash) return; // Filter explicitly only Profile QRs from the Dashboard!
-            if (sdkHashSet.has(record.invoiceHash)) return; // Filter explicitly SDK invoices from the Main Dashboard!
+            if (normalizeHash(record.invoiceHash) === normalizeHash(profileMainHash) || normalizeHash(record.invoiceHash) === normalizeHash(profileBurnerHash)) return; // Filter explicitly only Profile QRs from the Dashboard!
+            if (sdkHashSet.has(normalizeHash(record.invoiceHash))) return; // Filter explicitly SDK invoices from the Main Dashboard!
 
-            const dbTx = dbMap.get(record.invoiceHash);
+            const dbTx = dbMap.get(normalizeHash(record.invoiceHash));
             if (!dbTx) return;
 
             merged.set(record.invoiceHash, {
@@ -525,7 +531,7 @@ const Profile: React.FC = () => {
         const receiptTotals = new Map<string, { credits: number, usdcx: number, usad: number }>();
         const receiptNotes = new Map<string, string[]>();
         allReceipts.forEach(receipt => {
-            const hash = receipt.invoiceHash.replace('field', '');
+            const hash = normalizeHash(receipt.invoiceHash);
             if (!receiptTotals.has(hash)) {
                 receiptTotals.set(hash, { credits: 0, usdcx: 0, usad: 0 });
             }
@@ -550,7 +556,7 @@ const Profile: React.FC = () => {
         // Attach receipt-derived earnings to every invoice, and use them as
         // the displayed amount for open-ended / donation invoices.
         merged.forEach((inv, hash) => {
-            const normalizedHash = hash.replace('field', '');
+            const normalizedHash = normalizeHash(hash);
             const totals = receiptTotals.get(normalizedHash);
             const notes = receiptNotes.get(normalizedHash) || [];
             inv.earnings = totals || { credits: 0, usdcx: 0, usad: 0 };
@@ -569,7 +575,7 @@ const Profile: React.FC = () => {
         const finalArr = Array.from(merged.values());
         console.log("🔄 Final Combined Invoices Array (excluding Tips):", finalArr.length, finalArr);
         return finalArr;
-    }, [transactions, createdInvoices, merchantReceipts, burnerCreatedInvoices, burnerMerchantReceipts]);
+    }, [transactions, createdInvoices, merchantReceipts, burnerCreatedInvoices, burnerMerchantReceipts, profileMainHash, profileBurnerHash, sdkHashSet]);
 
     const handleVerifyReceipt = async () => {
         if (!verifyInput || !requestRecords || !decrypt) return;
@@ -655,12 +661,12 @@ const Profile: React.FC = () => {
 
     const uniqueMainReceipts = useMemo(() => {
         return Array.from(new Map(merchantReceipts.map((receipt) => [receipt.receiptHash, receipt])).values())
-            .filter((receipt) => receipt.invoiceHash !== profileMainHash && receipt.invoiceHash !== profileBurnerHash && !sdkHashSet.has(receipt.invoiceHash));
+            .filter((receipt) => normalizeHash(receipt.invoiceHash) !== normalizeHash(profileMainHash) && normalizeHash(receipt.invoiceHash) !== normalizeHash(profileBurnerHash) && !sdkHashSet.has(normalizeHash(receipt.invoiceHash)));
     }, [merchantReceipts, profileMainHash, profileBurnerHash, sdkHashSet]);
 
     const uniqueBurnerReceipts = useMemo(() => {
         return Array.from(new Map(burnerMerchantReceipts.map((receipt) => [receipt.receiptHash, receipt])).values())
-            .filter((receipt) => receipt.invoiceHash !== profileMainHash && receipt.invoiceHash !== profileBurnerHash && !sdkHashSet.has(receipt.invoiceHash));
+            .filter((receipt) => normalizeHash(receipt.invoiceHash) !== normalizeHash(profileMainHash) && normalizeHash(receipt.invoiceHash) !== normalizeHash(profileBurnerHash) && !sdkHashSet.has(normalizeHash(receipt.invoiceHash)));
     }, [burnerMerchantReceipts, profileMainHash, profileBurnerHash, sdkHashSet]);
 
     const merchantStats = useMemo(() => {
@@ -748,7 +754,7 @@ const Profile: React.FC = () => {
                 invoices: loadingBurner ? [] : combinedInvoices,
                 merchantReceipts: uniqueMainReceipts,
                 burnerMerchantReceipts: uniqueBurnerReceipts,
-                payerReceipts
+                payerReceipts: mainDashboardPayerReceipts
             }, options);
             import('react-hot-toast').then(t => t.default.success('Credit report HTML downloaded.'));
         } catch (error: any) {
@@ -771,7 +777,7 @@ const Profile: React.FC = () => {
                 invoices: loadingBurner ? [] : combinedInvoices,
                 merchantReceipts: uniqueMainReceipts,
                 burnerMerchantReceipts: uniqueBurnerReceipts,
-                payerReceipts,
+                payerReceipts: mainDashboardPayerReceipts,
                 programId: PROGRAM_ID
             };
             const htmlAsset = buildMerchantAuditReportHtmlAsset(auditInput, options);
@@ -1229,7 +1235,7 @@ const Profile: React.FC = () => {
                                 setCurrentReportType('audit');
                                 setShowReportConfigModal(true);
                             }}
-                            disabled={auditReportLoading || (!loadingBurner && combinedInvoices.length === 0 && uniqueMainReceipts.length === 0 && uniqueBurnerReceipts.length === 0 && payerReceipts.length === 0)}
+                            disabled={auditReportLoading || (!loadingBurner && combinedInvoices.length === 0 && uniqueMainReceipts.length === 0 && uniqueBurnerReceipts.length === 0 && mainDashboardPayerReceipts.length === 0)}
                             className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1638,7 +1644,7 @@ const Profile: React.FC = () => {
                                     {/* PAID TAB */}
                                     <div style={{ display: activeTab === 'paid' ? 'block' : 'none' }}>
                                         <PaidInvoicesTable
-                                            receipts={payerReceipts}
+                                            receipts={mainDashboardPayerReceipts}
                                             loading={loadingPayerReceipts}
                                             search={invoiceSearch}
                                             valueFilterAmount={valueFilterType === 'none' ? null : appliedValueFilterAmount}
@@ -1669,7 +1675,7 @@ const Profile: React.FC = () => {
                 invoices={loadingBurner ? [] : combinedInvoices}
                 mainMerchantReceipts={uniqueMainReceipts}
                 burnerMerchantReceipts={uniqueBurnerReceipts}
-                payerReceipts={payerReceipts}
+                payerReceipts={mainDashboardPayerReceipts}
                 loadingInvoices={loadingCreated || loadingTransactions || loadingBurner}
                 loadingReceipts={loadingReceipts || loadingBurner}
                 loadingPayerReceipts={loadingPayerReceipts}

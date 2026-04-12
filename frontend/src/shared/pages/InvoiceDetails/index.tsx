@@ -533,6 +533,43 @@ const InvoiceDetailsPage: React.FC = () => {
                                 : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>}
                             {pdfLoading ? 'Generating...' : 'Export PDF'}
                         </button>
+
+                        {/* Delete - only show for non-settled invoices with no payments */}
+                        {invoice.status !== 'SETTLED' && (!invoice.payment_tx_ids || invoice.payment_tx_ids.length === 0) && (
+                            <button
+                                onClick={() => {
+                                    const confirmed = window.confirm(
+                                        invoice.is_burner
+                                            ? 'Delete this burner-owned invoice? This removes it from on-chain state and clears the database entry.'
+                                            : 'Delete this invoice permanently from active on-chain state and the dashboard database?'
+                                    );
+                                    if (!confirmed) return;
+                                    (async () => {
+                                        try {
+                                            const { deleteInvoice: deleteInvoiceEntry } = await import('../../services/api');
+                                            const merchantHash = await hashAddress(invoice.merchant_address || '');
+                                            await deleteInvoiceEntry(invoice.invoice_hash, {
+                                                merchant_address_hash: merchantHash,
+                                                deletion_transaction_id: ''
+                                            });
+                                            navigate('/dashboard');
+                                        } catch (err) {
+                                            console.error('Delete failed', err);
+                                            alert('Failed to delete invoice: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                                        }
+                                    })();
+                                }}
+                                className="flex items-center justify-center p-2 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all"
+                                style={{ background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.35)', color: '#ef4444' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.22)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}
+                                title={invoice.is_burner ? 'Delete burner invoice' : 'Delete invoice'}
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+                                </svg>
+                            </button>
+                        )}
                     </div>
                 </div>
             </motion.nav>

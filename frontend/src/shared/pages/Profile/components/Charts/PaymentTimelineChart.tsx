@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     ResponsiveContainer,
     AreaChart,
@@ -181,6 +181,59 @@ function getBucketIndex(ts: number, range: Range, buckets: DataPoint[], timeZone
     return buckets.findIndex((bucket) => bucket.dateKey === dateKey);
 }
 
+function getDefaultZoomWindow(range: Range) {
+    if (range === '1D') return 16;
+    if (range === '1W') return 4;
+    return 10;
+}
+
+function getMinimumZoomWindow(range: Range) {
+    if (range === '1D') return 6;
+    if (range === '1W') return 3;
+    return 5;
+}
+
+function canZoom(range: Range, pointCount: number) {
+    return pointCount > getMinimumZoomWindow(range);
+}
+
+function getAutoZoomRange(data: DataPoint[], range: Range) {
+    if (!canZoom(range, data.length)) return null;
+
+    const activity = data.map((point) => point.credits + point.usdcx + point.usad);
+    const totalActivity = activity.reduce((sum, value) => sum + value, 0);
+    if (totalActivity <= 0) return null;
+
+    const windowSize = Math.min(getDefaultZoomWindow(range), data.length);
+    if (windowSize >= data.length) return null;
+
+    let bestStart = 0;
+    let currentSum = 0;
+    let bestSum = 0;
+
+    for (let index = 0; index < activity.length; index++) {
+        currentSum += activity[index];
+        if (index >= windowSize) {
+            currentSum -= activity[index - windowSize];
+        }
+
+        if (index >= windowSize - 1 && currentSum > bestSum) {
+            bestSum = currentSum;
+            bestStart = index - windowSize + 1;
+        }
+    }
+
+    const concentrationThreshold = range === '1D' ? 0.6 : 0.7;
+    if (bestSum / totalActivity < concentrationThreshold) {
+        return null;
+    }
+
+    return {
+        startIndex: bestStart,
+        endIndex: Math.min(data.length - 1, bestStart + windowSize - 1)
+    };
+}
+
 const CustomTooltip = ({ active, payload, label, filter }: any) => {
     if (!active || !payload || !payload.length) return null;
     const relevant = payload.filter((p: any) => p.value > 0 || filter === 'ALL');
@@ -205,6 +258,8 @@ export const PaymentTimelineChart: React.FC<PaymentTimelineChartProps> = ({ rece
     const [range, setRange] = useState<Range>('1D');
     const [tokenFilter, setTokenFilter] = useState<TokenFilter>('ALL');
     const [timeZone, setTimeZone] = useState<string>('local');
+    const [zoomRange, setZoomRange] = useState<{ startIndex: number; endIndex: number } | null>(null);
+    const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
     const { data, totals } = useMemo(() => {
         const buckets = buildBuckets(range, timeZone);
@@ -252,16 +307,92 @@ export const PaymentTimelineChart: React.FC<PaymentTimelineChartProps> = ({ rece
 
     const hasData = data.some((d) => d.credits > 0 || d.usdcx > 0 || d.usad > 0);
 
+    const autoZoomRange = useMemo(() => getAutoZoomRange(data, range), [data, range]);
+
+    useEffect(() => {
+        setZoomRange(autoZoomRange);
+    }, [autoZoomRange]);
+
+    const visibleStartIndex = zoomRange?.startIndex ?? 0;
+    const visibleEndIndex = zoomRange?.endIndex ?? Math.max(0, data.length - 1);
+    const visibleData = useMemo(
+        () => data.slice(visibleStartIndex, visibleEndIndex + 1),
+        [data, visibleEndIndex, visibleStartIndex]
+    );
+
+    const isZoomed = visibleStartIndex > 0 || visibleEndIndex < Math.max(0, data.length - 1);
+
+    useEffect(() => {
+        const container = chartContainerRef.current;
+        if (!container) return;
+
+        const handleWheelZoom = (event: WheelEvent) => {
+            if (!canZoom(range, data.length)) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            const totalLength = data.length;
+            const currentStart = visibleStartIndex;
+            const currentEnd = visibleEndIndex;
+            const currentSpan = Math.max(1, currentEnd - currentStart + 1);
+            const minSpan = Math.min(getMinimumZoomWindow(range), totalLength);
+
+            const bounds = chartContainerRef.current?.getBoundingClientRect();
+            const relativeX = bounds ? Math.min(Math.max(event.clientX - bounds.left, 0), bounds.width) : 0;
+            const anchorRatio = bounds && bounds.width > 0 ? relativeX / bounds.width : 0.5;
+            const anchorIndex = Math.round(currentStart + ((currentSpan - 1) * anchorRatio));
+
+            const zoomStep = Math.max(1, Math.floor(currentSpan * 0.2));
+            const nextSpan = event.deltaY < 0
+                ? Math.max(minSpan, currentSpan - zoomStep)
+                : Math.min(totalLength, currentSpan + zoomStep);
+
+            if (nextSpan === totalLength) {
+                setZoomRange(null);
+                return;
+            }
+
+            let nextStart = anchorIndex - Math.floor(nextSpan * anchorRatio);
+            let nextEnd = nextStart + nextSpan - 1;
+
+            if (nextStart < 0) {
+                nextStart = 0;
+                nextEnd = nextSpan - 1;
+            }
+
+            if (nextEnd >= totalLength) {
+                nextEnd = totalLength - 1;
+                nextStart = nextEnd - nextSpan + 1;
+            }
+
+            setZoomRange({ startIndex: nextStart, endIndex: nextEnd });
+        };
+
+        container.addEventListener('wheel', handleWheelZoom, { passive: false });
+        return () => {
+            container.removeEventListener('wheel', handleWheelZoom);
+        };
+    }, [data, range, visibleEndIndex, visibleStartIndex]);
+
     const xTicks = useMemo(() => {
+        const tickSource = visibleData.length > 0 ? visibleData : data;
+
         if (range === '1D') {
-            return ['12:00 AM', '6:00 AM', '12:00 PM', '6:00 PM', '11:45 PM'];
+            if (!isZoomed) {
+                return ['12:00 AM', '6:00 AM', '12:00 PM', '6:00 PM', '11:45 PM'];
+            }
+
+            const len = tickSource.length;
+            const idxs = new Set<number>([0, Math.floor(len / 2), len - 1]);
+            return Array.from(idxs).map((i) => tickSource[i]?.label).filter(Boolean);
         }
 
-        const len = data.length;
-        if (len <= 7) return data.map((d) => d.label);
+        const len = tickSource.length;
+        if (len <= 7) return tickSource.map((d) => d.label);
         const idxs = new Set<number>([0, Math.floor(len / 4), Math.floor(len / 2), Math.floor((3 * len) / 4), len - 1]);
-        return Array.from(idxs).map((i) => data[i]?.label).filter(Boolean);
-    }, [data, range]);
+        return Array.from(idxs).map((i) => tickSource[i]?.label).filter(Boolean);
+    }, [data, isZoomed, range, visibleData]);
 
     const activeTokens = useMemo<Exclude<TokenFilter, 'ALL'>[]>(() => {
         if (tokenFilter === 'ALL') return ['CREDITS', 'USDCX', 'USAD'];
@@ -352,6 +483,28 @@ export const PaymentTimelineChart: React.FC<PaymentTimelineChartProps> = ({ rece
                 </div>
             </div>
 
+            {!isLoading && hasData && (
+                <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+                    {autoZoomRange && (
+                        <button
+                            type="button"
+                            onClick={() => setZoomRange(autoZoomRange)}
+                            className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-[11px] font-bold text-cyan-200 transition-all hover:border-cyan-300/40 hover:bg-cyan-400/15"
+                        >
+                            Focus Activity
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => setZoomRange(null)}
+                        disabled={!isZoomed}
+                        className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all ${isZoomed ? 'border-white/10 bg-white/5 text-white hover:border-white/20 hover:bg-white/10' : 'cursor-not-allowed border-white/5 text-gray-600'}`}
+                    >
+                        Zoom Out
+                    </button>
+                </div>
+            )}
+
             {!isLoading && (
                 <div className="mb-8 flex flex-wrap items-center gap-x-12 gap-y-4">
                     {(['CREDITS', 'USDCX', 'USAD'] as const).map((t) => {
@@ -385,9 +538,9 @@ export const PaymentTimelineChart: React.FC<PaymentTimelineChartProps> = ({ rece
                     ))}
                 </div>
             ) : (
-                <div className="h-[200px] w-full">
+                <div ref={chartContainerRef} className="h-[200px] w-full overscroll-contain">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                        <AreaChart data={visibleData} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
                             <defs>
                                 {(['CREDITS', 'USDCX', 'USAD'] as const).map((t) => (
                                     <linearGradient key={t} id={`grad-${t}`} x1="0" y1="0" x2="0" y2="1">
@@ -444,6 +597,7 @@ export const PaymentTimelineChart: React.FC<PaymentTimelineChartProps> = ({ rece
 
             {!isLoading && tokenFilter === 'ALL' && (
                 <div className="mt-4 flex items-center justify-end gap-4">
+                    <span className="mr-auto text-[10px] font-medium text-gray-500">Scroll on the chart to zoom in or out.</span>
                     {(['CREDITS', 'USDCX', 'USAD'] as const).map((t) => (
                         <span key={t} className="flex items-center gap-1.5 text-[10px] font-medium text-gray-400">
                             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: TOKEN_CONFIG[t].color }} />

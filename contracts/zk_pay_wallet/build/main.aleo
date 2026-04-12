@@ -6,7 +6,7 @@ import test_usdcx_stablecoin.aleo;
 import test_usad_multisig_core.aleo;
 import test_usad_freezelist.aleo;
 import test_usad_stablecoin.aleo;
-program zk_pay_proofs_privacy_wallet_v4.aleo;
+program zk_pay_proofs_privacy_wallet_v5.aleo;
 
 record PayerReceipt:
     owner as address.private;
@@ -113,7 +113,7 @@ function set_oracle_address:
     input r0 as address.public;
     assert.eq self.caller aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge;
     async set_oracle_address r0 into r1;
-    output r1 as zk_pay_proofs_privacy_wallet_v4.aleo/set_oracle_address.future;
+    output r1 as zk_pay_proofs_privacy_wallet_v5.aleo/set_oracle_address.future;
 
 finalize set_oracle_address:
     input r0 as address.public;
@@ -156,7 +156,7 @@ function pay_invoice_credits_via_usdcx:
     output r13 as test_usdcx_stablecoin.aleo/ComplianceRecord.record;
     output r30 as PayerReceipt.record;
     output r32 as MerchantReceipt.record;
-    output r33 as zk_pay_proofs_privacy_wallet_v4.aleo/pay_invoice_credits_via_usdcx.future;
+    output r33 as zk_pay_proofs_privacy_wallet_v5.aleo/pay_invoice_credits_via_usdcx.future;
 
 finalize pay_invoice_credits_via_usdcx:
     input r0 as test_usdcx_stablecoin.aleo/transfer_private.future;
@@ -212,7 +212,7 @@ function pay_invoice_credits_via_usad:
     output r13 as test_usad_stablecoin.aleo/ComplianceRecord.record;
     output r30 as PayerReceipt.record;
     output r32 as MerchantReceipt.record;
-    output r33 as zk_pay_proofs_privacy_wallet_v4.aleo/pay_invoice_credits_via_usad.future;
+    output r33 as zk_pay_proofs_privacy_wallet_v5.aleo/pay_invoice_credits_via_usad.future;
 
 finalize pay_invoice_credits_via_usad:
     input r0 as test_usad_stablecoin.aleo/transfer_private.future;
@@ -264,7 +264,7 @@ function pay_invoice_usdcx_via_credits:
     output r13 as credits.aleo/credits.record;
     output r26 as PayerReceipt.record;
     output r27 as MerchantReceipt.record;
-    output r28 as zk_pay_proofs_privacy_wallet_v4.aleo/pay_invoice_usdcx_via_credits.future;
+    output r28 as zk_pay_proofs_privacy_wallet_v5.aleo/pay_invoice_usdcx_via_credits.future;
 
 finalize pay_invoice_usdcx_via_credits:
     input r0 as signature.public;
@@ -319,7 +319,7 @@ function pay_invoice_usdcx_via_usad:
     output r13 as test_usad_stablecoin.aleo/ComplianceRecord.record;
     output r31 as PayerReceipt.record;
     output r33 as MerchantReceipt.record;
-    output r34 as zk_pay_proofs_privacy_wallet_v4.aleo/pay_invoice_usdcx_via_usad.future;
+    output r34 as zk_pay_proofs_privacy_wallet_v5.aleo/pay_invoice_usdcx_via_usad.future;
 
 finalize pay_invoice_usdcx_via_usad:
     input r0 as test_usad_stablecoin.aleo/transfer_private.future;
@@ -371,7 +371,7 @@ function pay_invoice_usad_via_credits:
     output r13 as credits.aleo/credits.record;
     output r26 as PayerReceipt.record;
     output r27 as MerchantReceipt.record;
-    output r28 as zk_pay_proofs_privacy_wallet_v4.aleo/pay_invoice_usad_via_credits.future;
+    output r28 as zk_pay_proofs_privacy_wallet_v5.aleo/pay_invoice_usad_via_credits.future;
 
 finalize pay_invoice_usad_via_credits:
     input r0 as signature.public;
@@ -426,7 +426,7 @@ function pay_invoice_usad_via_usdcx:
     output r13 as test_usdcx_stablecoin.aleo/ComplianceRecord.record;
     output r31 as PayerReceipt.record;
     output r33 as MerchantReceipt.record;
-    output r34 as zk_pay_proofs_privacy_wallet_v4.aleo/pay_invoice_usad_via_usdcx.future;
+    output r34 as zk_pay_proofs_privacy_wallet_v5.aleo/pay_invoice_usad_via_usdcx.future;
 
 finalize pay_invoice_usad_via_usdcx:
     input r0 as test_usdcx_stablecoin.aleo/transfer_private.future;
@@ -446,4 +446,4 @@ finalize pay_invoice_usad_via_usdcx:
     position end_otherwise_0_11;
 
 constructor:
-    assert.eq program_owner aleo1d5hc09stpfpp3y7xhw9v306th9hrjt6qj8jj3h0rxjwv2y4rrypspfycge;
+    assert.eq program_owner aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0;

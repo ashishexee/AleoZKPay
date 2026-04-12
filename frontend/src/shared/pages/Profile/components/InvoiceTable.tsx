@@ -335,13 +335,30 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                         </div>
                                     </td>
                                     <td className="py-4 px-6 text-left">
-                                        <div className="space-y-1 max-w-[220px]">
-                                            <span className="text-sm font-semibold text-white truncate block" title={inv.title}>
-                                                {inv.title || 'Untitled Invoice'}
-                                            </span>
-                                            <span className="text-sm text-gray-400 truncate block" title={inv.memo}>
-                                                {inv.memo || '-'}
-                                            </span>
+                                        <div className="flex items-center gap-2">
+                                            {canDelete && onDelete && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onDelete(inv); }}
+                                                    disabled={deleteDisabled}
+                                                    className="flex-shrink-0 p-1.5 rounded-md hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all text-red-400 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                    title={deleteTitle}
+                                                >
+                                                    {deletingId === inv.invoiceHash ? (
+                                                        <span className="w-3 h-3 border border-red-300 border-t-transparent rounded-full animate-spin block" />
+                                                    ) : (
+                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            )}
+                                            <div className="space-y-1 max-w-[220px]">
+                                                <span className="text-sm font-semibold text-white truncate block" title={inv.title}>
+                                                    {inv.title || 'Untitled Invoice'}
+                                                </span>
+                                                <span className="text-sm text-gray-400 truncate block" title={inv.memo}>
+                                                    {inv.memo || '-'}
+                                                </span>
                                             {inv.merchantNotes && inv.merchantNotes.length > 1 ? (
                                                 <div 
                                                     className="inline-flex items-center gap-1 text-xs text-orange-400 font-medium hover:text-orange-300 transition-colors"
@@ -359,6 +376,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                             ) : (
                                                 <span className="block truncate text-xs text-gray-600">No merchant note</span>
                                             )}
+                                        </div>
                                         </div>
                                     </td>
                                     <td className="py-4 px-6 text-right">
