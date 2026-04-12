@@ -64,7 +64,11 @@ console.log('Backend initialized. (Relayer daemon removed, relayer is now on-dem
 
 // Initialize Telegram Bot
 const { initBot } = require('./src/bot');
-initBot();
+if (String(process.env.TELEGRAM_BOT_ENABLED || '').toLowerCase() === 'true') {
+    initBot();
+} else {
+    console.log('Telegram bot startup skipped. Set TELEGRAM_BOT_ENABLED=true to enable polling.');
+}
 
 // START SERVER (Exported for tests)
 if (require.main === module) {
