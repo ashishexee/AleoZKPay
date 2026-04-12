@@ -18,6 +18,7 @@ import GiftCardsPage from '../shared/pages/GiftCards';
 import TelegramLinkPage from '../shared/pages/TelegramLink';
 import TelegramBotPage from '../shared/pages/TelegramBot';
 import AuditVerifyPage from '../shared/pages/AuditVerify';
+import SupportFeedbackPage from '../shared/pages/SupportFeedback';
 import CardsPage from './pages/CardsPage';
 import { ProtectedRoute } from '../shared/components/ProtectedRoute';
 import Docs from './pages/Docs';
@@ -36,6 +37,7 @@ const DesktopAnimatedRoutes = () => {
                 <Route path="/profile/*" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
                 <Route path="/profile-qr" element={<ProtectedRoute><ProfileQRPage /></ProtectedRoute>} />
+                <Route path="/support-feedback" element={<ProtectedRoute><SupportFeedbackPage /></ProtectedRoute>} />
                 <Route path="/vision" element={<Vision />} />
                 <Route path="/docs" element={<Docs />} />
                 <Route path="/privacy" element={<Privacy />} />

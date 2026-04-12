@@ -27,6 +27,13 @@ export interface Invoice {
     allowed_tokens?: string[];
 }
 
+export interface SupportFeedbackPayload {
+    email: string;
+    type: 'complaint' | 'feedback';
+    message: string;
+    walletAddress?: string;
+}
+
 export const fetchInvoices = async (status?: string): Promise<Invoice[]> => {
     const url = new URL(`${API_URL}/invoices`);
     if (status) {
@@ -572,4 +579,21 @@ export const chatWithDeveloperAssistant = async (
     }
 
     return payload.reply;
+};
+
+export const submitSupportFeedback = async (
+    payload: SupportFeedbackPayload
+): Promise<{ success: boolean; message: string }> => {
+    const response = await fetch(`${API_URL}/support/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+        throw new Error(data?.error || 'Failed to submit support feedback');
+    }
+
+    return data;
 };
