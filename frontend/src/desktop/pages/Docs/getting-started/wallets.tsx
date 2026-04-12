@@ -21,7 +21,7 @@ const burnerSetupExample = `// In your MCP config, you can configure a burner wa
 
 const walletOperationsExample = `// The NullPay platform uses two wallet programs:
 // 1. Main wallet (zk_pay_proofs_privacy_wallet_v3.aleo)
-// 2. Core payment program (zk_pay_proofs_privacy_v28.aleo)
+// 2. Core payment program (zk_pay_proofs_privacy_v29.aleo)
 
 // Wallet program helpers available:
 // - backup_password       → store an encrypted password backup on-chain

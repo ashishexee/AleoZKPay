@@ -2,7 +2,7 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_v28.aleo {
+program zk_pay_proofs_privacy_v29.aleo {
     
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     constructor() {

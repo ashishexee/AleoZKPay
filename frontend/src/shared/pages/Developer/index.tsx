@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
@@ -14,6 +15,7 @@ import { SdkMethodsGuide } from './components/SdkMethodsGuide';
 import { WebhooksGuide } from './components/WebhooksGuide';
 import { SdkReference } from './components/SdkReference';
 import { DocsChatbot } from '../../components/DocsChatbot';
+const MotionLink = motion(Link);
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
@@ -239,13 +241,13 @@ export const DeveloperPortal = () => {
                         >
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-6 select-none whitespace-nowrap opacity-50 group-hover/badge:opacity-100 transition-opacity duration-500">MCP Works Seamlessly With</span>
                             <div className="flex items-center justify-center gap-8">
-                                <motion.a
+                                <MotionLink
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
                                     initial="initial"
                                     title="OpenClaw - self-hosted gateway for AI agents"
-                                    href="/docs?tab=integrations&section=int-openclaw"
+                                    to="/docs?tab=integrations&section=int-openclaw"
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-red-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
@@ -275,14 +277,14 @@ export const DeveloperPortal = () => {
                                             OpenClaw
                                         </motion.span>
                                     </div>
-                                </motion.a>
+                                </MotionLink>
 
-                                <motion.a
+                                <MotionLink
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
                                     initial="initial"
-                                    href="/docs?tab=integrations&section=int-claude"
+                                    to="/docs?tab=integrations&section=int-claude"
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-orange-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
@@ -312,14 +314,14 @@ export const DeveloperPortal = () => {
                                             Claude
                                         </motion.span>
                                     </div>
-                                </motion.a>
+                                </MotionLink>
 
-                                <motion.a
+                                <MotionLink
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
                                     initial="initial"
-                                    href="/docs?tab=integrations&section=int-antigravity"
+                                    to="/docs?tab=integrations&section=int-antigravity"
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-purple-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
@@ -349,14 +351,14 @@ export const DeveloperPortal = () => {
                                             Antigravity
                                         </motion.span>
                                     </div>
-                                </motion.a>
+                                </MotionLink>
 
-                                <motion.a
+                                <MotionLink
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
                                     initial="initial"
-                                    href="/docs?tab=integrations&section=int-cursor"
+                                    to="/docs?tab=integrations&section=int-cursor"
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-blue-500/10 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
@@ -386,14 +388,14 @@ export const DeveloperPortal = () => {
                                             Cursor
                                         </motion.span>
                                     </div>
-                                </motion.a>
+                                </MotionLink>
 
-                                <motion.a
+                                <MotionLink
                                     layout
                                     className="group/tool flex items-center cursor-pointer"
                                     whileHover="hover"
                                     initial="initial"
-                                    href="/docs?tab=integrations&section=int-codex"
+                                    to="/docs?tab=integrations&section=int-codex"
                                 >
                                     <div className="relative flex items-center">
                                         <div className="absolute inset-[-20%] bg-emerald-500/15 blur-3xl rounded-full opacity-0 group-hover/tool:opacity-100 transition-opacity duration-700" />
@@ -423,7 +425,7 @@ export const DeveloperPortal = () => {
                                             Codex
                                         </motion.span>
                                     </div>
-                                </motion.a>
+                                </MotionLink>
                             </div>
                         </motion.div>
                     </motion.div>
@@ -437,13 +439,13 @@ export const DeveloperPortal = () => {
                                     <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap">Ready for deeper integration?</span>
                                 </div>
                                 <div className="w-[1px] h-3 bg-white/10" />
-                                <a 
-                                    href="/docs?tab=sdk&section=sdk-node" 
+                                <Link 
+                                    to="/docs?tab=sdk&section=sdk-node" 
                                     className="group flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-white hover:text-orange-400 transition-all duration-300"
                                 >
                                     Node.js SDK Docs
                                     <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                                </a>
+                                </Link>
                             </div>
                             <div className="hidden md:block h-[1px] flex-1 bg-gradient-to-l from-transparent to-white/[0.08]" />
                         </div>

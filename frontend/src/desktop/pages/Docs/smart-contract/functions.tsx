@@ -13,7 +13,7 @@ export const functionsSection: DocsSection = {
     content: (
         <div className="space-y-6">
             <Callout title="Program name" tone="blue">
-                The current core contract file defines <code className="rounded bg-white/10 px-1.5 py-0.5">zk_pay_proofs_privacy_v28.aleo</code>.
+                The current core contract file defines <code className="rounded bg-white/10 px-1.5 py-0.5">zk_pay_proofs_privacy_v29.aleo</code>.
                 Wallet artifacts now live in <code className="rounded bg-white/10 px-1.5 py-0.5">zk_pay_proofs_privacy_wallet_v3.aleo</code>.
             </Callout>
             <CodeBlock title="Transition summary" language="text" code={contractFunctionSummary} />

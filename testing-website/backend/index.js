@@ -13,7 +13,7 @@ app.use(express.json({
 }));
 
 const nullpay = new NullPay({
-    secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_5009580add92a440acb1207ffbe329a80b968c857951f12c', // Connected to DB!
+    secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_3b437d1efd99eb1cb03d2e97a191aee56cf6579b73db0ddc', // Connected to DB!
     baseURL: process.env.NULLPAY_BASE_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api',
     projectRoot: __dirname,
     configPath: path.join(__dirname, 'nullpay.json')

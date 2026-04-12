@@ -1,5 +1,5 @@
 {
-  "program": "zk_pay_proofs_privacy_wallet_v5.aleo",
+  "program": "zk_pay_proofs_privacy_wallet_v6.aleo",
   "structs": [],
   "records": [
     {
@@ -377,7 +377,7 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -504,7 +504,7 @@
               "path": [
                 "BurnerWalletRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -599,7 +599,7 @@
               "path": [
                 "CardProfileRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -650,7 +650,7 @@
               "path": [
                 "GiftCardRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -668,7 +668,7 @@
               "path": [
                 "CardProfileRecord"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -878,7 +878,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -889,7 +889,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1081,7 +1081,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1092,7 +1092,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1254,7 +1254,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1265,7 +1265,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1457,7 +1457,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1468,7 +1468,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1630,7 +1630,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1641,7 +1641,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1833,7 +1833,7 @@
               "path": [
                 "PayerReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"
@@ -1844,7 +1844,7 @@
               "path": [
                 "MerchantReceipt"
               ],
-              "program": "zk_pay_proofs_privacy_wallet_v5.aleo"
+              "program": "zk_pay_proofs_privacy_wallet_v6.aleo"
             }
           },
           "mode": "None"

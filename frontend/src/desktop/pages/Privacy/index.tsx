@@ -406,7 +406,7 @@ const Privacy: React.FC = () => {
 
                         <div className="bg-black/40 rounded-xl p-4 border border-white/5 font-mono text-xs space-y-3 mb-4">
                             <div className="flex justify-between pb-2 border-b border-white/5">
-                                <span className="text-gray-500 uppercase tracking-widest">Contract: zk_pay_proofs_privacy_v28.aleo</span>
+                                <span className="text-gray-500 uppercase tracking-widest">Contract: zk_pay_proofs_privacy_v29.aleo</span>
                             </div>
                             <div className="space-y-1 text-gray-400">
                                 <div><span className="text-purple-400">record</span> PayerReceipt {'{'}</div>

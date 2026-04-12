@@ -3,18 +3,6 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": null,
-  "redirects": [
-    {
-      "source": "/docs",
-      "destination": "https://docs.nullpay.app",
-      "permanent": true
-    },
-    {
-      "source": "/docs/:path*",
-      "destination": "https://docs.nullpay.app/:path*",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",

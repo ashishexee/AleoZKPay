@@ -5,38 +5,38 @@
 NullPay is a decentralized invoice and payment system that leverages Aleo's zero-knowledge cryptography to enable private, verifiable transactions. Merchants can create invoices without revealing sensitive information on-chain, and payers can settle invoices while maintaining complete anonymity.
 
 **Live Application:** [https://nullpay.app/](https://nullpay.app/)  
-**Smart Contract:** [`zk_pay_proofs_privacy_v28.aleo`](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v28.aleo)  
+**Wave 5 Demo:** [https://youtu.be/RzCMaCgremE](https://youtu.be/RzCMaCgremE)  
+**V28 Smart Contract:** [`zk_pay_proofs_privacy_v29.aleo`](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v29.aleo)  
+**V5 Wallet Contract:** [`zk_pay_proofs_privacy_wallet_v6.aleo`](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_wallet_v6.aleo)  
 **NullPay Node SDK:** [`@nullpay/node`](https://www.npmjs.com/package/@nullpay/node)
 **NullPay MCP Package:** [`@nullpay/mcp`](https://www.npmjs.com/package/@nullpay/mcp)  
 **Vision:** [https://nullpay.app/vision](https://nullpay.app/vision)  
 **Documentation:** [https://nullpay.app/docs](https://nullpay.app/docs)  
-**SDK Testing Website:** [https://testing-website-frontend.vercel.app/](https://testing-website-frontend.vercel.app/) (Test the full SDK flow here)  
-**NullPay SDK Demo:** [https://youtu.be/B1R0IWvNcVA](https://youtu.be/B1R0IWvNcVA)  
-**Live Notification Demo:** [https://youtu.be/VRV4q3nXc5I](https://youtu.be/VRV4q3nXc5I)
+**SDK Testing Website:** [https://testing-website-frontend.vercel.app/](https://testing-website-frontend.vercel.app/) (Test the full SDK flow here)
 
 ---
 
 ## 🚀 What's New in Wave 5 (April 2026)
 
-This major update introduces cross-token liquidity via ZK-Oracles, enterprise-grade batching, and the revolutionary NullPay Card.
+Wave 5 expands NullPay across checkout, merchant operations, messaging surfaces, and developer distribution. This release brings OpenClaw reach for MCP, live oracle-backed token conversion, the NullPay Card flow, Telegram merchant controls, optional fee estimation, stronger audit tooling, and better batching and payment UX.
 
-### 🔮 ZK-Oracle & Multi-Token Liquidity
-- **Live Price Conversion**: Pay any invoice using your preferred token (Credits, USDCx, USAD). The protocol uses a live backend oracle and on-chain ZK-proofs to verify exchange rates during the payment transition.
-- **Oracle Verification**: Quotes are signed by a trusted feed and verified on-chain via `BHP256` hashing and native signature verification.
+### 🔮 Oracle Conversion & Settlement Integrity
+- **Live Oracle Conversion**: Standard and multipay flows can now settle with a different token from the invoice base token while preserving contract-side verification.
+- **Proof-Backed Execution**: Quotes are fetched off-chain, but the converted amount and compliance-proof path are validated inside the final Aleo execution.
 
-### 💳 NullPay Card & Selective Disclosure
-- **NullPay Card**: Pay without a browser wallet. Use a physical-style card flow with a PIN and Secret for seamless, private payments.
-- **Selective Disclosure & Auditing**: Generate cryptographic audit reports for Credits. Auditing centers allow auditors to verify report correctness without revealing the entire wallet history.
+### 💳 Card Checkout & Fee Modes
+- **NullPay Card**: Added a card profile flow with PIN + card secret unlock, card-specific balance management, top-ups from the main wallet, and wallet-free checkout execution.
+- **Fee Estimation Toggle**: Shielded payments still default to fixed fee. Users can optionally enable fee estimation when they want a more dynamic fee path, with the tradeoff that the Shield popup can take longer to appear.
 
-### 📦 Enterprise Batching & Bots
-- **Batch Payments**: Settle multiple invoices in a single execution using either the local Burner Wallet or contract-centered batching logic.
-- **Telegram Bot & OpenClaw**: Access NullPay via Telegram or 50+ messaging applications through the OpenClaw/MCP integration.
-- **MCP Expansion**: Support for Antigravity, Codex, Cursor, and Windsurf IDEs.
+### 🤖 Messaging, MCP, and Merchant Control
+- **OpenClaw Rollout**: NullPay's MCP flow can now be exposed across chat surfaces such as Telegram, WhatsApp, Discord, Slack, Signal, and other OpenClaw-connected channels.
+- **Telegram Bot**: Merchants can link accounts, inspect dashboard summaries, fetch invoices, open payment links, manage notifications, and trigger browser handoff flows directly from Telegram.
+- **Client Coverage Expansion**: The MCP/docs surface now covers `@nullpay/mcp` usage across clients like Antigravity, Codex, Cursor, and other stdio-compatible setups.
 
-### 📊 Dashboard & UI Evolution
-- **Advanced Metrics**: Real-time earnings display and payment timelines (Days/Weeks/Months) for accurate merchant tracking.
-- **Deep Search**: Search engine improved to filter by Invoice Hash, Salt, Memo, Merchant Notes, and Title.
-- **Fee Estimation**: Toggleable frontend fee estimation to preview gas costs before execution.
+### 📊 Dashboard, Audit, and Payment Utility
+- **Sharper Merchant Dashboard**: Earnings display, invoice search, and timeline analytics were improved across invoice hash, salt, memo, merchant notes, invoice title, and time-based tracking views.
+- **Selective Disclosure & Audit Verify**: Credits reporting now supports selective disclosure, formal audit export flows, and a separate auditor verification center.
+- **Batch Pay, Gift History, and Notes**: Batch pay execution, stronger gift-card history, invoice titles, payment notes, and a more capable NullBot broaden the everyday payment surface.
 
 ---
 
@@ -148,7 +148,7 @@ The client-side application handles:
 - Burner wallet management (local encryption)
 
 ### Layer 2: Smart Contract (Leo)
-The on-chain protocol `zk_pay_proofs_privacy_v28.aleo` enforces:
+The on-chain protocol `zk_pay_proofs_privacy_v29.aleo` enforces:
 - Hash integrity verification (`assert_eq(computed_hash, stored_hash)`)
 - Invoice status management (0 = Open, 1 = Settled)
 - Multi-token support (Credits, USDCx, USAD)
@@ -226,7 +226,7 @@ cd ../backend && npm install
 
 **Frontend (`frontend/.env`):**
 ```env
-VITE_PROGRAM_ID=zk_pay_proofs_privacy_v28.aleo
+VITE_PROGRAM_ID=zk_pay_proofs_privacy_v29.aleo
 VITE_BACKEND_URL=https://nullpay.app/api
 ```
 
@@ -293,9 +293,9 @@ AleoZKPay/
 
 ## Smart Contract
 
-The core contract `zk_pay_proofs_privacy_v28.aleo` is deployed on Aleo Testnet.
+The core contract `zk_pay_proofs_privacy_v29.aleo` is deployed on Aleo Testnet.
 
-**Explorer Link:** [https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v28.aleo](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v28.aleo)
+**Explorer Link:** [https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v29.aleo](https://testnet.explorer.provable.com/program/zk_pay_proofs_privacy_v29.aleo)
 
 ### Key Transitions
 

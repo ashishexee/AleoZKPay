@@ -1,13 +1,13 @@
-import { 
-    Layers3, 
-    FileCode2, 
-    ShieldCheck, 
-    Database, 
-    Network, 
-    Smartphone, 
-    Terminal, 
-    Cpu as Chip, 
-    Zap, 
+import {
+    Layers3,
+    FileCode2,
+    ShieldCheck,
+    Database,
+    Network,
+    Smartphone,
+    Terminal,
+    Cpu as Chip,
+    Zap,
     Lock,
     Globe,
     Workflow,
@@ -42,11 +42,11 @@ export const architectureOverviewSection: DocsSection = {
                         </p>
                         <div className="space-y-2">
                             <div className="flex flex-wrap gap-2">
-                                <span className="px-2 py-0.5 rounded-md bg-orange-500/5 border border-orange-500/10 text-[10px] font-mono text-orange-300/70 uppercase tracking-wider">zk_pay_proofs_privacy_v28.aleo</span>
+                                <span className="px-2 py-0.5 rounded-md bg-orange-500/5 border border-orange-500/10 text-[10px] font-mono text-orange-300/70 uppercase tracking-wider">zk_pay_proofs_privacy_v29.aleo</span>
                             </div>
                             <p className="text-xs text-gray-500">Core payment program: invoice creation, payments, settlement</p>
                             <div className="flex flex-wrap gap-2">
-                                <span className="px-2 py-0.5 rounded-md bg-orange-500/5 border border-orange-500/10 text-[10px] font-mono text-orange-300/70 uppercase tracking-wider">zk_pay_proofs_privacy_wallet_v5.aleo</span>
+                                <span className="px-2 py-0.5 rounded-md bg-orange-500/5 border border-orange-500/10 text-[10px] font-mono text-orange-300/70 uppercase tracking-wider">zk_pay_proofs_privacy_wallet_v6.aleo</span>
                             </div>
                             <p className="text-xs text-gray-500">Wallet helper: burner backup, card profiles, gift cards</p>
                         </div>
@@ -137,7 +137,7 @@ export const architectureOverviewSection: DocsSection = {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="p-8 rounded-3xl border border-dashed border-orange-500/10 bg-orange-500/[0.01] flex flex-col items-center text-center space-y-3">
                         <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-orange-500/60 mb-1">Guiding Principle</div>
                         <h4 className="text-white text-base font-light tracking-tight italic">"Local Proofing, Global Settlement"</h4>

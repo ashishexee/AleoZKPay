@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     Bot,
+    CreditCard,
     FileCode2,
     Gift,
     Radio,
@@ -9,7 +10,7 @@ import {
     Sparkles,
 } from 'lucide-react';
 
-const STORAGE_KEY = 'nullpay_changelog_wave4';
+const STORAGE_KEY = 'nullpay_changelog_wave5';
 
 const overlayVariants = {
     hidden: { opacity: 0 },
@@ -139,12 +140,12 @@ export const ChangelogOverlay: React.FC = () => {
 
                         <div className="p-8 pb-5 shrink-0 relative z-10">
                             <div className="flex items-center gap-2.5 mb-5">
-                                <span className="px-3 py-1 bg-orange-500/10 border border-orange-400/20 rounded-full text-[9px] font-black text-orange-300 uppercase tracking-[0.28em]">
-                                    Wave 4
-                                </span>
+                                    <span className="px-3 py-1 bg-orange-500/10 border border-orange-400/20 rounded-full text-[9px] font-black text-orange-300 uppercase tracking-[0.28em]">
+                                        Wave 5
+                                    </span>
                                 <span className="text-white/15 text-xs">·</span>
                                 <span className="text-[9px] font-semibold text-white/35 uppercase tracking-[0.28em]">
-                                    March 2026
+                                    April 2026
                                 </span>
                                 <span className="text-white/15 text-xs">·</span>
                                 <span className="text-[9px] font-semibold text-white/35 uppercase tracking-[0.28em]">
@@ -161,112 +162,145 @@ export const ChangelogOverlay: React.FC = () => {
                                     NullPay
                                 </span>
                                 <br />
-                                <span className="text-white/50 font-light text-2xl md:text-3xl tracking-normal">Expansion — Wave&nbsp;4</span>
+                                <span className="text-white/50 font-light text-2xl md:text-3xl tracking-normal">Expansion — Wave&nbsp;5</span>
                             </motion.h2>
                         </div>
 
                         <div className="p-8 pt-6 overflow-y-auto custom-scrollbar space-y-6 relative z-10 pr-6">
                             <SectionCard
                                 index={0}
-                                eyebrow="Encryption"
-                                badge="Security"
-                                accentClass="bg-emerald-400/10 border-emerald-300/20 text-emerald-200"
-                                icon={<ShieldCheck className="w-5 h-5" />}
-                                glowClass="bg-emerald-400/35"
-                                title="100% User-Controlled Password Encryption"
+                                eyebrow="AI Distribution"
+                                badge="Priority"
+                                accentClass="bg-orange-400/10 border-orange-300/20 text-orange-200"
+                                icon={<Bot className="w-5 h-5" />}
+                                glowClass="bg-orange-400/35"
+                                title="OpenClaw rollout and wider MCP coverage"
                             >
                                 <p>
-                                    All sensitive data, including burner wallets, is now encrypted entirely client-side using a <b>password provided by you</b>. 
+                                    NullPay can now be exposed through <b>OpenClaw</b>, which means the MCP server is no longer limited to IDEs and desktop assistants. Through OpenClaw, NullPay can be reached from WhatsApp, Telegram, Discord, Slack, Signal, iMessage, and other connected chat surfaces.
                                 </p>
-                                <ul className="text-xs text-gray-400 space-y-1.5 mt-2">
-                                    <li>- Uses PBKDF2 key derivation and AES-GCM encryption.</li>
-                                    <li>- The resulting encrypted payload is safely backed up on-chain as a private record.</li>
-                                    <li>- NullPay never sees your raw keys or password.</li>
-                                </ul>
+                                <p>
+                                    We also expanded the MCP setup guides and client coverage for <span className={codeClass}>Antigravity</span>, <span className={codeClass}>Codex</span>, <span className={codeClass}>Cursor</span>, and other stdio-compatible environments so the same invoice and payment tooling can run consistently across local AI workflows.
+                                </p>
+                                <p>
+                                    In practice, this turns NullPay into a transport-agnostic payment assistant: the core tools stay local, but the interface can now live in IDEs, web copilots, or messaging channels.
+                                </p>
                             </SectionCard>
 
                             <SectionCard
                                 index={1}
-                                eyebrow="AI & Tooling"
-                                badge="New Package"
-                                accentClass="bg-orange-400/10 border-orange-300/20 text-orange-200"
-                                icon={<Bot className="w-5 h-5" />}
-                                glowClass="bg-orange-400/35"
-                                title="NullPay MCP Server & Context-Aware NullBot"
+                                eyebrow="Price Integrity"
+                                badge="Oracle + ZK"
+                                accentClass="bg-emerald-400/10 border-emerald-300/20 text-emerald-200"
+                                icon={<ShieldCheck className="w-5 h-5" />}
+                                glowClass="bg-emerald-400/35"
+                                title="Live oracle conversion secured with on-chain proofs"
                             >
                                 <p>
-                                    We shipped the <span className={codeClass}>@nullpay/mcp</span> server, allowing AI clients to natively create invoices, inspect flows, and execute payments. 
+                                    Standard and multipay flows now support <b>live oracle conversion</b> when the payer wants to use a different token from the invoice base token. The frontend fetches signed quotes, applies the expected converted amount, and routes the transaction into the cross-token payment functions.
                                 </p>
                                 <p>
-                                    Meanwhile, the in-app <b>NullBot</b> now possesses route-specific context. On the dashboard, it acts as a live merchant copilot with access to your real-time balances and invoice metrics.
+                                    For stablecoin paths, NullPay also generates the required compliance/freeze-list proofs locally and passes them into the on-chain call. This means the quote, the converted amount, and the proof-backed settlement path are all verified inside the final Aleo execution rather than trusted as an off-chain number.
+                                </p>
+                                <p>
+                                    The result is a much stronger anti-tamper conversion model: users see live conversion, but merchants still settle through the same contract-enforced invariants.
                                 </p>
                             </SectionCard>
 
                             <SectionCard
                                 index={2}
-                                eyebrow="SDK + CLI"
-                                badge="Expanded"
+                                eyebrow="Card Rail"
+                                badge="New Flow"
                                 accentClass="bg-white/[0.05] border-white/10 text-white/85"
-                                icon={<FileCode2 className="w-5 h-5" />}
+                                icon={<CreditCard className="w-5 h-5" />}
                                 glowClass="bg-white/20"
-                                title="Powerful Invoice Manifests via nullpay.json"
+                                title="NullPay Card with PIN + secret based checkout"
                             >
                                 <p>
-                                    The <span className={codeClass}>@nullpay/node</span> SDK now handles local <span className={codeClass}>nullpay.json</span> manifests, making it easy to create hosted checkout sessions without hardcoding cryptographic IDs.
+                                    We added the <b>NullPay Card</b> system: a private card profile backed by encrypted key material, card limits, on-chain card profile records, and a dedicated card payment path that works without requiring the payer to connect a wallet at checkout time.
                                 </p>
                                 <p>
-                                    The new <span className={codeClass}>@nullpay/cli</span> automates onboarding by generating salts, submitting invoices to the relayer, and writing the final manifest into your project.
+                                    Card access is unlocked locally using a <span className={codeClass}>PIN</span> and a longer <span className={codeClass}>card secret</span>. Top-ups still come from the main wallet, but payments can be executed from the card’s own private balance through the relayer-backed card authorization flow.
+                                </p>
+                                <p>
+                                    This wave also added card-specific balance scanning, transfer-all to main wallet, deletion flow updates, per-token caps, local refresh scanning, and the card payment UI on both the direct pay route and hosted checkout.
                                 </p>
                             </SectionCard>
 
                             <SectionCard
                                 index={3}
-                                eyebrow="Infrastructure"
-                                badge="Delegated"
-                                accentClass="bg-purple-400/10 border-purple-300/20 text-purple-200"
-                                icon={<Sparkles className="w-5 h-5" />}
-                                glowClass="bg-purple-400/25"
-                                title="Delegated Proving & Fee Sponsorship"
+                                eyebrow="Messaging"
+                                badge="Bot"
+                                accentClass="bg-cyan-400/10 border-cyan-300/20 text-cyan-200"
+                                icon={<Radio className="w-5 h-5" />}
+                                glowClass="bg-cyan-400/20"
+                                title="Telegram bot for dashboard, invoice, pay, and notifications"
                             >
                                 <p>
-                                    We introduced a backend-sponsored execution endpoint (<span className={codeClass}>/api/dps/sponsor-sweep</span>) to significantly reduce direct wallet dependency. 
+                                    The backend now boots a full <b>Telegram bot</b> with handlers for secure merchant linking, dashboard summaries, invoice lookup, payment links, gift card shortcuts, webapp deep links, and notification preferences.
                                 </p>
                                 <p>
-                                    Users authorize the actions locally, but NullPay handles the proving and relays the fees. This powers frictionless gift card redemptions and burner sweeps while remaining strictly non-custodial.
+                                    This is not just a notification bot. It acts as an actual merchant control surface: recent invoices, verification, browser handoff flows, and alert management are now available directly inside Telegram.
+                                </p>
+                                <p>
+                                    Behind the scenes, the notification worker and handler split lets the bot stay responsive while still pushing payment-state updates when merchant activity changes.
                                 </p>
                             </SectionCard>
 
                             <SectionCard
                                 index={4}
-                                eyebrow="Gift Cards"
-                                badge="Full Flow"
-                                accentClass="bg-pink-400/10 border-pink-300/20 text-pink-200"
-                                icon={<Gift className="w-5 h-5" />}
-                                glowClass="bg-pink-400/25"
-                                title="A Complete Private Value-Transfer Ecosystem"
+                                eyebrow="Checkout"
+                                badge="Fee Mode"
+                                accentClass="bg-amber-400/10 border-amber-300/20 text-amber-200"
+                                icon={<FileCode2 className="w-5 h-5" />}
+                                glowClass="bg-amber-400/25"
+                                title="Fixed fee stays default, with optional fee estimation"
                             >
                                 <p>
-                                    Gift cards are now fully integrated. You can create them using Credits, USDCx, or USAD, scan them to reveal balances, and redeem them directly to your wallet.
+                                    Previously, shielded payments used a <b>fixed fee</b> only. Now users can also turn on <b>fee estimation</b> and switch between the two modes depending on how they want the flow to behave.
                                 </p>
                                 <p>
-                                    You can even pay standard or donation invoices <b>directly</b> using a loaded gift card, utilizing the sponsored DPS route for a seamless checkout.
+                                    Fee estimation is <b>off by default</b>, so fixed fee remains the default path out of the box. When estimation is enabled, the shield wallet popup can take a bit longer to appear because the app first works out the fee more precisely.
+                                </p>
+                                <p>
+                                    If the user prefers faster execution, they can keep using the fixed fee mode. If they want a more dynamic fee path, they can toggle estimation on when needed.
                                 </p>
                             </SectionCard>
 
                             <SectionCard
                                 index={5}
-                                eyebrow="Checkout"
-                                badge="Realtime"
-                                accentClass="bg-cyan-400/10 border-cyan-300/20 text-cyan-200"
-                                icon={<Radio className="w-5 h-5" />}
-                                glowClass="bg-cyan-400/20"
-                                title="Zero-Config Realtime Hosted Checkout"
+                                eyebrow="Merchant Operations"
+                                badge="Dashboard"
+                                accentClass="bg-purple-400/10 border-purple-300/20 text-purple-200"
+                                icon={<Sparkles className="w-5 h-5" />}
+                                glowClass="bg-purple-400/25"
+                                title="Sharper dashboard metrics, search, analytics, and audit tooling"
                             >
                                 <p>
-                                    Standard hosted invoices now surface live payment statuses immediately. 
+                                    Merchant dashboards were cleaned up substantially in this wave. Earnings are displayed more clearly, invoice search now reaches across invoice hash, salt, memo, merchant notes, and invoice title, and the timeline view now supports day, week, and month ranges for payment tracking.
                                 </p>
                                 <p>
-                                    By combining Supabase realtime listeners with aggressive polling fallbacks, the checkout session auto-settles the moment a payment lands on-chain—no custom websocket servers required on your backend.
+                                    We also added <b>selective disclosure</b> for credits and formal audit export flows, plus a separate auditor verification center so third parties can cryptographically verify audit bundles instead of trusting screenshots or manually edited spreadsheets.
+                                </p>
+                            </SectionCard>
+
+                            <SectionCard
+                                index={6}
+                                eyebrow="Payments & Utility"
+                                badge="Expanded"
+                                accentClass="bg-pink-400/10 border-pink-300/20 text-pink-200"
+                                icon={<Gift className="w-5 h-5" />}
+                                glowClass="bg-pink-400/25"
+                                title="Batch pay, gift card history, notes everywhere, and smarter NullBot"
+                            >
+                                <p>
+                                    This wave also expanded the day-to-day payment surface: notes were added to both pay and checkout routes, gift cards now keep stronger visible history, invoice titles were introduced, and batch payments landed through the burner-wallet execution model.
+                                </p>
+                                <p>
+                                    The batch page supports contract-centered invoice handling while the actual execution is driven through the burner implementation, giving merchants a practical high-throughput way to process many payouts.
+                                </p>
+                                <p>
+                                    Finally, <b>NullBot</b> is now more useful as an action layer: it can help create invoices, initiate invoice payments, and support standard, multipay, and donation flows using the same browser-integrated tooling that powers the rest of the app.
                                 </p>
                             </SectionCard>
                         </div>
