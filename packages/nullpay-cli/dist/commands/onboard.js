@@ -273,8 +273,6 @@ async function saveInvoiceToDashboard(secretKey, merchantAddress, invoice, hash,
         body: JSON.stringify({
             invoice_hash: hash,
             merchant_address: merchantAddress,
-            amount: invoice.type === 'donation' ? 0 : invoice.amount,
-            memo: invoice.label ?? '',
             invoice_type: invoiceTypeNum,
             salt,
             invoice_transaction_id: invoiceTransactionId,

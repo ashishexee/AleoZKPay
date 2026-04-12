@@ -325,6 +325,14 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 privateFee: false
             };
 
+            setGuard({
+                active: true,
+                title: 'Waiting For Wallet Approval',
+                message: 'NullPay is waiting for your wallet approval and then final network confirmation. Do not leave this tab until the flow finishes.',
+                confirmLabel: 'Leave Anyway',
+                cancelLabel: 'Stay'
+            });
+
             const result = await executeWithShieldRetry(
                 () => executeTransaction(transaction),
                 { onRetry: () => setStatus('Shield Wallet gave no response. Retrying payment request...') }
@@ -473,6 +481,14 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
                 fee: estimatedFee,
                 privateFee: false
             };
+
+            setGuard({
+                active: true,
+                title: 'Waiting For Wallet Approval',
+                message: 'NullPay is waiting for your conversion approval and confirmation. Do not leave this tab until the flow finishes.',
+                confirmLabel: 'Leave Anyway',
+                cancelLabel: 'Stay'
+            });
 
             const result = await executeWithShieldRetry(
                 () => executeTransaction(transaction),

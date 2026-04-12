@@ -24,6 +24,8 @@ const defaultGuard: GuardState = {
     cancelLabel: 'Stay'
 };
 
+const NATIVE_UNLOAD_WARNING = 'A NullPay transaction is still in progress. Leaving now may interrupt syncing.';
+
 const LeaveGuardContext = createContext<LeaveGuardContextValue | null>(null);
 
 export const LeaveGuardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,11 +44,12 @@ export const LeaveGuardProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const handleBeforeUnload = (event: BeforeUnloadEvent) => {
             if (!guardRef.current.active) return;
             event.preventDefault();
-            event.returnValue = '';
+            event.returnValue = NATIVE_UNLOAD_WARNING;
+            return NATIVE_UNLOAD_WARNING;
         };
 
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('beforeunload', handleBeforeUnload, { capture: true });
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload, { capture: true });
     }, []);
 
     useEffect(() => {
@@ -80,16 +83,21 @@ export const LeaveGuardProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const value = useMemo<LeaveGuardContextValue>(() => ({
         guard,
         setGuard: (next) => {
-            setGuardState((current) => ({
-                ...current,
-                ...next,
-                title: next.title || current.title || defaultGuard.title,
-                message: next.message || current.message || defaultGuard.message,
-                confirmLabel: next.confirmLabel || current.confirmLabel || defaultGuard.confirmLabel,
-                cancelLabel: next.cancelLabel || current.cancelLabel || defaultGuard.cancelLabel
-            }));
+            setGuardState((current) => {
+                const updated = {
+                    ...current,
+                    ...next,
+                    title: next.title || current.title || defaultGuard.title,
+                    message: next.message || current.message || defaultGuard.message,
+                    confirmLabel: next.confirmLabel || current.confirmLabel || defaultGuard.confirmLabel,
+                    cancelLabel: next.cancelLabel || current.cancelLabel || defaultGuard.cancelLabel
+                };
+                guardRef.current = updated;
+                return updated;
+            });
         },
         clearGuard: () => {
+            guardRef.current = defaultGuard;
             setGuardState(defaultGuard);
         }
     }), [guard]);

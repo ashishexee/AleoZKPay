@@ -86,6 +86,14 @@ export const useProfileQR = () => {
             privateFee: false
         };
 
+        setGuard({
+            active: true,
+            title: 'Waiting For Wallet Approval',
+            message: `NullPay is waiting for your ${isBurner ? 'burner' : 'main'} wallet approval and confirmation. Do not leave this tab until setup finishes.`,
+            confirmLabel: 'Leave Anyway',
+            cancelLabel: 'Stay'
+        });
+
         const result = await executeWithShieldRetry(
             () => executeTransaction(transaction),
             { onRetry: () => setStatus('Shield Wallet gave no response. Retrying profile QR invoice request...') }

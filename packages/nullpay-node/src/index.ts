@@ -248,7 +248,6 @@ export class NullPay {
                             body: JSON.stringify({
                                 invoice_hash: finalInvoiceHash,
                                 merchant_address: merchantAddress,
-                                amount: isDonation ? 0 : resolvedParams.amount,
                                 currency: resolvedParams.currency || 'CREDITS',
                                 salt: finalSalt,
                                 invoice_transaction_id: creationTxId || null,

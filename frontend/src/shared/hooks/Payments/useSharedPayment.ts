@@ -568,6 +568,14 @@ export const useSharedPayment = () => {
                 privateFee: false
             };
 
+            setGuard({
+                active: true,
+                title: 'Waiting For Wallet Approval',
+                message: 'NullPay is waiting for your wallet approval and conversion confirmation. Do not leave this tab until the flow finishes.',
+                confirmLabel: 'Leave Anyway',
+                cancelLabel: 'Stay'
+            });
+
             const result = await executeWithShieldRetry(
                 () => executeTransaction(transaction),
                 { onRetry: () => setStatus('Shield Wallet gave no response. Retrying conversion request...') }
@@ -1293,6 +1301,14 @@ export const useSharedPayment = () => {
                 privateFee: false
             };
 
+            setGuard({
+                active: true,
+                title: 'Waiting For Wallet Approval',
+                message: 'NullPay is waiting for your wallet approval and payment confirmation. Do not leave this tab until the flow finishes.',
+                confirmLabel: 'Leave Anyway',
+                cancelLabel: 'Stay'
+            });
+
             const result = await executeWithShieldRetry(
                 () => executeTransaction(transaction),
                 { onRetry: () => setStatus('Shield Wallet gave no response. Retrying payment request...') }
@@ -1310,6 +1326,7 @@ export const useSharedPayment = () => {
             console.error(err);
             setError(err.message || 'An error occurred during payment.');
         } finally {
+            clearGuard();
             setLoading(false);
         }
     };
