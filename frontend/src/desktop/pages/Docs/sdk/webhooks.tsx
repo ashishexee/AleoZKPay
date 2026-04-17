@@ -1,115 +1,198 @@
-import { AlertTriangle, Lock, Shield, RefreshCw, Key } from 'lucide-react';
+import { AlertTriangle, Shield, Server, Database, Globe } from 'lucide-react';
 import type { DocsSection } from '../types';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
-const webhookEventTypeExample = `// TypeScript type for a verified webhook event
-// Exported from @nullpay/node
+const webhookEventTypeExample = `// Webhook event sent to your backend when payment status changes
+// Verify this with nullpay.webhooks.constructEvent()
 
-export interface WebhookEvent {
-    /** Unique UUID for the checkout session */
-    id:         string;                                    
-    
-    /** The fiat amount (e.g., 99.99) */
-    amount:     number;                                    
-    
-    /** 'CREDITS' | 'USDCX' | 'USAD' */
-    token_type: string;                                    
-    
-    /** Result: SETTLED | FAILED | PROCESSING | PENDING */
+interface WebhookEvent {
+    /** Unique UUID for the checkout session (use as idempotency key) */
+    id:         string;
+    /** The crypto amount paid (e.g., 1.00) */
+    amount:     number;
+    /** Token type: 'CREDITS' | 'USDCX' | 'USAD' */
+    token_type: string;
+    /** Payment status: SETTLED | FAILED | PROCESSING | PENDING */
     status:     'SETTLED' | 'FAILED' | 'PROCESSING' | 'PENDING';
-    
     /** Aleo transaction ID (at1...). Null if payment not yet submitted. */
-    tx_id:      string | null;                             
-    
-    /** ISO 8601 timestamp of when NullPay cloud received the on-chain event. */
-    timestamp:  string;                                    
+    tx_id:      string | null;
+    /** Invoice name from your nullpay.json (e.g., 'basic-credits') */
+    nullpay_invoice_name?: string;
+    /** ISO 8601 timestamp */
+    timestamp:  string;
 }`;
 
-const securityArchitectureExample = `/**
- * THE MATHEMATICS OF THE SIGNATURE
- * 
- * 1. Payload: The JSON body of the POST request sent to your endpoint.
- * 2. Secret: Your NULLPAY_SECRET_KEY as the HMAC key.
- * 3. Algorithm: HMAC-SHA256.
- * 
- * Signature = HMAC_SHA256(Raw_Body_String, Secret_Key)
- * 
- * WHY TIMING-SAFE EQUALITY?
- * Standard string comparison \`a === b\` returns 'false' immediately at the 
- * first mismatch. An attacker can measure this tiny timing difference to 
- * brute-force the signature character by character. 
- * 
- * crypto.timingSafeEqual() ensures the comparison always takes the same 
- * amount of time, regardless of how many characters match.
- */`;
-
-const fullExpressExample = `/**
- * COMPLETE EXPRESS.JS WEBHOOK IMPLEMENTATION
- * 
- * This example demonstrates:
- * 1. Raw body parsing (Critical for signature verification)
- * 2. Signature verification using constructEvent
- * 3. Idempotent fulfillment logic
+const step1Setup = `/**
+ * STEP 1: Initialize NullPay with your Secret Key
+ *
+ * Get your secret key from the NullPay Developer Portal:
+ * https://nullpay.app/developer
  */
 
+require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
+const path = require('path');
 const { NullPay } = require('@nullpay/node');
 
 const app = express();
-const nullpay = new NullPay({ secretKey: process.env.NULLPAY_SECRET_KEY });
+app.use(cors());
 
-// STEP 1: Route with raw body parser
-app.post('/webhooks/nullpay', 
-    express.raw({ type: 'application/json' }), 
-    async (req, res) => {
-        const sig = req.headers['x-nullpay-signature'];
-        const body = req.body.toString('utf8');
+const nullpay = new NullPay({
+    secretKey: process.env.NULLPAY_SECRET_KEY,
+    baseURL: process.env.NULLPAY_BASE_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api',
+    projectRoot: __dirname,
+    configPath: path.join(__dirname, 'nullpay.json')
+});`;
 
-        let event;
-        try {
-            // STEP 2: Verify and Parse
-            event = nullpay.webhooks.constructEvent(body, sig);
-        } catch (err) {
-            console.error('⚠️ Invalid Webhook Signature:', err.message);
-            return res.status(400).send('Webhook verification failed');
-        }
+const step2Webhook = `/**
+ * STEP 2: Webhook Endpoint - Receive payment notifications
+ *
+ * IMPORTANT: Use express.raw() for the webhook route!
+ * This preserves the raw body for HMAC signature verification.
+ *
+ * Register this endpoint in NullPay Developer Portal:
+ * https://nullpay.app/developer
+ * Endpoint URL: https://your-backend.com/api/webhook
+ */
 
-        // STEP 3: Idempotent Fulfillment
-        // We use the event.id (Session ID) as a unique constraint.
+// In-memory store for demo (use Redis/DB in production)
+const orderStatusStore = new Map();
+
+app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+    const signature = req.headers['x-nullpay-signature'];
+
+    try {
+        const event = nullpay.webhooks.constructEvent(req.body.toString(), signature);
+        console.log('[Webhook] Event received:', event.id, event.status);
+
         if (event.status === 'SETTLED') {
-            const alreadyProcessed = await db.orders.findUnique({ 
-                where: { externalId: event.id } 
+            orderStatusStore.set(event.id, {
+                status: 'SETTLED',
+                txId: event.tx_id,
+                amount: event.amount,
+                tokenType: event.token_type,
+                invoiceName: event.nullpay_invoice_name || null,
+                timestamp: Date.now()
             });
-
-            if (!alreadyProcessed) {
-                await db.orders.update({
-                    where: { externalId: event.id },
-                    data: { status: 'PAID', txHash: event.tx_id }
-                });
-                console.log(\`✅ Order \${event.id} fulfilled.\`);
-            }
+            console.log('[Webhook] Order SETTLED! TX:', event.tx_id);
         }
 
-        // STEP 4: Always return 200 OK
         res.status(200).json({ received: true });
+    } catch (err) {
+        console.error('[Webhook] Verification failed:', err.message);
+        res.status(400).send('Webhook Error: ' + err.message);
     }
-);`;
+});`;
+
+const step3OrderStatus = `/**
+ * STEP 3: Order Status Endpoint - For frontend polling
+ *
+ * Your frontend polls this endpoint to check payment status.
+ */
+
+app.get('/api/order-status/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+
+    const stored = orderStatusStore.get(sessionId);
+    if (stored) {
+        return res.json({
+            status: stored.status,
+            txId: stored.txId,
+            amount: stored.amount,
+            tokenType: stored.tokenType,
+            invoiceName: stored.invoiceName
+        });
+    }
+
+    nullpay.checkout.sessions.retrieve(sessionId)
+        .then(session => {
+            return res.json({
+                status: session.status,
+                txId: session.tx_id || null,
+                amount: session.amount || null,
+                tokenType: session.currency || null,
+                invoiceName: session.nullpay_invoice_name || null
+            });
+        })
+        .catch(err => {
+            res.status(500).json({ error: err.message });
+        });
+});`;
+
+const step4Frontend = `/**
+ * STEP 4: Frontend - Success Page with Polling
+ */
+
+const API_BASE = '/api';
+
+function SuccessPage() {
+    const [status, setStatus] = useState('PENDING');
+    const [txId, setTxId] = useState(null);
+
+    useEffect(() => {
+        const sessionId = new URLSearchParams(window.location.search).get('session_id');
+        if (!sessionId) return;
+
+        let isPolling = true;
+        const checkStatus = async () => {
+            if (!isPolling) return;
+            try {
+                const res = await fetch(\`\${API_BASE}/order-status/\${sessionId}\`);
+                const data = await res.json();
+                if (data.status === 'SETTLED') {
+                    isPolling = false;
+                    setStatus('SETTLED');
+                    setTxId(data.txId);
+                }
+            } catch (err) { console.error('Error:', err); }
+        };
+
+        checkStatus();
+        const interval = setInterval(checkStatus, 3000);
+        return () => { isPolling = false; clearInterval(interval); };
+    }, []);
+
+    return status === 'SETTLED'
+        ? <div><h1>Payment Confirmed!</h1><p>TX: {txId}</p></div>
+        : <div><h1>Verifying Payment...</h1></div>;
+}`;
+
+const step5NullpayJson = `/**
+ * STEP 5: nullpay.json - Define your products/invoices
+ */
+
+{
+  "merchant": "aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0",
+  "invoices": [
+    {
+      "name": "basic-credits",
+      "type": "multipay",
+      "amount": 1,
+      "currency": "CREDITS",
+      "title": "basic credits"
+    },
+    {
+      "name": "support-donation",
+      "type": "donation",
+      "amount": null,
+      "currency": "ANY",
+      "title": "Support the project"
+    }
+  ]
+}`;
 
 const retryPolicyExample = `/**
- * DELIVERY RETRY POLICY
- * 
- * If your server returns anything other than 2xx (e.g., 500, 404, 503),
- * NullPay Cloud will retry the delivery following an exponential backoff:
- * 
- * 1. 5 minutes after first failure
- * 2. 30 minutes after second
- * 3. 2 hours after third
- * 4. 12 hours after fourth
- * 5. Discarded after 24 hours
- * 
- * NOTE: Events may arrive out of order (e.g., SETTLED before PROCESSING).
- * Always check session state before acting.
+ * RETRY POLICY
+ *
+ * If your server returns non-2xx, NullPay retries:
+ * Attempt 1: Immediate
+ * Attempt 2: 5 minutes
+ * Attempt 3: 30 minutes
+ * Attempt 4: 2 hours
+ * Attempt 5: 12 hours
+ * Then: Discarded after 24 hours
  */`;
 
 export const webhooksSection: DocsSection = {
@@ -117,57 +200,92 @@ export const webhooksSection: DocsSection = {
     group: 'SDK Reference',
     label: 'Webhooks',
     eyebrow: 'SDK',
-    title: 'Webhooks — Real-time Fulfillment Architecture',
+    title: 'Webhooks — Complete Implementation',
     summary:
-        'Webhooks are the heartbeat of asynchronous payment systems. They allow your backend to receive real-time, on-chain settlement notifications without the need for manual polling.',
+        'A step-by-step guide to integrating NullPay webhooks. Includes real working code from the testing website.',
     content: (
         <div className="space-y-6">
             <div className="grid gap-5 md:grid-cols-4">
                 <MetricCard
+                    icon={Server}
+                    title="4-Step Setup"
+                    description="Initialize SDK, create webhook endpoint, add status polling, integrate frontend."
+                />
+                <MetricCard
+                    icon={Database}
+                    title="Any Storage Works"
+                    description="Use in-memory Map for demos, Redis for production. Your webhook fills the store."
+                />
+                <MetricCard
+                    icon={Globe}
+                    title="Survives Tab Close"
+                    description="Store pending checkout in localStorage. Webhook confirms payment even after browser closes."
+                />
+                <MetricCard
                     icon={Shield}
-                    title="Cryptographic Guard"
-                    description="HMAC-SHA256 signatures ensure that every incoming request originated from the NullPay cloud infrastructure."
-                />
-                <MetricCard
-                    icon={Lock}
-                    title="Anti-Timing Protection"
-                    description="Bitwise constant-time comparison prevents attackers from sniffing your secret key character-by-character."
-                />
-                <MetricCard
-                    icon={RefreshCw}
-                    title="Reliable Delivery"
-                    description="Automatic exponential backoff retries ensure your system stays in sync even during server downtime."
-                />
-                <MetricCard
-                    icon={Key}
-                    title="Secret Key Bound"
-                    description="Signatures are unique to your environment. Test keys and Live keys generate distinct signature chains."
+                    title="HMAC Secured"
+                    description="Every webhook is signed with your secret key. Verify before processing."
                 />
             </div>
 
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Security Deep-Dive</h3>
+                <div className="mb-4 flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-xs font-bold">1</span>
+                    <h3 className="text-xl font-bold text-white">Initialize NullPay SDK</h3>
+                </div>
                 <p className="mb-4 text-sm text-gray-400">
-                    Understanding why we use <code className="text-white/80">timingSafeEqual</code>. Verification is not just about checking equality; it's about checking equality without leaking information.
+                    Set up Express with CORS and initialize NullPay with your secret key from the developer portal.
                 </p>
-                <CodeBlock title="Cryptographic Principles" language="js" code={securityArchitectureExample} />
+                <CodeBlock title="backend/index.js - Setup" language="js" code={step1Setup} />
             </GlassCard>
 
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Event Object Schema</h3>
+                <div className="mb-4 flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-xs font-bold">2</span>
+                    <h3 className="text-xl font-bold text-white">Webhook Endpoint</h3>
+                </div>
                 <p className="mb-4 text-sm text-gray-400">
-                    The webhook event contains the "Triple Proof": The Session ID, the On-chain Status, and the Aleo Transaction Hash.
+                    This endpoint receives signed notifications when payments settle on-chain.
                 </p>
-                <CodeBlock title="WebhookEvent Interface" language="ts" code={webhookEventTypeExample} />
-            </GlassCard>
-
-            <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Production Implementation</h3>
-                <Callout title="The 'Raw Body' Requirement" tone="orange">
-                    Most web frameworks (Express, Fastify, NestJS) parse the incoming JSON by default. Once parsed, the exact spacing and character order of the original HTTP request is lost, making signature verification impossible. **You must access the RAW Buffer.**
+                <Callout title="Critical: Use express.raw()" tone="orange">
+                    Do NOT use <code className="text-white/80">express.json()</code> for the webhook route.
+                    The raw body is required for HMAC signature verification.
                 </Callout>
                 <div className="my-4" />
-                <CodeBlock title="Express.js boilerplate" language="js" code={fullExpressExample} />
+                <CodeBlock title="backend/index.js - Webhook Handler" language="js" code={step2Webhook} />
+            </GlassCard>
+
+            <GlassCard className="p-6">
+                <div className="mb-4 flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-xs font-bold">3</span>
+                    <h3 className="text-xl font-bold text-white">Order Status Endpoint</h3>
+                </div>
+                <p className="mb-4 text-sm text-gray-400">
+                    Your frontend polls this endpoint to get payment status.
+                </p>
+                <CodeBlock title="backend/index.js - Order Status" language="js" code={step3OrderStatus} />
+            </GlassCard>
+
+            <GlassCard className="p-6">
+                <div className="mb-4 flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-xs font-bold">4</span>
+                    <h3 className="text-xl font-bold text-white">Frontend Success Page</h3>
+                </div>
+                <p className="mb-4 text-sm text-gray-400">
+                    Poll the order status endpoint every 3 seconds.
+                </p>
+                <CodeBlock title="frontend/src/Success.tsx" language="tsx" code={step4Frontend} />
+            </GlassCard>
+
+            <GlassCard className="p-6">
+                <div className="mb-4 flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-xs font-bold">5</span>
+                    <h3 className="text-xl font-bold text-white">Define Your Invoices</h3>
+                </div>
+                <p className="mb-4 text-sm text-gray-400">
+                    Create invoice definitions in nullpay.json.
+                </p>
+                <CodeBlock title="backend/nullpay.json" language="json" code={step5NullpayJson} />
             </GlassCard>
 
             <GlassCard className="p-6">
@@ -175,12 +293,27 @@ export const webhooksSection: DocsSection = {
                     <AlertTriangle className="h-5 w-5 text-orange-400" />
                     <h3 className="text-xl font-bold text-white">Handling Failures & Retries</h3>
                 </div>
-                <p className="mb-4 text-sm text-gray-400">
-                    Blockchain events are permanent, but your server might not be. NullPay handles volatility with a robust delivery queue.
-                </p>
-                <CodeBlock title="Retry Backoff Logic" language="js" code={retryPolicyExample} />
+                <CodeBlock title="Retry Policy" language="js" code={retryPolicyExample} />
                 <Callout title="Idempotency is Mandatory" tone="blue">
-                    Since NullPay retries deliveries, your server might receive the same <code className="text-white/80">SETTLED</code> event twice. Always check your database to see if a session has already been fulfilled before granting access or shipping products.
+                    Since NullPay retries deliveries, your server might receive the same SETTLED event twice.
+                    Always check if a session has already been fulfilled.
+                </Callout>
+            </GlassCard>
+
+            <GlassCard className="p-6">
+                <h3 className="mb-4 text-xl font-bold text-white">Webhook Event Schema</h3>
+                <CodeBlock title="TypeScript Interface" language="ts" code={webhookEventTypeExample} />
+            </GlassCard>
+
+            <GlassCard className="p-6">
+                <h3 className="mb-4 text-xl font-bold text-white">Security: HMAC Verification</h3>
+                <p className="mb-4 text-sm text-gray-400">
+                    Every webhook is signed with HMAC-SHA256 using your secret key.
+                    The signature is in the <code className="text-white/80">x-nullpay-signature</code> header.
+                </p>
+                <Callout title="Never skip verification" tone="orange">
+                    Always verify the signature before processing a webhook.
+                    This prevents attackers from spoofing payment notifications.
                 </Callout>
             </GlassCard>
         </div>

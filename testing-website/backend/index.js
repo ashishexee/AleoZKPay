@@ -43,7 +43,7 @@ for (const invoice of configuredInvoices) {
                 cancel_url: `${frontendUrl}?cancel=true`
             });
 
-            res.json({ checkoutUrl: session.checkout_url });
+            res.json({ checkoutUrl: session.checkout_url, sessionId: session.id });
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: error.message });
@@ -62,7 +62,7 @@ app.post('/api/checkout/variable', async (req, res) => {
             success_url: `${frontendUrl}?session_id={CHECKOUT_SESSION_ID}&type=variable&tokens=${tokens}`,
             cancel_url: `${frontendUrl}?cancel=true`
         });
-        res.json({ checkoutUrl: session.checkout_url });
+        res.json({ checkoutUrl: session.checkout_url, sessionId: session.id });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });

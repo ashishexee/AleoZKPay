@@ -233,6 +233,16 @@ const Spinner = () => (
   <div style={{ width: '16px', height: '16px', border: '2px solid rgba(0,0,0,0.1)', borderTop: '2px solid currentColor', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: '8px' }} />
 );
 
+interface PendingCheckout {
+  sessionId: string;
+  invoiceName: string;
+  amount: string | number | null;
+  currency: string | null;
+  type: string;
+  tokens: string | number | null;
+  timestamp: number;
+}
+
 export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Processing');
@@ -250,6 +260,7 @@ export default function App() {
   const type = searchParams.get('type');
   const tokens = searchParams.get('tokens');
   const [verifyStatus, setVerifyStatus] = useState<any>(null);
+  const [recoveredCheckout, setRecoveredCheckout] = useState<PendingCheckout | null>(null);
 
   const subscriptionInvoiceRoutes: Record<string, string> = {
     CREDITS: 'basic-credits',
@@ -264,10 +275,55 @@ export default function App() {
     USAD: 'support-usad',
   };
 
+  const activeSessionId = sessionId || recoveredCheckout?.sessionId || null;
+  const activeType = type || recoveredCheckout?.type || null;
+  const activeTokens = tokens || (recoveredCheckout?.tokens != null ? String(recoveredCheckout.tokens) : null);
+
   useEffect(() => {
     const storedCredits = Number(window.localStorage.getItem('demo_total_credits') || '0');
     setTotalCredits(Number.isFinite(storedCredits) ? storedCredits : 0);
   }, []);
+
+  useEffect(() => {
+    if (sessionId) {
+      window.localStorage.removeItem('nullpay_pending_checkout');
+      return;
+    }
+
+    const pendingRaw = window.localStorage.getItem('nullpay_pending_checkout');
+    if (!pendingRaw) return;
+
+    let pendingCheckout: PendingCheckout;
+
+    try {
+      pendingCheckout = JSON.parse(pendingRaw) as PendingCheckout;
+    } catch {
+      window.localStorage.removeItem('nullpay_pending_checkout');
+      return;
+    }
+
+    if (!pendingCheckout.sessionId) {
+      return;
+    }
+
+    if (Date.now() - pendingCheckout.timestamp > 30 * 60 * 1000) {
+      window.localStorage.removeItem('nullpay_pending_checkout');
+      return;
+    }
+
+    fetch(`${TESTING_BACKEND_URL}/verify-session?session_id=${pendingCheckout.sessionId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data?.success) return;
+
+        setRecoveredCheckout(pendingCheckout);
+        setVerifyStatus(data);
+        window.localStorage.removeItem('nullpay_pending_checkout');
+      })
+      .catch(() => {
+        // Leave the pending session intact so the next reload can retry recovery.
+      });
+  }, [sessionId]);
 
   // Toast Helper
   const addToast = (msg: string, type: 'error' | 'success') => {
@@ -312,21 +368,21 @@ export default function App() {
 
   // Verification
   useEffect(() => {
-    if (sessionId) {
-      fetch(`${TESTING_BACKEND_URL}/verify-session?session_id=${sessionId}`)
+    if (activeSessionId) {
+      fetch(`${TESTING_BACKEND_URL}/verify-session?session_id=${activeSessionId}`)
         .then(res => res.json())
         .then(data => setVerifyStatus(data))
         .catch(() => addToast('Verification failed', 'error'));
     }
-  }, [sessionId]);
+  }, [activeSessionId]);
 
   useEffect(() => {
-    if (!sessionId || type !== 'variable' || !verifyStatus?.success) return;
+    if (!activeSessionId || activeType !== 'variable' || !verifyStatus?.success) return;
 
     const processedSessions = JSON.parse(window.localStorage.getItem('demo_processed_sessions') || '[]') as string[];
-    if (processedSessions.includes(sessionId)) return;
+    if (processedSessions.includes(activeSessionId)) return;
 
-    const purchasedTokens = Number(tokens || '0');
+    const purchasedTokens = Number(activeTokens || '0');
     if (!Number.isFinite(purchasedTokens) || purchasedTokens <= 0) return;
 
     setTotalCredits(prev => {
@@ -335,8 +391,8 @@ export default function App() {
       return next;
     });
 
-    window.localStorage.setItem('demo_processed_sessions', JSON.stringify([...processedSessions, sessionId]));
-  }, [sessionId, tokens, type, verifyStatus]);
+    window.localStorage.setItem('demo_processed_sessions', JSON.stringify([...processedSessions, activeSessionId]));
+  }, [activeSessionId, activeTokens, activeType, verifyStatus]);
 
   const handleCheckout = async (endpoint: string, payload: any = {}, options?: { loadingMessage?: string }) => {
     try {
@@ -349,13 +405,23 @@ export default function App() {
       });
       const data = await res.json();
 if (data.checkoutUrl) {
+        const pendingType = endpoint === 'checkout/variable'
+          ? 'variable'
+          : Object.values(donationInvoiceRoutes).includes(endpoint)
+            ? 'donation'
+            : Object.values(subscriptionInvoiceRoutes).includes(endpoint)
+              ? 'subscription'
+              : 'invoice';
+
         // Store pending checkout info in localStorage before redirect
         // This survives tab closure - success page can recover this info
         window.localStorage.setItem('nullpay_pending_checkout', JSON.stringify({
+          sessionId: data.sessionId,
           invoiceName: endpoint.includes('variable') ? 'variable-checkout' : endpoint.replace('/api/', ''),
           amount: payload.price || payload.amount || null,
           currency: payload.currency || null,
-          type: type || 'fixed',
+          type: pendingType,
+          tokens: payload.tokens || null,
           timestamp: Date.now()
         }));
         setLoadingMessage('Invoice created. Redirecting to NullPay checkout...');
@@ -372,7 +438,7 @@ if (data.checkoutUrl) {
   };
 
   // ── RENDER SUCCESS PAGE ──────────────────────────────────────────
-  if (sessionId) {
+  if (activeSessionId) {
     return (
       <>
         <style>{globalStyles}</style>
@@ -389,27 +455,27 @@ if (data.checkoutUrl) {
 
             <div style={styles.statusCard}>
               <span style={styles.statusLabel}>Session</span>
-              <span style={styles.statusValueMono}>{sessionId.substring(0, 18)}...</span>
+              <span style={styles.statusValueMono}>{activeSessionId.substring(0, 18)}...</span>
             </div>
 
             {verifyStatus ? (
               <div style={styles.verifyContent}>
-                {type === 'variable' && (
+                {activeType === 'variable' && (
                   <div style={styles.tokenReward}>
-                    <span style={styles.bigNumber}>{tokens}</span>
+                    <span style={styles.bigNumber}>{activeTokens}</span>
                     <span style={styles.textLabel}>TOKENS ACQUIRED</span>
                   </div>
                 )}
-                {type === 'subscription' && (
+                {activeType === 'subscription' && (
                    <div style={styles.tokenReward}>
                    <span style={styles.bigIcon}>◈</span>
                    <span style={styles.textLabel}>PREMIUM ACTIVE</span>
-                 </div>
+                  </div>
                 )}
-                 {type === 'donation' && (
-                   <div style={styles.tokenReward}>
-                   <span style={styles.bigIcon}>♥</span>
-                   <span style={styles.textLabel}>THANK YOU</span>
+                 {activeType === 'donation' && (
+                    <div style={styles.tokenReward}>
+                    <span style={styles.bigIcon}>♥</span>
+                    <span style={styles.textLabel}>THANK YOU</span>
                  </div>
                 )}
                 <button className="btn-primary" onClick={() => window.location.href = '/'} style={styles.primaryBtn}>
