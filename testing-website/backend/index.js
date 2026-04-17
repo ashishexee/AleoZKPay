@@ -90,11 +90,12 @@ app.get('/api/verify-session', async (req, res) => {
 });
 
 // Webhook Route: Receive fulfillment notifications from NullPay
-app.post('/api/webhook', (req, res) => {
+// Use express.raw specifically for this route to get untouched body for HMAC verification
+app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res) => {
     const signature = req.headers['x-nullpay-signature'];
 
     try {
-        const event = nullpay.webhooks.constructEvent(req.rawBody, signature);
+        const event = nullpay.webhooks.constructEvent(req.body.toString(), signature);
 
         console.log(`\n✅ [Merchant Webhook] Verified Event Received: ${event.id}`);
         console.log(`   - Status: ${event.status}`);
@@ -107,9 +108,11 @@ app.post('/api/webhook', (req, res) => {
                 txId: event.tx_id,
                 amount: event.amount,
                 tokenType: event.token_type,
+                invoiceName: event.nullpay_invoice_name || event.invoice_name || null,
                 timestamp: Date.now()
             });
             console.log(`   - 🛍️ Order SETTLED! TX ID: ${event.tx_id}`);
+            console.log(`   - Invoice: ${event.nullpay_invoice_name || 'unknown'}`);
             console.log(`   - Stored in memory store. Total orders: ${orderStatusStore.size}`);
         }
 
@@ -133,7 +136,8 @@ app.get('/api/order-status/:sessionId', (req, res) => {
             status: stored.status,
             txId: stored.txId,
             amount: stored.amount,
-            tokenType: stored.tokenType
+            tokenType: stored.tokenType,
+            invoiceName: stored.invoiceName
         });
     }
 
@@ -145,7 +149,8 @@ app.get('/api/order-status/:sessionId', (req, res) => {
                 status: session.status,
                 txId: session.tx_id || null,
                 amount: session.amount || null,
-                tokenType: session.currency || null
+                tokenType: session.currency || null,
+                invoiceName: session.nullpay_invoice_name || null
             });
         })
         .catch(err => {

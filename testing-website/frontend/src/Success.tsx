@@ -2,51 +2,97 @@ import { useEffect, useState } from 'react';
 
 const API_BASE = 'https://testing-website-backend.vercel.app/api';
 
+interface PendingCheckout {
+  invoiceName: string;
+  amount: string | number | null;
+  currency: string | null;
+  type: string;
+  timestamp: number;
+}
+
 function Success() {
   const [verifying, setVerifying] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [txId, setTxId] = useState<string | null>(null);
   const [amount, setAmount] = useState<string | null>(null);
   const [tokenType, setTokenType] = useState<string | null>(null);
+  const [invoiceName, setInvoiceName] = useState<string | null>(null);
+  const [isFromPendingSession, setIsFromPendingSession] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
 
+    // Clear the pending session from localStorage
+    const pendingData = localStorage.getItem('nullpay_pending_checkout');
+    if (pendingData) {
+      try {
+        const parsed: PendingCheckout = JSON.parse(pendingData);
+        // If session is older than 30 minutes, clear it
+        if (Date.now() - parsed.timestamp > 30 * 60 * 1000) {
+          localStorage.removeItem('nullpay_pending_checkout');
+        } else if (!sessionId) {
+          // No sessionId means user probably closed tab during checkout
+          // Show pending state with what we know
+          setInvoiceName(parsed.invoiceName || 'Your Purchase');
+          setAmount(parsed.amount ? String(parsed.amount) : null);
+          setTokenType(parsed.currency || null);
+          setIsFromPendingSession(true);
+          // Don't return - let them see their pending info but also try to recover
+        }
+      } catch (e) {
+        localStorage.removeItem('nullpay_pending_checkout');
+      }
+    }
+
     if (sessionId) {
-      // Poll our backend which receives webhooks from NullPay
-      const pollStatus = async () => {
+      // Clear pending since we have a session
+      localStorage.removeItem('nullpay_pending_checkout');
+      let isPolling = true;
+
+      const checkStatus = async () => {
+        if (!isPolling) return;
+
         try {
           const res = await fetch(`${API_BASE}/order-status/${sessionId}`);
           const data = await res.json();
 
           if (data.status === 'SETTLED') {
+            isPolling = false;
             localStorage.setItem('isPremium', 'true');
             setTxId(data.txId);
-            setAmount(data.amount);
-            setTokenType(data.tokenType);
+            setAmount(data.amount ? String(data.amount) : null);
+            setTokenType(data.tokenType || null);
+            setInvoiceName(data.invoiceName || 'Your Purchase');
             setVerifying(false);
           } else if (data.status === 'PENDING') {
-            // Still pending, poll again in 2 seconds
-            setTimeout(pollStatus, 2000);
+            // Keep polling
           } else {
-            // Other status like FAILED, EXPIRED, etc.
+            isPolling = false;
             setError('Payment verification failed. Status: ' + (data.status || 'UNKNOWN'));
             setVerifying(false);
           }
         } catch (err) {
           console.error('Error polling status:', err);
-          setError('Error contacting verification server.');
-          setVerifying(false);
         }
       };
 
-      pollStatus();
+      checkStatus();
+      const interval = setInterval(checkStatus, 3000);
+
+      return () => {
+        isPolling = false;
+        clearInterval(interval);
+      };
     } else {
+      // No sessionId at all
       if (localStorage.getItem('isPremium') === 'true') {
         setVerifying(false);
-      } else {
+      } else if (!isFromPendingSession) {
         setError('No session ID found. Please complete checkout.');
+        setVerifying(false);
+      } else {
+        // We have pending data but no session - show pending message
         setVerifying(false);
       }
     }
@@ -109,6 +155,16 @@ function Success() {
               </div>
 
               <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 text-left space-y-4">
+                {amount && (
+                  <div className="text-center py-2">
+                    <div className="font-mono text-[10px] text-white/30 uppercase tracking-widest mb-1">Amount Paid</div>
+                    <div className="font-display text-3xl text-white">{amount} {tokenType}</div>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="font-mono text-[9px] text-white/20 uppercase tracking-widest">Product</span>
+                  <span className="font-mono text-[11px] text-white/80">{invoiceName || 'Purchase'}</span>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="font-mono text-[9px] text-white/20 uppercase tracking-widest">Network</span>
                   <span className="font-mono text-[11px] text-white/60">Aleo Mainnet</span>

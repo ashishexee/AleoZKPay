@@ -348,7 +348,16 @@ export default function App() {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (data.checkoutUrl) {
+if (data.checkoutUrl) {
+        // Store pending checkout info in localStorage before redirect
+        // This survives tab closure - success page can recover this info
+        window.localStorage.setItem('nullpay_pending_checkout', JSON.stringify({
+          invoiceName: endpoint.includes('variable') ? 'variable-checkout' : endpoint.replace('/api/', ''),
+          amount: payload.price || payload.amount || null,
+          currency: payload.currency || null,
+          type: type || 'fixed',
+          timestamp: Date.now()
+        }));
         setLoadingMessage('Invoice created. Redirecting to NullPay checkout...');
         window.location.href = data.checkoutUrl;
       } else {
