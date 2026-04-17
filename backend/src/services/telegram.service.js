@@ -496,8 +496,7 @@ async function resolvePayTargetWithOverrides(invoice, user, overrides = {}) {
             title: overrides.title || '',
             memo: overrides.memo || '',
             invoiceType: overrides.invoiceType || invoiceTypeToLabel(invoice.invoice_type),
-            currency: overrides.currency || tokenTypeToCode(invoice.token_type),
-            invoiceHash: invoice.invoice_hash
+            currency: overrides.currency || tokenTypeToCode(invoice.token_type)
         })
     };
 }

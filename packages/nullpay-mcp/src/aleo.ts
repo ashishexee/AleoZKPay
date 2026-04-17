@@ -159,13 +159,11 @@ export function buildPaymentLink(baseUrl: string, args: {
     memo?: string;
     invoiceType: InvoiceType;
     currency: Currency;
-    invoiceHash: string;
 }): string {
     const url = new URL('/pay', baseUrl);
     url.searchParams.set('merchant', args.merchant);
     url.searchParams.set('amount', args.amount.toString());
     url.searchParams.set('salt', args.salt);
-    url.searchParams.set('hash', args.invoiceHash);
     if (args.title) url.searchParams.set('title', args.title);
     if (args.memo) url.searchParams.set('memo', args.memo);
     if (args.invoiceType === 'multipay') url.searchParams.set('type', 'multipay');

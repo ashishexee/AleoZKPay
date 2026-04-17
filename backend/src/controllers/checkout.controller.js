@@ -32,23 +32,64 @@ const createSession = async (req, res) => {
     let initialStatus = 'PROCESSING'; 
     let finalCurrency = uppercaseCurrency;
 
-    if (invoice_hash && providedSalt) {
-        initialStatus = 'OPEN';
-        // const typeName = finalInvoiceType === 1 ? 'Multi-Pay' : (finalInvoiceType === 2 ? 'Donation' : 'Standard');
-        
-        if (!currency) {
-            const { data: invoice } = await supabase
-                .from('invoices')
-                .select('token_type')
-                .eq('invoice_hash', invoice_hash)
-                .single();
+    if (providedSalt || invoice_hash) {
+        let existingInvoice = null;
 
-            if (invoice) {
-                finalCurrency = invoice.token_type === 3
+        if (providedSalt) {
+            const { data: invoiceBySalt } = await supabase
+                .from('invoices')
+                .select('invoice_hash, token_type')
+                .eq('salt', providedSalt)
+                .maybeSingle();
+
+            existingInvoice = invoiceBySalt || null;
+            if (!finalInvoiceHash && invoiceBySalt?.invoice_hash) {
+                finalInvoiceHash = invoiceBySalt.invoice_hash;
+            }
+        }
+
+        if (!existingInvoice && invoice_hash) {
+            const { data: invoiceByHash } = await supabase
+                .from('invoices')
+                .select('invoice_hash, salt, token_type')
+                .eq('invoice_hash', invoice_hash)
+                .maybeSingle();
+
+            existingInvoice = invoiceByHash || null;
+            if (!finalSalt && invoiceByHash?.salt) {
+                finalSalt = invoiceByHash.salt;
+            }
+        }
+
+        if (!finalInvoiceHash && finalSalt) {
+            try {
+                const mappingResponse = await fetch(`https://api.provable.com/v2/testnet/program/zk_pay_proofs_privacy_v29.aleo/mapping/salt_to_invoice/${finalSalt}`);
+                if (mappingResponse.ok) {
+                    const mappingValue = await mappingResponse.json();
+                    const resolvedHash = mappingValue ? String(mappingValue).replace(/['"]/g, '') : '';
+                    if (resolvedHash) {
+                        finalInvoiceHash = resolvedHash;
+                    }
+                }
+            } catch (mappingError) {
+                console.warn('[Checkout] Failed to resolve invoice hash from salt mapping:', mappingError);
+            }
+        }
+
+        if (!finalInvoiceHash || !finalSalt) {
+            return res.status(400).json({ error: 'Invalid invoice reference. Provide a valid salt or invoice hash.' });
+        }
+
+        initialStatus = 'OPEN';
+
+        if (!currency) {
+            const tokenType = existingInvoice?.token_type;
+            if (tokenType !== undefined && tokenType !== null) {
+                finalCurrency = tokenType === 3
                     ? 'ANY'
-                    : invoice.token_type === 1
+                    : tokenType === 1
                         ? 'USDCX'
-                        : invoice.token_type === 2
+                        : tokenType === 2
                             ? 'USAD'
                             : 'CREDITS';
             }

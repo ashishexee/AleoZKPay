@@ -1,29 +1,47 @@
 import { useEffect, useState } from 'react';
 
+const API_BASE = 'https://testing-website-backend.vercel.app/api';
+
 function Success() {
   const [verifying, setVerifying] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [txId, setTxId] = useState<string | null>(null);
+  const [amount, setAmount] = useState<string | null>(null);
+  const [tokenType, setTokenType] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('session_id');
 
     if (sessionId) {
-      fetch(`https://testing-website-backend.vercel.app/api/verify-session?session_id=${sessionId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.isPremium || data.success) {
+      // Poll our backend which receives webhooks from NullPay
+      const pollStatus = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/order-status/${sessionId}`);
+          const data = await res.json();
+
+          if (data.status === 'SETTLED') {
             localStorage.setItem('isPremium', 'true');
+            setTxId(data.txId);
+            setAmount(data.amount);
+            setTokenType(data.tokenType);
             setVerifying(false);
+          } else if (data.status === 'PENDING') {
+            // Still pending, poll again in 2 seconds
+            setTimeout(pollStatus, 2000);
           } else {
-            setError('Payment verification failed. Status: ' + (data.status || 'PENDING'));
+            // Other status like FAILED, EXPIRED, etc.
+            setError('Payment verification failed. Status: ' + (data.status || 'UNKNOWN'));
             setVerifying(false);
           }
-        })
-        .catch(() => {
+        } catch (err) {
+          console.error('Error polling status:', err);
           setError('Error contacting verification server.');
           setVerifying(false);
-        });
+        }
+      };
+
+      pollStatus();
     } else {
       if (localStorage.getItem('isPremium') === 'true') {
         setVerifying(false);
@@ -69,8 +87,8 @@ function Success() {
                 <h1 className="font-display text-4xl text-white tracking-tight uppercase">Payment Failed</h1>
                 <p className="font-mono text-xs text-white/30 max-w-[240px] mx-auto leading-relaxed">{error}</p>
               </div>
-              <button 
-                onClick={() => window.location.href = '/'} 
+              <button
+                onClick={() => window.location.href = '/'}
                 className="btn-primary w-full mt-4"
               >
                 Return to Store
@@ -99,6 +117,18 @@ function Success() {
                   <span className="font-mono text-[9px] text-white/20 uppercase tracking-widest">Protocol</span>
                   <span className="font-mono text-[11px] text-white/60">NullPay SDK v1.0</span>
                 </div>
+                {txId && (
+                  <div className="flex flex-col gap-1 pt-2 border-t border-white/5">
+                    <span className="font-mono text-[9px] text-white/20 uppercase tracking-widest">Transaction ID</span>
+                    <span className="font-mono text-[10px] text-orange-300 break-all">{txId}</span>
+                  </div>
+                )}
+                {amount && tokenType && (
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono text-[9px] text-white/20 uppercase tracking-widest">Amount</span>
+                    <span className="font-mono text-[11px] text-white/60">{amount} {tokenType}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-2 border-t border-white/5">
                   <span className="font-mono text-[9px] text-white/20 uppercase tracking-widest">Verification</span>
                   <span className="font-mono text-[11px] text-green-400 font-medium">SUCCESSFUL</span>
@@ -106,8 +136,8 @@ function Success() {
               </div>
 
               <div className="space-y-4 pt-2">
-                <button 
-                  onClick={() => window.location.href = '/'} 
+                <button
+                  onClick={() => window.location.href = '/'}
                   className="btn-primary w-full"
                 >
                   Enter Dashboard

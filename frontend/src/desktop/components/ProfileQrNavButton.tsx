@@ -75,11 +75,11 @@ const ProfileQrNavButton = () => {
     const activeHash = walletMode === 'burner' ? burnerHash : mainHash;
     const activeSalt = walletMode === 'burner' ? burnerSalt : mainSalt;
     const activeAddress = walletMode === 'burner' ? decryptedBurnerAddress : address;
-    const paymentLink = activeHash
-        ? activeSalt && activeAddress
-            ? `${baseUrl}/pay?merchant=${activeAddress}&salt=${activeSalt}&hash=${activeHash}`
-            : `${baseUrl}/pay?hash=${activeHash}`
-        : '';
+    const paymentLink = activeSalt && activeAddress
+        ? `${baseUrl}/pay?merchant=${activeAddress}&salt=${activeSalt}`
+        : activeHash
+            ? `${baseUrl}/pay?hash=${activeHash}`
+            : '';
 
     const handleCopy = async () => {
         if (!paymentLink) {

@@ -394,30 +394,36 @@ const Profile: React.FC = () => {
         setLoadingPayerReceipts(true);
         console.log(`[fetchPayerReceipts #${fetchId}] Starting...`);
         try {
-            const records = await requestRecords(PROGRAM_ID, true);
+            // Fetch from both core and wallet programs
+            const [coreRecords, walletRecords] = await Promise.all([
+                requestRecords(PROGRAM_ID, true),
+                requestRecords(WALLET_PROGRAM_ID, true)
+            ]);
+
             if (fetchId !== fetchPayerReceiptsRef.current) {
                 console.log(`[fetchPayerReceipts #${fetchId}] Stale fetch, discarding.`);
                 return;
             }
+            
+            const allRecords = [...((coreRecords as any[]) || []), ...((walletRecords as any[]) || [])];
             const validReceipts: PayerReceipt[] = [];
 
-            if (records) {
-                for (const r of (records as any[])) {
-                    let plaintext = r.plaintext;
-                    const cipher = r.recordCiphertext || r.ciphertext;
-                    if (!plaintext && cipher && decrypt) {
-                        try {
-                            plaintext = await decrypt(cipher);
-                        } catch (e) { console.warn("Decrypt error for payer receipt:", e); }
-                    }
+            for (const r of allRecords) {
+                let plaintext = r.plaintext;
+                const cipher = r.recordCiphertext || r.ciphertext;
+                if (!plaintext && cipher && decrypt) {
+                    try {
+                        plaintext = await decrypt(cipher);
+                    } catch (e) { console.warn("Decrypt error for payer receipt:", e); }
+                }
 
-                    const receipt = parsePayerReceipt({ ...r, plaintext });
-                    if (receipt) {
-                        console.log(`[fetchPayerReceipts #${fetchId}] Found Payer Receipt:`, receipt);
-                        validReceipts.push(receipt);
-                    }
+                const receipt = parsePayerReceipt({ ...r, plaintext });
+                if (receipt) {
+                    console.log(`[fetchPayerReceipts #${fetchId}] Found Payer Receipt:`, receipt);
+                    validReceipts.push(receipt);
                 }
             }
+            
             console.log(`[fetchPayerReceipts #${fetchId}] Total Payer Receipts Parsed:`, validReceipts.length);
             setPayerReceipts([...validReceipts].reverse());
             console.log(`[fetchPayerReceipts #${fetchId}] State updated with ${validReceipts.length} receipts.`);
@@ -583,22 +589,30 @@ const Profile: React.FC = () => {
         try {
             setVerifyStatus('CHECKING');
             setVerifiedRecord(null);
-            const records = await requestRecords(PROGRAM_ID, true);
+            
+            // Dual-contract fetch
+            const [coreRecords, walletRecords] = await Promise.all([
+                requestRecords(PROGRAM_ID, true),
+                requestRecords(WALLET_PROGRAM_ID, true)
+            ]);
+            
             console.log("Checking records for receipt:", verifyInput);
-            console.log("Records found:", records?.length);
+            console.log("Records found:", (coreRecords?.length || 0) + (walletRecords?.length || 0));
 
             let foundRecord = null;
+            const records = [...((coreRecords as any[]) || []), ...((walletRecords as any[]) || [])];
 
-            if (records) {
-                for (const [index, r] of (records as any[]).entries()) {
+            if (records.length > 0) {
+                for (const [index, r] of records.entries()) {
                     if (r.spent) {
                         console.log(`[Record ${index}] Skipped (spent)`);
                         continue;
                     }
                     let plaintext = r.plaintext;
-                    if (!plaintext && r.recordCiphertext) {
+                    const cipher = r.recordCiphertext || r.ciphertext;
+                    if (!plaintext && cipher) {
                         try {
-                            plaintext = await decrypt(r.recordCiphertext);
+                            plaintext = await decrypt(cipher);
                         } catch (e) { console.warn("Decrypt error", e); }
                     }
 
@@ -632,7 +646,7 @@ const Profile: React.FC = () => {
 
             if (foundRecord) {
                 const recordHash = foundRecord.invoiceHash.trim();
-                let invoiceHash = (verifyingInvoice.invoiceHash || verifyingInvoice.invoice_hash || '').trim();
+                let invoiceHash = (verifyingInvoice?.invoiceHash || verifyingInvoice?.invoice_hash || '').trim();
                 if (invoiceHash.endsWith('field')) {
                     invoiceHash = invoiceHash.slice(0, -5);
                 }
@@ -1096,10 +1110,12 @@ const Profile: React.FC = () => {
                     });
                 } catch (e) { console.warn("DB update failed but tx sent", e); }
 
-                // Refresh list
+                // Refresh everything
                 setTimeout(() => {
                     fetchCreatedInvoices();
                     fetchTransactions();
+                    fetchMerchantReceipts();
+                    fetchPayerReceipts();
                 }, 2000);
             }
         } catch (e: any) {
@@ -1279,8 +1295,8 @@ const Profile: React.FC = () => {
 
                 {/* MAIN VIEW TABS */}
                 <motion.div variants={itemVariants} className="mb-12 flex justify-center px-2">
-                    <div className="relative w-full max-w-[560px] rounded-[24px] bg-black/20 p-1.5 shadow-[0_12px_40px_-28px_rgba(0,0,0,0.8)] backdrop-blur-xl">
-                        <div className="grid grid-cols-2 gap-2">
+                    <div className="relative w-full max-w-[520px] rounded-[24px] bg-black/30 p-1.5 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)] backdrop-blur-2xl border border-white/[0.08]">
+                        <div className="grid grid-cols-2 gap-2 relative">
                         {[
                             {
                                 id: 'statistics',
@@ -1289,8 +1305,13 @@ const Profile: React.FC = () => {
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <motion.path
                                             initial={false}
-                                            animate={{ d: isActive ? "M9 19V9m4 10V5m4 14V11m-12 8v-6" : "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10" }}
-                                            strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                                            animate={{ 
+                                                d: isActive ? "M9 19V9m4 10V5m4 14V11m-12 8v-6" : "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10",
+                                                strokeWidth: isActive ? 2 : 1.5,
+                                                opacity: isActive ? 1 : 0.6
+                                            }}
+                                            transition={{ duration: 0.3 }}
+                                            strokeLinecap="round" strokeLinejoin="round" 
                                         />
                                     </svg>
                                 )
@@ -1302,7 +1323,12 @@ const Profile: React.FC = () => {
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <motion.path
                                             initial={false}
-                                            animate={{ strokeWidth: isActive ? 2 : 1.5 }}
+                                            animate={{ 
+                                                strokeWidth: isActive ? 2 : 1.5,
+                                                opacity: isActive ? 1 : 0.6,
+                                                scale: isActive ? 1.1 : 1
+                                            }}
+                                            transition={{ duration: 0.3 }}
                                             strokeLinecap="round" strokeLinejoin="round"
                                             d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
                                         />
@@ -1318,34 +1344,57 @@ const Profile: React.FC = () => {
                                         setMainViewTab(tab.id as any);
                                         navigate(tab.id === 'dashboard' ? '/dashboard' : '/dashboard/stats');
                                     }}
-                                    whileTap={{ scale: 0.97 }}
-                                    className={`relative z-10 flex min-h-[52px] items-center justify-center gap-3 overflow-hidden rounded-[18px] px-6 py-3.5 text-[11px] font-semibold uppercase tracking-[0.22em] transition-all duration-300 ${isActive
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    className={`relative z-10 flex min-h-[52px] items-center justify-center gap-3 overflow-hidden rounded-[18px] px-6 py-3.5 text-[11px] font-bold uppercase tracking-[0.22em] transition-colors duration-300 ${isActive
                                         ? 'text-white'
-                                        : 'text-white/45 hover:text-white/70'
+                                        : 'text-white/40 hover:text-white/70'
                                         }`}
                                 >
-                                    {!isActive && (
-                                        <div className="absolute inset-0 rounded-[18px] border border-white/5 bg-white/[0.02]" />
-                                    )}
-
-                                    <span className={`relative transition-all duration-300 ${isActive ? 'text-white' : 'opacity-60'}`}>
-                                        {tab.icon(isActive)}
-                                    </span>
-                                    <span className="relative whitespace-nowrap">
-                                        {tab.label}
-                                    </span>
+                                    <motion.div 
+                                        layout
+                                        className="relative z-20 flex items-center gap-3"
+                                        animate={{ 
+                                            y: isActive ? 0 : 0.5,
+                                            scale: isActive ? 1.05 : 1
+                                        }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 300,
+                                            damping: 25
+                                        }}
+                                    >
+                                        <motion.span 
+                                            animate={{ 
+                                                color: isActive ? "#F97316" : "currentColor",
+                                                filter: isActive ? "drop-shadow(0 0 8px rgba(249,115,22,0.4))" : "none"
+                                            }}
+                                        >
+                                            {tab.icon(isActive)}
+                                        </motion.span>
+                                        <span className="relative whitespace-nowrap font-bold">
+                                            {tab.label}
+                                        </span>
+                                    </motion.div>
 
                                     {isActive && (
-                                        <motion.div
-                                            layoutId="mainViewTabAlt"
-                                            className="absolute inset-0 -z-10 rounded-[18px] border border-white/10 bg-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                                            transition={{
-                                                type: "spring",
-                                                stiffness: 300,
-                                                damping: 30,
-                                                mass: 1
-                                            }}
-                                        />
+                                        <>
+                                            <motion.div
+                                                layoutId="mainViewTabHighlight"
+                                                className="absolute inset-0 z-10 rounded-[18px] border border-white/20 bg-gradient-to-b from-white/[0.12] to-white/[0.04] shadow-[0_8px_20px_-6px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)]"
+                                                transition={{
+                                                    type: "spring",
+                                                    stiffness: 260,
+                                                    damping: 26,
+                                                    mass: 1
+                                                }}
+                                            />
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className="absolute inset-0 z-0 bg-orange-500/[0.03] blur-2xl rounded-full"
+                                            />
+                                        </>
                                     )}
                                 </motion.button>
                             );

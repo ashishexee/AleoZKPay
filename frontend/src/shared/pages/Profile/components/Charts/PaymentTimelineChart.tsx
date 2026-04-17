@@ -214,7 +214,7 @@ const CustomTooltip = ({ active, payload, label, filter }: any) => {
 };
 
 export const PaymentTimelineChart: React.FC<PaymentTimelineChartProps> = ({ receipts, paymentTimestampsByTxId = {}, isLoading, isRefreshing = false, onRefresh }) => {
-    const [range, setRange] = useState<Range>('1D');
+    const [range, setRange] = useState<Range>('1W');
     const [tokenFilter, setTokenFilter] = useState<TokenFilter>('ALL');
     const [timeZone, setTimeZone] = useState<string>('local');
     const [zoomRange, setZoomRange] = useState<{ startIndex: number; endIndex: number } | null>(null);

@@ -583,7 +583,6 @@ CRITICAL RULES:
             memo: args.memo,
             invoiceType,
             currency,
-            invoiceHash,
         });
 
         return {

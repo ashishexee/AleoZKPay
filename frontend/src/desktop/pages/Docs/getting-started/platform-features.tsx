@@ -53,7 +53,7 @@ const profileQrExample = `// Profile QR is a permanent payment link tied to your
 // Initializing it submits a create_invoice transaction on-chain.
 //
 // The resulting payment link has the format:
-// https://nullpay.app/pay?merchant={address}&salt={salt}&hash={hash}
+// https://nullpay.app/pay?merchant={address}&salt={salt}
 //
 // This link can be:
 //   - Shared as text

@@ -260,18 +260,25 @@ async function requestGeminiReply({ systemInstruction, prompt, maxOutputTokens }
 }
 
 async function generateDashboardAssistantReply(message, context) {
-    const systemInstruction = [
+    const normalizedMessage = String(message || '').toLowerCase();
+
+const systemInstruction = [
         'You are NullBot, the NullPay Dashboard Assistant.',
-        'Answer only from the provided dashboard context. Do not invent details.',
-        'If the dashboard context includes wallet addresses such as main or burner wallet addresses, you may return them directly.',
-        'The dashboard context can contain separate `mainWalletBalances` and `burnerWalletBalances` arrays. Treat them as different wallets.',
-        'If the user asks about burner wallet funds, balances, invoices, or receipts, use only burner wallet data. Never substitute main wallet balances for burner wallet balances.',
-        'If burner data is missing or still loading, say that clearly instead of guessing from the main wallet.',
-        'Use recentConversation when it helps preserve continuity, but prefer the latest dashboard state over older chat messages.',
-        'Format your responses using clean Markdown. Use **bold** for emphasis, bullet lists for multiple items, and tables if useful.',
-        'IMPORTANT: NEVER WRAP your entire response in a ```markdown code block. Output raw markdown text directly.',
-        'When returning hashes (invoice or receipt), wrap them in `code blocks` to make them easy to read.',
-        'Keep replies professional, concise, and structured.',
+        'You MUST answer using ONLY the data provided in the context below. Do NOT guess or fake data.',
+        'The context contains: invoices (your created invoices), payerReceipts (invoices you paid TO OTHERS), merchantReceipts (payments YOU received), mainWalletBalances, burnerWalletBalances, and stats.',
+        'When user asks about "paid by me" or "i paid" - use payerReceipts array, NOT invoices array.',
+        'When user asks about "invoices i created" or "my invoices" - use invoices array.',
+        'When user asks about "received" payments - use merchantReceipts.main and merchantReceipts.burner.',
+        'IMPORTANT: ALWAYS output FULL hashes (the entire string). Do NOT truncate.',
+        'Format each entry with hashes wrapped in backticks for easy copying:',
+        '---',
+        '`Invoice: 2545169706...field`',
+        '`Receipt: 6530241316...field`',
+        'Amount: X Token',
+        'Merchant: aleo1...',
+        '---',
+        'Wrap hashes in backticks (`) so they can be easily copied.',
+        'IMPORTANT: NEVER wrap your response in markdown code blocks. Output raw text.',
     ].join(' ');
 
     const prompt = [
@@ -691,6 +698,26 @@ function detectNullBotToolCall(message, context = {}) {
         return null;
     }
 
+    const viewDataIntents = [
+        /\b(show|list|get|display|view|fetch|load)\b[\s\S]{0,30}\b(invoices|paid|income|earnings|settled)\b/i,
+        /\b(show|list|get|display|view|fetch|load)\b[\s\S]{0,30}\b(receipts|payments|transactions)\b/i,
+        /\b(show|list|get|display|view|check)\b[\s\S]{0,30}\b(balance|balances)\b/i,
+        /\b(all|both)\b[\s\S]{0,20}\b(wallet|wallets|invoices|receipts)\b/i,
+        /\b(main|burner)\b[\s\S]{0,20}\b(wallet|wallets|invoices|receipts|balance)\b/i,
+        /\bhow many\b[\s\S]{0,30}\b(invoices|received|paid|settled|pending)\b/i,
+        /\bwhat.*\b(invoices|receipts|balance|stats|summary)\b/i,
+        /\b(total|all)\b[\s\S]{0,20}\b(invoices|paid|settled)\b/i,
+    ];
+
+    for (const pattern of viewDataIntents) {
+        if (pattern.test(rawMessage)) {
+            return {
+                reply: 'I can see your dashboard data in the context. I will reply with a summary of the requested data.',
+                toolCall: null
+            };
+        }
+    }
+
     if (pendingToolCall?.name === 'create_invoice') {
         const pendingArgs = pendingToolCall.args && typeof pendingToolCall.args === 'object'
             ? pendingToolCall.args
@@ -961,9 +988,21 @@ function extractInvoiceHashFromToolCall(toolCall) {
 async function planNullBotToolCall(message, context) {
     const systemInstruction = [
         'You are the NullBot tool planner for the browser dashboard.',
-        'Your job is to decide whether the next user message should call one dashboard tool, continue collecting args for a pending tool, or just answer normally.',
+        'Your job is to decide whether the next user message should call one dashboard tool, continue collecting args for a pending tool, or just answer directly from provided context data.',
         'You must never ask the user for a private key or secret key.',
+        'IMPORTANT: The context already contains dashboard data like invoices, receipts, balances, and stats.',
+        'When user asks to SHOW, LIST, GET, DISPLAY, or VIEW data that already exists in context (like invoices, receipts, transactions, balances, stats), do NOT call any tool.',
+        'Instead, directly reply with a summary of the requested data. The frontend will render the appropriate UI components.',
+        'Only call a tool when user explicitly requests an ACTION like create, pay, sweep, check, or connect.',
+        'CRITICAL: Do NOT ask clarifying questions like "which wallet" when the context already has data from both wallets.',
+        'Examples of responses that require NO tool:',
+        '  - "show me all paid invoices" -> reply with summary like "You have 23 paid invoices: 15 from main wallet (8 SETTLED, 7 PENDING) and 8 from burner (all SETTLED)."',
+        '  - "list my receipts" -> reply with summary like "You received 42 merchant receipts total: 31 in Credits, 8 in USDCx, 3 in USAD."',
+        '  - "what is my balance" -> reply with summary like "Main wallet: 250 Credits (public), 50 Credits (private). Burner: 12 Credits."',
+        '  - "give me a summary" -> reply with stats summary including total invoices, volumes, and receipts counts.',
         'Use these exact tool names only when needed: connect_wallet, create_invoice, pay_invoice, get_transaction_info, get_analytics, check_burner_balance, sweep_funds.',
+        'Use get_analytics only for dashboard summaries or stats questions that need aggregated data from the last 7/30 days.',
+        'Use get_transaction_info only when user asks to LOOK UP a specific invoice hash or transaction ID.',
         'When the context includes pendingToolCall, treat the new message as a follow-up that may fill missing args for that same tool.',
         'Treat both `0.1` and `0,1` as valid decimal amounts.',
         'For create_invoice, preferred args are amount, currency, title, invoice_type, wallet, memo.',
@@ -975,12 +1014,7 @@ async function planNullBotToolCall(message, context) {
         'CRITICAL: Never re-ask for any create_invoice parameter that already exists in the collected state provided in the context.',
         'CRITICAL: During optional_review, acknowledge the specific value the user just added and keep previously collected values intact.',
         'CRITICAL: When replying during optional_review, reference what is already collected and only mention fields that are still missing or optional to add.',
-        'Donation and multipay are invoice types, so prompts like "create a donation for me" or "create a multipay" should still map to create_invoice.',
         'For sweep_funds from burner to the connected main wallet, set wallet to burner and destination to main_wallet when the user says burner to main.',
-        'For burner balance checks, use check_burner_balance.',
-        'For dashboard summaries or stats questions, use get_analytics.',
-        'For invoice or transaction lookup questions, use get_transaction_info.',
-        'For payment requests with a NullPay payment link, use pay_invoice with payment_link.',
         'If some required args are still missing, return the chosen tool with missingArgs and a short follow-up question.',
         'If no tool should run, return toolCall as null and provide a concise helpful reply.',
         'Respond with JSON only. No markdown fences, no prose outside JSON.',
@@ -1090,27 +1124,30 @@ async function generateNullBotChat(message, context) {
     const fallback = detectNullBotToolCall(message, context);
 
     try {
-        const planned = sanitizePlannedNullBotResponse(
-            await planNullBotToolCall(message, context),
-            fallback
-        );
+        const planned = await planNullBotToolCall(message, context);
+        const sanitized = sanitizePlannedNullBotResponse(planned, fallback);
 
-        if (planned.toolCall) {
-            return planned;
+        if (sanitized.toolCall) {
+            return sanitized;
         }
 
-        if (fallback) {
+        if (fallback?.toolCall) {
             return fallback;
         }
 
-        if (planned.reply) {
-            return planned;
+        const isGenericReply = !sanitized.reply || sanitized.reply.length < 10 || /I (can|will|would)/i.test(sanitized.reply);
+        if (isGenericReply || !sanitized.reply) {
+            console.log('[NullBot] Planner returned generic reply, using direct data handler');
+            const directReply = await generateDashboardAssistantReply(message, context);
+            return { reply: directReply };
         }
+
+        return sanitized;
     } catch (plannerError) {
         console.warn('NullBot planner fallback:', plannerError.message);
     }
 
-    if (fallback) {
+    if (fallback?.toolCall) {
         return fallback;
     }
 

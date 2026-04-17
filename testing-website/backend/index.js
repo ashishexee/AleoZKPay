@@ -13,15 +13,18 @@ app.use(express.json({
 }));
 
 const nullpay = new NullPay({
-    secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_3b437d1efd99eb1cb03d2e97a191aee56cf6579b73db0ddc', // Connected to DB!
+    secretKey: process.env.NULLPAY_SECRET_KEY || 'sk_test_bb8c865db17348c2f5659450d09a1632e1df4690c4015c68',
     baseURL: process.env.NULLPAY_BASE_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api',
     projectRoot: __dirname,
     configPath: path.join(__dirname, 'nullpay.json')
-})
+});
 
 const PORT = 4000;
 const configuredInvoices = nullpay.invoices.getAll();
 const frontendUrl = process.env.FRONTEND_URL || 'https://testing-website-frontend.vercel.app/';
+
+// In-memory store for webhook data (sessionId -> { status, txId, amount, tokenType, timestamp })
+const orderStatusStore = new Map();
 
 const buildSuccessType = (invoice) => {
     if (invoice.type === 'donation') return 'donation';
@@ -98,7 +101,16 @@ app.post('/api/webhook', (req, res) => {
         console.log(`   - Amount: ${event.amount} ${event.token_type}`);
 
         if (event.status === 'SETTLED') {
-            console.log(`   - 🛍️ FULFILLING ORDER! TX ID: ${event.tx_id}`);
+            // Store the settlement data in our in-memory store
+            orderStatusStore.set(event.id, {
+                status: 'SETTLED',
+                txId: event.tx_id,
+                amount: event.amount,
+                tokenType: event.token_type,
+                timestamp: Date.now()
+            });
+            console.log(`   - 🛍️ Order SETTLED! TX ID: ${event.tx_id}`);
+            console.log(`   - Stored in memory store. Total orders: ${orderStatusStore.size}`);
         }
 
         res.status(200).json({ received: true });
@@ -106,6 +118,40 @@ app.post('/api/webhook', (req, res) => {
         console.error(`❌ [Merchant Webhook] Security Error:`, err.message);
         res.status(400).send(`Webhook Error: ${err.message}`);
     }
+});
+
+// Order status endpoint (for frontend polling)
+app.get('/api/order-status/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+
+    console.log(`[Merchant] Checking order status for: ${sessionId}`);
+
+    const stored = orderStatusStore.get(sessionId);
+    if (stored) {
+        console.log(`[Merchant] Found stored status:`, stored);
+        return res.json({
+            status: stored.status,
+            txId: stored.txId,
+            amount: stored.amount,
+            tokenType: stored.tokenType
+        });
+    }
+
+    // Fallback: check with NullPay directly if not in our store yet
+    nullpay.checkout.sessions.retrieve(sessionId)
+        .then(session => {
+            console.log(`[Merchant] NullPay session status: ${session.status}`);
+            return res.json({
+                status: session.status,
+                txId: session.tx_id || null,
+                amount: session.amount || null,
+                tokenType: session.currency || null
+            });
+        })
+        .catch(err => {
+            console.error(`[Merchant] Error checking session:`, err.message);
+            res.status(500).json({ error: err.message });
+        });
 });
 
 if (process.env.NODE_ENV !== 'production') {

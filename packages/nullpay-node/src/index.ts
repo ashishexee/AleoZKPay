@@ -154,7 +154,7 @@ export class NullPay {
                     // Merge: nullpay.json values fill in the blanks; explicit params override
                     resolvedParams = {
                         ...resolvedParams,
-                        invoice_hash: resolvedParams.invoice_hash || inv.hash,
+                        invoice_hash: resolvedParams.invoice_hash,
                         salt: resolvedParams.salt || inv.salt,
                         type: resolvedParams.type || inv.type,
                         amount: resolvedParams.amount !== undefined ? resolvedParams.amount : (inv.amount ?? undefined),

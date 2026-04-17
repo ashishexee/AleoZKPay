@@ -115,13 +115,13 @@ export const ReportConfigModal: React.FC<ReportConfigModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto px-4 pb-4 pt-28 sm:pt-32">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-lg bg-black/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl overflow-hidden"
+                className="relative mx-auto w-full max-w-5xl max-h-[calc(100vh-8rem)] overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl"
             >
                 <div className={`absolute inset-0 bg-gradient-to-br ${bgGradientClass} pointer-events-none`} />
 
@@ -148,36 +148,37 @@ export const ReportConfigModal: React.FC<ReportConfigModalProps> = ({
                                 </div>
 
                                 {isAudit && (
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Audit Perspective</label>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-                                            <RoleOption label="Merchant" desc="Best for invoice creation and earnings review." active={options.auditPerspective === 'merchant'} onClick={() => setOptions(prev => ({ ...prev, auditPerspective: 'merchant' }))} />
-                                            <RoleOption label="Payer" desc="Focus on outgoing payer receipts from this wallet." active={options.auditPerspective === 'payer'} onClick={() => setOptions(prev => ({ ...prev, auditPerspective: 'payer' }))} />
-                                            <RoleOption label="Both" desc="Show both merchant earnings and payer evidence." active={options.auditPerspective === 'both'} onClick={() => setOptions(prev => ({ ...prev, auditPerspective: 'both' }))} />
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Audit Perspective</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <RoleOption label="Merchant" desc="Earnings review" active={options.auditPerspective === 'merchant'} onClick={() => setOptions(prev => ({ ...prev, auditPerspective: 'merchant' }))} />
+                                                <RoleOption label="Payer" desc="Outgoing receipts" active={options.auditPerspective === 'payer'} onClick={() => setOptions(prev => ({ ...prev, auditPerspective: 'payer' }))} />
+                                                <RoleOption label="Both" desc="Full evidence" active={options.auditPerspective === 'both'} onClick={() => setOptions(prev => ({ ...prev, auditPerspective: 'both' }))} />
+                                            </div>
                                         </div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Include Sections</label>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                                            <ToggleField label="Main Address" checked={!!options.includeMerchantAddress} onChange={() => toggleOption('includeMerchantAddress')} />
-                                            <ToggleField label="Burner Address" checked={!!options.includeBurnerAddress} onChange={() => toggleOption('includeBurnerAddress')} />
-                                            <ToggleField label="Invoice Memos" checked={!!options.includeMemo} onChange={() => toggleOption('includeMemo')} />
-                                            <ToggleField label="Invoice Line Items" checked={!!options.includeLineItems} onChange={() => toggleOption('includeLineItems')} />
-                                            <ToggleField label="Balance Snapshot" checked={!!options.includeBalanceSnapshot} onChange={() => toggleOption('includeBalanceSnapshot')} />
-                                            <ToggleField label="Incoming Receipts" checked={!!options.includeIncomingReceipts} onChange={() => toggleOption('includeIncomingReceipts')} />
-                                            <ToggleField label="Outgoing Receipts" checked={!!options.includeOutgoingReceipts} onChange={() => toggleOption('includeOutgoingReceipts')} />
-                                            <ToggleField label="Invoice Appendices" checked={!!options.includeInvoiceAppendices} onChange={() => toggleOption('includeInvoiceAppendices')} />
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Include Sections</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <ToggleField label="Main Address" checked={!!options.includeMerchantAddress} onChange={() => toggleOption('includeMerchantAddress')} />
+                                                <ToggleField label="Burner Address" checked={!!options.includeBurnerAddress} onChange={() => toggleOption('includeBurnerAddress')} />
+                                                <ToggleField label="Invoice Memos" checked={!!options.includeMemo} onChange={() => toggleOption('includeMemo')} />
+                                                <ToggleField label="Invoice Line Items" checked={!!options.includeLineItems} onChange={() => toggleOption('includeLineItems')} />
+                                                <ToggleField label="Balance Snapshot" checked={!!options.includeBalanceSnapshot} onChange={() => toggleOption('includeBalanceSnapshot')} />
+                                                <ToggleField label="Incoming Receipts" checked={!!options.includeIncomingReceipts} onChange={() => toggleOption('includeIncomingReceipts')} />
+                                                <ToggleField label="Outgoing Receipts" checked={!!options.includeOutgoingReceipts} onChange={() => toggleOption('includeOutgoingReceipts')} />
+                                                <ToggleField label="Invoice Appendices" checked={!!options.includeInvoiceAppendices} onChange={() => toggleOption('includeInvoiceAppendices')} />
+                                            </div>
                                         </div>
                                     </div>
                                 )}
 
                                 {!isAudit && (
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Include Sections</label>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                                            <ToggleField label="Invoice Memos" checked={!!options.includeMemo} onChange={() => toggleOption('includeMemo')} />
-                                            <ToggleField label="Invoice Line Items" checked={!!options.includeLineItems} onChange={() => toggleOption('includeLineItems')} />
-                                            <ToggleField label="Incoming Receipts" checked={!!options.includeIncomingReceipts} onChange={() => toggleOption('includeIncomingReceipts')} />
-                                            <ToggleField label="Outgoing Receipts" checked={!!options.includeOutgoingReceipts} onChange={() => toggleOption('includeOutgoingReceipts')} />
-                                        </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <ToggleField label="Invoice Memos" checked={!!options.includeMemo} onChange={() => toggleOption('includeMemo')} />
+                                        <ToggleField label="Invoice Line Items" checked={!!options.includeLineItems} onChange={() => toggleOption('includeLineItems')} />
+                                        <ToggleField label="Incoming Receipts" checked={!!options.includeIncomingReceipts} onChange={() => toggleOption('includeIncomingReceipts')} />
+                                        <ToggleField label="Outgoing Receipts" checked={!!options.includeOutgoingReceipts} onChange={() => toggleOption('includeOutgoingReceipts')} />
                                     </div>
                                 )}
 

@@ -32,8 +32,8 @@ export const ProfileQR: React.FC<ProfileQRProps> = ({ initialMainReceipts, initi
     // The payment link logic
     const baseUrl = window.location.origin;
     let paymentLink = '';
-    if (activeHash && activeSalt && activeMerchant) {
-        paymentLink = `${baseUrl}/pay?merchant=${activeMerchant}&salt=${activeSalt}&hash=${activeHash}`;
+    if (activeSalt && activeMerchant) {
+        paymentLink = `${baseUrl}/pay?merchant=${activeMerchant}&salt=${activeSalt}`;
     } else if (activeHash) {
         paymentLink = `${baseUrl}/pay?hash=${activeHash}`;
     }

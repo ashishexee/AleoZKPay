@@ -367,7 +367,11 @@ const InvoiceDetailsPage: React.FC = () => {
         if (!verifyInput || !requestRecords || !decrypt || !invoice) return;
         setVerifyStatus('CHECKING'); setVerifiedRecord(null);
         try {
-            const records = await requestRecords(PROGRAM_ID, true);
+            const [coreRecords, walletRecords] = await Promise.all([
+                requestRecords(PROGRAM_ID, true),
+                requestRecords(WALLET_PROGRAM_ID, true)
+            ]);
+            const records = [...((coreRecords as any[]) || []), ...((walletRecords as any[]) || [])];
             let foundRecord: any = null;
             if (records) {
                 for (const r of records as any[]) {

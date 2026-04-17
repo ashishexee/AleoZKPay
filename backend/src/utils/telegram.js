@@ -87,15 +87,13 @@ function buildDirectInvoiceUrl({
     title,
     memo,
     invoiceType,
-    currency,
-    invoiceHash
+    currency
 }) {
     const url = new URL('/pay', `${FRONTEND_URL}/`);
 
     url.searchParams.set('merchant', merchant);
     url.searchParams.set('amount', String(amount ?? 0));
     url.searchParams.set('salt', salt);
-    url.searchParams.set('hash', invoiceHash);
 
     if (title) {
         url.searchParams.set('title', title);

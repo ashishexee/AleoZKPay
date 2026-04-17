@@ -588,7 +588,7 @@ export default function App() {
           <div className="fade-up" style={styles.sectionHeader}>
             <span style={styles.sectionLabel}>03 — Support</span>
             <h2 style={styles.sectionTitle}>Donate</h2>
-            <p style={styles.sectionDesc}>Donation Profile invoices. Pre-generated hash via SDK.</p>
+            <p style={styles.sectionDesc}>Donation Profile invoices. Resolved from salt via SDK.</p>
           </div>
 
           <div style={styles.donationGrid} className="donation-grid">
