@@ -1,4 +1,4 @@
-import type { WalletTokenBalance } from '../hooks/useWalletBalances';
+import type { WalletTokenBalance } from '../hooks/wallet/useWalletBalances';
 import type { InvoiceData } from './invoice';
 import type { MerchantReceipt, PayerReceipt } from './receipt';
 import type { NullBotPendingToolCall } from './bot';

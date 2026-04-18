@@ -5,7 +5,7 @@ import { MessageCircle } from 'lucide-react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useNavigate } from 'react-router-dom';
 import { GlassCard } from '../../../../../components/ui/GlassCard';
-import { useBurnerWallet } from '../../../../../hooks/BurnerWalletProvider';
+import { useBurnerWallet } from '../../../../../hooks/wallet/BurnerWalletProvider';
 import type { DashboardChatbotProps } from '../../../../../types/nullbot';
 import { TOOL_PILLS } from '../lib/constants';
 import { NullBotComposer } from './NullBotComposer';

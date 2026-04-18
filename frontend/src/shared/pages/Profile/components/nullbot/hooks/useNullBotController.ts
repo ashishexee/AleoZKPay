@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { tokenLabel, invoiceTypeLabel, walletLabel } from '../../../../../utils/aleo-utils';
-import { sweepBurnerFundsToDestination } from '../../../../../utils/burnerSweep';
-import { createInvoiceViaWallet } from '../../../../../utils/invoiceCreation';
+import { tokenLabel, invoiceTypeLabel, walletLabel } from '../../../../../utils/aleo/aleoUtils';
+import { sweepBurnerFundsToDestination } from '../../../../../utils/burner/burnerSweep';
+import { createInvoiceViaWallet } from '../../../../../utils/invoice/invoiceCreation';
 import { chatWithNullBot } from '../../../../../services/api';
 import type { NullBotToolCall } from '../../../../../types/bot';
 import type { BurnerSweepCurrency } from '../../../../../types/tokens';

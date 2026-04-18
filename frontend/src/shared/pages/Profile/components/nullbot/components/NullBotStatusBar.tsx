@@ -1,6 +1,6 @@
 import React from 'react';
 import { Wallet } from 'lucide-react';
-import { truncateAddress } from '../../../../../utils/aleo-utils';
+import { truncateAddress } from '../../../../../utils/aleo/aleoUtils';
 
 interface NullBotStatusBarProps {
     connected: boolean;
