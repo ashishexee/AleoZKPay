@@ -7,7 +7,7 @@ import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
 import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
 import type { PaymentStep, InvoiceState, PaymentNoteInput } from '../../types/payments';
 import { createClient } from '@supabase/supabase-js';
-import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
+import { getScannerSession, findSpendableRecord } from '../../pages/profile/components/burnerwallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 import { getAllowedTokensForInvoice, getTokenTypeFromCode } from '../../utils/payments/tokens';
 import { decryptCardPrivateKey } from '../../utils/card/cardCrypto';
@@ -809,7 +809,7 @@ export const useSharedPayment = () => {
 
             let recordName = activeTokenType === 0 ? 'credits' : 'Token';
 
-            const { scanProgramBalance } = await import('../../pages/Profile/components/BurnerWallet/scanner');
+            const { scanProgramBalance } = await import('../../pages/profile/components/burnerwallet/scanner');
             const totalMicros = await scanProgramBalance(scannerSession, tokenProgram, recordName);
             if (totalMicros < amountMicro) {
                 if (!isDonationType && totalMicros > 0) {

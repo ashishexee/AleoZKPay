@@ -4,6 +4,7 @@ import { GlassInput } from '../../../../shared/components/ui/GlassInput';
 import { GiftCodeInput } from '../../../../shared/components/ui/GiftCodeInput';
 import { GiftCardRedeemPrompt } from '../../../../shared/components/ui/GiftCardRedeemPrompt';
 import { NullPayCardPaymentPanel } from '../../../../shared/components/payments/NullPayCardPaymentPanel';
+import { PaymentActivityConsole } from '../../../../shared/components/payments/PaymentActivityConsole';
 
 interface PaymentActionPanelProps {
     step: string;
@@ -168,43 +169,57 @@ export const PaymentActionPanel = ({
                         glow
                     >
                         {isProcess ? (
-                            <span className="flex items-center gap-2">
-                                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                Processing...
-                            </span>
+                            <div className="flex items-center justify-center gap-3">
+                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                                <span className="font-bold">Authorizing...</span>
+                            </div>
                         ) : (
                             `Pay ${displayAmount} ${currencyLabel}`
                         )}
                     </Button>
+
+                    <PaymentActivityConsole
+                        method="giftcard"
+                        statusLog={statusLog}
+                        error={error}
+                    />
                 </div>
             ) : paymentMethod === 'card' ? (
-                <NullPayCardPaymentPanel
-                    amountLabel={paymentAmountLabel}
-                    cardNumber={cardNumber}
-                    cardPin={cardPin}
-                    cardSecret={cardSecret}
-                    isOpen={showCardOverlay}
-                    isProcessing={isProcess}
-                    statusLog={statusLog}
-                    error={error}
-                    onCardNumberChange={setCardNumber}
-                    onCardPinChange={setCardPin}
-                    onCardSecretChange={setCardSecret}
-                    onOpenOverlay={handleCardOverlayOpen}
-                    onCloseOverlay={() => setShowCardOverlay(false)}
-                    onSubmit={handleCardPay}
-                    submitDisabled={
-                        isProcess ||
-                        payerNoteTooLong ||
-                        (shareMerchantNote && merchantNoteTooLong) ||
-                        cardNumber.replace(/\D/g, '').length !== 16 ||
-                        cardPin.length !== 6 ||
-                        !cardSecret ||
-                        (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))
-                    }
-                />
+                <div className="space-y-4 animate-fade-in">
+                    <NullPayCardPaymentPanel
+                        amountLabel={paymentAmountLabel}
+                        cardNumber={cardNumber}
+                        cardPin={cardPin}
+                        cardSecret={cardSecret}
+                        isOpen={showCardOverlay}
+                        isProcessing={isProcess}
+                        statusLog={statusLog}
+                        error={error}
+                        onCardNumberChange={setCardNumber}
+                        onCardPinChange={setCardPin}
+                        onCardSecretChange={setCardSecret}
+                        onOpenOverlay={handleCardOverlayOpen}
+                        onCloseOverlay={() => setShowCardOverlay(false)}
+                        onSubmit={handleCardPay}
+                        submitDisabled={
+                            isProcess ||
+                            payerNoteTooLong ||
+                            (shareMerchantNote && merchantNoteTooLong) ||
+                            cardNumber.replace(/\D/g, '').length !== 16 ||
+                            cardPin.length !== 6 ||
+                            !cardSecret ||
+                            (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))
+                        }
+                    />
+
+                    <PaymentActivityConsole
+                        method="card"
+                        statusLog={statusLog}
+                        error={error}
+                    />
+                </div>
             ) : (
-                <>
+                <div className="space-y-4 animate-fade-in">
                     {step === 'CONNECT' ? (
                         <div className="flex flex-col gap-3">
                             <div className="wallet-adapter-wrapper w-full [&>button]:!w-full [&>button]:!justify-center">
@@ -229,10 +244,10 @@ export const PaymentActionPanel = ({
                             glow
                         >
                             {loading ? (
-                                <span className="flex items-center gap-2">
-                                    <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                    Processing...
-                                </span>
+                                <div className="flex items-center justify-center gap-3">
+                                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                                    <span className="font-bold">Authorizing...</span>
+                                </div>
                             ) : step === 'CONVERT' ? (
                                 'Convert Public to Private'
                             ) : (
@@ -240,7 +255,12 @@ export const PaymentActionPanel = ({
                             )}
                         </Button>
                     )}
-                </>
+                    <PaymentActivityConsole
+                        method="wallet"
+                        statusLog={statusLog}
+                        error={error}
+                    />
+                </div>
             )}
         </div>
     );

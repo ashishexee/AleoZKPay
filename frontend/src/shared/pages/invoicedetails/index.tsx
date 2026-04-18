@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { generateInvoicePdf } from '../../utils/invoice/generateInvoicePdf';
 import { PROGRAM_ID, WALLET_PROGRAM_ID, parseInvoice, parseMerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo/aleoUtils';
 import { MerchantReceipt } from '../../types/receipt';
-import { VerifyModal } from '../Profile/components/modals/VerifyModal';
+import { VerifyModal } from '../profile/components/modals/VerifyModal';
 import { hashAddress } from '../../utils/core/crypto';
 import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
 import { useWalletErrorHandler } from '../../hooks/wallet/WalletErrorBoundary';

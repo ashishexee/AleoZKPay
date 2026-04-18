@@ -4,8 +4,6 @@ import { LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../../shared/utils/core/leoInp
 import { PROGRAM_ID } from '../../../../shared/utils/aleo/aleoUtils';
 
 interface PaymentNotesPanelProps {
-    error: string | null;
-    status: string | null;
     step: string;
     programId?: string;
     receiptHash?: string | null;
@@ -24,8 +22,6 @@ interface PaymentNotesPanelProps {
 }
 
 export const PaymentNotesPanel = ({
-    error,
-    status,
     step,
     programId,
     receiptHash,
@@ -47,18 +43,6 @@ export const PaymentNotesPanel = ({
 
     return (
         <div className="bg-black/20 rounded-[28px] p-6 lg:p-8 border border-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.28)] flex flex-col space-y-6 h-full justify-center">
-            {error && (
-                <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-center">
-                    <p className="text-white text-sm font-medium">{error}</p>
-                </div>
-            )}
-
-            {status && !status.startsWith('at1') && !error && step !== 'ALREADY_PAID' && step !== 'SUCCESS' && (
-                <div className="text-center rounded-xl border border-white/20 bg-white/10 p-3">
-                    <p className="text-white text-sm font-mono animate-pulse">{status}</p>
-                </div>
-            )}
-
             {(step === 'SUCCESS' || step === 'ALREADY_PAID') ? (
                 <div className="text-center space-y-4 mb-auto mt-auto">
                     <p className="text-gray-400">

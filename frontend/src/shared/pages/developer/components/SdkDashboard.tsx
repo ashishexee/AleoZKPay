@@ -12,13 +12,13 @@ import {
     parseInvoice,
     parseMerchantReceipt,
 } from '../../../utils/aleo/aleoUtils';
-import { InvoiceDistributionChart } from '../../Profile/components/Charts/InvoiceDistributionChart';
-import { TokenDistributionChart } from '../../Profile/components/Charts/TokenDistributionChart';
-import { PaymentTimelineChart } from '../../Profile/components/Charts/PaymentTimelineChart';
-import { InvoiceTable } from '../../Profile/components/InvoiceTable';
-import { VerifyModal } from '../../Profile/components/modals/VerifyModal';
-import { PaymentHistoryModal } from '../../Profile/components/modals/PaymentHistoryModal';
-import { ReceiptHashesModal } from '../../Profile/components/modals/ReceiptHashesModal';
+import { InvoiceDistributionChart } from '../../profile/components/charts/InvoiceDistributionChart';
+import { TokenDistributionChart } from '../../profile/components/charts/TokenDistributionChart';
+import { PaymentTimelineChart } from '../../profile/components/charts/PaymentTimelineChart';
+import { InvoiceTable } from '../../profile/components/InvoiceTable';
+import { VerifyModal } from '../../profile/components/modals/VerifyModal';
+import { PaymentHistoryModal } from '../../profile/components/modals/PaymentHistoryModal';
+import { ReceiptHashesModal } from '../../profile/components/modals/ReceiptHashesModal';
 import toast from 'react-hot-toast';
 import { executeWithShieldRetry } from '../../../utils/payments/shieldRetry';
 import { useWalletErrorHandler } from '../../../hooks/wallet/WalletErrorBoundary';

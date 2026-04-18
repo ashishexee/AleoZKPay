@@ -1,16 +1,16 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
-import CreateInvoice from './pages/CreateInvoice';
-import PaymentPage from './pages/Payment';
-import Profile from '../shared/pages/Profile';
-import CheckoutPage from '../shared/pages/Checkout';
-import InvoiceDetails from '../shared/pages/InvoiceDetails';
-import GiftCardsPage from '../shared/pages/GiftCards';
-import TelegramLinkPage from '../shared/pages/TelegramLink';
-import TelegramBotPage from '../shared/pages/TelegramBot';
-import AuditVerifyPage from '../shared/pages/AuditVerify';
-import SupportFeedbackPage from '../shared/pages/SupportFeedback';
+import CreateInvoice from './pages/createinvoice';
+import PaymentPage from './pages/payment';
+import Profile from '../shared/pages/profile';
+import CheckoutPage from '../shared/pages/checkout';
+import InvoiceDetails from '../shared/pages/invoicedetails';
+import GiftCardsPage from '../shared/pages/giftcards';
+import TelegramLinkPage from '../shared/pages/telegramlink';
+import TelegramBotPage from '../shared/pages/telegrambot';
+import AuditVerifyPage from '../shared/pages/auditverify';
+import SupportFeedbackPage from '../shared/pages/supportfeedback';
 import { ProtectedRoute } from '../shared/components/routing/ProtectedRoute';
 
 const MobileAnimatedRoutes = () => {

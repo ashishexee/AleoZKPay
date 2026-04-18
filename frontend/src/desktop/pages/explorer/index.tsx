@@ -6,7 +6,7 @@ import { Input } from '../../../shared/components/ui/Input';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { useTransactions } from '../../../shared/hooks/transactions/useTransactions';
 import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../../shared/utils/core/animations';
-import { PaymentHistoryModal } from '../../../shared/pages/Profile/components/modals/PaymentHistoryModal';
+import { PaymentHistoryModal } from '../../../shared/pages/profile/components/modals/PaymentHistoryModal';
 import { getInvoiceStatus } from '../../../shared/utils/aleo/aleoUtils';
 import React from 'react';
 import { InvoiceCreationTimelineChart, type InvoiceTimelineRange, type InvoiceTimelineStatusFilter } from './components/InvoiceCreationTimelineChart';

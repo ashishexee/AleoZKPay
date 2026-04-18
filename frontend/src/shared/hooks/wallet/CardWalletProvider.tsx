@@ -22,7 +22,7 @@ import {
     sha256HexToField
 } from '../../utils/card/cardChain';
 import { estimateExecutionFee, fetchBurnerRecordsFromTx, WALLET_PROGRAM_ID } from '../../utils/aleo/aleoUtils';
-import { fetchAllPrivateBalances } from '../../pages/Profile/components/BurnerWallet/scanner';
+import { fetchAllPrivateBalances } from '../../pages/profile/components/burnerwallet/scanner';
 import { useWalletErrorHandler } from './WalletErrorBoundary';
 import { useBurnerWallet } from './BurnerWalletProvider';
 import { sweepBurnerFundsToDestination } from '../../utils/burner/burnerSweep';

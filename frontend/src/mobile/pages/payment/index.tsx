@@ -11,6 +11,7 @@ import { GiftCodeInput } from '../../../shared/components/ui/GiftCodeInput';
 import { GiftCardRedeemPrompt } from '../../../shared/components/ui/GiftCardRedeemPrompt';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { NullPayCardPaymentPanel } from '../../../shared/components/payments/NullPayCardPaymentPanel';
+import { PaymentActivityConsole } from '../../../shared/components/payments/PaymentActivityConsole';
 import { PROGRAM_ID } from '../../../shared/utils/aleo/aleoUtils';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -633,36 +634,40 @@ const MobilePaymentPage = () => {
                                                 `Pay ${displayAmount} ${currencyLabel}`
                                             )}
                                         </Button>
+                                        <PaymentActivityConsole method="giftcard" statusLog={statusLog} error={error} compact />
                                     </div>
                                 ) : paymentMethod === 'card' ? (
-                                    <NullPayCardPaymentPanel
-                                        amountLabel={paymentAmountLabel}
-                                        cardNumber={cardNumber}
-                                        cardPin={cardPin}
-                                        cardSecret={cardSecret}
-                                        isOpen={showCardOverlay}
-                                        isProcessing={isProcess}
-                                        statusLog={statusLog}
-                                        error={error}
-                                        compact
-                                        onCardNumberChange={setCardNumber}
-                                        onCardPinChange={setCardPin}
-                                        onCardSecretChange={setCardSecret}
-                                        onOpenOverlay={handleCardOverlayOpen}
-                                        onCloseOverlay={() => setShowCardOverlay(false)}
-                                        onSubmit={handleCardPay}
-                                        submitDisabled={
-                                            isProcess ||
-                                            payerNoteTooLong ||
-                                            (shareMerchantNote && merchantNoteTooLong) ||
-                                            cardNumber.replace(/\D/g, '').length !== 16 ||
-                                            cardPin.length !== 6 ||
-                                            !cardSecret ||
-                                            (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))
-                                        }
-                                    />
+                                    <div className="space-y-4 animate-fade-in">
+                                        <NullPayCardPaymentPanel
+                                            amountLabel={paymentAmountLabel}
+                                            cardNumber={cardNumber}
+                                            cardPin={cardPin}
+                                            cardSecret={cardSecret}
+                                            isOpen={showCardOverlay}
+                                            isProcessing={isProcess}
+                                            statusLog={statusLog}
+                                            error={error}
+                                            compact
+                                            onCardNumberChange={setCardNumber}
+                                            onCardPinChange={setCardPin}
+                                            onCardSecretChange={setCardSecret}
+                                            onOpenOverlay={handleCardOverlayOpen}
+                                            onCloseOverlay={() => setShowCardOverlay(false)}
+                                            onSubmit={handleCardPay}
+                                            submitDisabled={
+                                                isProcess ||
+                                                payerNoteTooLong ||
+                                                (shareMerchantNote && merchantNoteTooLong) ||
+                                                cardNumber.replace(/\D/g, '').length !== 16 ||
+                                                cardPin.length !== 6 ||
+                                                !cardSecret ||
+                                                (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))
+                                            }
+                                        />
+                                        <PaymentActivityConsole method="card" statusLog={statusLog} error={error} compact />
+                                    </div>
                                 ) : (
-                                    <>
+                                    <div className="space-y-4 animate-fade-in">
                                         {step === 'CONNECT' ? (
                                             <div className="flex flex-col gap-3">
                                                 <div className="wallet-adapter-wrapper w-full [&>button]:!w-full [&>button]:!justify-center [&>button]:!h-12 [&>button]:!rounded-xl [&>button]:!font-bold [&>button]:!bg-neon-primary [&>button]:!text-black hover:[&>button]:!bg-neon-accent [&>button]:!transition-colors">
@@ -698,7 +703,8 @@ const MobilePaymentPage = () => {
                                                 )}
                                             </Button>
                                         )}
-                                    </>
+                                        <PaymentActivityConsole method="wallet" statusLog={statusLog} error={error} compact />
+                                    </div>
                                 )}
                             </>
                         )}

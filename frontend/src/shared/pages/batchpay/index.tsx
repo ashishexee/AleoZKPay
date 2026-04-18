@@ -24,7 +24,7 @@ import { estimateExecutionFee, fetchBurnerRecordsFromTx, generateSalt, getFreeze
 import { ANY_ALLOWED_TOKENS, getAllowedTokensForInvoice, getTokenCodeFromType, getTokenLabel, getTokenTypeFromCode, TOKEN_LABELS } from '../../utils/payments/tokens';
 import { parsePaymentLink } from '../../utils/payments/paymentLinks';
 import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
-import { findSpendableRecord, getScannerSession, scanProgramBalance } from '../Profile/components/BurnerWallet/scanner';
+import { findSpendableRecord, getScannerSession, scanProgramBalance } from '../profile/components/burnerwallet/scanner';
 import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
 
 interface BatchInvoiceRow {

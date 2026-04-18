@@ -1,6 +1,6 @@
 import { AleoKeyProvider, AleoNetworkClient, NetworkRecordProvider, ProgramManager } from '@provablehq/sdk';
 import { PROGRAM_ID } from '../aleo/aleoUtils';
-import { findOwnedInvoiceRecord, getScannerSession } from '../../pages/Profile/components/BurnerWallet/scanner';
+import { findOwnedInvoiceRecord, getScannerSession } from '../../pages/profile/components/burnerwallet/scanner';
 
 interface DeleteBurnerInvoiceParams {
     decryptedBurnerKey: string;
