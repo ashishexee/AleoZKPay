@@ -1,4 +1,4 @@
-import { WalletTokenBalance } from '../hooks/useWalletBalances';
+import { WalletTokenBalance } from '../hooks/wallet/useWalletBalances';
 
 export interface PayerReceipt {
     owner: string;

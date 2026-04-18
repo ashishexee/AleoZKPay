@@ -1,5 +1,5 @@
 import { Account, encryptRegistrationRequest, RecordCiphertext } from '@provablehq/sdk';
-import type { PrivateBalances, ScannerSession } from './types';
+import type { PrivateBalances, ScannerSession } from '../../../../types/burner';
 
 export async function getScannerSession(decryptedBurnerKey: string): Promise<ScannerSession> {
     const scannerBase = import.meta.env.VITE_API_URL.replace('/api', '/api/scanner/testnet');

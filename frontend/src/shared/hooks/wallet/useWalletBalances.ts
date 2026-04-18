@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
-import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
+import { useWalletErrorHandler } from './WalletErrorBoundary';
 
 export interface WalletTokenBalance {
     name: 'Credits' | 'USDCx' | 'USAD';

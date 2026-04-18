@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { usePayment } from '../../../shared/hooks/usePayment';
-import type { PaymentStep } from '../../../shared/hooks/usePayment';
+import { usePayment } from '../../../shared/hooks/payments/usePayment';
+import type { PaymentStep } from '../../../shared/hooks/payments/usePayment';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';

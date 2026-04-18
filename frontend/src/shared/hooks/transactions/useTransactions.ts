@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { fetchInvoicesByMerchant, fetchRecentTransactions } from '../services/api';
-import { Invoice } from '../types/invoice';
+import { fetchInvoicesByMerchant, fetchRecentTransactions } from '../../services/api';
+import { Invoice } from '../../types/invoice';
 
 export const useTransactions = (merchantAddress?: string) => {
     const [transactions, setTransactions] = useState<Invoice[]>([]);

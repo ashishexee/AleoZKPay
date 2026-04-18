@@ -8,7 +8,7 @@ import { FloatingGiftCard } from './FloatingGiftCard';
 import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../../utils/aleo-utils';
 import { buildCreateGiftCardRecordInputs, privateKeyToGiftCode } from '../../../utils/gift-card-chain';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
-import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
+import { useWalletErrorHandler } from '../../../hooks/wallet/WalletErrorBoundary';
 import { getUtf8ByteLength, GIFT_CARD_RECORD_LABEL_MAX_BYTES } from '../../../utils/leo-input-limits';
 
 export const CreateGiftCard: React.FC = () => {

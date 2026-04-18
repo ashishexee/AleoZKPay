@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
-import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
-import { useTransactions } from '../../../hooks/useTransactions';
-import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
+import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
+import { useTransactions } from '../transactions/useTransactions';
+import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
 import {
     PROGRAM_ID,
     WALLET_PROGRAM_ID,
@@ -10,9 +10,9 @@ import {
     parseInvoice,
     parsePayerReceipt,
     fetchBurnerRecordsFromTx
-} from '../../../utils/aleo-utils';
-import { InvoiceRecord } from '../../../types/invoice';
-import { MerchantReceipt, PayerReceipt } from '../../../types/receipt';
+} from '../../utils/aleo-utils';
+import { InvoiceRecord } from '../../types/invoice';
+import { MerchantReceipt, PayerReceipt } from '../../types/receipt';
 
 export function useProfileData(publicKey: string | undefined | null) {
     const { requestRecords, decrypt } = useWallet();
@@ -52,7 +52,7 @@ export function useProfileData(publicKey: string | undefined | null) {
         const fetchProfileData = async () => {
             if (publicKey) {
                 try {
-                    const { getUserProfile } = await import('../../../services/api');
+                    const { getUserProfile } = await import('../../services/api');
                     const profile = await getUserProfile(publicKey);
                     if (profile) {
                         setProfileMainHash(profile.profile_main_invoice_hash || null);
@@ -73,7 +73,7 @@ export function useProfileData(publicKey: string | undefined | null) {
                 return;
             }
             try {
-                const { fetchInvoicesByMerchant } = await import('../../../services/api');
+                const { fetchInvoicesByMerchant } = await import('../../services/api');
                 const data = await fetchInvoicesByMerchant(decryptedBurnerAddress);
                 setBurnerDbTransactions(data);
             } catch (e) {

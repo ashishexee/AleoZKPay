@@ -6,7 +6,7 @@ import { Eye, EyeOff, KeyRound, LockKeyhole, Terminal } from 'lucide-react';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Button } from '../../../components/ui/Button';
 import { Shimmer } from '../../../components/ui/Shimmer';
-import { CheckoutSession } from '../types';
+import { CheckoutSession } from '../../../types/checkout';
 import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPrompt';
 import { GiftCodeInput } from '../../../components/ui/GiftCodeInput';
 import { CARD_PIN_LENGTH } from '../../../utils/card-input-limits';

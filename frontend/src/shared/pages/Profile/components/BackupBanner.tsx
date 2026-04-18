@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useBurnerActions } from './BurnerWallet/useBurnerActions';
+import { useBurnerActions } from '../../../hooks/profile/useBurnerActions';
 import ConfirmModal from '../../../components/ConfirmModal';
 
 export const BackupBanner: React.FC = () => {

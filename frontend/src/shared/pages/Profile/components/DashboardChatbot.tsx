@@ -9,8 +9,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { QRCodeSVG } from 'qrcode.react';
 import { GlassCard } from '../../../components/ui/GlassCard';
-import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
-import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
+import { useBurnerWallet } from '../../../hooks/wallet/BurnerWalletProvider';
+import type { WalletTokenBalance } from '../../../hooks/wallet/useWalletBalances';
 import {
     truncateAddress,
     tokenLabel,

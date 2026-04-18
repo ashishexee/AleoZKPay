@@ -8,7 +8,7 @@ import {
     fetchTelegramLinkSession,
 } from '../../services/api';
 import { CompleteTelegramLinkSessionResponse, TelegramLinkSession } from '../../types/common';
-import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
+import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
 import { PasswordPrompt } from '../../components/PasswordPrompt';
 import { encryptWithPassword } from '../../utils/crypto';
 

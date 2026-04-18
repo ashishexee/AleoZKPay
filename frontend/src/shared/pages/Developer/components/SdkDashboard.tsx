@@ -21,7 +21,7 @@ import { PaymentHistoryModal } from '../../Profile/components/modals/PaymentHist
 import { ReceiptHashesModal } from '../../Profile/components/modals/ReceiptHashesModal';
 import toast from 'react-hot-toast';
 import { executeWithShieldRetry } from '../../../utils/shieldRetry';
-import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
+import { useWalletErrorHandler } from '../../../hooks/wallet/WalletErrorBoundary';
 
 type SdkDashboardInvoice = InvoiceRecord & {
     status: string | number;

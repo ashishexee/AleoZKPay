@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { estimateExecutionFee, generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../utils/aleo-utils';
-import { executeWithShieldRetry } from '../utils/shieldRetry';
-import { useBurnerWallet } from './BurnerWalletProvider';
-import { useLeaveGuard } from './LeaveGuardProvider';
-import { updateUserProfile, getUserProfile, createInvoice, fetchInvoiceByHash } from '../services/api';
-import { encryptWithPassword, hashAddress } from '../utils/crypto';
+import { estimateExecutionFee, generateSalt, getInvoiceHashFromMapping, PROGRAM_ID } from '../../utils/aleo-utils';
+import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
+import { useLeaveGuard } from '../app/LeaveGuardProvider';
+import { updateUserProfile, getUserProfile, createInvoice, fetchInvoiceByHash } from '../../services/api';
+import { encryptWithPassword, hashAddress } from '../../utils/crypto';
 
 export const useProfileQR = () => {
     const { address, executeTransaction, transactionStatus } = useWallet();

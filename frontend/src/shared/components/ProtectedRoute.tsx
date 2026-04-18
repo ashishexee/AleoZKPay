@@ -2,7 +2,7 @@ import React from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { Link } from 'react-router-dom';
-import { useBurnerWallet } from '../hooks/BurnerWalletProvider';
+import { useBurnerWallet } from '../hooks/wallet/BurnerWalletProvider';
 import { PasswordPrompt } from './PasswordPrompt';
 
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {

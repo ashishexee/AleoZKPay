@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { PrivateBalances, SweepCurrency } from './types';
+import type { PrivateBalances, SweepCurrency } from '../../../../types/burner';
 import { Edit2, Lock } from 'lucide-react';
 
 interface SweepModalProps {

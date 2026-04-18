@@ -7,8 +7,8 @@ import { PROGRAM_ID, WALLET_PROGRAM_ID, parseInvoice, parseMerchantReceipt, fetc
 import { MerchantReceipt } from '../../types/receipt';
 import { VerifyModal } from '../Profile/components/modals/VerifyModal';
 import { hashAddress } from '../../utils/crypto';
-import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
-import { useWalletErrorHandler } from '../../hooks/Wallet/WalletErrorBoundary';
+import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
+import { useWalletErrorHandler } from '../../hooks/wallet/WalletErrorBoundary';
 import { getTokenLabel } from '../../utils/tokens';
 
 interface InvoiceData {

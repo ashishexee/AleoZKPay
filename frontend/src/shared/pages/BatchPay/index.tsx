@@ -23,7 +23,7 @@ import { fetchInvoiceByHash, updateInvoiceStatus } from '../../services/api';
 import { estimateExecutionFee, fetchBurnerRecordsFromTx, generateSalt, getFreezeListIndex, getFreezeListRoot, getInvoiceData, getInvoiceHashFromMapping, PROGRAM_ID } from '../../utils/aleo-utils';
 import { ANY_ALLOWED_TOKENS, getAllowedTokensForInvoice, getTokenCodeFromType, getTokenLabel, getTokenTypeFromCode, TOKEN_LABELS } from '../../utils/tokens';
 import { parsePaymentLink } from '../../utils/paymentLinks';
-import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
+import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
 import { findSpendableRecord, getScannerSession, scanProgramBalance } from '../Profile/components/BurnerWallet/scanner';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
 

@@ -4,8 +4,8 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { estimateExecutionFee, getInvoiceHashFromMapping, getInvoiceData, PROGRAM_ID, WALLET_PROGRAM_ID, generateSalt } from '../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
-import { useWalletErrorHandler } from '../Wallet/WalletErrorBoundary';
-import type { PaymentStep, InvoiceState, PaymentNoteInput } from './types';
+import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
+import type { PaymentStep, InvoiceState, PaymentNoteInput } from '../../types/payments';
 import { createClient } from '@supabase/supabase-js';
 import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
@@ -17,7 +17,7 @@ import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../utils/card-input-
 import { stringToField } from '../../utils/aleo-utils';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/leo-input-limits';
 import { isValidAleoAddress, normalizeAleoAddress } from '../../utils/aleo-address';
-import { useLeaveGuard } from '../LeaveGuardProvider';
+import { useLeaveGuard } from '../app/LeaveGuardProvider';
 
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
 

@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
-import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
+import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
 import {
     buildMerchantAuditReportHtmlAsset,
     downloadMerchantCreditReportHtml,
-} from '../../../utils/generateMerchantReportsPdf';
-import type { AuditReportInput, ReportOptions } from '../../../types/receipt';
-import { generateMerchantAuditPackage } from '../../../utils/auditPackage';
-import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
-import type { GeneratedAuditAssets } from '../components/modals/ReportConfigModal';
+} from '../../utils/generateMerchantReportsPdf';
+import type { AuditReportInput, ReportOptions } from '../../types/receipt';
+import { generateMerchantAuditPackage } from '../../utils/auditPackage';
+import type { WalletTokenBalance } from '../wallet/useWalletBalances';
+import type { GeneratedAuditAssets } from '../../pages/Profile/components/modals/ReportConfigModal';
 
 type MerchantStatsSnapshot = {
     mainCredits: string;

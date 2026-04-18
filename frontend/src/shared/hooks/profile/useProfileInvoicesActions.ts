@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
-import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
-import { useLeaveGuard } from '../../../hooks/LeaveGuardProvider';
-import { PROGRAM_ID, parseInvoice, estimateExecutionFee } from '../../../utils/aleo-utils';
-import { hashAddress } from '../../../utils/crypto';
-import { sponsorBurnerInvoiceDeletion } from '../../../utils/invoiceDeletion';
-import { executeWithShieldRetry } from '../../../utils/shieldRetry';
-import { WALLET_PROGRAM_ID } from '../../../utils/aleo-utils';
+import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
+import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
+import { useLeaveGuard } from '../app/LeaveGuardProvider';
+import { PROGRAM_ID, parseInvoice, estimateExecutionFee } from '../../utils/aleo-utils';
+import { hashAddress } from '../../utils/crypto';
+import { sponsorBurnerInvoiceDeletion } from '../../utils/invoiceDeletion';
+import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { WALLET_PROGRAM_ID } from '../../utils/aleo-utils';
 
 interface UseProfileInvoicesActionsProps {
     fetchCreatedInvoices: () => Promise<void>;
@@ -140,7 +140,7 @@ export function useProfileInvoicesActions({
         setDeletingInvoiceId(invoice.invoiceHash);
         
         try {
-            const { deleteInvoice } = await import('../../../services/api');
+            const { deleteInvoice } = await import('../../services/api');
             
             let deletionTransactionId = '';
             setGuard({
@@ -261,7 +261,7 @@ export function useProfileInvoicesActions({
             if (result && result.transactionId) {
                 toast.dismiss('shield-settle-retry');
                 try {
-                    const { updateInvoiceStatus } = await import('../../../services/api');
+                    const { updateInvoiceStatus } = await import('../../services/api');
                     await updateInvoiceStatus(invoice.invoiceHash, {
                         status: 'SETTLED'
                     });

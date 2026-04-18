@@ -1,9 +1,9 @@
 import React from 'react';
 import { GlassCard } from '../../../../components/ui/GlassCard';
-import { useBurnerActions } from './useBurnerActions';
+import { useBurnerActions } from '../../../../hooks/profile/useBurnerActions';
 import ConfirmModal from '../../../../components/ConfirmModal';
 import { SweepModal } from './SweepModal';
-import type { BurnerWalletSettingsProps } from './types';
+import type { BurnerWalletSettingsProps } from '../../../../types/burner';
 
 export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ itemVariants }) => {
     const a = useBurnerActions();

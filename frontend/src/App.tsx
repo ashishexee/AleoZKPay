@@ -3,8 +3,8 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { Toaster, ToastBar } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, AlertCircle } from 'lucide-react';
-import { usePaymentMonitor } from './shared/hooks/usePaymentMonitor';
-import { LeaveGuardProvider } from './shared/hooks/LeaveGuardProvider';
+import { usePaymentMonitor } from './shared/hooks/app/usePaymentMonitor';
+import { LeaveGuardProvider } from './shared/hooks/app/LeaveGuardProvider';
 import './index.css';
 
 const MobileApp = lazy(() => import('./mobile/MobileApp').then(module => ({ default: module.MobileApp })));

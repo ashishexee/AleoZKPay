@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { InvoiceRecord } from '../../../types/invoice';
-import { MerchantReceipt, PayerReceipt } from '../../../types/receipt';
+import { InvoiceRecord } from '../../types/invoice';
+import { MerchantReceipt, PayerReceipt } from '../../types/receipt';
 
 interface UseProfileAggregationsProps {
     transactions: any[];

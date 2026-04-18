@@ -7,25 +7,25 @@ import {
     getCardWallet,
     submitCardLimitChange,
     upsertCardWallet
-} from '../services/api';
-import { CardTokenCode } from '../types/tokens';
-import { CardWalletProfile } from '../types/user';
-import { executeWithShieldRetry } from '../utils/shieldRetry';
-import { decryptCardPrivateKey, encryptCardPrivateKey } from '../utils/card-crypto';
-import { CardKdfAlgorithm } from '../types/card';
-import { decryptWithPassword, encryptWithPassword, hashAddress } from '../utils/crypto';
-import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../utils/card-input-limits';
-import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../utils/leo-input-limits';
+} from '../../services/api';
+import { CardTokenCode } from '../../types/tokens';
+import { CardWalletProfile } from '../../types/user';
+import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { decryptCardPrivateKey, encryptCardPrivateKey } from '../../utils/card-crypto';
+import { CardKdfAlgorithm } from '../../types/card';
+import { decryptWithPassword, encryptWithPassword, hashAddress } from '../../utils/crypto';
+import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../utils/card-input-limits';
+import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../../utils/leo-input-limits';
 import {
     buildCreateCardRecordInputs,
     parseCardProfileRecord,
     sha256HexToField
-} from '../utils/card-chain';
-import { estimateExecutionFee, fetchBurnerRecordsFromTx, WALLET_PROGRAM_ID } from '../utils/aleo-utils';
-import { fetchAllPrivateBalances } from '../pages/Profile/components/BurnerWallet/scanner';
-import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
+} from '../../utils/card-chain';
+import { estimateExecutionFee, fetchBurnerRecordsFromTx, WALLET_PROGRAM_ID } from '../../utils/aleo-utils';
+import { fetchAllPrivateBalances } from '../../pages/Profile/components/BurnerWallet/scanner';
+import { useWalletErrorHandler } from './WalletErrorBoundary';
 import { useBurnerWallet } from './BurnerWalletProvider';
-import { sweepBurnerFundsToDestination } from '../utils/burnerSweep';
+import { sweepBurnerFundsToDestination } from '../../utils/burnerSweep';
 
 type BalanceKey = 'ALEO' | 'USDCx' | 'USAD';
 
@@ -857,7 +857,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (token === 'CREDITS') {
             inputs = [recordInput, card.card_address, `${amountMicro}u64`];
         } else {
-            const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../utils/aleo-utils');
+            const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
             await getFreezeListRoot();
             await getFreezeListCount();
             const firstIndex = await getFreezeListIndex(0);

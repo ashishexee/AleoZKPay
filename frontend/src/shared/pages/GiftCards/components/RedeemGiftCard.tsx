@@ -5,7 +5,7 @@ import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, Network
 import { Search, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from '../../Profile/components/BurnerWallet/scanner';
-import type { PrivateBalances } from '../../Profile/components/BurnerWallet/types';
+import type { PrivateBalances } from '../../../types/burner';
 import { FloatingGiftCard } from './FloatingGiftCard';
 import { ScratchReveal } from './ScratchReveal';
 

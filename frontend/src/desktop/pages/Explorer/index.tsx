@@ -4,7 +4,7 @@ import StatusBadge from '../../../shared/components/StatusBadge';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
 import { Input } from '../../../shared/components/ui/Input';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
-import { useTransactions } from '../../../shared/hooks/useTransactions';
+import { useTransactions } from '../../../shared/hooks/transactions/useTransactions';
 import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../../shared/utils/animations';
 import { PaymentHistoryModal } from '../../../shared/pages/Profile/components/modals/PaymentHistoryModal';
 import { getInvoiceStatus } from '../../../shared/utils/aleo-utils';

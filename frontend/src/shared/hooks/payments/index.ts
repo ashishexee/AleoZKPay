@@ -1,6 +1,6 @@
 import { useSharedPayment } from './useSharedPayment';
 
-export type { PaymentStep } from './types';
+export type { PaymentStep } from '../../types/payments';
 
 export const usePayment = () => {
     const shared = useSharedPayment();

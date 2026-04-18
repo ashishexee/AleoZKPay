@@ -1,14 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { PrivateKey } from '@provablehq/sdk';
-import { useBurnerWallet } from '../../../../hooks/BurnerWalletProvider';
-import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '../../../../utils/crypto';
-import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../../../utils/aleo-utils';
-import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../../../utils/leo-input-limits';
-import { executeWithShieldRetry } from '../../../../utils/shieldRetry';
-import { fetchAllPrivateBalances } from './scanner';
-import type { PrivateBalances, SweepCurrency } from './types';
-import { sweepBurnerFundsToDestination } from '../../../../utils/burnerSweep';
+import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
+import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '../../utils/crypto';
+import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../utils/aleo-utils';
+import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../utils/leo-input-limits';
+import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { fetchAllPrivateBalances } from '../../pages/Profile/components/BurnerWallet/scanner';
+import type { PrivateBalances, SweepCurrency } from '../../types/burner';
+import { sweepBurnerFundsToDestination } from '../../utils/burnerSweep';
 
 export function useBurnerActions() {
     const { address, executeTransaction, transactionStatus } = useWallet();
@@ -98,7 +98,7 @@ export function useBurnerActions() {
             const encryptedKeyPayload = await encryptWithPassword(rawPrivateKeyStr, appPassword);
             const encryptedBurnerAddress = await encryptWithPassword(newAddress, appPassword);
             const encryptedMainAddress = await encryptWithPassword(address, appPassword);
-            const { updateUserProfile } = await import('../../../../services/api');
+            const { updateUserProfile } = await import('../../services/api');
             await updateUserProfile(address, encryptedMainAddress, encryptedBurnerAddress, encryptedKeyPayload);
             setDecryptedBurnerKey(rawPrivateKeyStr);
             await refreshProfile();
@@ -225,7 +225,7 @@ export function useBurnerActions() {
             if (isBurnerBackup) {
                 try {
                     if (address) {
-                        const { clearBurnerData } = await import('../../../../services/api');
+                        const { clearBurnerData } = await import('../../services/api');
                         await clearBurnerData(address);
                     }
                 } catch (clearErr) {

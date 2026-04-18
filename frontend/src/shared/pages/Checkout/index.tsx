@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useCheckoutSession } from './hooks/useCheckoutSession';
-import { useCheckoutPayment } from './hooks/useCheckoutPayment';
+import { useCheckoutSession } from '../../hooks/checkout/useCheckoutSession';
+import { useCheckoutPayment } from '../../hooks/checkout/useCheckoutPayment';
 import { CheckoutUI } from './components/CheckoutUI';
-import { usePaymentMonitor } from '../../hooks/usePaymentMonitor';
+import { usePaymentMonitor } from '../../hooks/app/usePaymentMonitor';
 
 export const CheckoutPage = () => {
     const { id } = useParams<{ id: string }>();

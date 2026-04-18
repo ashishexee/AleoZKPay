@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { pageVariants } from '../../../shared/utils/animations';
-import { usePayment } from '../../../shared/hooks/usePayment';
+import { usePayment } from '../../../shared/hooks/payments/usePayment';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useSearchParams } from 'react-router-dom';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';

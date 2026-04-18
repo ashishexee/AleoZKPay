@@ -1,10 +1,10 @@
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { estimateExecutionFee, PROGRAM_ID, stringToField } from '../../utils/aleo-utils';
 import { executeWithShieldRetry } from '../../utils/shieldRetry';
-import type { InvoiceState, PaymentNoteInput } from './types';
+import type { InvoiceState, PaymentNoteInput } from '../../types/payments';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/leo-input-limits';
 
-interface USDCxPaymentDeps {
+interface USADPaymentDeps {
     invoice: InvoiceState | null;
     publicKey: string | null | undefined;
     executeTransaction: any;
@@ -21,7 +21,7 @@ interface USDCxPaymentDeps {
     pollTransaction: (txId: string) => Promise<void>;
 }
 
-export const createUSDCxPayment = (deps: USDCxPaymentDeps) => {
+export const createUSADPayment = (deps: USADPaymentDeps) => {
     const {
         invoice,
         publicKey,
@@ -48,16 +48,16 @@ export const createUSDCxPayment = (deps: USDCxPaymentDeps) => {
         return stringToField(normalized);
     };
 
-    const payInvoiceUSDCx = async (notes?: PaymentNoteInput) => {
+    const payInvoiceUSAD = async (notes?: PaymentNoteInput) => {
         if (!invoice || !publicKey || !executeTransaction || !requestRecords || !programId) return;
 
         try {
             setLoading(true);
-            setStatus('Syncing USDCx Records...');
+            setStatus('Syncing USAD Records...');
 
-            const usdcxProgramId = 'test_usdcx_stablecoin.aleo';
+            const usadProgramId = 'test_usad_stablecoin.aleo';
 
-            const processUSDCxRecord = async (r: any): Promise<bigint> => {
+            const processUSADRecord = async (r: any): Promise<bigint> => {
                 try {
                     if (r.data && r.data.amount) return BigInt(r.data.amount.replace('u128', ''));
                     if (r.plaintext) {
@@ -69,19 +69,19 @@ export const createUSDCxPayment = (deps: USDCxPaymentDeps) => {
                         try {
                             const decrypted = await decrypt(r.recordCiphertext);
                             if (decrypted) {
-                                console.log("Decrypted USDCx Record:", decrypted);
+                                console.log("Decrypted USAD Record:", decrypted);
                                 r.plaintext = decrypted;
                                 const match = decrypted.match(/amount:\s*([\d_]+)u128/);
                                 if (match && match[1]) return BigInt(match[1].replace(/_/g, ''));
                             }
-                        } catch (e) { console.warn("USDCx Decrypt failed", e); }
+                        } catch (e) { console.warn("USAD Decrypt failed", e); }
                     }
                     return BigInt(0);
                 } catch { return BigInt(0); }
             };
 
-            let records = await requestRecords(usdcxProgramId, false);
-            console.log("USDCx Records (Initial):", records);
+            let records = await requestRecords(usadProgramId, false);
+            console.log("USAD Records (Initial):", records);
 
             const isDonation = invoice.invoiceType === 2;
             const parsedDonation = Number(donationAmount);
@@ -92,23 +92,24 @@ export const createUSDCxPayment = (deps: USDCxPaymentDeps) => {
             let payRecord = null;
             for (const r of recordsAny) {
                 if (r.spent) continue;
-                const val = await processUSDCxRecord(r);
+                const val = await processUSADRecord(r);
                 if (val >= amountMicro) {
                     payRecord = r;
                     break;
                 }
             }
+
             if (!payRecord) {
-                setStatus('Syncing latest USDCx records...');
+                setStatus('Syncing latest USAD records...');
                 await new Promise(r => setTimeout(r, 2000));
-                records = await requestRecords(usdcxProgramId, false);
-                console.log("USDCx Records (Retry):", records);
+                records = await requestRecords(usadProgramId, false);
+                console.log("USAD Records (Retry):", records);
                 recordsAny = records as any[];
                 let totalAvailable = BigInt(0);
 
                 for (const r of recordsAny) {
                     if (r.spent) continue;
-                    const val = await processUSDCxRecord(r);
+                    const val = await processUSADRecord(r);
                     totalAvailable += val;
 
                     if (!payRecord && val >= amountMicro) {
@@ -121,7 +122,7 @@ export const createUSDCxPayment = (deps: USDCxPaymentDeps) => {
                     if (totalAvailable >= amountMicro) {
                         setStatus(`Privacy Protocol requires a single record. Please convert to merge records.`);
                     } else {
-                        setStatus(`Insufficient private balance. Please convert public USDCx.`);
+                        setStatus(`Insufficient private balance. Please convert public USAD.`);
                     }
                     setLoading(false);
                     return;
@@ -165,7 +166,7 @@ export const createUSDCxPayment = (deps: USDCxPaymentDeps) => {
                 }
             }
 
-            setStatus('Requesting USDCx Payment Signature...');
+            setStatus('Requesting USAD Payment Signature...');
             const payerNoteField = encodePaymentNote(notes?.payerNote, 'Payer note');
             const merchantNoteField = encodePaymentNote(notes?.merchantNote, 'Merchant note');
 
@@ -182,7 +183,7 @@ export const createUSDCxPayment = (deps: USDCxPaymentDeps) => {
                 proofsInput
             ];
 
-            const funcName = isDonation ? 'pay_donation_usdcx' : 'pay_invoice_usdcx';
+            const funcName = isDonation ? 'pay_donation_usad' : 'pay_invoice_usad';
 
             console.log("Transaction Inputs:", JSON.stringify(inputs, null, 2));
 
@@ -208,18 +209,18 @@ export const createUSDCxPayment = (deps: USDCxPaymentDeps) => {
 
             if (result && result.transactionId) {
                 setTxId(result.transactionId);
-                setStatus(`USDCx Payment Broadcasted: ${result.transactionId}. Polling...`);
+                setStatus(`USAD Payment Broadcasted: ${result.transactionId}. Polling...`);
                 await pollTransaction(result.transactionId);
             } else {
                 throw new Error("Transaction failed.");
             }
 
         } catch (e: any) {
-            console.error("USDCx Payment Error:", e);
-            setError(e.message || 'USDCx Payment Failed');
+            console.error("USAD Payment Error:", e);
+            setError(e.message || 'USAD Payment Failed');
             setLoading(false);
         }
     };
 
-    return { payInvoiceUSDCx };
+    return { payInvoiceUSAD };
 };

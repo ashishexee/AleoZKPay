@@ -3,7 +3,7 @@ import GlassCard from '../../shared/components/GlassCard';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { Input } from '../../shared/components/ui/Input';
 import { Button } from '../../shared/components/ui/Button';
-import type { InvoiceType } from '../../shared/hooks/useCreateInvoice';
+import type { InvoiceType } from '../../shared/hooks/invoice/useCreateInvoice';
 import type { InvoiceItem } from '../../shared/types/invoice';
 import { getUtf8ByteLength, LEO_INVOICE_TITLE_MAX_BYTES, LEO_MEMO_MAX_BYTES } from '../../shared/utils/leo-input-limits';
 import { getTokenLabel } from '../../shared/utils/tokens';

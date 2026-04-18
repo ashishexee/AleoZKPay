@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { parseMerchantReceipt, fetchBurnerRecordsFromTx } from '../utils/aleo-utils';
-import { MerchantReceipt } from '../types/receipt';
+import { parseMerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
+import { MerchantReceipt } from '../../types/receipt';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
-import { useBurnerWallet } from './BurnerWalletProvider';
-import { useWalletErrorHandler } from './Wallet/WalletErrorBoundary';
+import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
+import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
