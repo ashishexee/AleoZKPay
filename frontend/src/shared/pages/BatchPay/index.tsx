@@ -18,14 +18,14 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { PasswordPrompt } from '../../components/PasswordPrompt';
+import { PasswordPrompt } from '../../components/auth/PasswordPrompt';
 import { fetchInvoiceByHash, updateInvoiceStatus } from '../../services/api';
-import { estimateExecutionFee, fetchBurnerRecordsFromTx, generateSalt, getFreezeListIndex, getFreezeListRoot, getInvoiceData, getInvoiceHashFromMapping, PROGRAM_ID } from '../../utils/aleo-utils';
-import { ANY_ALLOWED_TOKENS, getAllowedTokensForInvoice, getTokenCodeFromType, getTokenLabel, getTokenTypeFromCode, TOKEN_LABELS } from '../../utils/tokens';
-import { parsePaymentLink } from '../../utils/paymentLinks';
-import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
+import { estimateExecutionFee, fetchBurnerRecordsFromTx, generateSalt, getFreezeListIndex, getFreezeListRoot, getInvoiceData, getInvoiceHashFromMapping, PROGRAM_ID } from '../../utils/aleo/aleoUtils';
+import { ANY_ALLOWED_TOKENS, getAllowedTokensForInvoice, getTokenCodeFromType, getTokenLabel, getTokenTypeFromCode, TOKEN_LABELS } from '../../utils/payments/tokens';
+import { parsePaymentLink } from '../../utils/payments/paymentLinks';
+import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
 import { findSpendableRecord, getScannerSession, scanProgramBalance } from '../Profile/components/BurnerWallet/scanner';
-import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
 
 interface BatchInvoiceRow {
     id: string;
@@ -133,7 +133,7 @@ const isConfigComplete = (row: BatchInvoiceRow) => {
 async function buildStablecoinProofInput() {
     await getFreezeListRoot();
     const firstIndex = await getFreezeListIndex(0);
-    const { generateFreezeListProof } = await import('../../utils/aleo-utils');
+    const { generateFreezeListProof } = await import('../../utils/aleo/aleoUtils');
     const { Address } = await import('@provablehq/wasm');
     let index0FieldStr: string | undefined;
     if (firstIndex) {

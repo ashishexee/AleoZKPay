@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Shimmer } from '../../../components/ui/Shimmer';
-import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
+import type { WalletTokenBalance } from '../../../hooks/wallet/useWalletBalances';
 
 interface WalletBalancesProps {
     itemVariants: any;

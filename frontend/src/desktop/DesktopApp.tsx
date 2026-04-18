@@ -1,6 +1,6 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import Navbar from './components/Navbar';
+import Navbar from './components/layout/Navbar';
 import Home from './pages/Home';
 import Explorer from './pages/Explorer';
 import CreateInvoice from './pages/CreateInvoice';
@@ -10,7 +10,7 @@ import ProfileQRPage from '../shared/pages/ProfileQR';
 import Privacy from './pages/Privacy';
 import Verification from './pages/Verification';
 import Vision from './pages/Vision';
-import { ChangelogOverlay } from './components/ChangelogOverlay';
+import { ChangelogOverlay } from './components/overlays/ChangelogOverlay';
 import CheckoutPage from '../shared/pages/Checkout';
 import InvoiceDetails from '../shared/pages/InvoiceDetails';
 import DeveloperPortal from '../shared/pages/Developer';
@@ -20,7 +20,7 @@ import TelegramBotPage from '../shared/pages/TelegramBot';
 import AuditVerifyPage from '../shared/pages/AuditVerify';
 import SupportFeedbackPage from '../shared/pages/SupportFeedback';
 import CardsPage from './pages/CardsPage';
-import { ProtectedRoute } from '../shared/components/ProtectedRoute';
+import { ProtectedRoute } from '../shared/components/routing/ProtectedRoute';
 import Docs from './pages/Docs';
 
 const DesktopAnimatedRoutes = () => {

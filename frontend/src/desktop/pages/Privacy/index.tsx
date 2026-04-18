@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { pageVariants } from '../../../shared/utils/animations';
+import { pageVariants } from '../../../shared/utils/core/animations';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
 
 const Privacy: React.FC = () => {

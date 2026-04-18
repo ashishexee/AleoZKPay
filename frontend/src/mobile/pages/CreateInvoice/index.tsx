@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useCreateInvoice } from '../../../shared/hooks/useCreateInvoice';
+import { useCreateInvoice } from '../../../shared/hooks/invoice/useCreateInvoice';
 import { MobileInvoiceForm } from '../../components/InvoiceForm';
 import { InvoiceCard } from '../../../shared/components/invoice/InvoiceCard';
-import { useBurnerWallet } from '../../../shared/hooks/BurnerWalletProvider';
+import { useBurnerWallet } from '../../../shared/hooks/wallet/BurnerWalletProvider';
 
 const MobileCreateInvoice: React.FC = () => {
     const {

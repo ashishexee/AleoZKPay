@@ -2,10 +2,10 @@ import React from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { InvoiceType } from '../../hooks/useCreateInvoice';
+import { InvoiceType } from '../../hooks/invoice/useCreateInvoice';
 import { InvoiceItem } from '../../types/invoice';
-import { getUtf8ByteLength, LEO_INVOICE_TITLE_MAX_BYTES, LEO_MEMO_MAX_BYTES } from '../../utils/leo-input-limits';
-import { getTokenLabel } from '../../utils/tokens';
+import { getUtf8ByteLength, LEO_INVOICE_TITLE_MAX_BYTES, LEO_MEMO_MAX_BYTES } from '../../utils/core/leoInputLimits';
+import { getTokenLabel } from '../../utils/payments/tokens';
 import { Info } from 'lucide-react';
 
 interface InvoiceFormProps {

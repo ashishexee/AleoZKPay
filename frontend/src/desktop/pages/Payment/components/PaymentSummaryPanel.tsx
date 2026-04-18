@@ -1,7 +1,7 @@
 import { Shimmer } from '../../../../shared/components/ui/Shimmer';
 import { Input } from '../../../../shared/components/ui/Input';
 import type { TokenCode } from '../../../../shared/types/tokens';
-import { getTokenLabel, getTokenTypeFromCode } from '../../../../shared/utils/tokens';
+import { getTokenLabel, getTokenTypeFromCode } from '../../../../shared/utils/payments/tokens';
 
 interface PaymentSummaryPanelProps {
     loading: boolean;

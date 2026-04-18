@@ -5,7 +5,7 @@ import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, Network
 import { Search, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from '../../Profile/components/BurnerWallet/scanner';
-import type { PrivateBalances } from '../../Profile/components/BurnerWallet/types';
+import type { PrivateBalances } from '../../../types/burner';
 import { FloatingGiftCard } from './FloatingGiftCard';
 import { ScratchReveal } from './ScratchReveal';
 
@@ -121,7 +121,7 @@ export const RedeemGiftCard: React.FC = () => {
                 addLog(`Checking compliance subsystem for ${sweepToken}...`);
                 let proofsInput = '';
                 try {
-                    const { generateFreezeListProof, getFreezeListIndex } = await import('../../../utils/aleo-utils');
+                    const { generateFreezeListProof, getFreezeListIndex } = await import('../../../utils/aleo/aleoUtils');
                     const { Address } = await import('@provablehq/wasm');
                     const firstIndex = await getFreezeListIndex(0);
                     let index0FieldStr: string | undefined;

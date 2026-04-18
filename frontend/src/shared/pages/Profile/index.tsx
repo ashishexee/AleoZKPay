@@ -1,21 +1,21 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
-import { useWalletBalances } from '../../hooks/useWalletBalances';
+import { useWalletBalances } from '../../hooks/wallet/useWalletBalances';
 import { GlassCard } from '../../components/ui/GlassCard';
 import type { ReportOptions } from '../../types/receipt';
-import { PROGRAM_ID } from '../../utils/aleo-utils';
+import { PROGRAM_ID } from '../../utils/aleo/aleoUtils';
 
 // Extracted Hooks
-import { useProfileUIState } from './hooks/useProfileUIState';
-import { useProfileData } from './hooks/useProfileData';
-import { useProfileAggregations } from './hooks/useProfileAggregations';
-import { useProfileInvoicesActions } from './hooks/useProfileInvoicesActions';
-import { useProfileReports } from './hooks/useProfileReports';
+import { useProfileUIState } from '../../hooks/profile/useProfileUIState';
+import { useProfileData } from '../../hooks/profile/useProfileData';
+import { useProfileAggregations } from '../../hooks/profile/useProfileAggregations';
+import { useProfileInvoicesActions } from '../../hooks/profile/useProfileInvoicesActions';
+import { useProfileReports } from '../../hooks/profile/useProfileReports';
 
 // Components
 import { VerifyModal } from './components/modals/VerifyModal';
-import { ConfirmModal } from '../../components/ConfirmModal';
+import { ConfirmModal } from '../../components/modals/ConfirmModal';
 import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from './components/modals/ReceiptHashesModal';
 import { PayerNotesModal } from './components/modals/PayerNotesModal';

@@ -1,4 +1,4 @@
-import { PaymentStep } from '../../../../shared/hooks/usePayment';
+import { PaymentStep } from '../../../../shared/hooks/payments/usePayment';
 
 interface PaymentProgressProps {
     step: PaymentStep;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../../../../shared/components/ui/Button';
-import { LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../../shared/utils/leo-input-limits';
-import { PROGRAM_ID } from '../../../../shared/utils/aleo-utils';
+import { LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../../shared/utils/core/leoInputLimits';
+import { PROGRAM_ID } from '../../../../shared/utils/aleo/aleoUtils';
 
 interface PaymentNotesPanelProps {
     error: string | null;

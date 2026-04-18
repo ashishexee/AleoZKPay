@@ -1,0 +1,187 @@
+import { useState, useCallback, useEffect } from 'react';
+import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
+import type { InvoiceData, InvoiceItem } from '../../types/invoice';
+import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
+import { createInvoiceViaWallet } from '../../utils/invoice/invoiceCreation';
+import { getUtf8ByteLength, LEO_INVOICE_TITLE_MAX_BYTES, LEO_MEMO_MAX_BYTES } from '../../utils/core/leoInputLimits';
+
+export type InvoiceType = 'standard' | 'multipay' | 'donation';
+
+export const useCreateInvoice = () => {
+    const { address, executeTransaction, transactionStatus, requestTransactionHistory } = useWallet();
+    const { decryptedBurnerAddress, appPassword } = useBurnerWallet();
+    const publicKey = address;
+
+    const [amount, setAmount] = useState<number | ''>('');
+    const [loading, setLoading] = useState(false);
+    const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
+    const [invoiceTitle, setInvoiceTitle] = useState<string>('');
+    const [memo, setMemo] = useState<string>('');
+    const [status, setStatus] = useState<string>('');
+    const [invoiceType, setInvoiceType] = useState<InvoiceType>('standard');
+    const [tokenType, setTokenType] = useState(0);
+    const [walletType, setWalletType] = useState(0);
+    const [items, setItems] = useState<InvoiceItem[]>([]);
+    const [showItems, setShowItems] = useState(false);
+    const [forSdk, setForSdk] = useState(false);
+    const [selectedAllowedTokens, setSelectedAllowedTokens] = useState<string[]>(['CREDITS']);
+
+    useEffect(() => {
+        if (walletType === 1 && forSdk) {
+            setForSdk(false);
+        }
+    }, [walletType, forSdk]);
+
+    useEffect(() => {
+        if (invoiceType !== 'donation' && tokenType === 3) {
+            setTokenType(0);
+        }
+        
+        // Auto-select the base token in allowedTokens
+        const baseTokenStr = tokenType === 0 ? 'CREDITS' : tokenType === 1 ? 'USDCX' : tokenType === 2 ? 'USAD' : 'ANY';
+        if (baseTokenStr !== 'ANY') {
+            setSelectedAllowedTokens(prev => Array.from(new Set([...prev, baseTokenStr])));
+        }
+    }, [invoiceType, tokenType]);
+
+    const addItem = useCallback(() => {
+        setItems((previous) => [...previous, { name: '', quantity: 1, unitPrice: 0, total: 0 }]);
+    }, []);
+
+    const updateItem = useCallback((index: number, field: keyof InvoiceItem, value: string | number) => {
+        setItems((previous) => {
+            const updated = [...previous];
+            const item = { ...updated[index] };
+
+            if (field === 'name') {
+                item.name = value as string;
+            } else if (field === 'quantity') {
+                item.quantity = Number(value) || 0;
+                item.total = item.quantity * item.unitPrice;
+            } else if (field === 'unitPrice') {
+                item.unitPrice = Number(value) || 0;
+                item.total = item.quantity * item.unitPrice;
+            }
+
+            updated[index] = item;
+            const total = updated.reduce((sum, entry) => sum + entry.total, 0);
+            setAmount(total > 0 ? total : '');
+            return updated;
+        });
+    }, []);
+
+    const removeItem = useCallback((index: number) => {
+        setItems((previous) => {
+            const updated = previous.filter((_, itemIndex) => itemIndex !== index);
+            const total = updated.reduce((sum, entry) => sum + entry.total, 0);
+            setAmount(updated.length > 0 && total > 0 ? total : '');
+            return updated;
+        });
+    }, []);
+
+    const handleCreate = async () => {
+        if (!publicKey || !executeTransaction || !transactionStatus) {
+            setStatus('Wallet not fully supported or connected. Please update wallet.');
+            return;
+        }
+
+        if (invoiceType !== 'donation' && (!amount || amount <= 0)) {
+            setStatus('Please enter a valid amount.');
+            return;
+        }
+
+        if (!appPassword) {
+            setStatus('Application is locked. Please refresh and enter your password.');
+            return;
+        }
+
+        if (memo && getUtf8ByteLength(memo) > LEO_MEMO_MAX_BYTES) {
+            setStatus(`Memo is too long for one Leo field. Keep it within ${LEO_MEMO_MAX_BYTES} bytes.`);
+            return;
+        }
+
+        if (invoiceTitle && getUtf8ByteLength(invoiceTitle) > LEO_INVOICE_TITLE_MAX_BYTES) {
+            setStatus(`Title is too long for one Leo field. Keep it within ${LEO_INVOICE_TITLE_MAX_BYTES} bytes.`);
+            return;
+        }
+
+        setLoading(true);
+        setStatus('Initializing invoice creation...');
+
+        try {
+            const created = await createInvoiceViaWallet({
+                publicKey,
+                executeTransaction,
+                transactionStatus,
+                requestTransactionHistory,
+                amount: Number(amount),
+                title: invoiceTitle,
+                memo,
+                invoiceType,
+                tokenType,
+                walletType,
+                appPassword,
+                decryptedBurnerAddress,
+                forSdk,
+                showItems,
+                items,
+                allowedTokens: selectedAllowedTokens,
+                onStatus: setStatus
+            });
+
+            setInvoiceData(created.invoiceData);
+            setStatus('Invoice Created Successfully!');
+        } catch (error: any) {
+            console.error(error);
+            setStatus(`Error: ${error.message || 'Failed to create invoice'}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const resetInvoice = () => {
+        setInvoiceData(null);
+        setAmount('');
+        setInvoiceTitle('');
+        setMemo('');
+        setStatus('');
+        setInvoiceType('standard');
+        setTokenType(0);
+        setWalletType(0);
+        setItems([]);
+        setShowItems(false);
+        setForSdk(false);
+        setSelectedAllowedTokens(['CREDITS']);
+    };
+
+    return {
+        amount,
+        setAmount,
+        invoiceTitle,
+        setInvoiceTitle,
+        memo,
+        setMemo,
+        status,
+        loading,
+        invoiceData,
+        handleCreate,
+        resetInvoice,
+        publicKey,
+        invoiceType,
+        setInvoiceType,
+        tokenType,
+        setTokenType,
+        walletType,
+        setWalletType,
+        items,
+        showItems,
+        setShowItems,
+        forSdk,
+        setForSdk,
+        selectedAllowedTokens,
+        setSelectedAllowedTokens,
+        addItem,
+        updateItem,
+        removeItem
+    };
+};

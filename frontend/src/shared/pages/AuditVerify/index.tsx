@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { ChangeEvent, DragEvent, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { verifyMerchantAuditPackage } from '../../utils/auditPackage';
+import { verifyMerchantAuditPackage } from '../../utils/audit/auditPackage';
 import type {
     MerchantAuditPackage,
     MerchantAuditPayload,
