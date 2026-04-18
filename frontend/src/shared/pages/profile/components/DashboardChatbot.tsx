@@ -17,7 +17,7 @@ import {
     invoiceTypeLabel,
     walletLabel
 } from '../../../utils/aleo/aleoUtils';
-import { fetchAllPrivateBalances } from './BurnerWallet/scanner';
+import { fetchAllPrivateBalances } from './burnerwallet/scanner';
 import { sweepBurnerFundsToDestination } from '../../../utils/burner/burnerSweep';
 import { createInvoiceViaWallet } from '../../../utils/invoice/invoiceCreation';
 import { PayerReceipt, MerchantReceipt } from '../../../types/receipt';

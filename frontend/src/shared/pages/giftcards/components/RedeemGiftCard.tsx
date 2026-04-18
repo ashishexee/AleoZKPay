@@ -4,7 +4,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 import { Search, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from '../../Profile/components/BurnerWallet/scanner';
+import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from '../../profile/components/burnerwallet/scanner';
 import type { PrivateBalances } from '../../../types/burner';
 import { FloatingGiftCard } from './FloatingGiftCard';
 import { ScratchReveal } from './ScratchReveal';

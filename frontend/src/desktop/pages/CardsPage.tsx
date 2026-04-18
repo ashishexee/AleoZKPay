@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { CreditCard, LockKeyhole, ShieldCheck } from 'lucide-react';
-import { CardWalletPanel } from '../../shared/pages/Profile/components/CardWalletPanel';
+import { CardWalletPanel } from '../../shared/pages/profile/components/CardWalletPanel';
 const CardsPage = () => {
     const itemVariants = {
         hidden: { opacity: 0, y: 20 },

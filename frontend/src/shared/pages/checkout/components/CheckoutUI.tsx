@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
-import { Eye, EyeOff, KeyRound, LockKeyhole, Terminal } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, LockKeyhole } from 'lucide-react';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Button } from '../../../components/ui/Button';
 import { Shimmer } from '../../../components/ui/Shimmer';
 import { CheckoutSession } from '../../../types/checkout';
 import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPrompt';
 import { GiftCodeInput } from '../../../components/ui/GiftCodeInput';
+import { PaymentActivityConsole } from '../../../components/payments/PaymentActivityConsole';
 import { CARD_PIN_LENGTH } from '../../../utils/card/cardInputLimits';
 import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../utils/payments/tokens';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/core/leoInputLimits';
@@ -39,7 +40,6 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     loading,
     error,
     publicKey,
-    paymentStatus,
     paymentStatusLog,
     paymentLoading,
     success,
@@ -473,41 +473,6 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     )}
                                 </div>
 
-                                {error && (
-                                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-center animate-fade-in">
-                                        <p className="text-red-400 text-sm">{error}</p>
-                                    </div>
-                                )}
-
-                                {paymentStatus && !error && (
-                                    <div className="p-3 bg-neon-primary/10 border border-neon-primary/20 rounded-xl text-center">
-                                        <p className="text-xs text-neon-primary font-mono">{paymentStatus}</p>
-                                    </div>
-                                )}
-
-                                {paymentMethod === 'card' && paymentStatusLog.length > 0 && !success && (
-                                    <div className="rounded-xl border border-white/10 bg-black/30 p-4 animate-fade-in">
-                                        <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
-                                            <Terminal className="h-3.5 w-3.5" />
-                                            Live Card Updates
-                                        </div>
-                                        <div className="max-h-36 space-y-2 overflow-y-auto pr-1">
-                                            {paymentStatusLog.map((line, index) => {
-                                                const isErrorLine = line.startsWith('ERROR:');
-                                                return (
-                                                    <div
-                                                        key={`${line}-${index}`}
-                                                        className={`rounded-lg border px-3 py-2 font-mono text-[10px] leading-relaxed ${isErrorLine ? 'border-red-500/20 bg-red-500/5 text-red-300' : 'border-white/5 bg-white/[0.02] text-gray-400'}`}
-                                                    >
-                                                        <span className="mr-2 text-white/40">›</span>
-                                                        {line.replace(/^ERROR:\s*/, '')}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
                                 <div className="grid grid-cols-3 bg-black/40 p-1 rounded-xl mb-6 border border-white/5 gap-1">
                                     <button
                                         onClick={() => setPaymentMethod('wallet')}
@@ -668,14 +633,22 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         className="w-full text-lg h-14"
                                     >
                                         {paymentLoading ? (
-                                            <span className="flex items-center gap-2">
-                                                <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                                Processing on-chain...
-                                            </span>
+                                            <div className="flex items-center justify-center gap-3">
+                                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                                                <span className="font-bold">Authorizing Payment...</span>
+                                            </div>
                                         ) : (
                                             isDonation ? `Pay ${donationAmount || '0'} ${displayTokenLabel}` : `Pay ${session.amount} ${displayTokenLabel}`
                                         )}
                                     </Button>
+                                )}
+
+                                {!success && (
+                                    <PaymentActivityConsole
+                                        method={paymentMethod}
+                                        statusLog={paymentStatusLog}
+                                        error={error}
+                                    />
                                 )}
                             </div>
                             </div>

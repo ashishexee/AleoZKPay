@@ -5,7 +5,7 @@ import { usePayment } from '../../../shared/hooks/payments/usePayment';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useSearchParams } from 'react-router-dom';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
-import { BatchPayPage } from '../../../shared/pages/BatchPay';
+import { BatchPayPage } from '../../../shared/pages/batchpay';
 import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/payments/tokens';
 import { TokenCode } from '../../../shared/types/tokens';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../shared/utils/core/leoInputLimits';
@@ -20,7 +20,6 @@ const SingleInvoicePaymentPage = () => {
     const getTokenCodeFromType = (tokenType: number): TokenCode => tokenType === 1 ? 'USDCX' : tokenType === 2 ? 'USAD' : 'CREDITS';
     const {
         step,
-        status,
         loading,
         error,
         invoice,
@@ -228,8 +227,6 @@ const SingleInvoicePaymentPage = () => {
                             />
 
                             <PaymentNotesPanel
-                                error={error}
-                                status={status}
                                 step={step}
                                 programId={programId || undefined}
                                 receiptHash={receiptHash}

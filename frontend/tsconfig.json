@@ -35,5 +35,25 @@
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "src/shared/pages/Checkout",
+    "src/shared/pages/Developer",
+    "src/shared/pages/GiftCards",
+    "src/shared/pages/InvoiceDetails",
+    "src/shared/pages/Profile",
+    "src/shared/pages/ProfileQR",
+    "src/shared/pages/SupportFeedback",
+    "src/shared/pages/TelegramBot",
+    "src/shared/pages/TelegramLink",
+    "src/desktop/pages/Docs",
+    "src/desktop/pages/Explorer",
+    "src/desktop/pages/Home",
+    "src/desktop/pages/Payment",
+    "src/desktop/pages/Privacy",
+    "src/desktop/pages/Verification",
+    "src/desktop/pages/Vision",
+    "src/mobile/pages/CreateInvoice",
+    "src/mobile/pages/Payment"
   ]
 }

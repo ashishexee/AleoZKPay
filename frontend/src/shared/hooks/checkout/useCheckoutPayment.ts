@@ -5,7 +5,7 @@ import { PROGRAM_ID, WALLET_PROGRAM_ID, estimateExecutionFee, generateSalt, stri
 import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
 import { CheckoutSession } from '../../types/checkout';
 import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
-import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
+import { getScannerSession, findSpendableRecord } from '../../pages/profile/components/burnerwallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 import type { TokenCode } from '../../types/tokens';
 import { decryptCardPrivateKey } from '../../utils/card/cardCrypto';
@@ -969,7 +969,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             programManager.setAccount(scannerSession.account);
 
             let recordName = actualTokenType === 'CREDITS' ? 'credits' : 'Token';
-            const { scanProgramBalance } = await import('../../pages/Profile/components/BurnerWallet/scanner');
+            const { scanProgramBalance } = await import('../../pages/profile/components/burnerwallet/scanner');
             const totalMicros = await scanProgramBalance(scannerSession, tokenProgram, recordName);
             if (totalMicros < amountMicro) {
                 if (!isDonationType && totalMicros > 0) {
