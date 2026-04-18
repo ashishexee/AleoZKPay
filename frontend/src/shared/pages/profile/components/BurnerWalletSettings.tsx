@@ -1,1 +1,1 @@
-export { BurnerWalletSettings } from './burnerWallet';
+export { BurnerWalletSettings } from './burnerwallet';
