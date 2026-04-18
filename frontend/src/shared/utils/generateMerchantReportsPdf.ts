@@ -1,169 +1,18 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { MerchantReceipt, PayerReceipt } from './aleo-utils';
-import type { WalletTokenBalance } from '../hooks/useWalletBalances';
+import type { 
+    MerchantReceipt, 
+    PayerReceipt, 
+    CreditReportInput, 
+    AuditReportInput, 
+    ReportOptions, 
+    AuditTokenTotals, 
+} from '../types/receipt';
+import type { InvoiceItem } from '../types/invoice';
 import { getTokenLabel } from './tokens';
 
-interface InvoiceItem {
-    name: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-}
 
-export interface ReportInvoice {
-    invoiceHash: string;
-    amount: number;
-    tokenType: number;
-    invoiceType: number;
-    walletType: number;
-    status: string | number;
-    memo?: string;
-    creationTx?: string | null;
-    paymentTxIds?: string[];
-    items?: InvoiceItem[];
-    donations?: {
-        credits: number;
-        usdcx: number;
-        usad: number;
-    };
-    owner?: string;
-    salt?: string;
-}
 
-interface MerchantStatsSnapshot {
-    mainCredits: string;
-    mainUSDCx: string;
-    mainUSAD: string;
-    burnerCredits: string;
-    burnerUSDCx: string;
-    burnerUSAD: string;
-    invoices: number;
-    settled: number;
-    pending: number;
-}
-
-export interface CreditReportInput {
-    merchantAddress: string;
-    burnerAddress?: string | null;
-    balances: WalletTokenBalance[];
-    merchantStats: MerchantStatsSnapshot;
-    invoices: ReportInvoice[];
-    merchantReceipts: MerchantReceipt[];
-    burnerMerchantReceipts: MerchantReceipt[];
-    payerReceipts: PayerReceipt[];
-}
-
-export interface AuditReportInput extends CreditReportInput {
-    programId: string;
-}
-
-export type AuditReportPerspective = 'merchant' | 'payer' | 'both';
-
-export interface ReportOptions {
-    filename?: string;
-    includeMerchantAddress?: boolean;
-    includeBurnerAddress?: boolean;
-    includeMemo?: boolean;
-    includeLineItems?: boolean;
-    includeBalanceSnapshot?: boolean;
-    includeIncomingReceipts?: boolean;
-    includeOutgoingReceipts?: boolean;
-    includeInvoiceAppendices?: boolean;
-    auditPerspective?: AuditReportPerspective;
-}
-
-export interface AuditTokenTotals {
-    credits: number;
-    usdcx: number;
-    usad: number;
-}
-
-export interface AuditReportSummary {
-    invoices: number;
-    incomingMerchantReceipts: number;
-    outgoingPayerReceipts: number;
-    totalEarnings: AuditTokenTotals;
-    totalOutgoing: AuditTokenTotals;
-}
-
-export interface AuditPayloadInvoice {
-    invoiceHash: string;
-    status: string;
-    tokenLabel: string;
-    amountLabel: string;
-    invoiceTypeLabel: string;
-    walletLabel: string;
-    memo?: string;
-    lineItemsSummary?: string;
-    owner?: string;
-    salt?: string;
-    creationTx?: string | null;
-    paymentTxIds?: string[];
-    items?: InvoiceItem[];
-    relatedReceiptHashes?: string[];
-}
-
-export interface AuditPayloadReceipt {
-    invoiceHash: string;
-    receiptHash: string;
-    tokenLabel: string;
-    amountLabel: string;
-    amount: number;
-    merchant?: string;
-}
-
-export interface MerchantAuditPayload {
-    version: '1.0.0';
-    reportId: string;
-    role: AuditReportPerspective;
-    generatedAt: string;
-    programId: string;
-    merchantAddress?: string | null;
-    burnerAddress?: string | null;
-    disclosure: Required<Omit<ReportOptions, 'filename'>>;
-    summary: AuditReportSummary;
-    balances: Array<{ name: string; publicAmount: number; privateAmount: number }>;
-    invoices: AuditPayloadInvoice[];
-    incomingMerchantReceipts: AuditPayloadReceipt[];
-    outgoingPayerReceipts: AuditPayloadReceipt[];
-}
-
-export interface MerchantAuditPackage {
-    version: '1.0.0';
-    packageType: 'nullpay_audit_report';
-    reportId: string;
-    role: AuditReportPerspective;
-    filename: string;
-    generatedAt: string;
-    signerAddress: string;
-    auditKeyHash: string;
-    payloadHash: string;
-    signatureMessage: string | null;
-    signatureBase64: string | null;
-    encryption: {
-        algorithm: 'AES-GCM';
-        iv: string;
-        ciphertext: string;
-    };
-    disclosure: Required<Omit<ReportOptions, 'filename'>>;
-    summary: AuditReportSummary;
-}
-
-export interface GeneratedMerchantAuditBundle {
-    html: string;
-    htmlFilename: string;
-    auditPackage: MerchantAuditPackage;
-    packageFilename: string;
-    auditKey: string;
-    auditKeyFilename: string;
-}
-
-export interface VerifiedMerchantAuditPackage {
-    auditPackage: MerchantAuditPackage;
-    payload: MerchantAuditPayload;
-    signatureStatus: 'verified' | 'missing' | 'invalid';
-}
 
 const DARK: [number, number, number] = [10, 12, 18];
 const CARD: [number, number, number] = [20, 24, 36];

@@ -1,38 +1,14 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 import { hashAddress } from '../utils/crypto';
+import { CardTokenCode } from '../types/tokens';
+import { SupportFeedbackPayload, TelegramLinkSession, CompleteTelegramLinkSessionResponse } from '../types/common';
+import { Invoice } from '../types/invoice';
+import { UserProfile, CardWalletProfile, CardWalletUpsertPayload } from '../types/user';
+import { 
+    NullBotChatResponse 
+} from '../types/bot';
 
-export interface Invoice {
-    invoice_hash: string;
-    merchant_address: string;
-    merchant_address_hash?: string;
-    designated_address?: string;
-    is_burner?: boolean;
-    for_sdk?: boolean;
-    payer_address?: string;
-    amount: number;
-    memo?: string;
-    status: 'PENDING' | 'SETTLED';
-    block_height?: number;
-    block_settled?: number;
-    invoice_transaction_id?: string;
-    payment_tx_ids?: string[];
-    payment_timestamps?: Record<string, string>;
-    payment_tx_id?: string;
-    created_at?: string;
-    updated_at?: string;
-    salt?: string;
-    invoice_type?: number;
-    token_type?: number;
-    invoice_items?: { name: string; quantity: number; unitPrice: number; total: number }[];
-    allowed_tokens?: string[];
-}
 
-export interface SupportFeedbackPayload {
-    email: string;
-    type: 'complaint' | 'feedback';
-    message: string;
-    walletAddress?: string;
-}
 
 export const fetchInvoices = async (status?: string): Promise<Invoice[]> => {
     const url = new URL(`${API_URL}/invoices`);
@@ -136,59 +112,10 @@ export const fetchRecentTransactions = async (limit: number = 10): Promise<Invoi
     return response.json();
 };
 
-export interface UserProfile {
-    main_address: string;
-    burner_address?: string | null;
-    encrypted_burner_key?: string | null;
-    profile_main_invoice_hash?: string | null;
-    profile_burner_invoice_hash?: string | null;
-    encrypted_address_check?: string | null;
-    updated_at?: string;
-}
 
-export type CardTokenCode = 'CREDITS' | 'USDCX' | 'USAD';
 
-export interface CardTokenLimits {
-    max_balance: number;
-}
 
-export interface CardWalletProfile {
-    address_hash: string;
-    main_owner?: string | null;
-    mainOwner?: string | null;
-    card_address: string;
-    encrypted_card_address?: string | null;
-    card_number?: string | null;
-    encrypted_card_number?: string | null;
-    card_number_hash?: string | null;
-    card_number_hash_field?: string | null;
-    card_last4?: string | null;
-    encrypted_card_private_key: string;
-    card_kdf_salt: string;
-    card_kdf_algorithm: string;
-    card_kdf_params: Record<string, unknown> | null;
-    card_status?: string;
-    card_label?: string | null;
-    card_hint?: string | null;
-    card_limits_updated_at?: string | null;
-    limits: Record<CardTokenCode, CardTokenLimits>;
-}
 
-export interface CardWalletUpsertPayload {
-    main_address?: string | null;
-    card_address?: string | null;
-    encrypted_card_number?: string | null;
-    card_number_hash?: string | null;
-    card_last4?: string | null;
-    encrypted_card_private_key?: string | null;
-    card_kdf_salt?: string | null;
-    card_kdf_algorithm?: string | null;
-    card_kdf_params?: Record<string, unknown> | null;
-    card_status?: string;
-    card_label?: string | null;
-    card_hint?: string | null;
-    limits?: Partial<Record<CardTokenCode, Partial<CardTokenLimits>>>;
-}
 
 export const getUserProfile = async (address: string): Promise<UserProfile | null> => {
     const hash = await hashAddress(address);
@@ -279,34 +206,7 @@ export const upsertCardWallet = async (
     return response.json();
 };
 
-export interface TelegramLinkSession {
-    token: string;
-    telegram_id: number;
-    chat_id: number;
-    nonce: string;
-    expires_at: string;
-    consumed_at?: string | null;
-    is_expired?: boolean;
-    is_consumed?: boolean;
-    message: string;
-    link_url: string;
-}
 
-export interface CompleteTelegramLinkSessionResponse {
-    success: boolean;
-    user: {
-        telegram_id: number;
-        username?: string | null;
-        chat_id: number;
-        aleo_address: string;
-        aleo_address_hash?: string | null;
-        notifications_enabled?: boolean;
-        linked_at?: string | null;
-        updated_at?: string | null;
-    };
-    telegram_app_url?: string | null;
-    telegram_web_url?: string | null;
-}
 
 export const fetchTelegramLinkSession = async (token: string): Promise<TelegramLinkSession> => {
     const response = await fetch(`${API_URL}/telegram/link-sessions/${encodeURIComponent(token)}`);
@@ -456,94 +356,6 @@ export const chatWithDashboardAssistant = async (
     return payload.reply;
 };
 
-export type NullBotToolName =
-    | 'connect_wallet'
-    | 'create_invoice'
-    | 'pay_invoice'
-    | 'get_transaction_info'
-    | 'get_analytics'
-    | 'check_burner_balance'
-    | 'sweep_funds';
-
-export type NullBotCreateInvoiceArgs = {
-    amount?: number;
-    currency?: 'CREDITS' | 'USDCX' | 'USAD' | 'ANY';
-    title?: string;
-    invoice_type?: 'standard' | 'multipay' | 'donation';
-    wallet?: 'main' | 'burner';
-    memo?: string;
-};
-
-export type NullBotPayInvoiceArgs = {
-    payment_link?: string;
-    invoice_hash?: string;
-    wallet?: 'main' | 'burner';
-    amount?: number;
-    currency?: 'CREDITS' | 'USDCX' | 'USAD';
-};
-
-export type NullBotSweepFundsArgs = {
-    amount?: number;
-    currency?: 'CREDITS' | 'USDCX' | 'USAD';
-    wallet?: 'main' | 'burner';
-    destination?: string;
-};
-
-export type NullBotToolCall =
-    | {
-        name: 'connect_wallet';
-        args: Record<string, never>;
-        missingArgs?: string[];
-    }
-    | {
-        name: 'create_invoice';
-        args: NullBotCreateInvoiceArgs;
-        missingArgs?: string[];
-    }
-    | {
-        name: 'pay_invoice';
-        args: NullBotPayInvoiceArgs;
-        missingArgs?: string[];
-    }
-    | {
-        name: 'get_transaction_info';
-        args: {
-            invoice_hash?: string;
-            wallet?: 'main' | 'burner';
-            limit?: number;
-        };
-        missingArgs?: string[];
-    }
-    | {
-        name: 'get_analytics';
-        args: {
-            wallet?: 'main' | 'burner';
-            days?: number;
-        };
-        missingArgs?: string[];
-    }
-    | {
-        name: 'check_burner_balance';
-        args: Record<string, never>;
-        missingArgs?: string[];
-    }
-    | {
-        name: 'sweep_funds';
-        args: NullBotSweepFundsArgs;
-        missingArgs?: string[];
-    };
-
-export type NullBotPendingToolCall = {
-    name: NullBotToolName;
-    args: Record<string, unknown>;
-    missingArgs: string[];
-    metadata?: Record<string, unknown>;
-};
-
-export interface NullBotChatResponse {
-    reply: string;
-    toolCall?: NullBotToolCall;
-}
 
 export const chatWithNullBot = async (
     message: string,

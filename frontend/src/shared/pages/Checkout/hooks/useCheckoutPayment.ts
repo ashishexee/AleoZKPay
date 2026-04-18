@@ -7,7 +7,7 @@ import { CheckoutSession } from '../types';
 import { useWalletErrorHandler } from '../../../hooks/Wallet/WalletErrorBoundary';
 import { getScannerSession, findSpendableRecord } from '../../Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
-import { TokenCode } from '../../../utils/tokens';
+import type { TokenCode } from '../../../types/tokens';
 import { decryptCardPrivateKey } from '../../../utils/card-crypto';
 import { hashAddress } from '../../../utils/crypto';
 import { resolveCardLookupByHashHex } from '../../../utils/card-chain';

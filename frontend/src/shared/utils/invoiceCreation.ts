@@ -3,9 +3,8 @@ import { executeWithShieldRetry } from './shieldRetry';
 import { createInvoice } from '../services/api';
 import { encryptWithPassword, hashAddress } from './crypto';
 import { estimateExecutionFee, generateSalt, getInvoiceHashFromMapping, PROGRAM_ID, stringToField } from './aleo-utils';
-import type { InvoiceData, InvoiceItem } from '../types/invoice';
+import type { InvoiceData, InvoiceItem, PromptInvoiceType } from '../types/invoice';
 
-export type PromptInvoiceType = 'standard' | 'multipay' | 'donation';
 
 interface CreateInvoiceViaWalletParams {
     publicKey: string;

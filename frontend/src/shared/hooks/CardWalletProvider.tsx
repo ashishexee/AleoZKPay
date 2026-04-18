@@ -3,15 +3,16 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
 import { PrivateKey } from '@provablehq/sdk';
 import {
-    type CardTokenCode,
-    type CardWalletProfile,
     deleteCardWallet as deleteCardWalletEntry,
     getCardWallet,
     submitCardLimitChange,
     upsertCardWallet
 } from '../services/api';
+import { CardTokenCode } from '../types/tokens';
+import { CardWalletProfile } from '../types/user';
 import { executeWithShieldRetry } from '../utils/shieldRetry';
-import { decryptCardPrivateKey, encryptCardPrivateKey, type CardKdfAlgorithm } from '../utils/card-crypto';
+import { decryptCardPrivateKey, encryptCardPrivateKey } from '../utils/card-crypto';
+import { CardKdfAlgorithm } from '../types/card';
 import { decryptWithPassword, encryptWithPassword, hashAddress } from '../utils/crypto';
 import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../utils/card-input-limits';
 import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../utils/leo-input-limits';

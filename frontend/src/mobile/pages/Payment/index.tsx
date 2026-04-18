@@ -14,7 +14,8 @@ import { NullPayCardPaymentPanel } from '../../../shared/components/payments/Nul
 import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { TokenCode, getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/tokens';
+import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/tokens';
+import { TokenCode } from '../../../shared/types/tokens';
 import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../shared/utils/leo-input-limits';
 import { looksLikeAleoAddress, normalizeAleoAddress } from '../../../shared/utils/aleo-address';
 

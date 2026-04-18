@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CopyButton } from '../../../../components/ui/CopyButton';
-import { PayerReceipt, MerchantReceipt } from '../../../../utils/aleo-utils';
+import { PayerReceipt, MerchantReceipt } from '../../../../types/receipt';
 
 interface ReceiptHashesModalProps {
     receipts: (PayerReceipt | MerchantReceipt)[] | null;

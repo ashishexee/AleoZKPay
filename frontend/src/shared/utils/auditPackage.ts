@@ -1,84 +1,17 @@
 import { getTokenLabel } from './tokens';
-import type { AuditReportInput, AuditReportPerspective, ReportInvoice, ReportOptions } from './generateMerchantReportsPdf';
-import type { MerchantReceipt, PayerReceipt } from './aleo-utils';
+import type { 
+    AuditReportInput, 
+    AuditReportPerspective, 
+    ReportInvoice, 
+    ReportOptions, 
+    MerchantReceipt, 
+    PayerReceipt,
+    AuditTokenTotals,
+    MerchantAuditPayload,
+    MerchantAuditPackage,
+    MerchantAuditBundle
+} from '../types/receipt';
 
-export interface AuditTokenTotals {
-    credits: number;
-    usdcx: number;
-    usad: number;
-}
-
-export interface MerchantAuditPayload {
-    version: '1.0.0';
-    reportId: string;
-    role: AuditReportPerspective;
-    generatedAt: string;
-    programId: string;
-    merchantAddress?: string | null;
-    burnerAddress?: string | null;
-    disclosure: Required<Omit<ReportOptions, 'filename'>>;
-    summary: {
-        invoices: number;
-        incomingMerchantReceipts: number;
-        outgoingPayerReceipts: number;
-        totalEarnings: AuditTokenTotals;
-        totalOutgoing: AuditTokenTotals;
-    };
-    balances: Array<{ name: string; publicAmount: number; privateAmount: number }>;
-    invoices: Array<{
-        invoiceHash: string;
-        status: string;
-        tokenLabel: string;
-        amountLabel: string;
-        invoiceTypeLabel: string;
-        walletLabel: string;
-        memo?: string;
-        lineItemsSummary?: string;
-        owner?: string;
-        salt?: string;
-        creationTx?: string | null;
-        paymentTxIds?: string[];
-        relatedReceiptHashes?: string[];
-        items?: Array<{
-            name: string;
-            quantity: number;
-            unitPrice: number;
-            total: number;
-        }>;
-    }>;
-    incomingMerchantReceipts: Array<{ invoiceHash: string; receiptHash: string; tokenLabel: string; amountLabel: string; amount: number }>;
-    outgoingPayerReceipts: Array<{ invoiceHash: string; receiptHash: string; merchant: string; tokenLabel: string; amountLabel: string; amount: number }>;
-}
-
-export interface MerchantAuditPackage {
-    version: '1.0.0';
-    packageType: 'nullpay_audit_report';
-    reportId: string;
-    role: AuditReportPerspective;
-    filename: string;
-    generatedAt: string;
-    signerAddress: string;
-    auditKeyHash: string;
-    payloadHash: string;
-    signatureMessage: string | null;
-    signature: string | null;
-    signatureBase64: string | null;
-    encryption: {
-        algorithm: 'AES-GCM';
-        iv: string;
-        ciphertext: string;
-    };
-    disclosure: Required<Omit<ReportOptions, 'filename'>>;
-    summary: MerchantAuditPayload['summary'];
-}
-
-export interface MerchantAuditBundle {
-    auditPackage: MerchantAuditPackage;
-    packageJson: string;
-    packageFilename: string;
-    auditKey: string;
-    auditKeyFilename: string;
-}
 
 function list<T>(value: T[] | undefined | null): T[] {
     return Array.isArray(value) ? value : [];
@@ -326,11 +259,15 @@ export async function generateMerchantAuditPackage(
 }
 
 export function downloadMerchantAuditPackage(bundle: MerchantAuditBundle): void {
-    triggerDownload(bundle.packageJson, bundle.packageFilename, 'application/json;charset=utf-8');
+    if (bundle.packageJson && bundle.packageFilename) {
+        triggerDownload(bundle.packageJson, bundle.packageFilename, 'application/json;charset=utf-8');
+    }
 }
 
 export function downloadMerchantAuditKey(bundle: MerchantAuditBundle): void {
-    triggerDownload(`${bundle.auditKey}\n`, bundle.auditKeyFilename, 'text/plain;charset=utf-8');
+    if (bundle.auditKeyFilename) {
+        triggerDownload(`${bundle.auditKey}\n`, bundle.auditKeyFilename, 'text/plain;charset=utf-8');
+    }
 }
 
 export async function verifyMerchantAuditPackage(auditPackage: MerchantAuditPackage, auditKey: string): Promise<{ payload: MerchantAuditPayload; signatureStatus: 'verified' | 'missing' | 'invalid' }> {
@@ -362,7 +299,7 @@ export async function verifyMerchantAuditPackage(auditPackage: MerchantAuditPack
             const { Address } = await import('@provablehq/sdk');
             const address = Address.from_string(auditPackage.signerAddress);
             const messageBytes = new TextEncoder().encode(auditPackage.signatureMessage);
-            const signatureObject = await parseStoredAleoSignature(auditPackage.signatureBase64, auditPackage.signature);
+            const signatureObject = await parseStoredAleoSignature(auditPackage.signatureBase64 || null, auditPackage.signature || null);
 
             signatureStatus = address.verify(messageBytes, signatureObject) ? 'verified' : 'invalid';
         } catch (error) {

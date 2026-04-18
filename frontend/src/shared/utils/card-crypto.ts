@@ -1,22 +1,6 @@
 import sodium from 'libsodium-wrappers';
 
-export type CardKdfAlgorithm = 'argon2id' | 'pbkdf2-sha256';
-
-export interface CardKdfParams {
-    opslimit?: number;
-    memlimit?: number;
-    alg?: number;
-    iterations?: number;
-    hash?: 'SHA-256';
-    version: number;
-}
-
-export interface EncryptedCardPayload {
-    encryptedPrivateKey: string;
-    saltBase64: string;
-    kdfAlgorithm: CardKdfAlgorithm;
-    kdfParams: CardKdfParams;
-}
+import { CardKdfAlgorithm, CardKdfParams, EncryptedCardPayload } from '../types/card';
 
 const DERIVED_KEY_BYTES = 32;
 const AES_ALGO = 'AES-GCM';

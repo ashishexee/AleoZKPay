@@ -6,9 +6,8 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import {
     completeTelegramLinkSession,
     fetchTelegramLinkSession,
-    type CompleteTelegramLinkSessionResponse,
-    type TelegramLinkSession
 } from '../../services/api';
+import { CompleteTelegramLinkSessionResponse, TelegramLinkSession } from '../../types/common';
 import { useBurnerWallet } from '../../hooks/BurnerWalletProvider';
 import { PasswordPrompt } from '../../components/PasswordPrompt';
 import { encryptWithPassword } from '../../utils/crypto';

@@ -1,6 +1,6 @@
 import { type ComponentProps } from 'react';
 
-import { GlobePulse } from '@/components/ui/cobe-globe-pulse';
+import { GlobePulse } from './GlobePulse';
 
 const heroMarkers = [
     { id: 'nullpay-london', location: [51.5072, -0.1276] as [number, number], delay: 0 },

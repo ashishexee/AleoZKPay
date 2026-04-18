@@ -8,7 +8,7 @@ import { useProfileQR } from '../../../hooks/useProfileQR';
 import { useProfilePayments } from '../../../hooks/useProfilePayments';
 import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
-import { MerchantReceipt } from '../../../utils/aleo-utils';
+import { MerchantReceipt } from '../../../types/receipt';
 import toast from 'react-hot-toast';
 
 interface ProfileQRProps {

@@ -10,7 +10,7 @@ import {
     CartesianGrid,
 } from 'recharts';
 import { GlassCard } from '../../../../components/ui/GlassCard';
-import { MerchantReceipt } from '../../../../utils/aleo-utils';
+import type { MerchantReceipt } from '../../../../types/receipt';
 import { Shimmer } from '../../../../components/ui/Shimmer';
 
 type Range = '1D' | '1W' | '1M';

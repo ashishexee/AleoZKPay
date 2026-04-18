@@ -11,16 +11,20 @@ import { QRCodeSVG } from 'qrcode.react';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { useBurnerWallet } from '../../../hooks/BurnerWalletProvider';
 import type { WalletTokenBalance } from '../../../hooks/useWalletBalances';
-import type { MerchantReceipt, PayerReceipt } from '../../../utils/aleo-utils';
 import {
-    chatWithNullBot,
-    type NullBotPendingToolCall,
-    type NullBotToolCall,
-} from '../../../services/api';
-import { createInvoiceViaWallet } from '../../../utils/invoiceCreation';
-import { sweepBurnerFundsToDestination, type BurnerSweepCurrency } from '../../../utils/burnerSweep';
+    truncateAddress,
+    tokenLabel,
+    invoiceTypeLabel,
+    walletLabel
+} from '../../../utils/aleo-utils';
 import { fetchAllPrivateBalances } from './BurnerWallet/scanner';
+import { sweepBurnerFundsToDestination } from '../../../utils/burnerSweep';
+import { createInvoiceViaWallet } from '../../../utils/invoiceCreation';
+import { PayerReceipt, MerchantReceipt } from '../../../types/receipt';
 import type { InvoiceData } from '../../../types/invoice';
+import { NullBotPendingToolCall, NullBotToolCall } from '../../../types/bot';
+import { BurnerSweepCurrency } from '../../../types/tokens';
+import { chatWithNullBot } from '../../../services/api';
 
 type DashboardInvoice = {
     invoiceHash: string;
@@ -111,24 +115,7 @@ const TOOL_PILLS = [
     'check_burner_balance',
 ];
 
-const tokenLabel = (tokenType: number) => {
-    if (tokenType === 1) return 'USDCx';
-    if (tokenType === 2) return 'USAD';
-    if (tokenType === 3) return 'Any token';
-    return 'Credits';
-};
 
-const invoiceTypeLabel = (invoiceType: number) => {
-    if (invoiceType === 1) return 'Multi-Pay';
-    if (invoiceType === 2) return 'Donation';
-    return 'Standard';
-};
-
-const walletLabel = (walletType: number) => (walletType === 1 ? 'Burner' : 'Main');
-
-const truncateAddress = (value: string | null | undefined) => (
-    value ? `${value.slice(0, 10)}...${value.slice(-6)}` : 'Not connected'
-);
 
 const formatPublicMappingBalance = (data: unknown, suffix: string) => {
     const normalize = (raw: unknown) => {
@@ -659,7 +646,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
                 return;
             }
 
-            const mappedCurrency = currencyMap[toolCall.args.currency];
+            const mappedCurrency = currencyMap[toolCall.args.currency as keyof typeof currencyMap];
             const amount = Number(toolCall.args.amount);
             if (!mappedCurrency || !Number.isFinite(amount) || amount <= 0) {
                 appendAssistantMessage('Tell me the amount and token to sweep, like `0.3 credits` or `0.5 usdcx`.');
@@ -701,7 +688,7 @@ export const DashboardChatbot: React.FC<DashboardChatbotProps> = ({
             appendAssistantMessage([
                 `Burner sweep submitted${destination === address ? ' to your main wallet' : ''}${sweepResult.txIds.length > 1 ? ` across ${sweepResult.txIds.length} transactions` : ''}.`,
                 '',
-                ...sweepResult.txIds.map((txId, index) => `- Transfer ${index + 1}: \`${txId}\``)
+                ...sweepResult.txIds.map((txId: string, index: number) => `- Transfer ${index + 1}: \`${txId}\``)
             ].join('\n'));
             return;
         }

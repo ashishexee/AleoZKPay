@@ -4,11 +4,7 @@ import { fieldToString, stringToField } from './aleo-utils';
 const GIFT_CARD_FIELD_CHUNK_SIZE = 15;
 const GIFT_CARD_PRIVATE_KEY_CHUNKS = 8;
 
-export interface GiftCardRecordData {
-    giftCardAddress: string;
-    giftPrivateKey: string;
-    label: string;
-}
+import { GiftCardRecordData } from '../types/card';
 
 function normalizeLeoScalarString(value: unknown): string {
     return String(value ?? '')

@@ -74,8 +74,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
     return (
         <GlassCard variant="heavy" className="p-8">
-            <h2 className="text-2xl font-bold text-white mb-6">Invoice Details</h2>
-
             <div className="space-y-6">
 
                 {/* INVOICE TYPE TOGGLE */}
@@ -311,7 +309,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     )}
                 </div>
 
-                <div className="text-xs text-gray-400 text-center -mt-2 mb-4 bg-white/5 p-3 rounded-lg border border-white/5">
+                <div className="text-xs text-gray-400 text-center bg-white/5 p-3 rounded-lg border border-white/5">
                     {invoiceType === 'standard' && 'Single payment only. Invoice closes after payment.'}
                     {invoiceType === 'multipay' && 'Allows multiple payments. Ideal for campaigns.'}
                     {invoiceType === 'donation' && (
@@ -432,33 +430,37 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     </div>
                 )}
 
-                <Input
-                    label="Invoice Title (Optional)"
-                    type="text"
-                    placeholder={invoiceType === 'donation' ? "e.g., Monsoon Relief Drive" : "e.g., April Retainer"}
-                    value={invoiceTitle}
-                    error={invoiceTitleTooLong ? `Keep title within ${LEO_INVOICE_TITLE_MAX_BYTES} bytes for a single Leo field.` : undefined}
-                    onChange={(e) => setInvoiceTitle(e.target.value)}
-                />
-                <div className={`-mt-3 text-xs ${invoiceTitleTooLong ? 'text-red-400' : 'text-gray-500'}`}>
-                    This title is shared with the payer and stored in one Leo `field`: {invoiceTitleBytes}/{LEO_INVOICE_TITLE_MAX_BYTES} bytes.
+                <div>
+                    <Input
+                        label="Invoice Title (Optional)"
+                        type="text"
+                        placeholder={invoiceType === 'donation' ? "e.g., Monsoon Relief Drive" : "e.g., April Retainer"}
+                        value={invoiceTitle}
+                        error={invoiceTitleTooLong ? `Keep title within ${LEO_INVOICE_TITLE_MAX_BYTES} bytes for a single Leo field.` : undefined}
+                        onChange={(e) => setInvoiceTitle(e.target.value)}
+                    />
+                    <div className={`mt-2 text-xs ${invoiceTitleTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                        This title is shared with the payer and stored in one Leo `field`: {invoiceTitleBytes}/{LEO_INVOICE_TITLE_MAX_BYTES} bytes.
+                    </div>
                 </div>
 
-                <Input
-                    label="Memo (Optional)"
-                    type="text"
-                    placeholder={invoiceType === 'donation' ? "e.g., Save the Whales Campaign" : "e.g., Dinner Bill"}
-                    value={memo}
-                    error={memoTooLong ? `Keep memo within ${LEO_MEMO_MAX_BYTES} bytes for a single Leo field.` : undefined}
-                    onChange={(e) => setMemo(e.target.value)}
-                />
-                <div className={`-mt-3 text-xs ${memoTooLong ? 'text-red-400' : 'text-gray-500'}`}>
-                    Memo is optional to share and stored in one Leo `field`: {memoBytes}/{LEO_MEMO_MAX_BYTES} bytes. Regular letters usually count as 1 byte.
+                <div>
+                    <Input
+                        label="Memo (Optional)"
+                        type="text"
+                        placeholder={invoiceType === 'donation' ? "e.g., Save the Whales Campaign" : "e.g., Dinner Bill"}
+                        value={memo}
+                        error={memoTooLong ? `Keep memo within ${LEO_MEMO_MAX_BYTES} bytes for a single Leo field.` : undefined}
+                        onChange={(e) => setMemo(e.target.value)}
+                    />
+                    <div className={`mt-2 text-xs ${memoTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                        Memo is optional to share and stored in one Leo `field`: {memoBytes}/{LEO_MEMO_MAX_BYTES} bytes. Regular letters usually count as 1 byte.
+                    </div>
                 </div>
 
                 <Button
                     variant="primary"
-                    className="w-full mt-4"
+                    className="w-full"
                     onClick={handleCreate}
                     disabled={loading || !publicKey || invoiceTitleTooLong || memoTooLong}
                     glow={!loading && !!publicKey}

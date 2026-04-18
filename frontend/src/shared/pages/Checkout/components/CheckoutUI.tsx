@@ -186,7 +186,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
-                className="w-full max-w-md"
+                className="w-full max-w-md lg:max-w-3xl xl:max-w-4xl"
             >
                 <div className="text-center mb-6">
                     <h1 className="text-3xl font-bold tracking-tighter text-white">
@@ -325,101 +325,107 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                 )}
                             </div>
 
-                            {/* Invoice Details */}
-                            <div className="pt-6 pb-6 border-b border-white/10">
-                                <div className="flex justify-center mb-6">
-                                    <div className="relative p-3 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                                        <QRCodeSVG
-                                            value={paymentLink}
-                                            size={140}
-                                            level="H"
-                                            includeMargin={false}
-                                        />
-                                        <div className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg bg-white p-1 shadow-[0_6px_18px_rgba(0,0,0,0.18)]">
-                                            <img
-                                                src="/assets/nullpay_logo.png"
-                                                alt="NullPay"
-                                                className="h-full w-full object-contain"
-                                                style={{ filter: 'brightness(0)' }}
-                                            />
+                            <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start xl:grid-cols-[360px_minmax(0,1fr)]">
+                                {/* Invoice Details */}
+                                <div className="rounded-[28px] border border-white/8 bg-black/25 p-5 lg:p-6 shadow-[0_16px_50px_rgba(0,0,0,0.24)] lg:sticky lg:top-6">
+                                    <div className="space-y-5">
+                                        <div className="flex justify-center">
+                                            <div className="relative p-3 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                                <QRCodeSVG
+                                                    value={paymentLink}
+                                                    size={140}
+                                                    level="H"
+                                                    includeMargin={false}
+                                                />
+                                                <div className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg bg-white p-1 shadow-[0_6px_18px_rgba(0,0,0,0.18)]">
+                                                    <img
+                                                        src="/assets/nullpay_logo.png"
+                                                        alt="NullPay"
+                                                        className="h-full w-full object-contain"
+                                                        style={{ filter: 'brightness(0)' }}
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
 
-                                <div className="mb-4">
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payment Link</label>
-                                    <div className="flex gap-2">
-                                        <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-gray-300 truncate flex items-center">
-                                            {paymentLink}
-                                        </div>
-                                        <Button
-                                            variant={copiedLink ? "primary" : "secondary"}
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(paymentLink);
-                                                setCopiedLink(true);
-                                                setTimeout(() => setCopiedLink(false), 2000);
-                                            }}
-                                            className="!py-2 !px-4 text-xs h-auto"
-                                        >
-                                            {copiedLink ? 'Copied!' : 'Copy'}
-                                        </Button>
-                                    </div>
-                                </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payment Link</label>
+                                                <div className="flex gap-2">
+                                                    <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-gray-300 truncate flex items-center">
+                                                        {paymentLink}
+                                                    </div>
+                                                    <Button
+                                                        variant={copiedLink ? "primary" : "secondary"}
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(paymentLink);
+                                                            setCopiedLink(true);
+                                                            setTimeout(() => setCopiedLink(false), 2000);
+                                                        }}
+                                                        className="!py-2 !px-4 text-xs h-auto"
+                                                    >
+                                                        {copiedLink ? 'Copied!' : 'Copy'}
+                                                    </Button>
+                                                </div>
+                                            </div>
 
-                                <div className="grid grid-cols-2 gap-3 text-left">
-                                    <div
-                                        onClick={() => {
-                                            if (session.invoice_hash) {
-                                                navigator.clipboard.writeText(session.invoice_hash);
-                                                setCopiedHash(true);
-                                                setTimeout(() => setCopiedHash(false), 2000);
-                                            }
-                                        }}
-                                        className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-white/30 transition-colors group cursor-pointer active:scale-95"
-                                    >
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Hash</span>
-                                            {copiedHash ? (
-                                                <span className="text-[9px] text-white font-bold">Copied!</span>
-                                            ) : (
-                                                <svg className="w-3 h-3 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                </svg>
-                                            )}
+                                            <div className="grid grid-cols-2 gap-3 text-left">
+                                                <div
+                                                    onClick={() => {
+                                                        if (session.invoice_hash) {
+                                                            navigator.clipboard.writeText(session.invoice_hash);
+                                                            setCopiedHash(true);
+                                                            setTimeout(() => setCopiedHash(false), 2000);
+                                                        }
+                                                    }}
+                                                    className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-white/30 transition-colors group cursor-pointer active:scale-95"
+                                                >
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Hash</span>
+                                                        {copiedHash ? (
+                                                            <span className="text-[9px] text-white font-bold">Copied!</span>
+                                                        ) : (
+                                                            <svg className="w-3 h-3 text-gray-600 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        )}
+                                                    </div>
+                                                    <span className="font-mono text-white truncate block text-[10px] group-hover:text-white transition-colors" title={session.invoice_hash}>
+                                                        {session.invoice_hash ? `${session.invoice_hash.slice(0, 6)}...${session.invoice_hash.slice(-6)}` : 'Generating...'}
+                                                    </span>
+                                                </div>
+
+                                                <div
+                                                    onClick={() => {
+                                                        if (session.salt) {
+                                                            navigator.clipboard.writeText(session.salt);
+                                                            setCopiedSalt(true);
+                                                            setTimeout(() => setCopiedSalt(false), 2000);
+                                                        }
+                                                    }}
+                                                    className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-purple-500/30 transition-colors group cursor-pointer active:scale-95"
+                                                >
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Salt</span>
+                                                        {copiedSalt ? (
+                                                            <span className="text-[9px] text-purple-400 font-bold">Copied!</span>
+                                                        ) : (
+                                                            <svg className="w-3 h-3 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        )}
+                                                    </div>
+                                                    <span className="font-mono text-purple-400 truncate block text-[10px] group-hover:text-purple-300 transition-colors" title={session.salt}>
+                                                        {session.salt ? `${session.salt.slice(0, 6)}...${session.salt.slice(-4)}` : 'Generating...'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <span className="font-mono text-white truncate block text-[10px] group-hover:text-white transition-colors" title={session.invoice_hash}>
-                                            {session.invoice_hash ? `${session.invoice_hash.slice(0, 6)}...${session.invoice_hash.slice(-6)}` : 'Generating...'}
-                                        </span>
-                                    </div>
-                                    <div
-                                        onClick={() => {
-                                            if (session.salt) {
-                                                navigator.clipboard.writeText(session.salt);
-                                                setCopiedSalt(true);
-                                                setTimeout(() => setCopiedSalt(false), 2000);
-                                            }
-                                        }}
-                                        className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-purple-500/30 transition-colors group cursor-pointer active:scale-95"
-                                    >
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Salt</span>
-                                            {copiedSalt ? (
-                                                <span className="text-[9px] text-purple-400 font-bold">Copied!</span>
-                                            ) : (
-                                                <svg className="w-3 h-3 text-gray-600 group-hover:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                </svg>
-                                            )}
-                                        </div>
-                                        <span className="font-mono text-purple-400 truncate block text-[10px] group-hover:text-purple-300 transition-colors" title={session.salt}>
-                                            {session.salt ? `${session.salt.slice(0, 6)}...${session.salt.slice(-4)}` : 'Generating...'}
-                                        </span>
                                     </div>
                                 </div>
-                            </div>
 
                             {/* Status and Action */}
-                            <div className="space-y-4 pt-2">
+                            <div className="space-y-4 rounded-[28px] border border-white/8 bg-black/20 p-5 lg:p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
                                 <div className="rounded-2xl border border-white/10 bg-black/30 p-4 space-y-4">
                                     <div>
                                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payer Note</label>
@@ -451,7 +457,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         </div>
                                     </div>
                                     {shareMerchantNote && (
-                                        <div>
+                                        <div className="lg:col-span-2">
                                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Merchant Note</label>
                                             <textarea
                                                 value={merchantNote}
@@ -530,8 +536,8 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                 </div>
 
                                 {paymentMethod === 'card' && (
-                                    <div className="mb-4 animate-fade-in space-y-4">
-                                        <div>
+                                    <div className="mb-4 animate-fade-in space-y-4 lg:grid lg:grid-cols-2 lg:gap-4">
+                                        <div className="lg:col-span-2">
                                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Card Number</label>
                                             <input
                                                 type="text"
@@ -580,17 +586,17 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 </button>
                                             </div>
                                         </div>
-                                        <p className="text-xs text-gray-500 text-center">
+                                        <p className="text-xs text-gray-500 text-center lg:col-span-2">
                                             The card key is decrypted in-memory on this device, used to generate the payment authorization locally, and never sent to NullPay.
                                         </p>
-                                        <p className="text-xs text-white/80 text-center">
+                                        <p className="text-xs text-white/80 text-center lg:col-span-2">
                                             No Shield connection needed. Card lookup uses the card number, while PIN and secret unlock the key locally on this device before the relayer-backed payment flow begins.
                                         </p>
                                     </div>
                                 )}
 
                                  {paymentMethod === 'giftcard' && (
-                                    <div className="mb-4 animate-fade-in space-y-4">
+                                    <div className="mb-4 animate-fade-in space-y-4 lg:grid lg:grid-cols-2 lg:gap-4">
                                         <div className="space-y-2">
                                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Gift Card Code</label>
                                             <GiftCodeInput
@@ -671,6 +677,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         )}
                                     </Button>
                                 )}
+                            </div>
                             </div>
                         </div>
                     ) : null}

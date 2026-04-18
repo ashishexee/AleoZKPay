@@ -2,27 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getTokenLabel } from './tokens';
 
-interface InvoiceItem {
-    name: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-}
-
-interface InvoicePdfData {
-    invoiceHash: string;
-    amount: number;
-    tokenType: number;
-    invoiceType: number;
-    walletType: number;
-    status: string;
-    title?: string;
-    memo?: string;
-    creationTx?: string;
-    paymentTxIds?: string[];
-    items?: InvoiceItem[];
-    donations?: { credits: number; usdcx: number; usad: number };
-}
+import { InvoicePdfData } from '../types/invoice';
 
 const TYPE_LABELS: Record<number, string> = { 0: 'Standard', 1: 'Multi-Pay', 2: 'Donation' };
 const WALLET_LABELS: Record<number, string> = { 0: 'Main Wallet', 1: 'Burner Wallet' };

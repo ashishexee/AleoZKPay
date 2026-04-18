@@ -6,7 +6,7 @@ import { GlassCard } from '../../../components/ui/GlassCard';
 import { Shimmer } from '../../../components/ui/Shimmer';
 import ConfirmModal from '../../../components/ConfirmModal';
 import { useCardWallet } from '../../../hooks/CardWalletProvider';
-import type { CardTokenCode } from '../../../services/api';
+import type { CardTokenCode } from '../../../types/tokens';
 import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../../utils/card-input-limits';
 import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../../../utils/leo-input-limits';
 

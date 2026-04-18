@@ -1,5 +1,3 @@
-
-
 export const pageVariants: any = {
     initial: {
         opacity: 0,

@@ -3,12 +3,12 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { CopyButton } from '../../../components/ui/CopyButton';
-import { fetchInvoicesByMerchantForSdk, getUserProfile, Invoice, updateInvoiceStatus } from '../../../services/api';
+import { fetchInvoicesByMerchantForSdk, getUserProfile, updateInvoiceStatus } from '../../../services/api';
+import { Invoice, InvoiceRecord } from '../../../types/invoice';
+import { MerchantReceipt } from '../../../types/receipt';
 import {
     PROGRAM_ID,
     estimateExecutionFee,
-    InvoiceRecord,
-    MerchantReceipt,
     parseInvoice,
     parseMerchantReceipt,
 } from '../../../utils/aleo-utils';

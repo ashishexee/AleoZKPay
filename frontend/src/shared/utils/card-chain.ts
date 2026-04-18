@@ -1,5 +1,6 @@
 import { fieldChunksToString, stringToFieldChunks } from './crypto';
-import type { CardWalletProfile } from '../services/api';
+import type { CardWalletProfile } from '../types/user';
+import { CardProfileRecordData } from '../types/card';
 import { lookupCardWalletByNumberHash } from '../services/api';
 
 export const CARD_PROFILE_VERSION = 1;
@@ -14,14 +15,6 @@ export const CARD_CHAIN_CHUNKS = {
     encryptedHint: 8
 } as const;
 
-export interface CardProfileRecordData {
-    cardNumberHashField: string;
-    profileVersion: number;
-    encryptedCardNumber: string;
-    encryptedCardAddress: string;
-    encryptedLabel: string | null;
-    encryptedHint: string | null;
-}
 
 function parseIntegerValue(value: unknown): number {
     if (typeof value === 'number') {

@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react';
 import type { ChangeEvent, DragEvent, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { verifyMerchantAuditPackage } from '../../utils/auditPackage';
-import type { MerchantAuditPackage, MerchantAuditPayload } from '../../utils/auditPackage';
+import type {
+    MerchantAuditPackage,
+    MerchantAuditPayload,
+    AuditPayloadInvoice,
+} from '../../types/receipt';
 type VerifyState =
     | { status: 'idle' }
     | { status: 'verifying' }
@@ -184,7 +188,7 @@ const AuditVerifyPage = () => {
                                 <ResultPanel title="Balance Snapshot">
                                     <div className="overflow-hidden rounded-xl border border-white/[0.06]">
                                         <div className="grid grid-cols-3 border-b border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white/30"><span>Asset</span><span>Public</span><span>Private</span></div>
-                                        {state.payload.balances.map((bal, i) => (
+                                        {state.payload.balances.map((bal: MerchantAuditPayload['balances'][number], i: number) => (
                                             <div key={bal.name} className={`grid grid-cols-3 px-4 py-3 text-sm ${i < state.payload.balances.length - 1 ? 'border-b border-white/[0.04]' : ''}`}>
                                                 <span className="font-semibold text-white/70">{bal.name}</span>
                                                 <span className="text-white/60">{bal.publicAmount.toFixed(2)}</span>
@@ -205,7 +209,7 @@ const AuditVerifyPage = () => {
                                                 <th className="pb-3 pr-6 font-bold">Type</th><th className="pb-3 font-bold">Wallet</th>
                                             </tr></thead>
                                             <tbody>
-                                                {state.payload.invoices.map(inv => (
+                                                {state.payload.invoices.map((inv: AuditPayloadInvoice) => (
                                                     <tr key={inv.invoiceHash} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
                                                         <td className="py-3 pr-6"><HashCell hash={inv.invoiceHash} copied={copiedId === `invoice-${inv.invoiceHash}`} onCopy={() => handleCopy(inv.invoiceHash, `invoice-${inv.invoiceHash}`)} /></td>
                                                         <td className="py-3 pr-6"><StatusBadge status={inv.status} /></td>
@@ -233,7 +237,7 @@ const AuditVerifyPage = () => {
                             {showMerchantView && state.payload.disclosure.includeInvoiceAppendices && (
                                 <ResultPanel title="Invoice Appendices" subtitle="Full cryptographic detail — identity, provenance, receipts, line items">
                                     <div className="space-y-4">
-                                        {state.payload.invoices.map(invoice => (
+                                        {state.payload.invoices.map((invoice: AuditPayloadInvoice) => (
                                             <div key={invoice.invoiceHash} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
                                                 <div className="flex items-center justify-between">
                                                     <span className="font-mono text-sm text-white/70">{shortHash(invoice.invoiceHash, 14, 12)}</span>
@@ -251,13 +255,13 @@ const AuditVerifyPage = () => {
                                                 {invoice.paymentTxIds && invoice.paymentTxIds.length > 0 && (
                                                     <div className="mt-4">
                                                         <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/25">Payment Tx IDs</div>
-                                                        <div className="space-y-2">{invoice.paymentTxIds.map((txId, i) => <HashRow key={txId} value={txId} copied={copiedId === `ptx-${i}-${invoice.invoiceHash}`} onCopy={() => handleCopy(txId, `ptx-${i}-${invoice.invoiceHash}`)} explorerUrl={`https://testnet.explorer.provable.com/transaction/${txId}`} />)}</div>
+                                                        <div className="space-y-2">{invoice.paymentTxIds.map((txId: string, i: number) => <HashRow key={txId} value={txId} copied={copiedId === `ptx-${i}-${invoice.invoiceHash}`} onCopy={() => handleCopy(txId, `ptx-${i}-${invoice.invoiceHash}`)} explorerUrl={`https://testnet.explorer.provable.com/transaction/${txId}`} />)}</div>
                                                     </div>
                                                 )}
                                                 {invoice.relatedReceiptHashes && invoice.relatedReceiptHashes.length > 0 && (
                                                     <div className="mt-4">
                                                         <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/25">Receipt Hashes</div>
-                                                        <div className="space-y-2">{invoice.relatedReceiptHashes.map((hash, i) => <HashRow key={hash} value={hash} copied={copiedId === `rh-${i}-${invoice.invoiceHash}`} onCopy={() => handleCopy(hash, `rh-${i}-${invoice.invoiceHash}`)} />)}</div>
+                                                        <div className="space-y-2">{invoice.relatedReceiptHashes.map((hash: string, i: number) => <HashRow key={hash} value={hash} copied={copiedId === `rh-${i}-${invoice.invoiceHash}`} onCopy={() => handleCopy(hash, `rh-${i}-${invoice.invoiceHash}`)} />)}</div>
                                                     </div>
                                                 )}
                                                 {state.payload.disclosure.includeLineItems && invoice.items && invoice.items.length > 0 && (
@@ -265,7 +269,7 @@ const AuditVerifyPage = () => {
                                                         <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/25">Line Items</div>
                                                         <div className="overflow-hidden rounded-xl border border-white/[0.06]">
                                                             <div className="grid grid-cols-4 border-b border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-white/25"><span>Item</span><span>Qty</span><span>Unit Price</span><span>Total</span></div>
-                                                            {invoice.items.map((item, idx) => (
+                                                            {invoice.items.map((item: NonNullable<AuditPayloadInvoice['items']>[number], idx: number) => (
                                                                 <div key={idx} className="grid grid-cols-4 border-b border-white/[0.03] px-4 py-2.5 text-sm last:border-0">
                                                                     <span className="text-white/70">{item.name || 'Unnamed'}</span><span className="text-white/50">{item.quantity}</span><span className="text-white/50">{item.unitPrice.toFixed(2)}</span><span className="text-white/70">{item.total.toFixed(2)}</span>
                                                                 </div>

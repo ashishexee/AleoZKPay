@@ -1,5 +1,7 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
 import { FIXED_FEE_MICROCREDITS, getFeePreferenceMode } from './feePreference';
+import { InvoiceRecord } from '../types/invoice';
+import { PayerReceipt, MerchantReceipt, BurnerWalletRecord } from '../types/receipt';
 export const CORE_PROGRAM_ID = "zk_pay_proofs_privacy_v29.aleo";
 export const WALLET_PROGRAM_ID = "zk_pay_proofs_privacy_wallet_v6.aleo";
 export const PROGRAM_ID = CORE_PROGRAM_ID;
@@ -14,6 +16,25 @@ const PAYMENT_FUNCTION_FALLBACKS = new Set([
     'pay_donation_usdcx',
     'pay_donation_usad',
 ]);
+
+export const tokenLabel = (tokenType: number) => {
+    if (tokenType === 1) return 'USDCx';
+    if (tokenType === 2) return 'USAD';
+    if (tokenType === 3) return 'Any token';
+    return 'Credits';
+};
+
+export const invoiceTypeLabel = (invoiceType: number) => {
+    if (invoiceType === 1) return 'Multi-Pay';
+    if (invoiceType === 2) return 'Donation';
+    return 'Standard';
+};
+
+export const walletLabel = (walletType: number) => (walletType === 1 ? 'Burner' : 'Main');
+
+export const truncateAddress = (value: string | null | undefined) => (
+    value ? `${value.slice(0, 10)}...${value.slice(-6)}` : 'Not connected'
+);
 
 let feeEstimatorManagerPromise: Promise<any> | null = null;
 const programSourceCache = new Map<string, string>();
@@ -496,17 +517,6 @@ export const generateFreezeListProof = async (targetIndex: number = 1, occupiedL
     }
 };
 
-export interface InvoiceRecord {
-    owner: string;
-    invoiceHash: string;
-    amount: number;
-    tokenType: number;
-    invoiceType: number;
-    salt: string;
-    title: string;
-    memo: string;
-    walletType?: number;
-}
 
 export const parseInvoice = (record: any): InvoiceRecord | null => {
     try {
@@ -560,18 +570,6 @@ export const parseInvoice = (record: any): InvoiceRecord | null => {
     return null;
 };
 
-export interface PayerReceipt {
-    owner: string;
-    merchant: string;
-    receiptHash: string;
-    invoiceHash: string;
-    amount: number;
-    tokenType: number;
-    payerNote: string;
-    timestamp: number;
-    created_at?: string;
-    transactionId?: string;
-}
 
 export const parsePayerReceipt = (record: any): PayerReceipt | null => {
     try {
@@ -612,17 +610,6 @@ export const parsePayerReceipt = (record: any): PayerReceipt | null => {
     return null;
 };
 
-export interface MerchantReceipt {
-    owner: string;
-    receiptHash: string;
-    invoiceHash: string;
-    amount: number;
-    tokenType: number;
-    merchantNote: string;
-    timestamp?: number;
-    created_at?: string;
-    transactionId?: string;
-}
 
 export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
     try {
@@ -667,12 +654,6 @@ export const parseMerchantReceipt = (record: any): MerchantReceipt | null => {
     return null;
 };
 
-export interface BurnerWalletRecord {
-    owner: string;
-    burnerAddress: string;
-    passwordPart: string;
-    pkParts: string[];
-}
 
 export const parseBurnerBackupRecord = (record: any): BurnerWalletRecord | null => {
     try {

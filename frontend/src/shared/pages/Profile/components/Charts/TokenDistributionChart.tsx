@@ -1,7 +1,7 @@
 import React from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { GlassCard } from '../../../../components/ui/GlassCard';
-import { MerchantReceipt } from '../../../../utils/aleo-utils';
+import type { MerchantReceipt } from '../../../../types/receipt';
 import { Shimmer } from '../../../../components/ui/Shimmer';
 
 interface TokenDistributionChartProps {

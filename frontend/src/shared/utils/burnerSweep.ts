@@ -1,7 +1,7 @@
 import { AleoKeyProvider, AleoNetworkClient, NetworkRecordProvider, ProgramManager } from '@provablehq/sdk';
 import { getScannerSession, listSpendableRecords } from '../pages/Profile/components/BurnerWallet/scanner';
 
-export type BurnerSweepCurrency = 'ALEO' | 'USDCx' | 'USAD';
+import { BurnerSweepCurrency } from '../types/tokens';
 
 interface SweepBurnerFundsParams {
     decryptedBurnerKey: string;

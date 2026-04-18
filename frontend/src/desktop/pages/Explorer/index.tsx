@@ -9,6 +9,7 @@ import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../../shar
 import { PaymentHistoryModal } from '../../../shared/pages/Profile/components/modals/PaymentHistoryModal';
 import { getInvoiceStatus } from '../../../shared/utils/aleo-utils';
 import React from 'react';
+import { InvoiceCreationTimelineChart, type InvoiceTimelineRange, type InvoiceTimelineStatusFilter } from './components/InvoiceCreationTimelineChart';
 
 const CopyButton = ({ text, title }: { text: string, title?: string }) => {
     const [copied, setCopied] = React.useState(false);
@@ -41,6 +42,9 @@ const Explorer: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
+    const [invoiceChartRange, setInvoiceChartRange] = useState<InvoiceTimelineRange>('1W');
+    const [sdkOnlyChart, setSdkOnlyChart] = useState(false);
+    const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<InvoiceTimelineStatusFilter>('BOTH');
     const itemsPerPage = 10;
     const { transactions, loading, fetchTransactions } = useTransactions();
 
@@ -104,53 +108,6 @@ const Explorer: React.FC = () => {
             window.open(`https://testnet.explorer.provable.com/transaction/${txId}`, '_blank');
         }
     };
-    const InvoiceGraph = ({ data, dates }: { data: number[], dates: string[] }) => {
-        const rawMax = Math.max(...data, 5);
-        const max = Math.ceil(rawMax * 1.1);
-        return (
-            <div className="w-full h-full relative flex flex-col">
-                <div className="flex-1 relative flex pb-6 border-b border-neon-primary/20">
-
-                    {/* Chart Area - Bars */}
-                    <div className="flex-1 flex items-end justify-between px-2 gap-1.5 h-full">
-                        {data.map((value, i) => {
-                            return (
-                                <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group/bar relative">
-                                    {/* Tooltip - Only Invoice Count */}
-                                    <div className="absolute -top-8 opacity-0 group-hover/bar:opacity-100 transition-all duration-200 bg-gradient-to-br from-neon-primary/20 to-black/95 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-lg border border-neon-primary/40 whitespace-nowrap z-20 pointer-events-none shadow-[0_0_20px_rgba(0,243,255,0.3)]">
-                                        <div className="font-bold text-neon-primary">{value} {value === 1 ? 'Invoice' : 'Invoices'}</div>
-                                    </div>
-                                    <div
-                                        className={`w-full max-w-[14px] min-h-[3px] rounded-t-md transition-all duration-500 group-hover/bar:scale-105 relative overflow-hidden ${value > 0
-                                            ? 'bg-gradient-to-t from-neon-primary via-neon-primary/80 to-neon-primary/60 shadow-[0_0_10px_rgba(0,243,255,0.4)]'
-                                            : 'bg-white/5'
-                                            }`}
-                                        style={{
-                                            height: `${(value / max) * 100}%`,
-                                            opacity: value > 0 ? 1 : 0.3
-                                        }}
-                                    >
-                                        {value > 0 && (
-                                            <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-white/40 opacity-0 group-hover/bar:opacity-100 transition-opacity duration-300" />
-                                        )}
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
-
-                {/* X Axis Labels - All 10 Days */}
-                <div className="absolute bottom-0 left-0 right-0 flex justify-between text-[9px] text-gray-400 font-mono font-medium px-1">
-                    {dates.map((_, i) => {
-                        const label = i === 0 ? '10d' : i === dates.length - 1 ? 'Today' : `${10 - i}d`;
-                        return <span key={i} className="flex-1 text-center">{label}</span>;
-                    })}
-                </div>
-            </div>
-        );
-    };
-
     return (
         <motion.div
             className="page-container relative min-h-screen"
@@ -342,40 +299,54 @@ const Explorer: React.FC = () => {
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
                 >
                     <GlassCard variants={itemVariants} className="col-span-1 md:col-span-2 row-span-2 p-8 flex flex-col justify-between group h-full relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-6 opacity-30 group-hover:opacity-100 transition-opacity duration-500">
-                            <svg className="w-8 h-8 text-neon-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
-                        </div>
-
                         <div>
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 rounded-lg bg-neon-primary/10 border border-neon-primary/20">
-                                    <svg className="w-5 h-5 text-neon-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                </div>
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                                 <h3 className="text-xl font-bold text-white tracking-tight">Null Invoice Created</h3>
+                                <div className="flex flex-wrap items-center rounded-full border border-white/5 bg-black/45 p-1 shadow-2xl backdrop-blur-xl gap-1">
+                                    {(['1D', '1W', '1M'] as const).map((entry) => {
+                                        const isActive = invoiceChartRange === entry;
+                                        return (
+                                            <button
+                                                key={entry}
+                                                onClick={() => setInvoiceChartRange(entry)}
+                                                className={`rounded-full px-5 py-1.5 text-[11px] font-bold transition-colors duration-300 ${isActive ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'text-gray-500 hover:text-gray-200'}`}
+                                            >
+                                                {entry}
+                                            </button>
+                                        );
+                                    })}
+                                    <div className="mx-1 h-4 w-px self-center bg-white/10" />
+                                    {(['BOTH', 'PENDING', 'SETTLED'] as const).map((entry) => {
+                                        const isActive = invoiceStatusFilter === entry;
+                                        return (
+                                            <button
+                                                key={entry}
+                                                onClick={() => setInvoiceStatusFilter(entry)}
+                                                className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-colors duration-300 ${isActive ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-200'}`}
+                                            >
+                                                {entry === 'BOTH' ? 'Both' : entry === 'PENDING' ? 'Pending' : 'Settled'}
+                                            </button>
+                                        );
+                                    })}
+                                    <div className="mx-1 h-4 w-px self-center bg-white/10" />
+                                    <button
+                                        onClick={() => setSdkOnlyChart((current) => !current)}
+                                        className={`rounded-full px-4 py-1.5 text-[11px] font-bold transition-colors duration-300 ${sdkOnlyChart ? 'bg-[#A78BFA]/18 text-[#D8B4FE] ring-1 ring-[#A78BFA]/30' : 'text-gray-500 hover:text-gray-200'}`}
+                                    >
+                                        SDK
+                                    </button>
+                                </div>
                             </div>
-                            <p className="text-gray-500 text-[10px] font-mono tracking-widest uppercase mb-6 pl-1 opacity-70">LAST 10 DAYS</p>
                         </div>
 
                         <div className="flex-1 flex flex-col justify-end">
-                            <div className="h-40 w-full opacity-90 group-hover:opacity-100 transition-opacity duration-500">
-                                <InvoiceGraph
-                                    data={(() => {
-                                        const days = Array.from({ length: 10 }, (_, i) => {
-                                            const d = new Date();
-                                            d.setDate(d.getDate() - (9 - i));
-                                            return d.toISOString().split('T')[0];
-                                        });
-                                        return days.map(date =>
-                                            transactions.filter(t => (t.created_at || '').startsWith(date)).length
-                                        );
-                                    })()}
-                                    dates={(() => {
-                                        return Array.from({ length: 10 }, (_, i) => {
-                                            const d = new Date();
-                                            d.setDate(d.getDate() - (9 - i));
-                                            return d.toISOString().split('T')[0];
-                                        });
-                                    })()}
+                            <div className="w-full opacity-90 transition-opacity duration-500 group-hover:opacity-100">
+                                <InvoiceCreationTimelineChart
+                                    transactions={transactions}
+                                    isLoading={loading}
+                                    range={invoiceChartRange}
+                                    sdkOnly={sdkOnlyChart}
+                                    statusFilter={invoiceStatusFilter}
                                 />
                             </div>
                         </div>

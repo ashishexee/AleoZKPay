@@ -37,6 +37,10 @@ export const CreateInvoice: React.FC = () => {
 
     const { burnerAddress } = useBurnerWallet();
     const hasBurnerWallet = !!burnerAddress;
+    const invoiceTypeLabel = invoiceType === 'standard' ? 'Standard invoice' : invoiceType === 'multipay' ? 'Multi-pay invoice' : 'Donation invoice';
+    const walletTypeLabel = walletType === 1 ? 'Burner wallet' : 'Main wallet';
+    const baseCurrencyLabel = tokenType === 0 ? 'CREDITS' : tokenType === 1 ? 'USDCX' : tokenType === 2 ? 'USAD' : 'ANY';
+    const acceptsMultipleCurrencies = tokenType !== 3 && !!selectedAllowedTokens && selectedAllowedTokens.length > 1;
 
     return (
         <motion.div
@@ -78,7 +82,7 @@ export const CreateInvoice: React.FC = () => {
                     </p>
                 </motion.div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-1 gap-12 items-start max-w-2xl mx-auto">
+                <div className="grid grid-cols-1 gap-8 items-start max-w-2xl lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] mx-auto">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -124,6 +128,80 @@ export const CreateInvoice: React.FC = () => {
                             />
                         )}
                     </motion.div>
+
+<motion.aside
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.3 }}
+                        className="hidden lg:flex lg:flex-col lg:gap-4 lg:sticky lg:top-8"
+                    >
+                        <div className="rounded-[28px] border border-white/10 bg-black/30 backdrop-blur-xl p-6 shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-gray-500">Live Preview</p>
+                            <div className="mt-6 space-y-3">
+                                <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+                                    <span className="text-xs uppercase tracking-[0.22em] text-gray-500">Title</span>
+                                    <span className="text-sm font-medium text-white text-right max-w-[160px] truncate">{invoiceTitle || 'Untitled'}</span>
+                                </div>
+                                {memo && (
+                                    <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+                                        <span className="text-xs uppercase tracking-[0.22em] text-gray-500">Memo</span>
+                                        <span className="text-sm font-medium text-white text-right max-w-[160px] truncate">{memo}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+                                    <span className="text-xs uppercase tracking-[0.22em] text-gray-500">Amount</span>
+                                    <span className="text-sm font-medium text-white text-right">{amount ? `$${amount}` : 'Variable'}</span>
+                                </div>
+                                <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+                                    <span className="text-xs uppercase tracking-[0.22em] text-gray-500">Currency</span>
+                                    <span className="text-sm font-medium text-white text-right">{baseCurrencyLabel}</span>
+                                </div>
+                                <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+                                    <span className="text-xs uppercase tracking-[0.22em] text-gray-500">Type</span>
+                                    <span className="text-sm font-medium text-white text-right">{invoiceTypeLabel}</span>
+                                </div>
+                                <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+                                    <span className="text-xs uppercase tracking-[0.22em] text-gray-500">Wallet</span>
+                                    <span className="text-sm font-medium text-white text-right">{walletTypeLabel}</span>
+                                </div>
+                                <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+                                    <span className="text-xs uppercase tracking-[0.22em] text-gray-500">Settlement</span>
+                                    <span className="text-sm font-medium text-white text-right">{acceptsMultipleCurrencies ? 'Multi-token' : 'Single-token'}</span>
+                                </div>
+                                <div className="flex items-start justify-between gap-4">
+                                    <span className="text-xs uppercase tracking-[0.22em] text-gray-500">Line Items</span>
+                                    <span className="text-sm font-medium text-white text-right">{showItems ? `Enabled (${items.length})` : 'Disabled'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-[28px] border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-6">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-gray-500">Guidance</p>
+                            <div className="mt-4 space-y-3 text-sm leading-relaxed text-gray-300">
+                                <p>
+                                    Use a <span className="text-orange-400 font-medium">short, clear title</span> so payers instantly know what they're paying for.
+                                </p>
+                                <p>
+                                    <span className="text-orange-400 font-medium">Standard</span> invoices are best for fixed one-time payments with a set amount. <span className="text-orange-400 font-medium">Multi-pay</span> suits recurring or installment-based collections. <span className="text-orange-400 font-medium">Donation</span> mode lets the payer choose any amount — ideal for tips or contributions.
+                                </p>
+                                <p>
+                                    The <span className="text-orange-400 font-medium">memo field</span> is optional but recommended — it appears on the invoice and helps payers reference their purchase.
+                                </p>
+                                <p>
+                                    <span className="text-orange-400 font-medium">Burner wallet</span> keeps your main Aleo wallet separate and adds a layer of privacy. <span className="text-orange-400 font-medium">Main wallet</span> uses your primary address directly.
+                                </p>
+                                <p>
+                                    <span className="text-orange-400 font-medium">Multi-token settlement</span> lets payers choose from several supported tokens (USDCX, CREDITS, USAD). Only enable it when you genuinely want to offer currency flexibility — otherwise <span className="text-orange-400 font-medium">single-token</span> keeps things simpler.
+                                </p>
+                                <p>
+                                    <span className="text-orange-400 font-medium">Line items</span> break down a total into multiple line items — useful for itemized billing or splitting a payment across several categories.
+                                </p>
+                                <p>
+                                    For SDK integration, enable the <span className="text-orange-400 font-medium">for SDK</span> flag to get a programmatic integration token for custom workflows.
+                                </p>
+                            </div>
+                        </div>
+                    </motion.aside>
                 </div>
             </div>
 

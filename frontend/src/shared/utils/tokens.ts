@@ -1,4 +1,4 @@
-export type TokenCode = 'CREDITS' | 'USDCX' | 'USAD';
+import { TokenCode } from '../types/tokens';
 
 export const TOKEN_CODE_TO_TYPE: Record<TokenCode, number> = {
     CREDITS: 0,
