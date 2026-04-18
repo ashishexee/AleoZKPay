@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { fetchAllPrivateBalances } from '../../BurnerWallet/scanner';
+import { fetchAllPrivateBalances } from '../../burnerwallet/scanner';
 import type { BotBalanceView } from '../../../../../types/nullbot';
 import { formatPublicMappingBalance } from '../lib/utils';
 
