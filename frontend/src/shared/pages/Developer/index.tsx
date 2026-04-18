@@ -14,7 +14,7 @@ import { MpcGuide } from './components/MpcGuide';
 import { SdkMethodsGuide } from './components/SdkMethodsGuide';
 import { WebhooksGuide } from './components/WebhooksGuide';
 import { SdkReference } from './components/SdkReference';
-import { DocsChatbot } from '../../components/DocsChatbot';
+import { DocsChatbot } from '../../components/docs/DocsChatbot';
 const MotionLink = motion(Link);
 
 const fadeInUp = {

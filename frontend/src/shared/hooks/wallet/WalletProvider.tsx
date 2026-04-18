@@ -8,7 +8,7 @@ import {
 import { Network } from "@provablehq/aleo-types";
 import "@provablehq/aleo-wallet-adaptor-react-ui/dist/styles.css";
 import { WalletErrorBoundary } from "./WalletErrorBoundary";
-import { CORE_PROGRAM_ID, WALLET_PROGRAM_ID } from "../../utils/aleo-utils";
+import { CORE_PROGRAM_ID, WALLET_PROGRAM_ID } from "../../utils/aleo/aleoUtils";
 
 interface AleoWalletProviderProps {
     children: React.ReactNode;

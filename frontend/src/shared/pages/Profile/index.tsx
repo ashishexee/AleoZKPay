@@ -4,7 +4,7 @@ import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useWalletBalances } from '../../hooks/wallet/useWalletBalances';
 import { GlassCard } from '../../components/ui/GlassCard';
 import type { ReportOptions } from '../../types/receipt';
-import { PROGRAM_ID } from '../../utils/aleo-utils';
+import { PROGRAM_ID } from '../../utils/aleo/aleoUtils';
 
 // Extracted Hooks
 import { useProfileUIState } from '../../hooks/profile/useProfileUIState';
@@ -15,7 +15,7 @@ import { useProfileReports } from '../../hooks/profile/useProfileReports';
 
 // Components
 import { VerifyModal } from './components/modals/VerifyModal';
-import { ConfirmModal } from '../../components/ConfirmModal';
+import { ConfirmModal } from '../../components/modals/ConfirmModal';
 import { PaymentHistoryModal } from './components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from './components/modals/ReceiptHashesModal';
 import { PayerNotesModal } from './components/modals/PayerNotesModal';

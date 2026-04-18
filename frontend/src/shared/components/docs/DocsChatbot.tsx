@@ -2,8 +2,8 @@ import { createPortal } from 'react-dom';
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bot, MessageCircle, SendHorizonal, Sparkles, X, Copy, Check } from 'lucide-react';
-import { GlassCard } from './ui/GlassCard';
-import { chatWithDeveloperAssistant } from '../services/api';
+import { GlassCard } from '../ui/GlassCard';
+import { chatWithDeveloperAssistant } from '../../services/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 

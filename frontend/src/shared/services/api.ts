@@ -1,5 +1,5 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-import { hashAddress } from '../utils/crypto';
+import { hashAddress } from '../utils/core/crypto';
 import { CardTokenCode } from '../types/tokens';
 import { SupportFeedbackPayload, TelegramLinkSession, CompleteTelegramLinkSessionResponse } from '../types/common';
 import { Invoice } from '../types/invoice';

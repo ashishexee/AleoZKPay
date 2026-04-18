@@ -16,10 +16,10 @@ import {
     tokenLabel,
     invoiceTypeLabel,
     walletLabel
-} from '../../../utils/aleo-utils';
+} from '../../../utils/aleo/aleoUtils';
 import { fetchAllPrivateBalances } from './BurnerWallet/scanner';
-import { sweepBurnerFundsToDestination } from '../../../utils/burnerSweep';
-import { createInvoiceViaWallet } from '../../../utils/invoiceCreation';
+import { sweepBurnerFundsToDestination } from '../../../utils/burner/burnerSweep';
+import { createInvoiceViaWallet } from '../../../utils/invoice/invoiceCreation';
 import { PayerReceipt, MerchantReceipt } from '../../../types/receipt';
 import type { InvoiceData } from '../../../types/invoice';
 import { NullBotPendingToolCall, NullBotToolCall } from '../../../types/bot';

@@ -1,4 +1,4 @@
-import { getTokenLabel } from './tokens';
+import { getTokenLabel } from '../payments/tokens';
 import type { 
     AuditReportInput, 
     AuditReportPerspective, 
@@ -10,7 +10,7 @@ import type {
     MerchantAuditPayload,
     MerchantAuditPackage,
     MerchantAuditBundle
-} from '../types/receipt';
+} from '../../types/receipt';
 
 
 function list<T>(value: T[] | undefined | null): T[] {

@@ -11,13 +11,13 @@ import { GiftCodeInput } from '../../../shared/components/ui/GiftCodeInput';
 import { GiftCardRedeemPrompt } from '../../../shared/components/ui/GiftCardRedeemPrompt';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { NullPayCardPaymentPanel } from '../../../shared/components/payments/NullPayCardPaymentPanel';
-import { PROGRAM_ID } from '../../../shared/utils/aleo-utils';
+import { PROGRAM_ID } from '../../../shared/utils/aleo/aleoUtils';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/tokens';
+import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../shared/utils/payments/tokens';
 import { TokenCode } from '../../../shared/types/tokens';
-import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../shared/utils/leo-input-limits';
-import { looksLikeAleoAddress, normalizeAleoAddress } from '../../../shared/utils/aleo-address';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../shared/utils/core/leoInputLimits';
+import { looksLikeAleoAddress, normalizeAleoAddress } from '../../../shared/utils/aleo/aleoAddress';
 
 const MobilePaymentPage = () => {
     const getTokenCodeFromType = (tokenType: number): TokenCode => tokenType === 1 ? 'USDCX' : tokenType === 2 ? 'USAD' : 'CREDITS';

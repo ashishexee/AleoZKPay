@@ -1,7 +1,7 @@
-import { fieldChunksToString, stringToFieldChunks } from './crypto';
-import type { CardWalletProfile } from '../types/user';
-import { CardProfileRecordData } from '../types/card';
-import { lookupCardWalletByNumberHash } from '../services/api';
+import { fieldChunksToString, stringToFieldChunks } from '../core/crypto';
+import type { CardWalletProfile } from '../../types/user';
+import { CardProfileRecordData } from '../../types/card';
+import { lookupCardWalletByNumberHash } from '../../services/api';
 
 export const CARD_PROFILE_VERSION = 1;
 export const CARD_FIELD_CHUNK_SIZE = 15;

@@ -3,11 +3,11 @@ import toast from 'react-hot-toast';
 import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
 import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
 import { useLeaveGuard } from '../app/LeaveGuardProvider';
-import { PROGRAM_ID, parseInvoice, estimateExecutionFee } from '../../utils/aleo-utils';
-import { hashAddress } from '../../utils/crypto';
-import { sponsorBurnerInvoiceDeletion } from '../../utils/invoiceDeletion';
-import { executeWithShieldRetry } from '../../utils/shieldRetry';
-import { WALLET_PROGRAM_ID } from '../../utils/aleo-utils';
+import { PROGRAM_ID, parseInvoice, estimateExecutionFee } from '../../utils/aleo/aleoUtils';
+import { hashAddress } from '../../utils/core/crypto';
+import { sponsorBurnerInvoiceDeletion } from '../../utils/invoice/invoiceDeletion';
+import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
+import { WALLET_PROGRAM_ID } from '../../utils/aleo/aleoUtils';
 
 interface UseProfileInvoicesActionsProps {
     fetchCreatedInvoices: () => Promise<void>;

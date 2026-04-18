@@ -1,8 +1,8 @@
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { estimateExecutionFee, PROGRAM_ID, stringToField } from '../../utils/aleo-utils';
-import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { estimateExecutionFee, PROGRAM_ID, stringToField } from '../../utils/aleo/aleoUtils';
+import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
 import type { InvoiceState, PaymentNoteInput } from '../../types/payments';
-import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/leo-input-limits';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/core/leoInputLimits';
 
 interface CreditsPaymentDeps {
     invoice: InvoiceState | null;

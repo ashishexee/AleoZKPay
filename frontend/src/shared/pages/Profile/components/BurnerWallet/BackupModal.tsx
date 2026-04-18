@@ -1,6 +1,6 @@
 import React from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../../../utils/leo-input-limits';
+import { LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../../../utils/core/leoInputLimits';
 
 interface BackupModalProps {
     error: string | null;

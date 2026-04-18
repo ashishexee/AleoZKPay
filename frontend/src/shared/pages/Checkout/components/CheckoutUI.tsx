@@ -9,10 +9,10 @@ import { Shimmer } from '../../../components/ui/Shimmer';
 import { CheckoutSession } from '../../../types/checkout';
 import { GiftCardRedeemPrompt } from '../../../components/ui/GiftCardRedeemPrompt';
 import { GiftCodeInput } from '../../../components/ui/GiftCodeInput';
-import { CARD_PIN_LENGTH } from '../../../utils/card-input-limits';
-import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../utils/tokens';
-import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/leo-input-limits';
-import { looksLikeAleoAddress, normalizeAleoAddress } from '../../../utils/aleo-address';
+import { CARD_PIN_LENGTH } from '../../../utils/card/cardInputLimits';
+import { getAllowedTokensForInvoice, getTokenLabel, getTokenTypeFromCode } from '../../../utils/payments/tokens';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../utils/core/leoInputLimits';
+import { looksLikeAleoAddress, normalizeAleoAddress } from '../../../utils/aleo/aleoAddress';
 
 interface CheckoutUIProps {
     session: CheckoutSession | null;

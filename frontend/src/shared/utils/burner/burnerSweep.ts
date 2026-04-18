@@ -1,7 +1,7 @@
 import { AleoKeyProvider, AleoNetworkClient, NetworkRecordProvider, ProgramManager } from '@provablehq/sdk';
-import { getScannerSession, listSpendableRecords } from '../pages/Profile/components/BurnerWallet/scanner';
+import { getScannerSession, listSpendableRecords } from '../../pages/Profile/components/BurnerWallet/scanner';
 
-import { BurnerSweepCurrency } from '../types/tokens';
+import { BurnerSweepCurrency } from '../../types/tokens';
 
 interface SweepBurnerFundsParams {
     decryptedBurnerKey: string;
@@ -70,7 +70,7 @@ export const sweepBurnerFundsToDestination = async ({
         programName = currency === 'USDCx' ? 'test_usdcx_stablecoin.aleo' : 'test_usad_stablecoin.aleo';
 
         emit(`Generating compliance proofs for ${currency} sweep...`, onStatus, onLog);
-        const { generateFreezeListProof, getFreezeListIndex } = await import('./aleo-utils');
+        const { generateFreezeListProof, getFreezeListIndex } = await import('../aleo/aleoUtils');
         const { Address } = await import('@provablehq/wasm');
         const firstIndex = await getFreezeListIndex(0);
         let index0FieldStr: string | undefined;

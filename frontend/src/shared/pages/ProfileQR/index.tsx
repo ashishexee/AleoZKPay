@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
-import { PROGRAM_ID, parseMerchantReceipt } from '../../utils/aleo-utils';
+import { PROGRAM_ID, parseMerchantReceipt } from '../../utils/aleo/aleoUtils';
 import { MerchantReceipt } from '../../types/receipt';
 import { useWalletErrorHandler } from '../../hooks/wallet/WalletErrorBoundary';
 import { useProfileQR } from '../../hooks/profile/useProfileQR';

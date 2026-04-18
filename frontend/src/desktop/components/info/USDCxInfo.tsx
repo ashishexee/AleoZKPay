@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '../../shared/components/ui/Button';
+import { Button } from '../../../shared/components/ui/Button';
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 20 },

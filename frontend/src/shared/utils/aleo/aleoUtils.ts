@@ -1,7 +1,7 @@
 import { AleoNetworkClient, Account } from '@provablehq/sdk';
-import { FIXED_FEE_MICROCREDITS, getFeePreferenceMode } from './feePreference';
-import { InvoiceRecord } from '../types/invoice';
-import { PayerReceipt, MerchantReceipt, BurnerWalletRecord } from '../types/receipt';
+import { FIXED_FEE_MICROCREDITS, getFeePreferenceMode } from '../core/feePreference';
+import { InvoiceRecord } from '../../types/invoice';
+import { PayerReceipt, MerchantReceipt, BurnerWalletRecord } from '../../types/receipt';
 export const CORE_PROGRAM_ID = "zk_pay_proofs_privacy_v29.aleo";
 export const WALLET_PROGRAM_ID = "zk_pay_proofs_privacy_wallet_v6.aleo";
 export const PROGRAM_ID = CORE_PROGRAM_ID;

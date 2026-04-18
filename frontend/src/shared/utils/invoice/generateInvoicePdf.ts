@@ -1,8 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getTokenLabel } from './tokens';
+import { getTokenLabel } from '../payments/tokens';
 
-import { InvoicePdfData } from '../types/invoice';
+import { InvoicePdfData } from '../../types/invoice';
 
 const TYPE_LABELS: Record<number, string> = { 0: 'Standard', 1: 'Multi-Pay', 2: 'Donation' };
 const WALLET_LABELS: Record<number, string> = { 0: 'Main Wallet', 1: 'Burner Wallet' };

@@ -2,13 +2,13 @@ import { useState, useCallback, useRef } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { PrivateKey } from '@provablehq/sdk';
 import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
-import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '../../utils/crypto';
-import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../utils/aleo-utils';
-import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../utils/leo-input-limits';
-import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '../../utils/core/crypto';
+import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../utils/aleo/aleoUtils';
+import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../utils/core/leoInputLimits';
+import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
 import { fetchAllPrivateBalances } from '../../pages/Profile/components/BurnerWallet/scanner';
 import type { PrivateBalances, SweepCurrency } from '../../types/burner';
-import { sweepBurnerFundsToDestination } from '../../utils/burnerSweep';
+import { sweepBurnerFundsToDestination } from '../../utils/burner/burnerSweep';
 
 export function useBurnerActions() {
     const { address, executeTransaction, transactionStatus } = useWallet();

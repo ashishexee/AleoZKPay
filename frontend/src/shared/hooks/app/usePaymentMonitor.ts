@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { createClient } from '@supabase/supabase-js';
-import { PROGRAM_ID, WALLET_PROGRAM_ID, parseMerchantReceipt } from '../../utils/aleo-utils';
-import { hashAddress } from '../../utils/crypto';
+import { PROGRAM_ID, WALLET_PROGRAM_ID, parseMerchantReceipt } from '../../utils/aleo/aleoUtils';
+import { hashAddress } from '../../utils/core/crypto';
 import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';

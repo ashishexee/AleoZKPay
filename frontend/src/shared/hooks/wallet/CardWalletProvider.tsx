@@ -10,22 +10,22 @@ import {
 } from '../../services/api';
 import { CardTokenCode } from '../../types/tokens';
 import { CardWalletProfile } from '../../types/user';
-import { executeWithShieldRetry } from '../../utils/shieldRetry';
-import { decryptCardPrivateKey, encryptCardPrivateKey } from '../../utils/card-crypto';
+import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
+import { decryptCardPrivateKey, encryptCardPrivateKey } from '../../utils/card/cardCrypto';
 import { CardKdfAlgorithm } from '../../types/card';
-import { decryptWithPassword, encryptWithPassword, hashAddress } from '../../utils/crypto';
-import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../utils/card-input-limits';
-import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../../utils/leo-input-limits';
+import { decryptWithPassword, encryptWithPassword, hashAddress } from '../../utils/core/crypto';
+import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../utils/card/cardInputLimits';
+import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../../utils/core/leoInputLimits';
 import {
     buildCreateCardRecordInputs,
     parseCardProfileRecord,
     sha256HexToField
-} from '../../utils/card-chain';
-import { estimateExecutionFee, fetchBurnerRecordsFromTx, WALLET_PROGRAM_ID } from '../../utils/aleo-utils';
+} from '../../utils/card/cardChain';
+import { estimateExecutionFee, fetchBurnerRecordsFromTx, WALLET_PROGRAM_ID } from '../../utils/aleo/aleoUtils';
 import { fetchAllPrivateBalances } from '../../pages/Profile/components/BurnerWallet/scanner';
 import { useWalletErrorHandler } from './WalletErrorBoundary';
 import { useBurnerWallet } from './BurnerWalletProvider';
-import { sweepBurnerFundsToDestination } from '../../utils/burnerSweep';
+import { sweepBurnerFundsToDestination } from '../../utils/burner/burnerSweep';
 
 type BalanceKey = 'ALEO' | 'USDCx' | 'USAD';
 
@@ -857,7 +857,7 @@ export const CardWalletProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (token === 'CREDITS') {
             inputs = [recordInput, card.card_address, `${amountMicro}u64`];
         } else {
-            const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
+            const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo/aleoUtils');
             await getFreezeListRoot();
             await getFreezeListCount();
             const firstIndex = await getFreezeListIndex(0);

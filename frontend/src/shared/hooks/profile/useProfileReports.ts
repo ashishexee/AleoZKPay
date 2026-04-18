@@ -4,9 +4,9 @@ import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
 import {
     buildMerchantAuditReportHtmlAsset,
     downloadMerchantCreditReportHtml,
-} from '../../utils/generateMerchantReportsPdf';
+} from '../../utils/audit/generateMerchantReportsPdf';
 import type { AuditReportInput, ReportOptions } from '../../types/receipt';
-import { generateMerchantAuditPackage } from '../../utils/auditPackage';
+import { generateMerchantAuditPackage } from '../../utils/audit/auditPackage';
 import type { WalletTokenBalance } from '../wallet/useWalletBalances';
 import type { GeneratedAuditAssets } from '../../pages/Profile/components/modals/ReportConfigModal';
 

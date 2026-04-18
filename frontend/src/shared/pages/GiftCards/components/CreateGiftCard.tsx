@@ -5,11 +5,11 @@ import { PrivateKey } from '@provablehq/sdk';
 import { Copy, CheckCircle2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { FloatingGiftCard } from './FloatingGiftCard';
-import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../../utils/aleo-utils';
-import { buildCreateGiftCardRecordInputs, privateKeyToGiftCode } from '../../../utils/gift-card-chain';
-import { executeWithShieldRetry } from '../../../utils/shieldRetry';
+import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../../utils/aleo/aleoUtils';
+import { buildCreateGiftCardRecordInputs, privateKeyToGiftCode } from '../../../utils/payments/giftCardChain';
+import { executeWithShieldRetry } from '../../../utils/payments/shieldRetry';
 import { useWalletErrorHandler } from '../../../hooks/wallet/WalletErrorBoundary';
-import { getUtf8ByteLength, GIFT_CARD_RECORD_LABEL_MAX_BYTES } from '../../../utils/leo-input-limits';
+import { getUtf8ByteLength, GIFT_CARD_RECORD_LABEL_MAX_BYTES } from '../../../utils/core/leoInputLimits';
 
 export const CreateGiftCard: React.FC = () => {
     const { address, executeTransaction, transactionStatus, requestRecords, decrypt } = useWallet();
@@ -155,7 +155,7 @@ export const CreateGiftCard: React.FC = () => {
                     inputs = [recordInput, newAddress, `${amountMicro}u64`];
                 } else {
                     setFundingStatus(`Generating compliance proof for ${asset.symbol}...`);
-                    const { generateFreezeListProof, getFreezeListIndex } = await import('../../../utils/aleo-utils');
+                    const { generateFreezeListProof, getFreezeListIndex } = await import('../../../utils/aleo/aleoUtils');
                     const { Address } = await import('@provablehq/wasm');
                     const firstIndex = await getFreezeListIndex(0);
                     let index0FieldStr: string | undefined;

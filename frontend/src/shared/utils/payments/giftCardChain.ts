@@ -1,10 +1,10 @@
-import { fieldChunksToString, stringToFieldChunks } from './crypto';
-import { fieldToString, stringToField } from './aleo-utils';
+import { fieldChunksToString, stringToFieldChunks } from '../core/crypto';
+import { fieldToString, stringToField } from '../aleo/aleoUtils';
 
 const GIFT_CARD_FIELD_CHUNK_SIZE = 15;
 const GIFT_CARD_PRIVATE_KEY_CHUNKS = 8;
 
-import { GiftCardRecordData } from '../types/card';
+import { GiftCardRecordData } from '../../types/card';
 
 function normalizeLeoScalarString(value: unknown): string {
     return String(value ?? '')

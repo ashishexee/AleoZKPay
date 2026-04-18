@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { motion, HTMLMotionProps } from 'framer-motion';
-import { cn } from '../utils/cn';
+import { cn } from '../../utils/core/cn';
 
 interface GlassCardProps extends HTMLMotionProps<"div"> {
     children: ReactNode;

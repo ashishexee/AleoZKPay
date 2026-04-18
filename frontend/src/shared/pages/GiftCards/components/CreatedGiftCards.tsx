@@ -4,8 +4,8 @@ import { Copy, Loader2, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAllPrivateBalances } from '../../Profile/components/BurnerWallet/scanner';
 import type { PrivateBalances } from '../../../types/burner';
-import { parseGiftCardRecord, privateKeyToGiftCode } from '../../../utils/gift-card-chain';
-import { WALLET_PROGRAM_ID } from '../../../utils/aleo-utils';
+import { parseGiftCardRecord, privateKeyToGiftCode } from '../../../utils/payments/giftCardChain';
+import { WALLET_PROGRAM_ID } from '../../../utils/aleo/aleoUtils';
 
 interface CreatedGiftCardEntry {
     id: string;

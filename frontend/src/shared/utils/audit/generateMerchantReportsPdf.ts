@@ -7,9 +7,9 @@ import type {
     AuditReportInput, 
     ReportOptions, 
     AuditTokenTotals, 
-} from '../types/receipt';
-import type { InvoiceItem } from '../types/invoice';
-import { getTokenLabel } from './tokens';
+} from '../../types/receipt';
+import type { InvoiceItem } from '../../types/invoice';
+import { getTokenLabel } from '../payments/tokens';
 
 
 

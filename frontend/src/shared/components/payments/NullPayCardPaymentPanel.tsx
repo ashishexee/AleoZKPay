@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Terminal, X, CreditCard, Lock, Key, Eye, EyeOff } from 'lucide-react';
-import { CARD_PIN_LENGTH } from '../../utils/card-input-limits';
+import { CARD_PIN_LENGTH } from '../../utils/card/cardInputLimits';
 import { Button } from '../ui/Button';
 import { GlassInput } from '../ui/GlassInput';
 

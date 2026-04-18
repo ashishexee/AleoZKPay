@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import StatusBadge from '../../../shared/components/StatusBadge';
+import StatusBadge from '../../../shared/components/feedback/StatusBadge';
 import { GlassCard } from '../../../shared/components/ui/GlassCard';
 import { Input } from '../../../shared/components/ui/Input';
 import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { useTransactions } from '../../../shared/hooks/transactions/useTransactions';
-import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../../shared/utils/animations';
+import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../../shared/utils/core/animations';
 import { PaymentHistoryModal } from '../../../shared/pages/Profile/components/modals/PaymentHistoryModal';
-import { getInvoiceStatus } from '../../../shared/utils/aleo-utils';
+import { getInvoiceStatus } from '../../../shared/utils/aleo/aleoUtils';
 import React from 'react';
 import { InvoiceCreationTimelineChart, type InvoiceTimelineRange, type InvoiceTimelineStatusFilter } from './components/InvoiceCreationTimelineChart';
 

@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { GlassCard } from './ui/GlassCard';
-import { useBurnerWallet } from '../hooks/wallet/BurnerWalletProvider';
-import { encryptWithPassword, decryptWithPassword } from '../utils/crypto';
-import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../utils/leo-input-limits';
-import { updateUserProfile } from '../services/api';
+import { GlassCard } from '../ui/GlassCard';
+import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
+import { encryptWithPassword, decryptWithPassword } from '../../utils/core/crypto';
+import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../utils/core/leoInputLimits';
+import { updateUserProfile } from '../../services/api';
 
 export const PasswordPrompt: React.FC = () => {
     const { address } = useWallet();

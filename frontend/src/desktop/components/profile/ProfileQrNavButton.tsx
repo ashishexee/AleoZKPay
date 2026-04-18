@@ -5,9 +5,9 @@ import { ArrowUpRight, Copy, LoaderCircle, Settings2, Sparkles } from 'lucide-re
 import { QRCodeSVG } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { useBurnerWallet } from '../../shared/hooks/wallet/BurnerWalletProvider';
-import { useProfileQR } from '../../shared/hooks/profile/useProfileQR';
-import { FEE_PREFERENCE_EVENT, FIXED_FEE_MICROCREDITS, FeePreferenceMode, getFeePreferenceMode, setFeePreferenceMode } from '../../shared/utils/feePreference';
+import { useBurnerWallet } from '../../../shared/hooks/wallet/BurnerWalletProvider';
+import { useProfileQR } from '../../../shared/hooks/profile/useProfileQR';
+import { FEE_PREFERENCE_EVENT, FIXED_FEE_MICROCREDITS, FeePreferenceMode, getFeePreferenceMode, setFeePreferenceMode } from '../../../shared/utils/core/feePreference';
 
 const ProfileQrNavButton = () => {
     const { address } = useWallet();

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { parseMerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
+import { parseMerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo/aleoUtils';
 import { MerchantReceipt } from '../../types/receipt';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { useBurnerWallet } from '../wallet/BurnerWalletProvider';

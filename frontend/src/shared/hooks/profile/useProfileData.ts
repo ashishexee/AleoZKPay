@@ -10,7 +10,7 @@ import {
     parseInvoice,
     parsePayerReceipt,
     fetchBurnerRecordsFromTx
-} from '../../utils/aleo-utils';
+} from '../../utils/aleo/aleoUtils';
 import { InvoiceRecord } from '../../types/invoice';
 import { MerchantReceipt, PayerReceipt } from '../../types/receipt';
 

@@ -11,7 +11,7 @@ import {
     estimateExecutionFee,
     parseInvoice,
     parseMerchantReceipt,
-} from '../../../utils/aleo-utils';
+} from '../../../utils/aleo/aleoUtils';
 import { InvoiceDistributionChart } from '../../Profile/components/Charts/InvoiceDistributionChart';
 import { TokenDistributionChart } from '../../Profile/components/Charts/TokenDistributionChart';
 import { PaymentTimelineChart } from '../../Profile/components/Charts/PaymentTimelineChart';
@@ -20,7 +20,7 @@ import { VerifyModal } from '../../Profile/components/modals/VerifyModal';
 import { PaymentHistoryModal } from '../../Profile/components/modals/PaymentHistoryModal';
 import { ReceiptHashesModal } from '../../Profile/components/modals/ReceiptHashesModal';
 import toast from 'react-hot-toast';
-import { executeWithShieldRetry } from '../../../utils/shieldRetry';
+import { executeWithShieldRetry } from '../../../utils/payments/shieldRetry';
 import { useWalletErrorHandler } from '../../../hooks/wallet/WalletErrorBoundary';
 
 type SdkDashboardInvoice = InvoiceRecord & {

@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { getUserProfile } from '../../services/api';
-import { WALLET_PROGRAM_ID, parseBurnerBackupRecord } from '../../utils/aleo-utils';
-import { fieldChunksToString, decryptWithPassword } from '../../utils/crypto';
+import { WALLET_PROGRAM_ID, parseBurnerBackupRecord } from '../../utils/aleo/aleoUtils';
+import { fieldChunksToString, decryptWithPassword } from '../../utils/core/crypto';
 import { useWalletErrorHandler } from './WalletErrorBoundary';
 
 interface BurnerWalletContextType {

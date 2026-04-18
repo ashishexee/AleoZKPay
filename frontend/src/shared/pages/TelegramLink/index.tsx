@@ -9,8 +9,8 @@ import {
 } from '../../services/api';
 import { CompleteTelegramLinkSessionResponse, TelegramLinkSession } from '../../types/common';
 import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
-import { PasswordPrompt } from '../../components/PasswordPrompt';
-import { encryptWithPassword } from '../../utils/crypto';
+import { PasswordPrompt } from '../../components/auth/PasswordPrompt';
+import { encryptWithPassword } from '../../utils/core/crypto';
 
 function toBase64(bytes: Uint8Array): string {
     let binary = '';

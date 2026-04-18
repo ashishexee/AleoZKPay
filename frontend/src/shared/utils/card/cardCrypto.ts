@@ -1,6 +1,6 @@
 import sodium from 'libsodium-wrappers';
 
-import { CardKdfAlgorithm, CardKdfParams, EncryptedCardPayload } from '../types/card';
+import { CardKdfAlgorithm, CardKdfParams, EncryptedCardPayload } from '../../types/card';
 
 const DERIVED_KEY_BYTES = 32;
 const AES_ALGO = 'AES-GCM';

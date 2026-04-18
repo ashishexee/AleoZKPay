@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { GlassCard } from '../../components/ui/GlassCard';
-import { pageVariants, staggerContainer, fadeInUp } from '../../utils/animations';
+import { pageVariants, staggerContainer, fadeInUp } from '../../utils/core/animations';
 
 const BOT_USERNAME = '@nullpay_private_bot';
 const BOT_LINK = 'https://t.me/nullpay_private_bot';

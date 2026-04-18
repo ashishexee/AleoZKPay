@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import StatusBadge from '../../../components/StatusBadge';
+import StatusBadge from '../../../components/feedback/StatusBadge';
 import { LinkButton } from '../../../components/ui/LinkButton';
 import { CopyButton } from '../../../components/ui/CopyButton';
-import { generateInvoicePdf } from '../../../utils/generateInvoicePdf';
-import { getTokenLabel } from '../../../utils/tokens';
+import { generateInvoicePdf } from '../../../utils/invoice/generateInvoicePdf';
+import { getTokenLabel } from '../../../utils/payments/tokens';
 
 interface InvoiceTableProps {
     invoices: any[];

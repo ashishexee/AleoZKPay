@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateInvoicePdf } from '../../utils/generateInvoicePdf';
-import { PROGRAM_ID, WALLET_PROGRAM_ID, parseInvoice, parseMerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo-utils';
+import { generateInvoicePdf } from '../../utils/invoice/generateInvoicePdf';
+import { PROGRAM_ID, WALLET_PROGRAM_ID, parseInvoice, parseMerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo/aleoUtils';
 import { MerchantReceipt } from '../../types/receipt';
 import { VerifyModal } from '../Profile/components/modals/VerifyModal';
-import { hashAddress } from '../../utils/crypto';
+import { hashAddress } from '../../utils/core/crypto';
 import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
 import { useWalletErrorHandler } from '../../hooks/wallet/WalletErrorBoundary';
-import { getTokenLabel } from '../../utils/tokens';
+import { getTokenLabel } from '../../utils/payments/tokens';
 
 interface InvoiceData {
     invoice_hash: string;

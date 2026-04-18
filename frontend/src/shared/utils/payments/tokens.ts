@@ -1,4 +1,4 @@
-import { TokenCode } from '../types/tokens';
+import { TokenCode } from '../../types/tokens';
 
 export const TOKEN_CODE_TO_TYPE: Record<TokenCode, number> = {
     CREDITS: 0,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { GlassCard } from '../../../../components/ui/GlassCard';
 import { useBurnerActions } from '../../../../hooks/profile/useBurnerActions';
-import ConfirmModal from '../../../../components/ConfirmModal';
+import ConfirmModal from '../../../../components/modals/ConfirmModal';
 import { SweepModal } from './SweepModal';
 import type { BurnerWalletSettingsProps } from '../../../../types/burner';
 

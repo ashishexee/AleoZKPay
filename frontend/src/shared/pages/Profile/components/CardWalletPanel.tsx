@@ -4,11 +4,11 @@ import { AlertTriangle, ArrowUpRight, Copy, Eye, EyeOff, Lock, RefreshCw, Shield
 import toast from 'react-hot-toast';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Shimmer } from '../../../components/ui/Shimmer';
-import ConfirmModal from '../../../components/ConfirmModal';
+import ConfirmModal from '../../../components/modals/ConfirmModal';
 import { useCardWallet } from '../../../hooks/wallet/CardWalletProvider';
 import type { CardTokenCode } from '../../../types/tokens';
-import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../../utils/card-input-limits';
-import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../../../utils/leo-input-limits';
+import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../../utils/card/cardInputLimits';
+import { CARD_HINT_MAX_BYTES, CARD_LABEL_MAX_BYTES, getUtf8ByteLength } from '../../../utils/core/leoInputLimits';
 
 interface CardWalletPanelProps {
     itemVariants: any;

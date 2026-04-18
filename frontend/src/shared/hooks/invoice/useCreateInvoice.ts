@@ -2,8 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import type { InvoiceData, InvoiceItem } from '../../types/invoice';
 import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
-import { createInvoiceViaWallet } from '../../utils/invoiceCreation';
-import { getUtf8ByteLength, LEO_INVOICE_TITLE_MAX_BYTES, LEO_MEMO_MAX_BYTES } from '../../utils/leo-input-limits';
+import { createInvoiceViaWallet } from '../../utils/invoice/invoiceCreation';
+import { getUtf8ByteLength, LEO_INVOICE_TITLE_MAX_BYTES, LEO_MEMO_MAX_BYTES } from '../../utils/core/leoInputLimits';
 
 export type InvoiceType = 'standard' | 'multipay' | 'donation';
 

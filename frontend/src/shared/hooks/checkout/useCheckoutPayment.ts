@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { TransactionOptions } from '@provablehq/aleo-types';
-import { PROGRAM_ID, WALLET_PROGRAM_ID, estimateExecutionFee, generateSalt, stringToField } from '../../utils/aleo-utils';
-import { executeWithShieldRetry } from '../../utils/shieldRetry';
+import { PROGRAM_ID, WALLET_PROGRAM_ID, estimateExecutionFee, generateSalt, stringToField } from '../../utils/aleo/aleoUtils';
+import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
 import { CheckoutSession } from '../../types/checkout';
 import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
 import { getScannerSession, findSpendableRecord } from '../../pages/Profile/components/BurnerWallet/scanner';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 import type { TokenCode } from '../../types/tokens';
-import { decryptCardPrivateKey } from '../../utils/card-crypto';
-import { hashAddress } from '../../utils/crypto';
-import { resolveCardLookupByHashHex } from '../../utils/card-chain';
-import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../utils/card-input-limits';
-import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/leo-input-limits';
-import { isValidAleoAddress, normalizeAleoAddress } from '../../utils/aleo-address';
+import { decryptCardPrivateKey } from '../../utils/card/cardCrypto';
+import { hashAddress } from '../../utils/core/crypto';
+import { resolveCardLookupByHashHex } from '../../utils/card/cardChain';
+import { CARD_PIN_LENGTH, CARD_SECRET_MIN_LENGTH } from '../../utils/card/cardInputLimits';
+import { getUtf8ByteLength, LEO_PAYMENT_NOTE_MAX_BYTES } from '../../utils/core/leoInputLimits';
+import { isValidAleoAddress, normalizeAleoAddress } from '../../utils/aleo/aleoAddress';
 import { useLeaveGuard } from '../app/LeaveGuardProvider';
 
 // Convert Hex back to String
@@ -234,11 +234,11 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             let proofsInput = undefined;
             if (actualTokenType !== 'CREDITS') {
                 setStatus('Generating Compliance Proofs for Stablecoin...');
-                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex } = await import('../../utils/aleo-utils');
+                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex } = await import('../../utils/aleo/aleoUtils');
                 await getFreezeListRoot();
                 await getFreezeListCount();
                 const firstIndex = await getFreezeListIndex(0);
-                const { generateFreezeListProof } = await import('../../utils/aleo-utils');
+                const { generateFreezeListProof } = await import('../../utils/aleo/aleoUtils');
                 const { Address } = await import('@provablehq/wasm');
 
                 let index0FieldStr = undefined;
@@ -614,7 +614,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             if (giftCardRedeemOption.isCredits) {
                 inputs = [redeemRecordStr, publicKey, amountFormatted];
             } else {
-                const { getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
+                const { getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo/aleoUtils');
                 const { Address } = await import('@provablehq/wasm');
                 const firstIndex = await getFreezeListIndex(0);
                 let index0FieldStr = undefined;
@@ -832,7 +832,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             let proofsInput = undefined;
             if (actualTokenType !== 'CREDITS') {
                 setStatus('Generating card proofs locally...');
-                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
+                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo/aleoUtils');
                 await getFreezeListRoot();
                 await getFreezeListCount();
                 const firstIndex = await getFreezeListIndex(0);
@@ -992,7 +992,7 @@ export const useCheckoutPayment = (session: CheckoutSession | null) => {
             setStatus('Generating ZK Proofs locally...');
             let proofsInput = undefined;
             if (actualTokenType !== 'CREDITS') {
-                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo-utils');
+                const { getFreezeListRoot, getFreezeListCount, getFreezeListIndex, generateFreezeListProof } = await import('../../utils/aleo/aleoUtils');
                 await getFreezeListRoot();
                 await getFreezeListCount();
                 const firstIndex = await getFreezeListIndex(0);

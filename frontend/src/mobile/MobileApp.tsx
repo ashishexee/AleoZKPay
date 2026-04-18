@@ -11,7 +11,7 @@ import TelegramLinkPage from '../shared/pages/TelegramLink';
 import TelegramBotPage from '../shared/pages/TelegramBot';
 import AuditVerifyPage from '../shared/pages/AuditVerify';
 import SupportFeedbackPage from '../shared/pages/SupportFeedback';
-import { ProtectedRoute } from '../shared/components/ProtectedRoute';
+import { ProtectedRoute } from '../shared/components/routing/ProtectedRoute';
 
 const MobileAnimatedRoutes = () => {
     const location = useLocation();
