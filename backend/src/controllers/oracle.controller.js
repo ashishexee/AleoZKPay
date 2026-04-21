@@ -1,4 +1,8 @@
 const crypto = require('crypto');
+const dotenv = require('dotenv');
+dotenv.config();
+
+const COINCAP_API_KEY = process.env.COINCAP_API_KEY;
 
 function tokenTypeToNum(token) {
     if (!token) return 0;
@@ -10,13 +14,79 @@ function tokenTypeToNum(token) {
 }
 
 // ─── Price Cache ────────────────────────────────────────────────
-// Cache CREDITS price from Provable API for 60 seconds to avoid hammering
+// Cache aggregated CREDITS price for 60 seconds to avoid hammering
 let cachedCreditsPrice = null;
 let cacheTimestamp = 0;
+let cachedCreditsPriceMeta = null;
 const CACHE_TTL_MS = 60_000; // 60 seconds
 let cachedBlockHeight = 0;
 let cachedBlockHeightAt = 0;
 const BLOCK_HEIGHT_CACHE_TTL_MS = 10_000;
+
+const PRICE_SOURCE_TIMEOUT_MS = 4000;
+
+const PRICE_SOURCES = [
+    {
+        name: 'provable',
+        url: 'https://api.provable.com/v2/testnet/tokens/details?program_id=credits.aleo',
+        parse: (data) => ({
+            priceUsd: parseFloat(data?.token?.price),
+            fetchedAt: Date.now()
+        })
+    },
+    {
+        name: 'coingecko',
+        url: 'https://api.coingecko.com/api/v3/simple/price?ids=aleo&vs_currencies=usd',
+        parse: (data) => ({
+            priceUsd: Number(data?.aleo?.usd),
+            fetchedAt: Date.now()
+        })
+    },
+    {
+        name: 'coincap',
+        url: 'https://rest.coincap.io/v3/assets?search=aleo',
+        headers: {
+            accept: 'application/json',
+            Authorization: `Bearer ${COINCAP_API_KEY}`
+        },
+        parse: (data) => ({
+            priceUsd: parseFloat(data?.data?.[0]?.priceUsd),
+            fetchedAt: Number(data?.timestamp) || Date.now()
+        })
+    },
+    {
+        name: 'coinbase',
+        url: 'https://api.coinbase.com/v2/prices/ALEO-USD/spot',
+        parse: (data) => ({
+            priceUsd: parseFloat(data?.data?.amount),
+            fetchedAt: Date.now()
+        })
+    },
+    {
+        name: 'mexc',
+        url: 'https://api.mexc.com/api/v3/ticker/price?symbol=ALEOUSDT',
+        parse: (data) => ({
+            priceUsd: parseFloat(data?.price),
+            fetchedAt: Date.now()
+        })
+    },
+    {
+        name: 'bitmart',
+        url: 'https://api-cloud.bitmart.com/spot/v1/ticker?symbol=ALEO_USDT',
+        parse: (data) => ({
+            priceUsd: parseFloat(data?.data?.tickers?.[0]?.last_price),
+            fetchedAt: Number(data?.data?.tickers?.[0]?.timestamp) || Date.now()
+        })
+    },
+    {
+        name: 'xt',
+        url: 'https://sapi.xt.com/v4/public/ticker?symbol=aleo_usdt',
+        parse: (data) => ({
+            priceUsd: parseFloat(data?.result?.[0]?.c),
+            fetchedAt: Number(data?.result?.[0]?.t) || Date.now()
+        })
+    }
+];
 
 // Fallback rates (safety net if Provable API is down)
 const FALLBACK_RATES_USD = {
@@ -25,42 +95,151 @@ const FALLBACK_RATES_USD = {
     'USAD': 1.00
 };
 
+function isValidPrice(price) {
+    return Number.isFinite(price) && price > 0;
+}
+
+function median(values) {
+    if (values.length === 0) return null;
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+
+    if (sorted.length % 2 === 1) {
+        return sorted[middle];
+    }
+
+    return (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+async function fetchJsonWithTimeout(url, headers = {}) {
+    const response = await fetch(url, {
+        headers,
+        signal: AbortSignal.timeout(PRICE_SOURCE_TIMEOUT_MS)
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    return response.json();
+}
+
+async function fetchPriceFromSource(source) {
+    const data = await fetchJsonWithTimeout(source.url, source.headers || {});
+    const parsed = source.parse(data);
+
+    if (!isValidPrice(parsed?.priceUsd)) {
+        throw new Error('Invalid price');
+    }
+
+    return {
+        source: source.name,
+        priceUsd: parsed.priceUsd,
+        fetchedAt: parsed.fetchedAt || Date.now()
+    };
+}
+
+function filterOutlierPrices(sourceResults) {
+    if (sourceResults.length < 3) {
+        return sourceResults;
+    }
+
+    const baseline = median(sourceResults.map((result) => result.priceUsd));
+    if (!isValidPrice(baseline)) {
+        return sourceResults;
+    }
+
+    const filtered = sourceResults.filter((result) => Math.abs(result.priceUsd - baseline) / baseline <= 0.10);
+    return filtered.length > 0 ? filtered : sourceResults;
+}
+
+function logPriceSourceResults(settledResults, filteredResults, aggregatedPrice) {
+    settledResults.forEach((result, index) => {
+        const sourceName = PRICE_SOURCES[index]?.name || `source_${index}`;
+
+        if (result.status === 'fulfilled') {
+            console.log(`[Oracle] Source ${sourceName} OK -> $${result.value.priceUsd}`);
+            return;
+        }
+
+        console.warn(`[Oracle] Source ${sourceName} failed -> ${result.reason?.message || 'Unknown error'}`);
+    });
+
+    const filteredSourceNames = new Set(filteredResults.map((result) => result.source));
+    const droppedOutliers = settledResults
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value)
+        .filter((result) => !filteredSourceNames.has(result.source));
+
+    droppedOutliers.forEach((result) => {
+        console.warn(`[Oracle] Source ${result.source} dropped as outlier -> $${result.priceUsd}`);
+    });
+
+    console.log(`[Oracle] Aggregation median -> $${aggregatedPrice}`);
+}
+
 /**
- * Fetch live CREDITS price from the Provable API.
+ * Fetch live CREDITS price from all configured sources.
  * Uses a 60-second in-memory cache.
- * Falls back to hardcoded rate on failure.
+ * Silently drops failed/invalid sources and falls back only if none survive.
  */
 async function fetchCreditsPriceUSD() {
     const now = Date.now();
     if (cachedCreditsPrice !== null && (now - cacheTimestamp) < CACHE_TTL_MS) {
-        return cachedCreditsPrice;
+        return {
+            priceUsd: cachedCreditsPrice,
+            meta: cachedCreditsPriceMeta || {
+                aggregation: 'median',
+                source_count: 0,
+                sources_used: []
+            }
+        };
     }
 
     try {
-        const url = 'https://api.provable.com/v2/testnet/tokens/details?program_id=credits.aleo';
-        const response = await fetch(url, {
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(8000)  // 8-second timeout
-        });
+        const settled = await Promise.allSettled(
+            PRICE_SOURCES.map((source) => fetchPriceFromSource(source))
+        );
 
-        if (!response.ok) {
-            throw new Error(`Provable API returned ${response.status}`);
+        const validResults = filterOutlierPrices(
+            settled
+                .filter((result) => result.status === 'fulfilled')
+                .map((result) => result.value)
+        );
+
+        const aggregatedPrice = median(validResults.map((result) => result.priceUsd));
+
+        if (!isValidPrice(aggregatedPrice)) {
+            throw new Error('No valid price sources returned usable data');
         }
 
-        const data = await response.json();
-        const price = parseFloat(data?.token?.price);
+        logPriceSourceResults(settled, validResults, aggregatedPrice);
 
-        if (isNaN(price) || price <= 0) {
-            throw new Error(`Invalid price value from Provable API: ${data?.token?.price}`);
-        }
-
-        cachedCreditsPrice = price;
+        cachedCreditsPrice = aggregatedPrice;
+        cachedCreditsPriceMeta = {
+            aggregation: 'median',
+            source_count: validResults.length,
+            sources_used: validResults.map((result) => result.source),
+            fetched_at: now
+        };
         cacheTimestamp = now;
-        console.log(`[Oracle] Fetched live CREDITS price: $${price}`);
-        return price;
+        console.log(`[Oracle] Aggregated CREDITS price: $${aggregatedPrice} from ${validResults.length}/${PRICE_SOURCES.length} sources`);
+        return {
+            priceUsd: aggregatedPrice,
+            meta: cachedCreditsPriceMeta
+        };
     } catch (err) {
-        console.warn(`[Oracle] Provable API fetch failed, using fallback: ${err.message}`);
-        return FALLBACK_RATES_USD['CREDITS'];
+        console.warn(`[Oracle] Price aggregation failed, using fallback: ${err.message}`);
+        return {
+            priceUsd: FALLBACK_RATES_USD['CREDITS'],
+            meta: {
+                aggregation: 'fallback',
+                source_count: 0,
+                sources_used: [],
+                fetched_at: now
+            }
+        };
     }
 }
 
@@ -71,9 +250,27 @@ async function fetchCreditsPriceUSD() {
  */
 async function fetchPriceUSD(token) {
     const t = token.toUpperCase();
-    if (t === 'USDCX' || t === 'USAD') return 1.00;
+    if (t === 'USDCX' || t === 'USAD') {
+        return {
+            priceUsd: 1.00,
+            meta: {
+                aggregation: 'fixed',
+                source_count: 1,
+                sources_used: [t],
+                fetched_at: Date.now()
+            }
+        };
+    }
     if (t === 'CREDITS') return await fetchCreditsPriceUSD();
-    return 1.00; // unknown token fallback
+    return {
+        priceUsd: 1.00,
+        meta: {
+            aggregation: 'fixed',
+            source_count: 0,
+            sources_used: [],
+            fetched_at: Date.now()
+        }
+    }; // unknown token fallback
 }
 
 /**
@@ -133,8 +330,10 @@ const getQuote = async (req, res) => {
         }
 
         // Fetch live prices
-        const fromPrice = await fetchPriceUSD(from_token);
-        const toPrice = await fetchPriceUSD(to_token);
+        const fromPriceResult = await fetchPriceUSD(from_token);
+        const toPriceResult = await fetchPriceUSD(to_token);
+        const fromPrice = fromPriceResult.priceUsd;
+        const toPrice = toPriceResult.priceUsd;
         
         // Convert: originalAmount of from_token → equivalent in to_token
         // value in USD = originalAmount * fromPriceUSD
@@ -183,6 +382,10 @@ const getQuote = async (req, res) => {
             rates: {
                 from_usd: fromPrice,
                 to_usd: toPrice
+            },
+            oracle_meta: {
+                from_token: fromPriceResult.meta,
+                to_token: toPriceResult.meta
             }
         });
     } catch (err) {

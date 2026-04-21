@@ -146,8 +146,9 @@ const SingleInvoicePaymentPage = () => {
 
     const activeTokenType = hasSelectableTokens ? selectedToken : (invoice?.tokenType ?? 0);
     const currencyLabel = getTokenLabel(activeTokenType);
-    const displayAmount = Number(hasCrossTokenSelection && quote?.expected_amount ? quote.expected_amount : ((invoice?.amount || 0) > 0 ? invoice?.amount : Number(donationAmount || '0')));
-    const paymentAmountLabel = `${displayAmount} ${currencyLabel}`;
+    const rawDisplayAmount = hasCrossTokenSelection && quote?.expected_amount ? quote.expected_amount : ((invoice?.amount || 0) > 0 ? invoice?.amount : Number(donationAmount || '0'));
+    const displayAmount = Number(rawDisplayAmount);
+    const paymentAmountLabel = `${displayAmount.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${currencyLabel}`;
     const payerNoteBytes = getUtf8ByteLength(payerNote);
     const merchantNoteBytes = getUtf8ByteLength(merchantNote);
     const payerNoteTooLong = payerNoteBytes > LEO_PAYMENT_NOTE_MAX_BYTES;

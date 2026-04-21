@@ -251,7 +251,7 @@ export const PaymentActionPanel = ({
                             ) : step === 'CONVERT' ? (
                                 'Convert Public to Private'
                             ) : (
-                                `Pay ${displayAmount} ${currencyLabel}`
+                                `Pay ${paymentAmountLabel}`
                             )}
                         </Button>
                     )}

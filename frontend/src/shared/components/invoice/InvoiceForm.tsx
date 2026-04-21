@@ -6,7 +6,7 @@ import { InvoiceType } from '../../hooks/invoice/useCreateInvoice';
 import { InvoiceItem } from '../../types/invoice';
 import { getUtf8ByteLength, LEO_INVOICE_TITLE_MAX_BYTES, LEO_MEMO_MAX_BYTES } from '../../utils/core/leoInputLimits';
 import { getTokenLabel } from '../../utils/payments/tokens';
-import { Info } from 'lucide-react';
+import { Info, HelpCircle } from 'lucide-react';
 
 interface InvoiceFormProps {
     amount: number | '';
@@ -78,7 +78,28 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
                 {/* INVOICE TYPE TOGGLE */}
                 <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Invoice Type</label>
+                    <div className="flex items-center gap-2 mb-2">
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Invoice Type</label>
+                        <div className="relative group/type-info flex items-center justify-center">
+                            <HelpCircle size={14} className="text-gray-500 hover:text-white cursor-help transition-colors" />
+                            <div className="absolute left-0 top-full mt-2 w-64 opacity-0 invisible group-hover/type-info:opacity-100 group-hover/type-info:visible transition-all duration-300 z-50">
+                                <div className="bg-[#0A0A0A] backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-[10px] space-y-2">
+                                    <div className="text-gray-400">
+                                        <span className="text-white font-bold block mb-0.5">Standard</span>
+                                        Through this type of invoice you can get only one payment. Invoice closes after success.
+                                    </div>
+                                    <div className="text-gray-400 border-t border-white/5 pt-2">
+                                        <span className="text-purple-400 font-bold block mb-0.5">Multi Pay</span>
+                                        Allows multiple payments. Ideal for recurring billing or community campaigns.
+                                    </div>
+                                    <div className="text-gray-400 border-t border-white/5 pt-2">
+                                        <span className="text-pink-400 font-bold block mb-0.5">Donation</span>
+                                        Open-amount fundraising where payer and receiver identities remain private.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
                         <button
                             onClick={() => {
@@ -116,7 +137,24 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
                 {/* WALLET TYPE TOGGLE */}
                 <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Receiving Wallet</label>
+                    <div className="flex items-center gap-2 mb-2">
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Receiving Wallet</label>
+                        <div className="relative group/wallet-info flex items-center justify-center">
+                            <HelpCircle size={14} className="text-gray-500 hover:text-white cursor-help transition-colors" />
+                            <div className="absolute left-0 top-full mt-2 w-64 opacity-0 invisible group-hover/wallet-info:opacity-100 group-hover/wallet-info:visible transition-all duration-300 z-50">
+                                <div className="bg-[#0A0A0A] backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-[10px] space-y-2">
+                                    <div className="text-gray-400">
+                                        <span className="text-white font-bold block mb-0.5">Main Wallet</span>
+                                        Settles directly to your primary Aleo address. Simple and direct.
+                                    </div>
+                                    <div className="text-gray-400 border-t border-white/5 pt-2">
+                                        <span className="text-emerald-400 font-bold block mb-0.5">Burner Wallet</span>
+                                        Enhanced Privacy — Payer will not see your real address. Highly recommended.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
                         <button
                             onClick={() => setWalletType(0)}
@@ -188,42 +226,34 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     )}
                 </div>
 
-                {/* CURRENCY & ORACLE TOGGLE */}
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Base Currency</label>
+                {/* CURRENCY & SETTLEMENT SECTION */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Currency & Settlement</label>
+                            <p className="text-[10px] text-gray-500">Pick your quote currency and enable multi-token payments.</p>
+                        </div>
                         
-                        {tokenType !== 3 && setSelectedAllowedTokens && selectedAllowedTokens && (
-                            <div className="flex items-center gap-2">
-                                <label className="flex items-center gap-1.5 cursor-pointer group">
-                                    <input 
-                                        type="checkbox" 
-                                        className="w-3.5 h-3.5 rounded border-gray-500 bg-black/20 text-orange-500 focus:ring-orange-500 focus:ring-offset-black transition-colors"
-                                        checked={selectedAllowedTokens.length > 0 && selectedAllowedTokens.some(t => t !== (tokenType === 0 ? 'CREDITS' : tokenType === 1 ? 'USDCX' : 'USAD'))}
-                                        onChange={(e) => {
-                                            const base = tokenType === 0 ? 'CREDITS' : tokenType === 1 ? 'USDCX' : 'USAD';
-                                            if (e.target.checked) {
-                                                setSelectedAllowedTokens(['CREDITS', 'USDCX', 'USAD']);
-                                            } else {
-                                                setSelectedAllowedTokens([base]);
-                                            }
-                                        }}
-                                    />
-                                    <span className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors">Allow multiple currencies</span>
-                                </label>
+                        {tokenType !== 3 && setSelectedAllowedTokens && (
+                            <div className="relative group/tooltip">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold cursor-help hover:bg-orange-500/20 transition-all">
+                                    <Info size={12} />
+                                    <span>ORACLE POWERED</span>
+                                </div>
                                 
-                                <div className="relative group/tooltip flex items-center justify-center">
-                                    <Info size={14} className="text-gray-500 hover:text-orange-400 cursor-help transition-colors" />
-                                    
-                                    <div className="absolute bottom-full right-0 mb-2 w-72 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50">
-                                        <div className="bg-black/90 backdrop-blur-md border border-gray-700 rounded-xl p-4 shadow-2xl text-[11px] leading-relaxed text-gray-300">
-                                            <p className="mb-2.5">
-                                                <strong className="text-white block mb-1 text-xs">Real-time Oracle Conversion</strong>
-                                                Choosing this, users can select the token they want to pay in. The amount gets converted using the price conversion fetched from Provable and verified on-chain using ZK proofs, ensuring no hampering in conversions.
-                                            </p>
-                                            <p className="text-orange-300/90 border-t border-gray-700/50 pt-2.5">
-                                                <strong className="block mb-0.5">Risk:</strong> 
-                                                Due to market volatility, variations in price conversions may slightly affect the final settled amount.
+                                <div className="absolute bottom-full right-0 mb-3 w-72 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 z-50">
+                                    <div className="bg-[#0A0A0A] backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-l-orange-500/40 border-l-4">
+                                        <div className="text-orange-400 font-bold text-xs mb-2 flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                            Real-time Oracle Conversion
+                                        </div>
+                                        <p className="text-[11px] leading-relaxed text-gray-400 mb-3">
+                                            Payer selects their preferred token. Amounts are converted via <span className="text-white font-medium">Provable Oracles</span> and verified on-chain with <span className="text-white font-medium">ZK Proofs</span>.
+                                        </p>
+                                        <div className="bg-orange-500/5 rounded-xl p-3 border border-orange-500/10">
+                                            <span className="text-[10px] text-orange-300/80 font-semibold uppercase tracking-wider block mb-1">Market Volatility</span>
+                                            <p className="text-[10px] text-orange-200/60 leading-normal">
+                                                Slight variations in conversion may occur during settlement due to market movements.
                                             </p>
                                         </div>
                                     </div>
@@ -232,82 +262,92 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         )}
                     </div>
 
-                    <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
-                        <button
-                            onClick={() => setTokenType(0)}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 0
-                                ? 'bg-white text-black shadow-lg'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            Credits
-                        </button>
-                        <button
-                            onClick={() => setTokenType(1)}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 1
-                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            USDCx
-                        </button>
-                        <button
-                            onClick={() => setTokenType(2)}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 2
-                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            USAD
-                        </button>
-                        {invoiceType === 'donation' && (
-                            <button
-                                onClick={() => setTokenType(3)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${tokenType === 3
-                                    ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    <div className={`grid grid-cols-1 ${invoiceType === 'donation' ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-3`}>
+                        {['CREDITS', 'USDCX', 'USAD', ...(invoiceType === 'donation' ? ['ANY'] : [])].map((t, idx) => {
+                            const isBase = tokenType === idx;
+                            const allowedTokens = selectedAllowedTokens || [];
+                            const isSelected = allowedTokens.includes(t);
+                            
+                            const label = t === 'CREDITS' ? 'Aleo Credits' : 
+                                         t === 'USDCX' ? 'USDCx' : 
+                                         t === 'USAD' ? 'USAD' : 'Any Token';
+                                         
+                            return (
+                                <div 
+                                    key={t}
+                                    className={`relative group overflow-hidden rounded-2xl border transition-all duration-300 ${
+                                        isBase 
+                                            ? idx === 3 
+                                                ? 'bg-pink-500/10 border-pink-500/30 shadow-[0_0_20px_rgba(236,72,153,0.1)]'
+                                                : 'bg-white/10 border-white/20 shadow-[0_0_20px_rgba(255,255,255,0.05)]' 
+                                            : 'bg-black/40 border-white/5 hover:border-white/10'
                                     }`}
-                            >
-                                ANY
-                            </button>
-                        )}
-                    </div>
-
-                    {tokenType !== 3 && setSelectedAllowedTokens && selectedAllowedTokens && selectedAllowedTokens.some(t => t !== (tokenType === 0 ? 'CREDITS' : tokenType === 1 ? 'USDCX' : 'USAD')) && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {['CREDITS', 'USDCX', 'USAD'].map(t => {
-                                const baseTokenStr = tokenType === 0 ? 'CREDITS' : tokenType === 1 ? 'USDCX' : 'USAD';
-                                const isBaseToken = baseTokenStr === t;
-                                const isSelected = selectedAllowedTokens.includes(t);
-                                return (
-                                    <button
-                                        key={t}
-                                        onClick={() => {
-                                            if (isBaseToken) return;
-                                            setSelectedAllowedTokens(
-                                                isSelected
-                                                    ? selectedAllowedTokens.filter(x => x !== t)
-                                                    : [...selectedAllowedTokens, t]
-                                            );
-                                        }}
-                                        className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all border ${isSelected
-                                            ? isBaseToken
-                                                ? 'bg-white/5 text-white/40 border-white/10 cursor-not-allowed'
-                                                : 'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30'
-                                            : 'bg-black/30 text-gray-500 border-white/5 hover:bg-white/5 hover:text-gray-300'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-1.5">
-                                            {isSelected && !isBaseToken && <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />}
-                                            {t === 'CREDITS' ? 'Aleo Credits' : t === 'USDCX' ? 'USDCx' : 'USAD'}
-                                            {isBaseToken && <span className="opacity-60">(Base)</span>}
+                                >
+                                    {/* Selection Glow */}
+                                    {isBase && (
+                                        <div className={`absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none ${idx === 3 ? 'from-pink-500/10' : ''}`} />
+                                    )}
+                                    
+                                    <div className="relative z-10">
+                                        {/* TOP SECTION: Base Currency Toggle */}
+                                        <div 
+                                            onClick={() => setTokenType(idx)}
+                                            className="p-3.5 pb-2 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex flex-col">
+                                                    <div className={`text-sm font-bold ${isBase ? idx === 3 ? 'text-pink-400' : 'text-white' : 'text-gray-400'}`}>{label}</div>
+                                                </div>
+                                                {isBase && (
+                                                    <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter ${idx === 3 ? 'bg-pink-500 text-white' : 'bg-white text-black'}`}>
+                                                        {idx === 3 ? 'Active' : 'Base'}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
+
+                                        {/* BOTTOM SECTION: Acceptance Toggle */}
+                                        {setSelectedAllowedTokens && idx !== 3 ? (
+                                            <div 
+                                                onClick={() => {
+                                                    if (isBase) return;
+                                                    const newSelected = isSelected
+                                                        ? allowedTokens.filter(x => x !== t)
+                                                        : [...allowedTokens, t];
+                                                    setSelectedAllowedTokens(newSelected);
+                                                }}
+                                                className={`px-3.5 py-3 border-t border-white/5 flex items-center justify-between transition-colors ${isBase ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/[0.05]'}`}
+                                            >
+                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Accept as payment</span>
+                                                <div
+                                                    className={`w-10 h-5 rounded-full relative transition-all duration-300 ${
+                                                        isSelected
+                                                            ? 'bg-orange-500/30 border-orange-500/50'
+                                                            : 'bg-white/5 border-white/10'
+                                                    } border`}
+                                                >
+                                                    <div className={`absolute top-1 w-3 h-3 rounded-full transition-all duration-300 ${
+                                                        isSelected
+                                                            ? 'left-6 bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.5)]'
+                                                            : 'left-1 bg-gray-600'
+                                                    }`} />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            idx === 3 && (
+                                                <div className="px-3.5 pb-3 pt-1 border-t border-white/5 text-[10px] text-gray-500 font-medium leading-tight">
+                                                    Payer chooses any supported token.
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
+
+
 
                 <div className="text-xs text-gray-400 text-center bg-white/5 p-3 rounded-lg border border-white/5">
                     {invoiceType === 'standard' && 'Single payment only. Invoice closes after payment.'}
