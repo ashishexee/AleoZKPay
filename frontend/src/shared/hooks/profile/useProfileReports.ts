@@ -8,7 +8,7 @@ import {
 import type { AuditReportInput, ReportOptions } from '../../types/receipt';
 import { generateMerchantAuditPackage } from '../../utils/audit/auditPackage';
 import type { WalletTokenBalance } from '../wallet/useWalletBalances';
-import type { GeneratedAuditAssets } from '../../pages/Profile/components/modals/ReportConfigModal';
+import type { GeneratedAuditAssets } from '../../pages/profile/components/modals/ReportConfigModal';
 
 type MerchantStatsSnapshot = {
     mainCredits: string;

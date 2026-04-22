@@ -6,7 +6,7 @@ import { encryptWithPassword, decryptWithPassword, stringToFieldChunks } from '.
 import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../utils/aleo/aleoUtils';
 import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../utils/core/leoInputLimits';
 import { executeWithShieldRetry } from '../../utils/payments/shieldRetry';
-import { fetchAllPrivateBalances } from '../../pages/Profile/components/BurnerWallet/scanner';
+import { fetchAllPrivateBalances } from '../../pages/profile/components/burnerwallet/scanner';
 import type { PrivateBalances, SweepCurrency } from '../../types/burner';
 import { sweepBurnerFundsToDestination } from '../../utils/burner/burnerSweep';
 

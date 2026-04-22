@@ -1,5 +1,5 @@
 import { AleoKeyProvider, AleoNetworkClient, NetworkRecordProvider, ProgramManager } from '@provablehq/sdk';
-import { getScannerSession, listSpendableRecords } from '../../pages/Profile/components/BurnerWallet/scanner';
+import { getScannerSession, listSpendableRecords } from '../../pages/profile/components/burnerwallet/scanner';
 
 import { BurnerSweepCurrency } from '../../types/tokens';
 

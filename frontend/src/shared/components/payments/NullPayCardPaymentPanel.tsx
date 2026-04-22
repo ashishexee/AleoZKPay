@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Terminal, X, CreditCard, Lock, Key, Eye, EyeOff } from 'lucide-react';
+import { X, CreditCard, Lock, Key, Eye, EyeOff } from 'lucide-react';
 import { CARD_PIN_LENGTH } from '../../utils/card/cardInputLimits';
 import { Button } from '../ui/Button';
 import { GlassInput } from '../ui/GlassInput';
+import { PaymentActivityConsole } from './PaymentActivityConsole';
 
 interface NullPayCardPaymentPanelProps {
     amountLabel: string;
@@ -169,7 +170,7 @@ export const NullPayCardPaymentPanel = ({
                                             </div>
                                         </div>
 
-                                        {error && (
+                                        {error && !hasLogs && (
                                             <motion.div 
                                                 initial={{ opacity: 0, y: -4 }}
                                                 animate={{ opacity: 1, y: 0 }}
@@ -187,9 +188,9 @@ export const NullPayCardPaymentPanel = ({
                                             className={`w-full ${compact ? 'h-14 text-lg' : 'h-16 text-xl font-bold'} shadow-2xl shadow-white/5 mt-2`}
                                         >
                                             {isProcessing ? (
-                                                <div className="flex items-center gap-3">
-                                                    <span className="h-4 w-4 rounded-full border-2 border-black/20 border-t-black animate-spin" />
-                                                    Processing...
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black shadow-[0_0_10px_rgba(0,0,0,0.1)]" />
+                                                    <span className="font-bold">Authorizing...</span>
                                                 </div>
                                             ) : (
                                                 `Complete ${amountLabel} Payment`
@@ -199,26 +200,12 @@ export const NullPayCardPaymentPanel = ({
 
                                     {hasLogs && (
                                         <div className="mt-8 pt-8 border-t border-white/5">
-                                            <div className="flex items-center gap-2 mb-4 text-[10px] font-bold uppercase tracking-[0.25em] text-gray-600">
-                                                <Terminal className="h-3.5 w-3.5" />
-                                                Live Ledger Updates
-                                            </div>
-                                            <div className={`space-y-2 overflow-y-auto pr-2 custom-scrollbar ${compact ? 'max-h-32' : 'max-h-48'}`}>
-                                                {statusLog.map((line, index) => {
-                                                    const isErrorLine = line.startsWith('ERROR:');
-                                                    return (
-                                                        <motion.div
-                                                            initial={{ opacity: 0 }}
-                                                            animate={{ opacity: 1 }}
-                                                            key={`${line}-${index}`}
-                                                            className={`rounded-xl border px-4 py-3 font-mono text-[10px] leading-relaxed transition-colors border-white/5 bg-white/[0.02] ${isErrorLine ? 'text-gray-400' : 'text-gray-500'}`}
-                                                        >
-                                                            <span className="opacity-50 mr-2 text-white">›</span>
-                                                            {line.replace(/^ERROR:\s*/, '')}
-                                                        </motion.div>
-                                                    );
-                                                })}
-                                            </div>
+                                            <PaymentActivityConsole
+                                                method="card"
+                                                statusLog={statusLog}
+                                                error={error}
+                                                compact={compact}
+                                            />
                                         </div>
                                     )}
                                 </div>
