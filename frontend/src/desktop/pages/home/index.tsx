@@ -6,6 +6,10 @@ import DottedGlobe from './components/DottedGlobe';
 import { AnimatedBanner } from './components/AnimatedBanner';
 import { RedditMarquee } from './components/RedditMarquee';
 import { FlashlightEffect } from './components/FlashlightEffect';
+import { useShieldAvailability } from '../../../shared/hooks/wallet/useShieldAvailability';
+
+const SHIELD_PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.provable.shieldmobile';
+const SHIELD_APP_STORE_URL = 'https://apps.apple.com/us/app/shield-aleo-wallet/id6757471699';
 
 /* ─── EASING & VARIANTS ─────────────────────────────────────────── */
 const easePremium: [number, number, number, number] = [0.22, 1, 0.36, 1];
@@ -129,6 +133,7 @@ const TrustBar = () => (
 const HeroGrid = () => {
     const mouseX = useMotionValue(-1000);
     const mouseY = useMotionValue(-1000);
+    const mobileGridMask = 'radial-gradient(180px circle at 50% 42%, black 0%, transparent 100%)';
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
@@ -175,6 +180,18 @@ const HeroGrid = () => {
                 }}
             />
 
+            <motion.div
+                className="absolute inset-0 pointer-events-none opacity-[0.24] md:hidden"
+                animate={{ backgroundPosition: ['0px 0px', '64px 64px'] }}
+                transition={{ duration: 30, ease: 'linear', repeat: Infinity }}
+                style={{
+                    backgroundImage: 'linear-gradient(to right, #f97316 1px, transparent 1px), linear-gradient(to bottom, #f97316 1px, transparent 1px)',
+                    backgroundSize: '64px 64px',
+                    maskImage: mobileGridMask,
+                    WebkitMaskImage: mobileGridMask,
+                }}
+            />
+
 
 
             {/* Aurora blobs */}
@@ -197,6 +214,7 @@ const HeroGrid = () => {
 /* ═══════════════════════════════════════════════════════════════ */
 const Home = () => {
     const { scrollYProgress } = useScroll();
+    const { shouldShowMobileDashboard } = useShieldAvailability();
     const scaleX = useSpring(scrollYProgress, {
         stiffness: 100,
         damping: 30,
@@ -382,7 +400,7 @@ const Home = () => {
                     {/* ══════════════════════════════════════ */}
                     {/* HERO                                  */}
                     {/* ══════════════════════════════════════ */}
-                    <section className="relative min-h-[80vh] flex items-center overflow-hidden">
+                    <section className="relative flex min-h-[80vh] items-start md:items-center overflow-hidden">
 
                         {/* Scanline effect */}
                         <div className="scanline z-20" />
@@ -402,23 +420,31 @@ const Home = () => {
                         </motion.div>
 
                         {/* Hero content */}
-                        <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-36 pb-12">
+                        <div className="relative z-10 w-full px-6 md:px-12 lg:px-24 pt-6 md:pt-36 pb-12">
                             <motion.div
                                 variants={staggerSlow}
                                 initial="hidden"
                                 animate="show"
-                                className="mx-auto flex max-w-6xl flex-col items-center gap-10"
+                                className="mx-auto flex max-w-6xl flex-col items-center gap-10 md:gap-10"
                             >
+                                <motion.div variants={fadeInUp} className="mb-16 flex w-full items-center justify-start gap-3 px-1 py-1 md:hidden">
+                                    <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-[0_0_20px_rgba(255,255,255,0.18)]">
+                                        <div className="h-3.5 w-3.5 rotate-45 border-2 border-black" />
+                                    </div>
+                                    <span className="text-xl font-black tracking-tight text-white">NullPay</span>
+                                </motion.div>
+
                                 <div className="relative flex w-full justify-center overflow-visible">
-                                    <div className="relative z-20 flex max-w-4xl flex-col items-center text-center">
+                                    <div className="relative z-20 flex max-w-4xl flex-col items-center text-center md:items-center md:text-center">
                                         {/* Main headline */}
                                         <motion.div variants={fadeInUp} className="relative z-20">
-                                            <h1 className="text-5xl font-black leading-[0.92] tracking-tighter text-reveal md:text-7xl lg:text-[5rem] xl:text-[5.8rem]">
-                                                <span className="text-white inline-block mb-1 md:mb-3">Pay Privately.</span>
-                                                <br />
-                                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">Nullify</span>
-                                                {' '}
-                                                <span className="text-stroke">the Trace.</span>
+                                            <h1 className="text-[3.3rem] font-black leading-[0.9] tracking-[-0.06em] text-reveal sm:text-[3.9rem] md:text-7xl lg:text-[5rem] xl:text-[5.8rem]">
+                                                <span className="block text-white">Pay Privately.</span>
+                                                <span className="block mt-1 md:mt-0">
+                                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-400 drop-shadow-[0_0_30px_rgba(249,115,22,0.3)]">Nullify</span>
+                                                    {' '}
+                                                    <span className="text-stroke">the Trace.</span>
+                                                </span>
                                             </h1>
                                         </motion.div>
 
@@ -426,30 +452,87 @@ const Home = () => {
                                             variants={fadeInUp}
                                             className="max-w-2xl pt-6 text-xl font-light leading-relaxed tracking-wide text-white/40 md:text-2xl lg:text-[1.35rem]"
                                         >
-                                            The ultimate privacy layer for Aleo. Settle invoices with zero-knowledge proofs.
-                                            Protect your <span className="text-white/80 font-medium border-b border-orange-500/30">identity</span> and <span className="text-white/80 font-medium border-b border-orange-500/30">holdings</span> from the public eye.
+                                            Private Aleo payments with zero-knowledge proofs.
+                                            Protect your <span className="text-white/80 font-medium border-b border-orange-500/30">identity</span> and <span className="text-white/80 font-medium border-b border-orange-500/30">holdings</span>.
                                         </motion.p>
 
                                         {/* CTAs */}
                                         <motion.div
                                             variants={fadeInUp}
-                                            className="flex flex-col items-center justify-center gap-4 pt-6 sm:flex-row"
+                                            className="flex flex-col items-center justify-center gap-4 pt-6"
                                         >
-                                            <Link
-                                                to="/explorer"
-                                                className="premium-button premium-button-primary group inline-flex min-w-[180px] items-center justify-center gap-2 px-6 py-3"
-                                            >
-                                                <span className="text-base relative z-10">Get Started</span>
-                                                <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
-                                            </Link>
+                                            {shouldShowMobileDashboard ? (
+                                                <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+                                                    <Link
+                                                        to="/explorer"
+                                                        className="premium-button premium-button-primary group inline-flex min-w-[180px] items-center justify-center gap-2 px-6 py-3"
+                                                    >
+                                                        <span className="text-base relative z-10">Get Started</span>
+                                                        <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
+                                                    </Link>
 
-                                            <Link
-                                                to="/docs"
-                                                className="premium-button group inline-flex min-w-[180px] items-center justify-center gap-2 px-6 py-3"
-                                            >
-                                                <span className="text-base text-white/60 group-hover:text-white transition-colors relative z-10">Documentation</span>
-                                                <ExternalLink className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
-                                            </Link>
+                                                    <Link
+                                                        to="/docs"
+                                                        className="premium-button group inline-flex min-w-[180px] items-center justify-center gap-2 px-6 py-3"
+                                                    >
+                                                        <span className="text-base text-white/60 group-hover:text-white transition-colors relative z-10">Documentation</span>
+                                                        <ExternalLink className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
+                                                    </Link>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-4">
+                                                    <div className="flex flex-row flex-wrap items-center justify-center gap-3">
+                                                        <a
+                                                            href={SHIELD_PLAY_STORE_URL}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="group inline-flex items-center gap-3 bg-[#060606] border border-white/[0.08] hover:border-orange-500/40 hover:bg-[#111] transition-all rounded-xl px-5 py-3 shadow-2xl overflow-hidden relative cursor-pointer min-w-[180px]"
+                                                        >
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            <svg viewBox="0 0 24 24" className="w-[22px] h-[22px] shrink-0 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                <path d="M5 3.5V20.5C5 21.05 5.51 21.41 6 21.14L19.45 12.64C19.9 12.35 19.9 11.65 19.45 11.36L6 2.86C5.51 2.59 5 2.95 5 3.5Z" fill="url(#hero-play-grad)" />
+                                                                <defs>
+                                                                    <linearGradient id="hero-play-grad" x1="5" y1="3" x2="20" y2="12" gradientUnits="userSpaceOnUse">
+                                                                        <stop stopColor="#4ADE80" />
+                                                                        <stop offset="0.5" stopColor="#3B82F6" />
+                                                                        <stop offset="1" stopColor="#EF4444" />
+                                                                    </linearGradient>
+                                                                </defs>
+                                                            </svg>
+                                                            <div className="flex flex-col text-left relative z-10">
+                                                                <span className="text-[9px] uppercase tracking-wider text-white/50 font-medium leading-[1]">Get it on</span>
+                                                                <span className="text-[15px] font-semibold text-white leading-tight mt-[2px]">Google Play</span>
+                                                            </div>
+                                                        </a>
+
+                                                        <a
+                                                            href={SHIELD_APP_STORE_URL}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="group inline-flex items-center gap-3 bg-[#060606] border border-white/[0.08] hover:border-orange-500/40 hover:bg-[#111] transition-all rounded-xl px-5 py-3 shadow-2xl overflow-hidden relative cursor-pointer min-w-[180px]"
+                                                        >
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            <svg viewBox="0 0 24 24" className="w-[22px] h-[22px] shrink-0 relative z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                <path d="M18.71,19.5C17.88,20.74,17,21.95,15.66,21.97C14.32,22,13.89,21.18,12.37,21.18C10.84,21.18,10.37,21.95,9.1,22C7.79,22.05,6.8,20.68,5.96,19.47C4.25,17,2.94,12.45,4.7,9.39C5.57,7.87,7.13,6.91,8.82,6.88C10.1,6.86,11.32,7.75,12.11,7.75C12.89,7.75,14.37,6.68,15.92,6.84C16.57,6.87,18.39,7.1,19.56,8.82C19.47,8.88,17.39,10.1,17.41,12.63C17.44,15.65,20.06,16.66,20.09,16.67C20.06,16.74,19.67,18.11,18.71,19.5M13,3.5C13.73,2.67,14.94,2.04,15.94,2C16.07,3.17,15.6,4.35,14.9,5.19C14.21,6.04,13.07,6.7,11.95,6.61C11.8,5.46,12.36,4.26,13,3.5Z" fill="url(#hero-apple-grad)" />
+                                                                <defs>
+                                                                    <linearGradient id="hero-apple-grad" x1="5" y1="3" x2="20" y2="12" gradientUnits="userSpaceOnUse">
+                                                                        <stop stopColor="#FFFFFF" />
+                                                                        <stop offset="1" stopColor="#A1A1AA" />
+                                                                    </linearGradient>
+                                                                </defs>
+                                                            </svg>
+                                                            <div className="flex flex-col text-left relative z-10">
+                                                                <span className="text-[9px] uppercase tracking-wider text-white/50 font-medium leading-[1]">Download on the</span>
+                                                                <span className="text-[15px] font-semibold text-white leading-tight mt-[2px]">App Store</span>
+                                                            </div>
+                                                        </a>
+                                                    </div>
+
+                                                    <p className="text-center text-sm text-white/45 max-w-sm leading-relaxed">
+                                                        Download Shield Wallet to use NullPay on mobile.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </motion.div>
                                     </div>
                                 </div>
@@ -656,17 +739,17 @@ const Home = () => {
                             {/* Center Branding */}
                             <motion.div variants={fadeInUp} className="text-center mb-10">
                                 <SectionLabel color="text-orange-400/60">Ecosystem</SectionLabel>
-                                <div className="mt-8 mb-4 flex flex-col items-center gap-4">
+                                <div className="mt-8 mb-4 flex flex-col items-center gap-5 md:gap-4">
                                     {/* NullPay in the Space × OpenClaw */}
-                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 md:gap-8 w-full max-w-5xl mx-auto group/eco">
-                                        <div className="flex items-center justify-end gap-3">
-                                            <img src="/assets/nullpay_logo.png" alt="NullPay" className="w-12 md:w-16 h-12 md:h-16 object-contain" />
-                                            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-[-0.04em]">
+                                    <div className="grid w-full max-w-5xl mx-auto items-center gap-3 md:gap-8 group/eco grid-cols-1 md:grid-cols-[1fr_auto_1fr]">
+                                        <div className="flex items-center justify-center md:justify-end gap-3">
+                                            <img src="/assets/nullpay_logo.png" alt="NullPay" className="w-10 md:w-16 h-10 md:h-16 object-contain" />
+                                            <h2 className="text-[2.1rem] leading-none md:text-4xl lg:text-5xl font-black tracking-[-0.05em] text-white text-center md:text-left">
                                                 NullPay
                                             </h2>
                                         </div>
                                         <motion.div
-                                            className="flex items-center justify-center mx-1 md:mx-4"
+                                            className="flex items-center justify-center mx-1 md:mx-4 py-1 md:py-0"
                                             initial={{ rotate: 0 }}
                                             whileHover={{ rotate: 15 }}
                                             transition={{ type: "spring", stiffness: 200, damping: 15 }}
@@ -682,12 +765,12 @@ const Home = () => {
                                                 <path d="M6 6L18 18M6 18L18 6" stroke="url(#cross-grad)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
                                             </svg>
                                         </motion.div>
-                                        <div className="flex items-center justify-start gap-3 cursor-default">
-                                            <img src="/assets/openclaw.svg" alt="OpenClaw" className="w-12 md:w-16 h-12 md:h-16 object-contain" />
-                                            <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-[-0.04em] text-white">OpenClaw</h2>
+                                        <div className="flex items-center justify-center md:justify-start gap-3 cursor-default">
+                                            <img src="/assets/openclaw.svg" alt="OpenClaw" className="w-10 md:w-16 h-10 md:h-16 object-contain" />
+                                            <h2 className="text-[2.1rem] leading-none md:text-4xl lg:text-5xl font-black tracking-[-0.05em] text-white text-center md:text-left">OpenClaw</h2>
                                         </div>
                                     </div>
-                                    <p className="text-white/30 text-sm md:text-base max-w-2xl leading-relaxed font-light">
+                                    <p className="text-white/30 text-sm md:text-base max-w-[20rem] md:max-w-2xl leading-relaxed font-light text-center">
                                         NullPay MCP powers seamless private payments inside every tool you already love — from messaging apps to AI assistants.
                                     </p>
                                 </div>
@@ -910,12 +993,6 @@ const Home = () => {
                                         ))}
                                     </div>
 
-                                    <div>
-                                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/[0.07]">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                                            <span className="font-mono-syne text-[9px] uppercase tracking-[0.2em] text-white/30">Performance optimized for mobile</span>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </motion.div>

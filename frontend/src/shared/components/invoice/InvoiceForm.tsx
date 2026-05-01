@@ -78,116 +78,90 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
                 {/* INVOICE TYPE TOGGLE */}
                 <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Invoice Type</label>
-                        <div className="relative group/type-info flex items-center justify-center">
-                            <HelpCircle size={14} className="text-gray-500 hover:text-white cursor-help transition-colors" />
-                            <div className="absolute left-0 top-full mt-2 w-64 opacity-0 invisible group-hover/type-info:opacity-100 group-hover/type-info:visible transition-all duration-300 z-50">
-                                <div className="bg-[#0A0A0A] backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-[10px] space-y-2">
-                                    <div className="text-gray-400">
-                                        <span className="text-white font-bold block mb-0.5">Standard</span>
-                                        Through this type of invoice you can get only one payment. Invoice closes after success.
-                                    </div>
-                                    <div className="text-gray-400 border-t border-white/5 pt-2">
-                                        <span className="text-purple-400 font-bold block mb-0.5">Multi Pay</span>
-                                        Allows multiple payments. Ideal for recurring billing or community campaigns.
-                                    </div>
-                                    <div className="text-gray-400 border-t border-white/5 pt-2">
-                                        <span className="text-pink-400 font-bold block mb-0.5">Donation</span>
-                                        Open-amount fundraising where payer and receiver identities remain private.
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Invoice Type</label>
+                    <div className="p-1.5 bg-black/40 rounded-2xl flex gap-1.5 border border-white/5 shadow-inner">
+                        {[
+                            { id: 'standard', label: 'Standard', color: 'bg-white text-black', tooltip: 'Single payment only. The invoice is marked as paid and closed after a successful transaction.' },
+                            { id: 'multipay', label: 'Multi Pay', color: 'bg-purple-500 text-white', tooltip: 'Allows multiple payments for the same link. Perfect for donations or community fundraising.' },
+                            { id: 'donation', label: 'Donation', color: 'bg-pink-500 text-white', tooltip: 'Open-amount payments where both payer and receiver privacy is protected using ZK records.' }
+                        ].map((type) => (
+                            <div key={type.id} className="relative group/btn flex-1 flex items-center">
+                                <button
+                                    onClick={() => setInvoiceType(type.id as InvoiceType)}
+                                    className={`w-full py-2.5 rounded-xl text-[13px] font-bold transition-all duration-500 ${
+                                        invoiceType === type.id
+                                            ? `${type.color} shadow-[0_4px_20px_rgba(0,0,0,0.4)] z-10 scale-[1.02]`
+                                            : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]'
+                                    }`}
+                                >
+                                    {type.label}
+                                </button>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20">
+                                    <div className="relative group/info">
+                                        <HelpCircle 
+                                            size={12} 
+                                            className={`cursor-help transition-all duration-300 ${
+                                                invoiceType === type.id 
+                                                    ? type.id === 'standard' ? 'text-black/30' : 'text-white/40' 
+                                                    : 'text-gray-600 opacity-0 group-hover/btn:opacity-100'
+                                            } hover:scale-125`} 
+                                        />
+                                        <div className="absolute bottom-full right-[-10px] mb-3 w-48 opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-300 z-[100] translate-y-1 group-hover/info:translate-y-0">
+                                            <div className="bg-[#111] backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-2xl text-[10px] leading-relaxed text-gray-300 text-center font-medium">
+                                                {type.tooltip}
+                                                <div className="absolute top-full right-[14px] border-[5px] border-transparent border-t-[#111]" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
-                        <button
-                            onClick={() => {
-                                setInvoiceType('standard');
-                            }}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'standard'
-                                ? 'bg-neon-primary text-black shadow-lg shadow-neon-primary/20'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            Standard
-                        </button>
-                        <button
-                            onClick={() => {
-                                setInvoiceType('multipay');
-                            }}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'multipay'
-                                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            Multi Pay
-                        </button>
-                        <button
-                            onClick={() => setInvoiceType('donation')}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${invoiceType === 'donation'
-                                ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/20'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            Donation
-                        </button>
+                        ))}
                     </div>
                 </div>
 
                 {/* WALLET TYPE TOGGLE */}
                 <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Receiving Wallet</label>
-                        <div className="relative group/wallet-info flex items-center justify-center">
-                            <HelpCircle size={14} className="text-gray-500 hover:text-white cursor-help transition-colors" />
-                            <div className="absolute left-0 top-full mt-2 w-64 opacity-0 invisible group-hover/wallet-info:opacity-100 group-hover/wallet-info:visible transition-all duration-300 z-50">
-                                <div className="bg-[#0A0A0A] backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-[0_10px_30px_rgba(0,0,0,0.5)] text-[10px] space-y-2">
-                                    <div className="text-gray-400">
-                                        <span className="text-white font-bold block mb-0.5">Main Wallet</span>
-                                        Settles directly to your primary Aleo address. Simple and direct.
-                                    </div>
-                                    <div className="text-gray-400 border-t border-white/5 pt-2">
-                                        <span className="text-emerald-400 font-bold block mb-0.5">Burner Wallet</span>
-                                        Enhanced Privacy — Payer will not see your real address. Highly recommended.
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Receiving Wallet</label>
+                    <div className="p-1.5 bg-black/40 rounded-2xl flex gap-1.5 border border-white/5 shadow-inner">
+                        {[
+                            { id: 0, label: 'Main Wallet', color: 'bg-white text-black', tooltip: 'Settles directly to your primary Aleo address. Simple and direct connection.' },
+                            { id: 1, label: '🔒 Burner Wallet', color: 'bg-emerald-500 text-white', tooltip: 'Enhanced Privacy — Payer will not see your real address. Highly recommended for anonymity.', disabled: !hasBurnerWallet }
+                        ].map((wallet) => (
+                            <div key={wallet.id} className="relative group/btn flex-1 flex items-center">
+                                <button
+                                    onClick={() => !wallet.disabled && setWalletType(wallet.id)}
+                                    disabled={wallet.disabled}
+                                    className={`w-full py-2.5 rounded-xl text-[13px] font-bold transition-all duration-500 ${
+                                        walletType === wallet.id
+                                            ? `${wallet.color} shadow-[0_4px_20px_rgba(0,0,0,0.4)] z-10 scale-[1.02]`
+                                            : wallet.disabled
+                                                ? 'text-gray-700 cursor-not-allowed italic'
+                                                : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]'
+                                    }`}
+                                >
+                                    {wallet.label}
+                                </button>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20">
+                                    <div className="relative group/info">
+                                        <HelpCircle 
+                                            size={12} 
+                                            className={`cursor-help transition-all duration-300 ${
+                                                walletType === wallet.id 
+                                                    ? wallet.id === 0 ? 'text-black/30' : 'text-white/40' 
+                                                    : 'text-gray-600 opacity-0 group-hover/btn:opacity-100'
+                                            } hover:scale-125`} 
+                                        />
+                                        <div className="absolute bottom-full right-[-10px] mb-3 w-48 opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-300 z-[100] translate-y-1 group-hover/info:translate-y-0">
+                                            <div className="bg-[#111] backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-2xl text-[10px] leading-relaxed text-gray-300 text-center font-medium">
+                                                {wallet.tooltip}
+                                                <div className="absolute top-full right-[14px] border-[5px] border-transparent border-t-[#111]" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        ))}
                     </div>
-                    <div className="p-1 bg-black/20 rounded-xl flex gap-1 border border-white/5">
-                        <button
-                            onClick={() => setWalletType(0)}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${walletType === 0
-                                ? 'bg-white text-black shadow-lg'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            Main Wallet
-                        </button>
-                        <button
-                            onClick={() => hasBurnerWallet ? setWalletType(1) : null}
-                            disabled={!hasBurnerWallet}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${walletType === 1
-                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                                : !hasBurnerWallet
-                                    ? 'text-gray-600 cursor-not-allowed'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            🔒 Burner Wallet
-                        </button>
-                    </div>
-                    {walletType === 1 && (
-                        <div className="mt-2 text-xs text-emerald-400/80 bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-2 text-center">
-                            🛡️ Enhanced Privacy — Payer will not see your real address.
-                        </div>
-                    )}
-                    {!hasBurnerWallet && walletType === 0 && (
-                        <div className="mt-2 text-xs text-gray-500 text-center">
-                            No Burner Wallet found. Create one from your <span className="text-neon-primary">Dashboard</span>.
-                        </div>
-                    )}
                 </div>
 
                 <div>
@@ -219,11 +193,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                             </div>
                         </div>
                     </button>
-                    {walletType === 1 && (
-                        <div className="mt-2 text-xs text-amber-400/80 bg-amber-500/5 border border-amber-500/10 rounded-lg p-2 text-center">
-                            SDK invoices are main-wallet only. Switch back to Main Wallet to enable this tag.
-                        </div>
-                    )}
                 </div>
 
                 {/* CURRENCY & SETTLEMENT SECTION */}
@@ -236,25 +205,37 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         
                         {tokenType !== 3 && setSelectedAllowedTokens && (
                             <div className="relative group/tooltip">
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-bold cursor-help hover:bg-orange-500/20 transition-all">
-                                    <Info size={12} />
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/[0.03] border border-orange-500/20 text-orange-400 text-[9px] font-black cursor-help hover:bg-orange-500/10 hover:border-orange-500/40 transition-all duration-500 uppercase tracking-[0.15em] shadow-[0_0_15px_rgba(249,115,22,0.05)] group-hover/tooltip:shadow-[0_0_25px_rgba(249,115,22,0.15)]">
                                     <span>ORACLE POWERED</span>
+                                    <HelpCircle size={12} className="text-orange-500/70" />
                                 </div>
-                                
-                                <div className="absolute bottom-full right-0 mb-3 w-72 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 z-50">
-                                    <div className="bg-[#0A0A0A] backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-l-orange-500/40 border-l-4">
-                                        <div className="text-orange-400 font-bold text-xs mb-2 flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                                            Real-time Oracle Conversion
-                                        </div>
-                                        <p className="text-[11px] leading-relaxed text-gray-400 mb-3">
-                                            Payer selects their preferred token. Amounts are converted via <span className="text-white font-medium">Provable Oracles</span> and verified on-chain with <span className="text-white font-medium">ZK Proofs</span>.
-                                        </p>
-                                        <div className="bg-orange-500/5 rounded-xl p-3 border border-orange-500/10">
-                                            <span className="text-[10px] text-orange-300/80 font-semibold uppercase tracking-wider block mb-1">Market Volatility</span>
-                                            <p className="text-[10px] text-orange-200/60 leading-normal">
-                                                Slight variations in conversion may occur during settlement due to market movements.
+                                <div className="absolute bottom-full right-0 mb-4 w-80 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-500 z-50 transform translate-y-2 group-hover/tooltip:translate-y-0">
+                                    <div className="bg-[#050505]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden relative mr-[-20px] md:mr-0">
+                                        {/* Background Shine */}
+                                        <div className="absolute -top-24 -right-24 w-48 h-48 bg-orange-500/10 blur-[80px] rounded-full pointer-events-none" />
+                                        
+                                        <div className="relative z-10">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="p-2 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                                                    <Info size={16} className="text-orange-400" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <h4 className="text-[13px] font-bold text-white tracking-tight leading-none">Real-time Oracle Conversion</h4>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-[11px] leading-[1.6] text-gray-400 mb-5 font-medium">
+                                                Payments are dynamically converted using <span className="text-white font-bold underline decoration-orange-500/30 underline-offset-4">Multi-Source Aggregation</span> and finalized using <span className="text-white font-bold underline decoration-orange-500/30 underline-offset-4">ZK Proofs</span> for absolute privacy.
                                             </p>
+
+                                            <div className="p-3.5 rounded-2xl bg-orange-500/[0.03] border border-orange-500/10 group-hover/tooltip:border-orange-500/20 transition-colors duration-500">
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <span className="text-[10px] text-orange-400 font-black uppercase tracking-[0.1em]">Oracle Consensus</span>
+                                                </div>
+                                                <p className="text-[10px] text-gray-500 leading-relaxed">
+                                                    Prices are aggregated from 5+ independent sources with outlier detection to ensure fair market value.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -267,10 +248,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                             const isBase = tokenType === idx;
                             const allowedTokens = selectedAllowedTokens || [];
                             const isSelected = allowedTokens.includes(t);
-                            
-                            const label = t === 'CREDITS' ? 'Aleo Credits' : 
-                                         t === 'USDCX' ? 'USDCx' : 
-                                         t === 'USAD' ? 'USAD' : 'Any Token';
+                            const label = t === 'CREDITS' ? 'Aleo Credits' : t === 'USDCX' ? 'USDCx' : t === 'USAD' ? 'USAD' : 'Any Token';
                                          
                             return (
                                 <div 
@@ -283,21 +261,17 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                             : 'bg-black/40 border-white/5 hover:border-white/10'
                                     }`}
                                 >
-                                    {/* Selection Glow */}
                                     {isBase && (
                                         <div className={`absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none ${idx === 3 ? 'from-pink-500/10' : ''}`} />
                                     )}
                                     
                                     <div className="relative z-10">
-                                        {/* TOP SECTION: Base Currency Toggle */}
                                         <div 
                                             onClick={() => setTokenType(idx)}
                                             className="p-3.5 pb-2 cursor-pointer hover:bg-white/[0.02] transition-colors"
                                         >
                                             <div className="flex items-center justify-between mb-2">
-                                                <div className="flex flex-col">
-                                                    <div className={`text-sm font-bold ${isBase ? idx === 3 ? 'text-pink-400' : 'text-white' : 'text-gray-400'}`}>{label}</div>
-                                                </div>
+                                                <div className={`text-sm font-bold ${isBase ? idx === 3 ? 'text-pink-400' : 'text-white' : 'text-gray-400'}`}>{label}</div>
                                                 {isBase && (
                                                     <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter ${idx === 3 ? 'bg-pink-500 text-white' : 'bg-white text-black'}`}>
                                                         {idx === 3 ? 'Active' : 'Base'}
@@ -306,8 +280,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                             </div>
                                         </div>
 
-                                        {/* BOTTOM SECTION: Acceptance Toggle */}
-                                        {setSelectedAllowedTokens && idx !== 3 ? (
+                                        {setSelectedAllowedTokens && idx !== 3 && invoiceType !== 'donation' ? (
                                             <div 
                                                 onClick={() => {
                                                     if (isBase) return;
@@ -319,24 +292,14 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                                 className={`px-3.5 py-3 border-t border-white/5 flex items-center justify-between transition-colors ${isBase ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white/[0.05]'}`}
                                             >
                                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Accept as payment</span>
-                                                <div
-                                                    className={`w-10 h-5 rounded-full relative transition-all duration-300 ${
-                                                        isSelected
-                                                            ? 'bg-orange-500/30 border-orange-500/50'
-                                                            : 'bg-white/5 border-white/10'
-                                                    } border`}
-                                                >
-                                                    <div className={`absolute top-1 w-3 h-3 rounded-full transition-all duration-300 ${
-                                                        isSelected
-                                                            ? 'left-6 bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.5)]'
-                                                            : 'left-1 bg-gray-600'
-                                                    }`} />
+                                                <div className={`w-10 h-5 rounded-full relative transition-all duration-300 ${isSelected ? 'bg-orange-500/30 border-orange-500/50' : 'bg-white/5 border-white/10'} border`}>
+                                                    <div className={`absolute top-1 w-3 h-3 rounded-full transition-all duration-300 ${isSelected ? 'left-6 bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.5)]' : 'left-1 bg-gray-600'}`} />
                                                 </div>
                                             </div>
                                         ) : (
-                                            idx === 3 && (
-                                                <div className="px-3.5 pb-3 pt-1 border-t border-white/5 text-[10px] text-gray-500 font-medium leading-tight">
-                                                    Payer chooses any supported token.
+                                            (idx === 3 || (invoiceType === 'donation' && idx !== 3)) && (
+                                                <div className="px-3.5 pb-3 pt-3 border-t border-white/5 text-[10px] text-gray-500 font-medium leading-tight">
+                                                    {idx === 3 ? 'Payer chooses any supported token.' : isBase ? 'Direct settlement in this token.' : 'Click to select as base currency.'}
                                                 </div>
                                             )
                                         )}
@@ -346,8 +309,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         })}
                     </div>
                 </div>
-
-
 
                 <div className="text-xs text-gray-400 text-center bg-white/5 p-3 rounded-lg border border-white/5">
                     {invoiceType === 'standard' && 'Single payment only. Invoice closes after payment.'}
@@ -360,8 +321,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     )}
                 </div>
 
-
-
                 {invoiceType !== 'donation' && (
                     <Input
                         label={`Amount (${getTokenLabel(tokenType, invoiceType === 'multipay' ? 1 : 0)})`}
@@ -372,7 +331,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     />
                 )}
 
-                {/* LINE ITEMS TOGGLE — Standard Invoice only */}
                 {invoiceType === 'standard' && (
                     <div>
                         <label
@@ -382,24 +340,16 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                 setShowItems(!showItems);
                             }}
                         >
-                            <div className={`w-10 h-5 rounded-full relative transition-all duration-300 ${showItems
-                                ? 'bg-neon-primary/30 border-neon-primary/50'
-                                : 'bg-white/10 border-white/10'
-                                } border`}>
-                                <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${showItems
-                                    ? 'left-[22px] bg-neon-primary shadow-[0_0_8px_rgba(0,243,255,0.5)]'
-                                    : 'left-0.5 bg-gray-500'
-                                    }`} />
+                            <div className={`w-10 h-5 rounded-full relative transition-all duration-300 ${showItems ? 'bg-neon-primary/30 border-neon-primary/50' : 'bg-white/10 border-white/10'} border`}>
+                                <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-300 ${showItems ? 'left-[22px] bg-neon-primary shadow-[0_0_8px_rgba(0,243,255,0.5)]' : 'left-0.5 bg-gray-500'}`} />
                             </div>
                             <span className="text-sm text-gray-300 group-hover:text-white transition-colors">Add Line Items</span>
                         </label>
                     </div>
                 )}
 
-                {/* LINE ITEMS TABLE */}
                 {invoiceType === 'standard' && showItems && (
                     <div className="bg-black/30 rounded-xl border border-white/5 overflow-hidden">
-                        {/* Table Header */}
                         <div className="grid grid-cols-[1fr_80px_100px_100px_40px] gap-2 px-4 py-3 bg-white/5 border-b border-white/5">
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Item</span>
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Qty</span>
@@ -407,8 +357,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Total</span>
                             <span></span>
                         </div>
-
-                        {/* Table Rows */}
                         {items.map((item, index) => (
                             <div key={index} className="grid grid-cols-[1fr_80px_100px_100px_40px] gap-2 px-4 py-2 border-b border-white/5 last:border-b-0 items-center group hover:bg-white/[0.02] transition-colors">
                                 <input
@@ -446,8 +394,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                 </button>
                             </div>
                         ))}
-
-                        {/* Add Item Button */}
                         <button
                             onClick={addItem}
                             className="w-full py-3 text-sm text-gray-400 hover:text-neon-primary hover:bg-neon-primary/5 transition-all flex items-center justify-center gap-2 border-t border-white/5"
@@ -457,8 +403,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({
                             </svg>
                             Add Item
                         </button>
-
-                        {/* Items Total */}
                         {items.length > 0 && items.some(i => i.total > 0) && (
                             <div className="flex justify-between items-center px-4 py-3 bg-neon-primary/5 border-t border-neon-primary/20">
                                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total</span>

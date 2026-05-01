@@ -42,7 +42,7 @@ const Explorer: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const [invoiceChartRange, setInvoiceChartRange] = useState<InvoiceTimelineRange>('1W');
+    const [invoiceChartRange, setInvoiceChartRange] = useState<InvoiceTimelineRange>('1M');
     const [sdkOnlyChart, setSdkOnlyChart] = useState(false);
     const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<InvoiceTimelineStatusFilter>('BOTH');
     const itemsPerPage = 10;

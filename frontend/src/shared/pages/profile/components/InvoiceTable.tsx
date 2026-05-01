@@ -417,7 +417,7 @@ export const InvoiceTable: React.FC<InvoiceTableProps> = ({
                                             {/* Settle Button for Donation (2) or Multipay (1) if not already settled */}
                                             {inv.status !== 'SETTLED' && (inv.invoiceType === 1 || inv.invoiceType === 2) && (
                                                 <button
-                                                    onClick={() => onSettle(inv)}
+                                                    onClick={(e) => { e.stopPropagation(); onSettle(inv); }}
                                                     disabled={settlingId === inv.invoiceHash}
                                                     className="flex items-center gap-1.5 text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded border border-red-500/20 hover:border-red-500/50 transition-all text-red-500 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                                     title="Stop accepting payments and settle on-chain"

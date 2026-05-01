@@ -50,7 +50,8 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     onRedeemGiftCardBalance,
     quote,
     quoteTimeRemaining,
-    checkOracleQuote
+    checkOracleQuote,
+    txId
 }) => {
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
@@ -93,7 +94,6 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
         setSelectedPayerToken((current) => allowedTokens.includes(current as any) ? current : nextToken);
     }, [session, hasSelectableTokens, allowedTokens, selectedPayerToken]);
 
-    // Decrease the countdown timer purely inside CheckoutUI visually
     const [localTimeRemaining, setLocalTimeRemaining] = useState<number>(0);
     useEffect(() => {
         setLocalTimeRemaining(quoteTimeRemaining || 0);
@@ -222,13 +222,11 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                         </div>
                     ) : session ? (
                         <div className="space-y-6">
-                            {/* Merchant Info */}
                             <div className="text-center pb-6 border-b border-white/10">
                                 <p className="text-xs text-gray-400 uppercase tracking-widest mb-1">Paying To</p>
                                 <p className="text-lg font-bold text-white">{session.merchant_name}</p>
                             </div>
 
-                            {/* Amount & Currency Info */}
                             <div className="text-center pb-8 pt-2 border-b border-white/10 flex flex-col items-center">
                                 {isDonation ? (
                                     <div className="w-full flex flex-col items-center animate-fade-in">
@@ -326,7 +324,6 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                             </div>
 
                             <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start xl:grid-cols-[360px_minmax(0,1fr)]">
-                                {/* Invoice Details */}
                                 <div className="rounded-[28px] border border-white/8 bg-black/25 p-5 lg:p-6 shadow-[0_16px_50px_rgba(0,0,0,0.24)] lg:sticky lg:top-6">
                                     <div className="space-y-5">
                                         <div className="flex justify-center">
@@ -424,7 +421,6 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     </div>
                                 </div>
 
-                            {/* Status and Action */}
                             <div className="space-y-4 rounded-[28px] border border-white/8 bg-black/20 p-5 lg:p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
                                 <div className="rounded-2xl border border-white/10 bg-black/30 p-4 space-y-4">
                                     <div>
@@ -440,12 +436,9 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             Stored in one Leo field: {payerNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
                                         </p>
                                     </div>
-                                    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                                    <div className={`rounded-xl border transition-all duration-300 ${shareMerchantNote ? 'border-white/20 bg-white/[0.04]' : 'border-white/5 bg-white/[0.02]'} p-4`}>
                                         <div className="flex items-center justify-between gap-4">
-                                            <div>
-                                                <p className="text-sm font-semibold text-white">Share note with merchant</p>
-                                                <p className="text-[11px] text-gray-500">Turn this on only if you want the merchant to see an extra note in their dashboard.</p>
-                                            </div>
+                                            <p className="text-sm font-semibold text-white">Share the note with the merchant</p>
                                             <button
                                                 type="button"
                                                 onClick={() => setShareMerchantNote((current) => !current)}
@@ -455,22 +448,28 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 <span className="mx-1 h-5 w-5 rounded-full bg-white shadow-[0_2px_10px_rgba(255,255,255,0.25)] transition-transform" />
                                             </button>
                                         </div>
+                                        
+                                        {shareMerchantNote && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                className="mt-4 pt-4 border-t border-white/10 space-y-3"
+                                            >
+                                                <textarea
+                                                    value={merchantNote}
+                                                    onChange={(e) => setMerchantNote(e.target.value)}
+                                                    rows={3}
+                                                    placeholder="Optional note visible to the merchant"
+                                                    className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${merchantNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-white/40'}`}
+                                                />
+                                                <div className="flex justify-between items-center px-1">
+                                                    <p className={`text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                                                        {merchantNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes used
+                                                    </p>
+                                                </div>
+                                            </motion.div>
+                                        )}
                                     </div>
-                                    {shareMerchantNote && (
-                                        <div className="lg:col-span-2">
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Merchant Note</label>
-                                            <textarea
-                                                value={merchantNote}
-                                                onChange={(e) => setMerchantNote(e.target.value)}
-                                                rows={3}
-                                                placeholder="Optional note visible to the merchant"
-                                                className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${merchantNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-white/40'}`}
-                                            />
-                                            <p className={`mt-2 text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
-                                                Merchant note: {merchantNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-3 bg-black/40 p-1 rounded-xl mb-6 border border-white/5 gap-1">
@@ -622,6 +621,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         }
                                         disabled={
                                             paymentLoading ||
+                                            (txId && !success) ||
                                             payerNoteTooLong ||
                                             (shareMerchantNote && merchantNoteTooLong) ||
                                             (paymentMethod === 'giftcard' && giftCardPayerAddressInvalid) ||
@@ -632,10 +632,12 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         glow
                                         className="w-full text-lg h-14"
                                     >
-                                        {paymentLoading ? (
+                                        {(paymentLoading || (txId && !success)) ? (
                                             <div className="flex items-center justify-center gap-3">
                                                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
-                                                <span className="font-bold">Authorizing Payment...</span>
+                                                <span className="font-bold">
+                                                    {txId ? `Paying ${isDonation ? (donationAmount || '0') : (quote ? quote.expected_amount : session.amount)} ${displayTokenLabel}...` : "Authorizing..."}
+                                                </span>
                                             </div>
                                         ) : (
                                             isDonation ? `Pay ${donationAmount || '0'} ${displayTokenLabel}` : `Pay ${session.amount} ${displayTokenLabel}`
