@@ -1,17 +1,19 @@
 # NullPay SDK Reference
 
-This document consolidates everything developers need to integrate the NullPay SDK: the `nullpay.json` configuration, the developer CLI (`@nullpay/cli`), and the Node SDK (`@nullpay/node`). It pulls examples and behavior directly from the repository implementation.
+This document consolidates everything developers need to integrate the NullPay SDK: the `nullpay.json` configuration, the developer CLI (`@nullpay/cli`), the Node SDK (`@nullpay/node`), and the Python SDK (`nullpay-python`). It pulls examples and behavior directly from the repository implementation.
 
 Files referenced in this guide:
 - `testing-website/backend/nullpay.json` — sample generated file with example invoices. See [testing-website/backend/nullpay.json](testing-website/backend/nullpay.json).
 - CLI onboard implementation: [packages/nullpay-cli/src/commands/onboard.ts](packages/nullpay-cli/src/commands/onboard.ts).
 - Node SDK implementation: [packages/nullpay-node/src/index.ts](packages/nullpay-node/src/index.ts).
+- Python SDK implementation: [packages/nullpay-python/nullpay/client.py](packages/nullpay-python/nullpay/client.py).
 
 ## Overview
 
 NullPay provides:
 - A developer CLI (`@nullpay/cli`) to interactively create invoices and produce a local `nullpay.json` for your project.
 - A lightweight Node SDK (`@nullpay/node`) to read `nullpay.json`, create checkout sessions, retrieve sessions, and verify webhook events.
+- A lightweight Python SDK (`nullpay-python`) to do the same for FastAPI, Flask, Django, and other Python backends.
 - A runtime relayer/backend that maps Aleo salts to invoice hashes and powers checkout flows.
 - A relayer-sponsored setup path so invoice creation can be submitted by NullPay on the merchant's behalf.
 
