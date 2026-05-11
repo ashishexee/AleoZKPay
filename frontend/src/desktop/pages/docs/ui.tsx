@@ -67,3 +67,22 @@ export const IntegrationBadge = ({
         </div>
     </div>
 );
+
+export const DiagramFigure = ({
+    src,
+    alt,
+    caption,
+}: {
+    src: string;
+    alt: string;
+    caption: string;
+}) => (
+    <figure className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+        <div className="overflow-x-auto bg-black/30 p-3 md:p-5">
+            <img src={src} alt={alt} className="h-auto w-full min-w-[720px] rounded-xl bg-white object-contain" />
+        </div>
+        <figcaption className="border-t border-white/[0.08] px-5 py-4 text-sm leading-relaxed text-gray-400">
+            {caption}
+        </figcaption>
+    </figure>
+);
