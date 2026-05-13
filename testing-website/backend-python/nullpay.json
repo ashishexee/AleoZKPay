@@ -1,0 +1,76 @@
+{
+  "merchant": "aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0",
+  "generated_at": "2026-04-12T15:09:44.588Z",
+  "invoices": [
+    {
+      "name": "basic-credits",
+      "type": "multipay",
+      "amount": 1,
+      "currency": "CREDITS",
+      "title": "basic credits",
+      "label": "",
+      "hash": "5943045503164481326068943868760062436540954779260620631311964671823792516085field",
+      "salt": "38795191630972718482060184795973894165field"
+    },
+    {
+      "name": "basic-usdcx",
+      "type": "multipay",
+      "amount": 1,
+      "currency": "USDCX",
+      "title": "basic usdcx",
+      "label": "",
+      "hash": "2742515810173658649081207610042113567464897373253041948709360413414478510229field",
+      "salt": "134518623943476758195576320429049028899field"
+    },
+    {
+      "name": "basic-usad",
+      "type": "multipay",
+      "amount": 1,
+      "currency": "USAD",
+      "title": "basic usad",
+      "label": "",
+      "hash": "2429534005911454954620593065655949867208461477119536399967096624747480628306field",
+      "salt": "160833502155713088732893943653832986919field"
+    },
+    {
+      "name": "support-credits",
+      "type": "donation",
+      "amount": null,
+      "currency": "CREDITS",
+      "title": "support credits",
+      "label": "",
+      "hash": "5900848020337470808515766270294506185956317677581115728259908802970148168003field",
+      "salt": "242299898622660376861211462185459904157field"
+    },
+    {
+      "name": "support-usdcx",
+      "type": "donation",
+      "amount": null,
+      "currency": "USDCX",
+      "title": "",
+      "label": "",
+      "hash": "4407603924859200325233444778241987280695510597557828663334800495840118814455field",
+      "salt": "325910221731572904010197334102485766970field"
+    },
+    {
+      "name": "support-usad",
+      "type": "donation",
+      "amount": null,
+      "currency": "USAD",
+      "title": "",
+      "label": "",
+      "hash": "4799455501708354410333224265525009861326356636971240770606257383920747071350field",
+      "salt": "217025485296078090464599700641095342321field"
+    },
+    {
+      "name": "support-any",
+      "type": "donation",
+      "amount": null,
+      "currency": "ANY",
+      "title": "",
+      "label": "",
+      "hash": "6615321029516257697412895512046026223128845204552129922928512387759265630758field",
+      "salt": "90523272407472783690228984456325943540field"
+    }
+  ]
+}
