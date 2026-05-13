@@ -90,6 +90,7 @@ export const DeveloperPortal = () => {
     const [secretKey, setSecretKey] = useState<string | null>(null);
     const [activeTab] = useState('console');
     const [commandCopied, setCommandCopied] = useState(false);
+    const [pyCommandCopied, setPyCommandCopied] = useState(false);
     const [cliCommandCopied, setCliCommandCopied] = useState(false);
     const [mcpCommandCopied, setMcpCommandCopied] = useState(false);
     const [stats, setStats] = useState<any>(null);
@@ -195,6 +196,22 @@ export const DeveloperPortal = () => {
                                     {commandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
                                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
                                         {commandCopied ? 'copied' : 'Copy'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/[0.1] rounded-2xl hover:border-blue-500/30 hover:bg-white/[0.05] hover:shadow-[0_0_20px_rgba(59,130,246,0.05)] transition-all group max-w-fit cursor-pointer relative overflow-hidden" onClick={() => {
+                                navigator.clipboard.writeText('pip install nullpay-python');
+                                setPyCommandCopied(true);
+                                setTimeout(() => setPyCommandCopied(false), 2000);
+                            }}>
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-400/2 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <svg className="w-4 h-4 text-[#3776AB] group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor"><path d="M14.25.18l.9.2.73.26.59.3.45.32L17 1.9l.22.2.21.22.18.23.16.23.14.24.12.24.1.25.1.26.07.25.07.27.05.26.04.28.02.26.02.28a8.71 8.71 0 0 1-.02 1.48v.26l-.04.26-.05.26-.06.27-.08.27-.1.25-.1.25-.13.25-.15.24-.16.24-.18.23-.2.22-.22.21-.24.2-.42.31-.58.3-.73.26-.89.2-1.03.14-1.16.08-1.28.03-1.39-.01-1.46-.05-1.5-.1-1.54-.15-1.54-.19-1.5-.24L3.81 7.2l-.72-.32-.61-.35-.48-.37-.36-.39-.24-.4L1.2 5.07a8.55 8.55 0 0 1-.6-1.5A8.7 8.7 0 0 1 .4 2.1l.03-.26.04-.26.06-.27.08-.27.1-.25.1-.25.14-.25.15-.24.18-.24.19-.23.21-.22.23-.21.25-.2.45-.31.6-.3.75-.26.9-.2 1.05-.14 1.18-.08 1.3-.03 1.4-.01 1.48.04L13 .18l1.25.02zm-3.32 1.95a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6.75 6.44l-.2-.9-.26-.74-.3-.59-.31-.44-.34-.3-.2-.2-.23-.2-.22-.17-.23-.16-.24-.13-.25-.11-.26-.09-.26-.08-.28-.05-.28-.04-.26-.01a8.71 8.71 0 0 0-1.48.01l-.26.04-.27.05-.26.06-.26.07-.26.09-.25.11-.24.12-.24.14-.23.16-.22.18-.21.19-.2.22-.31.42-.3.58-.26.73-.2.89-.14 1.03-.08 1.16-.03 1.28.01 1.39.05 1.46.1 1.5.15 1.54.19 1.54.24 1.5.3 1.44.32.72.35.61.37.48.39.36.4.24.3.2.43.19.74.25a8.7 8.7 0 0 0 1.5.6l1.46.2.26-.03.26-.04.27-.06.27-.08.25-.1.25-.1.25-.14.24-.15.24-.18.23-.19.22-.21.21-.23.2-.25.31-.45.3-.6.26-.75.2-.9.14-1.05.08-1.18.03-1.3.01-1.4-.04-1.48z"/></svg>
+                                <code className="text-sm font-mono text-blue-300 font-medium">pip install nullpay-python</code>
+                                <div className="flex items-center gap-2 ml-5 border-l border-white/5 pl-5">
+                                    {pyCommandCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />}
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 group-hover:text-gray-400 transition-colors w-[68px] inline-block">
+                                        {pyCommandCopied ? 'copied' : 'Copy'}
                                     </span>
                                 </div>
                             </div>
@@ -664,21 +681,35 @@ export async function createCheckout(req, res) {
                             <GlassCard className="p-8 md:p-10">
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">Installation</h2>
-                                    <a
-                                        href="https://www.npmjs.com/package/@nullpay/node"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all"
-                                    >
-                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M0 7.334v8h6.666v2.666H12v-2.666h12v-8H0zm6.666 5.332H4V10h2.666v2.666zm5.334 0h-2.666V10h2.666v2.666zm8 0h-2.666V10h2.666v2.666z" /></svg>
-                                        npm package
-                                    </a>
+                                    <div className="flex items-center gap-2">
+                                        <a
+                                            href="https://www.npmjs.com/package/@nullpay/node"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                                        >
+                                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M0 7.334v8h6.666v2.666H12v-2.666h12v-8H0zm6.666 5.332H4V10h2.666v2.666zm5.334 0h-2.666V10h2.666v2.666zm8 0h-2.666V10h2.666v2.666z" /></svg>
+                                            npm
+                                        </a>
+                                        <a
+                                            href="https://pypi.org/project/nullpay-python/"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all"
+                                        >
+                                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M14.25.18l.9.2.73.26.59.3.45.32L17 1.9l.22.2.21.22.18.23.16.23.14.24.12.24.1.25.1.26.07.25.07.27.05.26.04.28.02.26.02.28a8.71 8.71 0 0 1-.02 1.48v.26l-.04.26-.05.26-.06.27-.08.27-.1.25-.1.25-.13.25-.15.24-.16.24-.18.23-.2.22-.22.21-.24.2-.42.31-.58.3-.73.26-.89.2-1.03.14-1.16.08-1.28.03-1.39-.01-1.46-.05-1.5-.1-1.54-.15-1.54-.19-1.5-.24L3.81 7.2l-.72-.32-.61-.35-.48-.37-.36-.39-.24-.4L1.2 5.07a8.55 8.55 0 0 1-.6-1.5A8.7 8.7 0 0 1 .4 2.1l.03-.26.04-.26.06-.27.08-.27.1-.25.1-.25.14-.25.15-.24.18-.24.19-.23.21-.22.23-.21.25-.2.45-.31.6-.3.75-.26.9-.2 1.05-.14 1.18-.08 1.3-.03 1.4-.01 1.48.04L13 .18l1.25.02zm-3.32 1.95a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6.75 6.44l-.2-.9-.26-.74-.3-.59-.31-.44-.34-.3-.2-.2-.23-.2-.22-.17-.23-.16-.24-.13-.25-.11-.26-.09-.26-.08-.28-.05-.28-.04-.26-.01a8.71 8.71 0 0 0-1.48.01l-.26.04-.27.05-.26.06-.26.07-.26.09-.25.11-.24.12-.24.14-.23.16-.22.18-.21.19-.2.22-.31.42-.3.58-.26.73-.2.89-.14 1.03-.08 1.16-.03 1.28.01 1.39.05 1.46.1 1.5.15 1.54.19 1.54.24 1.5.3 1.44.32.72.35.61.37.48.39.36.4.24.3.2.43.19.74.25a8.7 8.7 0 0 0 1.5.6l1.46.2.26-.03.26-.04.27-.06.27-.08.25-.1.25-.1.25-.14.24-.15.24-.18.23-.19.22-.21.21-.23.2-.25.31-.45.3-.6.26-.75.2-.9.14-1.05.08-1.18.03-1.3.01-1.4-.04-1.48z"/></svg>
+                                            PyPI
+                                        </a>
+                                    </div>
                                 </div>
                                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                                    The <code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">@nullpay/node</code> SDK is a lightweight client for your Node.js backend.
+                                    NullPay offers SDKs for Node.js (<code className="text-neon-primary bg-white/5 px-1.5 py-0.5 rounded">@nullpay/node</code>) and Python (<code className="text-blue-400 bg-white/5 px-1.5 py-0.5 rounded">nullpay-python</code>).
                                     Never expose your secret key on the frontend.
                                 </p>
-                                <CodeBlock title="Install SDK" language="bash" code={`npm install @nullpay/node@latest`} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <CodeBlock title="Node.js" language="bash" code={`npm install @nullpay/node@latest`} />
+                                    <CodeBlock title="Python" language="bash" code={`pip install nullpay-python`} />
+                                </div>
 
                                 <h2 className="text-2xl font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)] mt-10 mb-2">Initialize the Client</h2>
                                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">

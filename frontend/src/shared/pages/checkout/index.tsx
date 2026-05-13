@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCheckoutSession } from '../../hooks/checkout/useCheckoutSession';
 import { useCheckoutPayment } from '../../hooks/checkout/useCheckoutPayment';
 import { CheckoutUI } from './components/CheckoutUI';
-import { usePaymentMonitor } from '../../hooks/app/usePaymentMonitor';
 
 export const CheckoutPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -30,9 +29,6 @@ export const CheckoutPage = () => {
         quoteTimeRemaining,
         checkOracleQuote
     } = useCheckoutPayment(session);
-
-    // Call payment monitor. If the session isn't processing anymore, we have a real hash
-    usePaymentMonitor();
 
     const handlePay = (donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }) => {
         if (step === 'CONVERT') {

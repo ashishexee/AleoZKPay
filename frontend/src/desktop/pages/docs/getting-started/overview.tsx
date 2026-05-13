@@ -61,7 +61,7 @@ export const overviewSection: DocsSection = {
                     <div className="space-y-4 text-sm leading-relaxed text-gray-400">
                         <div className="flex items-start gap-3">
                             <Package className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
-                            <p><span className="font-semibold text-white">@nullpay/node</span> for backend checkout session creation, session retrieval, and webhook verification.</p>
+                            <p><span className="font-semibold text-white">@nullpay/node</span> or <span className="font-semibold text-white">nullpay-python</span> for backend checkout session creation, session retrieval, and webhook verification.</p>
                         </div>
                         <div className="flex items-start gap-3">
                             <TerminalSquare className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />

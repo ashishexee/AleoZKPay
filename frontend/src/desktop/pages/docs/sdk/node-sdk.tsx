@@ -7,7 +7,10 @@ const installExample = `# Install the official NullPay Node.js SDK
 npm install @nullpay/node@latest
 
 # Or with yarn:
-yarn add @nullpay/node@latest`;
+yarn add @nullpay/node@latest
+
+# For Python environments (FastAPI/Flask/Django):
+pip install nullpay-python`;
 
 const configExample = `// The SDK is used via the NullPay class. Initialize it once per server process.
 // Typically in a file like: lib/nullpay.ts or utils/nullpay.ts
@@ -99,7 +102,20 @@ export const nodeSdkSection: DocsSection = {
             </div>
 
             <GlassCard className="p-6">
-                <h3 className="mb-4 text-xl font-bold text-white">Installation</h3>
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white">Installation</h3>
+                    <div className="flex items-center gap-2">
+                        <a
+                            href="https://www.npmjs.com/package/@nullpay/node"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                        >
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M0 7.334v8h6.666v2.666H12v-2.666h12v-8H0zm6.666 5.332H4V10h2.666v2.666zm5.334 0h-2.666V10h2.666v2.666zm8 0h-2.666V10h2.666v2.666z" /></svg>
+                            npm
+                        </a>
+                    </div>
+                </div>
                 <CodeBlock title="Package Manager" language="bash" code={installExample} />
                 <div className="mt-4 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
                     <p className="mb-1 text-sm font-bold text-white">Technical Manifest</p>

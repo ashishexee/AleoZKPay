@@ -8,8 +8,9 @@ import { useWalletErrorHandler } from '../wallet/WalletErrorBoundary';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const RECORD_CACHE_TTL_MS = 15_000;
+const RECORD_SCAN_THROTTLE_MS = 10_000;
 
-// ─── Notification Sound (Web Audio API — no external file needed) ───
 function playPaymentSound() {
     try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -27,9 +28,9 @@ function playPaymentSound() {
             osc.stop(ctx.currentTime + start + duration);
         };
 
-        playTone(523.25, 0, 0.15, 0.3);      // C5
-        playTone(659.25, 0.12, 0.15, 0.3);    // E5
-        playTone(783.99, 0.24, 0.25, 0.25);   // G5
+        playTone(523.25, 0, 0.15, 0.3);
+        playTone(659.25, 0.12, 0.15, 0.3);
+        playTone(783.99, 0.24, 0.25, 0.25);
 
         setTimeout(() => ctx.close(), 1000);
     } catch (e) {
@@ -37,13 +38,12 @@ function playPaymentSound() {
     }
 }
 
-// ─── Format amount for display ───
 function formatAmount(amountRaw: number | string | null | undefined, isMicro: boolean = false): string {
     if (amountRaw === null || amountRaw === undefined) return '';
     const num = Number(amountRaw);
     if (isNaN(num) || num === 0) return '';
     const actualNum = isMicro ? num / 1_000_000 : num;
-    return ` — ${actualNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} `;
+    return ` - ${actualNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} `;
 }
 
 export const usePaymentMonitor = () => {
@@ -52,8 +52,41 @@ export const usePaymentMonitor = () => {
 
     const notifiedInvoices = useRef<Set<string>>(new Set());
     const lastSoundPlayed = useRef<Map<string, number>>(new Map());
+    const cachedRecords = useRef<{ fetchedAt: number; records: any[] } | null>(null);
+    const recordsRequestInFlight = useRef<Promise<any[]> | null>(null);
+    const scanThrottleUntil = useRef(0);
 
-    const fetchOnChainAmount = async (invoiceHash: string, expectedCount: number): Promise<{ amount: string, token: string } | null> => {
+    const getMergedWalletRecords = async (forceFresh: boolean = false): Promise<any[]> => {
+        if (!requestRecords) return [];
+
+        const now = Date.now();
+        if (!forceFresh && cachedRecords.current && now - cachedRecords.current.fetchedAt < RECORD_CACHE_TTL_MS) {
+            return cachedRecords.current.records;
+        }
+
+        if (recordsRequestInFlight.current) {
+            return recordsRequestInFlight.current;
+        }
+
+        const request = Promise.all([
+            requestRecords(PROGRAM_ID, true),
+            requestRecords(WALLET_PROGRAM_ID, true)
+        ]).then(([baseRecords, walletRecords]) => {
+            const records = [
+                ...(baseRecords ? (baseRecords as any[]) : []),
+                ...(walletRecords ? (walletRecords as any[]) : [])
+            ];
+            cachedRecords.current = { fetchedAt: Date.now(), records };
+            return records;
+        }).finally(() => {
+            recordsRequestInFlight.current = null;
+        });
+
+        recordsRequestInFlight.current = request;
+        return request;
+    };
+
+    const fetchOnChainAmount = async (invoiceHash: string, expectedCount: number): Promise<{ amount: string; token: string } | null> => {
         try {
             if (!requestRecords || !decrypt) return null;
 
@@ -62,33 +95,33 @@ export const usePaymentMonitor = () => {
 
             for (let attempt = 0; attempt < retryDelays.length; attempt++) {
                 console.log(`🔍 [PaymentMonitor] Attempt ${attempt + 1}/${retryDelays.length}: waiting ${retryDelays[attempt]}ms for on-chain sync...`);
-                await new Promise(r => setTimeout(r, retryDelays[attempt]));
+                await new Promise((resolve) => setTimeout(resolve, retryDelays[attempt]));
 
-                const [baseRecords, walletRecords] = await Promise.all([
-                    requestRecords(PROGRAM_ID, true),
-                    requestRecords(WALLET_PROGRAM_ID, true)
-                ]);
-
-                const records = [
-                    ...(baseRecords ? (baseRecords as any[]) : []),
-                    ...(walletRecords ? (walletRecords as any[]) : [])
-                ];
+                const shouldForceFresh = attempt > 0 || Date.now() >= scanThrottleUntil.current;
+                const records = await getMergedWalletRecords(shouldForceFresh);
+                if (shouldForceFresh) {
+                    scanThrottleUntil.current = Date.now() + RECORD_SCAN_THROTTLE_MS;
+                }
 
                 if (records.length === 0) continue;
 
-                const matchingReceipts: { amount: number, tokenType: number }[] = [];
+                const matchingReceipts: { amount: number; tokenType: number }[] = [];
 
-                for (const r of (records as any[])) {
-                    if (r.spent) continue;
+                for (const record of records) {
+                    if (record.spent) continue;
 
-                    let plaintext = r.plaintext;
-                    const cipher = r.recordCiphertext || r.ciphertext;
+                    let plaintext = record.plaintext;
+                    const cipher = record.recordCiphertext || record.ciphertext;
                     if (!plaintext && cipher) {
-                        try { plaintext = await decrypt(cipher); } catch (e) { continue; }
+                        try {
+                            plaintext = await decrypt(cipher);
+                        } catch {
+                            continue;
+                        }
                     }
                     if (!plaintext) continue;
 
-                    const receipt = parseMerchantReceipt({ ...r, plaintext });
+                    const receipt = parseMerchantReceipt({ ...record, plaintext });
                     if (!receipt) continue;
 
                     const receiptInvHash = receipt.invoiceHash.replace('field', '');
@@ -102,71 +135,78 @@ export const usePaymentMonitor = () => {
                 if (matchingReceipts.length >= expectedCount) {
                     const newest = matchingReceipts[matchingReceipts.length - 1];
                     const token = newest.tokenType === 1 ? 'USDCx' : newest.tokenType === 2 ? 'USAD' : 'Credits';
-                    const amountStr = formatAmount(newest.amount, true);
-                    return { amount: amountStr, token };
+                    return { amount: formatAmount(newest.amount, true), token };
                 }
             }
         } catch (error) {
             handleWalletError(error);
             console.warn('Failed to fetch on-chain records:', error);
         }
+
         return null;
     };
 
     useEffect(() => {
-        if (!publicKey) return;
-        let supabaseChannel: any = null;
+        if (!publicKey || !supabaseUrl || !supabaseKey) return;
+
+        let cancelled = false;
+        let supabaseChannel: { unsubscribe: () => void } | null = null;
+
         const triggerNotification = (message: string, invoiceHash: string, withSound: boolean = true) => {
             console.log(`📣 [Notification Triggered]: ${message} | Sound: ${withSound}`);
 
             if (withSound) {
                 const now = Date.now();
                 const lastPlayed = lastSoundPlayed.current.get(invoiceHash) || 0;
-
-
                 if (now - lastPlayed > 5000) {
                     playPaymentSound();
                     lastSoundPlayed.current.set(invoiceHash, now);
                 }
             }
 
-            toast.success(message, { 
-                id: invoiceHash, 
-                duration: 6000, 
-                position: 'top-right' 
+            toast.success(message, {
+                id: invoiceHash,
+                duration: 6000,
+                position: 'top-right'
             });
         };
 
-        const setupSupabase = () => {
-            if (!supabaseUrl || !supabaseKey) return;
+        const setupSupabase = async () => {
+            try {
+                const currentHash = await hashAddress(publicKey);
+                if (cancelled) return;
 
-            const supabase = createClient(supabaseUrl, supabaseKey);
+                const supabase = createClient(supabaseUrl, supabaseKey);
+                supabaseChannel = supabase
+                    .channel(`invoices_changes_${currentHash}`)
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'invoices',
+                            filter: `merchant_address_hash=eq.${currentHash}`
+                        },
+                        async (payload) => {
+                            const oldRecord = payload.old;
+                            const newRecord = payload.new;
 
-            supabaseChannel = supabase.channel('invoices_changes')
-                .on(
-                    'postgres_changes',
-                    { event: 'UPDATE', schema: 'public', table: 'invoices' },
-                    async (payload) => {
-                        const oldRecord = payload.old;
-                        const newRecord = payload.new;
-
-                        let oldTxIds: string[] = [];
-                        let newTxIds: string[] = [];
-
-                        try { oldTxIds = Array.isArray(oldRecord.payment_tx_ids) ? oldRecord.payment_tx_ids : JSON.parse(oldRecord.payment_tx_ids || '[]'); } catch (e) { }
-                        try { newTxIds = Array.isArray(newRecord.payment_tx_ids) ? newRecord.payment_tx_ids : JSON.parse(newRecord.payment_tx_ids || '[]'); } catch (e) { }
-
-                        // SCENARIO 1: New Transaction Added (WAIT FOR SYNC -> PLAY SOUND)
-                        if (newTxIds.length > oldTxIds.length) {
-                            const dedupKey = `${newRecord.invoice_hash}_TX_${newTxIds.length}`;
-                            if (notifiedInvoices.current.has(dedupKey)) return;
-                            notifiedInvoices.current.add(dedupKey);
+                            let oldTxIds: string[] = [];
+                            let newTxIds: string[] = [];
 
                             try {
-                                const currentHash = await hashAddress(publicKey);
+                                oldTxIds = Array.isArray(oldRecord.payment_tx_ids) ? oldRecord.payment_tx_ids : JSON.parse(oldRecord.payment_tx_ids || '[]');
+                            } catch {}
+                            try {
+                                newTxIds = Array.isArray(newRecord.payment_tx_ids) ? newRecord.payment_tx_ids : JSON.parse(newRecord.payment_tx_ids || '[]');
+                            } catch {}
 
-                                if (newRecord.merchant_address_hash === currentHash) {
-                                    // 1. Instantly notify the user that a payment was detected (optimistic UI)
+                            if (newTxIds.length > oldTxIds.length) {
+                                const dedupKey = `${newRecord.invoice_hash}_TX_${newTxIds.length}`;
+                                if (notifiedInvoices.current.has(dedupKey)) return;
+                                notifiedInvoices.current.add(dedupKey);
+
+                                try {
                                     const initializingMsg = `Payment processing for invoice ${newRecord.invoice_hash.slice(0, 6)}... fetching exact amount...`;
                                     triggerNotification(initializingMsg, newRecord.invoice_hash, true);
 
@@ -174,9 +214,7 @@ export const usePaymentMonitor = () => {
                                     let tokenLabel = newRecord.token_type === 1 ? 'USDCx' : newRecord.token_type === 2 ? 'USAD' : 'Credits';
 
                                     if (newRecord.invoice_type === 2) {
-                                        const expectedCount = newTxIds.length;
-                                        const onChain = await fetchOnChainAmount(newRecord.invoice_hash, expectedCount);
-                                        
+                                        const onChain = await fetchOnChainAmount(newRecord.invoice_hash, newTxIds.length);
                                         if (onChain) {
                                             amountStr = onChain.amount;
                                             tokenLabel = onChain.token;
@@ -187,44 +225,38 @@ export const usePaymentMonitor = () => {
                                         amountStr = formatAmount(newRecord.amount);
                                     }
 
-                                    // 2. Update the existing toast with the final amount!
-                                    // Because toast.success replaces the toast with the same ID, we just call it again without playing sound.
                                     const finalMsg = amountStr
                                         ? `Payment received${amountStr}${tokenLabel} for invoice ${newRecord.invoice_hash.slice(0, 6)}!`
                                         : `Payment received for invoice ${newRecord.invoice_hash.slice(0, 6)}!`;
 
                                     triggerNotification(finalMsg, newRecord.invoice_hash, false);
+                                } catch (error) {
+                                    console.error('Failed to process payment event:', error);
                                 }
-                            } catch (error) {
-                                console.error('Failed to process payment event:', error);
-                            }
-                        } 
-                        // SCENARIO 2: Status changed to SETTLED (NO SOUND)
-                        else if (newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
-                            const dedupKey = `${newRecord.invoice_hash}_SETTLED`;
-                            if (notifiedInvoices.current.has(dedupKey)) return;
-                            notifiedInvoices.current.add(dedupKey);
+                            } else if (newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
+                                const dedupKey = `${newRecord.invoice_hash}_SETTLED`;
+                                if (notifiedInvoices.current.has(dedupKey)) return;
+                                notifiedInvoices.current.add(dedupKey);
 
-                            try {
-                                const currentHash = await hashAddress(publicKey);
-
-                                if (newRecord.merchant_address_hash === currentHash) {
-                                    // FALSE = Do NOT play the sound for the "Settled" status update
+                                try {
                                     triggerNotification(`Invoice ${newRecord.invoice_hash.slice(0, 6)}... settled!`, newRecord.invoice_hash, false);
+                                } catch (error) {
+                                    console.error('Failed to process settled event:', error);
                                 }
-                            } catch (error) {
-                                console.error('Failed to process settled event:', error);
                             }
                         }
-                    }
-                )
-                .subscribe();
+                    )
+                    .subscribe();
+            } catch (error) {
+                console.error('Failed to initialize payment monitor:', error);
+            }
         };
 
-        setupSupabase();
+        void setupSupabase();
 
         return () => {
-            if (supabaseChannel) supabaseChannel.unsubscribe();
+            cancelled = true;
+            supabaseChannel?.unsubscribe();
         };
-    }, [publicKey]);
+    }, [decrypt, handleWalletError, publicKey, requestRecords]);
 };
