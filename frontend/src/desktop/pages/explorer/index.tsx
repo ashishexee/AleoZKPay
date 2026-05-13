@@ -7,7 +7,6 @@ import { Shimmer } from '../../../shared/components/ui/Shimmer';
 import { useTransactions } from '../../../shared/hooks/transactions/useTransactions';
 import { pageVariants, staggerContainer, fadeInUp, scaleIn } from '../../../shared/utils/core/animations';
 import { PaymentHistoryModal } from '../../../shared/pages/profile/components/modals/PaymentHistoryModal';
-import { getInvoiceStatus } from '../../../shared/utils/aleo/aleoUtils';
 import React from 'react';
 import { InvoiceCreationTimelineChart, type InvoiceTimelineRange, type InvoiceTimelineStatusFilter } from './components/InvoiceCreationTimelineChart';
 
@@ -56,27 +55,7 @@ const Explorer: React.FC = () => {
         setCurrentPage(1);
     }, [activeFilter, searchQuery]);
 
-    const [verificationStatus, setVerificationStatus] = useState<Record<string, 'idle' | 'verifying' | 'verified' | 'not-verified'>>({});
     const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[] | null>(null);
-
-    const handleVerifyOnChain = async (invoiceHash: string) => {
-        setVerificationStatus(prev => ({ ...prev, [invoiceHash]: 'verifying' }));
-
-        try {
-            // Fetch actual status from chain
-            // Status: 0 = Open (Not Paid/Pending), 1 = Settled (Paid)
-            const status = await getInvoiceStatus(invoiceHash);
-
-            if (status === 1) {
-                setVerificationStatus(prev => ({ ...prev, [invoiceHash]: 'verified' }));
-            } else {
-                setVerificationStatus(prev => ({ ...prev, [invoiceHash]: 'not-verified' }));
-            }
-        } catch (error) {
-            console.error("Verification failed:", error);
-            setVerificationStatus(prev => ({ ...prev, [invoiceHash]: 'not-verified' }));
-        }
-    };
 
     const handleKeyDown = () => {
         // if (e.key === 'Enter') handleSearch();
@@ -485,53 +464,7 @@ const Explorer: React.FC = () => {
                                                         )}
                                                     </div>
 
-                                                    {/* Verify On-Chain Button */}
-                                                    <div className="w-[140px] flex justify-end">
-                                                        <button
-                                                            onClick={() => handleVerifyOnChain(inv.invoice_hash)}
-                                                            disabled={verificationStatus[inv.invoice_hash] === 'verifying'}
-                                                            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border transition-all font-medium w-full justify-center ${verificationStatus[inv.invoice_hash] === 'verified'
-                                                                ? 'bg-green-900/20 border-green-500/30 text-green-400'
-                                                                : verificationStatus[inv.invoice_hash] === 'not-verified'
-                                                                    ? 'bg-red-900/20 border-red-500/30 text-red-400'
-                                                                    : verificationStatus[inv.invoice_hash] === 'verifying'
-                                                                        ? 'bg-yellow-900/20 border-yellow-500/30 text-yellow-400 cursor-wait'
-                                                                        : 'bg-purple-900/20 hover:bg-purple-900/40 border-purple-500/20 hover:border-purple-500/50 text-purple-400'
-                                                                }`}
-                                                            title="Verify invoice status on-chain"
-                                                        >
-                                                            {verificationStatus[inv.invoice_hash] === 'verifying' ? (
-                                                                <>
-                                                                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                                    </svg>
-                                                                    Verifying...
-                                                                </>
-                                                            ) : verificationStatus[inv.invoice_hash] === 'verified' ? (
-                                                                <>
-                                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                    </svg>
-                                                                    Verified & Paid
-                                                                </>
-                                                            ) : verificationStatus[inv.invoice_hash] === 'not-verified' ? (
-                                                                <>
-                                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                    </svg>
-                                                                    Not Paid
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                                                    </svg>
-                                                                    Verify On-Chain
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                    </div>
+
                                                 </div>
                                             </td>
                                         </motion.tr>
