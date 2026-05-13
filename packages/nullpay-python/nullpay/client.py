@@ -6,7 +6,7 @@ import secrets
 import time
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Mapping, cast
+from typing import Any, Literal, Mapping, cast
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -84,8 +84,12 @@ class _InvoicesAPI:
         available = ", ".join(f'"{invoice["name"]}"' for invoice in invoices)
         raise NullPayError(f"Invoice \"{name}\" not found in nullpay.json. Available: {available}")
 
-    def get_by_type(self, invoice_type: str) -> list[NullPayInvoice]:
-        return [invoice for invoice in self.get_all() if invoice["type"] == invoice_type]
+    def get_by_type(self, type_name: Literal["multipay", "donation"]) -> list[NullPayInvoice]:
+        """
+        Return all invoices matching the specified type.
+        Mirrors Node SDK: invoices.getByType('multipay' | 'donation')
+        """
+        return [inv for inv in self.get_all() if inv.get("type") == type_name]
 
 
 class _CheckoutSessionsAPI:
@@ -103,7 +107,7 @@ class _CheckoutSessionsAPI:
 
             resolved_params.update(
                 {
-                    "invoice_hash": resolved_params.get("invoice_hash"),
+                    "invoice_hash": resolved_params.get("invoice_hash") or invoice.get("hash") or invoice.get("invoice_hash"),
                     "salt": resolved_params.get("salt") or invoice["salt"],
                     "type": resolved_params.get("type") or invoice["type"],
                     "amount": resolved_params["amount"] if "amount" in resolved_params else invoice.get("amount"),
