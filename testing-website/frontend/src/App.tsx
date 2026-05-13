@@ -404,7 +404,7 @@ export default function App() {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-if (data.checkoutUrl) {
+      if (data.checkout_url || data.checkoutUrl) {
         const pendingType = endpoint === 'checkout/variable'
           ? 'variable'
           : Object.values(donationInvoiceRoutes).includes(endpoint)
@@ -416,7 +416,7 @@ if (data.checkoutUrl) {
         // Store pending checkout info in localStorage before redirect
         // This survives tab closure - success page can recover this info
         window.localStorage.setItem('nullpay_pending_checkout', JSON.stringify({
-          sessionId: data.sessionId,
+          sessionId: data.session_id || data.sessionId,
           invoiceName: endpoint.includes('variable') ? 'variable-checkout' : endpoint.replace('/api/', ''),
           amount: payload.price || payload.amount || null,
           currency: payload.currency || null,
@@ -425,9 +425,8 @@ if (data.checkoutUrl) {
           timestamp: Date.now()
         }));
         setLoadingMessage('Invoice created. Redirecting to NullPay checkout...');
-        window.location.href = data.checkoutUrl;
-      } else {
-        addToast(data.error || 'Failed to initiate checkout', 'error');
+        window.location.href = data.checkout_url || data.checkoutUrl;
+      } else {        addToast(data.error || 'Failed to initiate checkout', 'error');
       }
     } catch (err) {
       addToast('Network error. Is the backend running?','error');
