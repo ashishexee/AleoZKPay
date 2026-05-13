@@ -285,13 +285,7 @@ const MobilePaymentPage = () => {
                             {step === 'SUCCESS' ? 'Null Payment' : step === 'ALREADY_PAID' ? 'Null Invoice' : 'Make'} <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-amber-400 drop-shadow-[0_0_20px_rgba(249,115,22,0.22)]">{step === 'SUCCESS' ? 'Successful' : step === 'ALREADY_PAID' ? 'Paid' : 'Null Payment'}</span>
                         </h1>
 
-                    {invoice && !error && (
-                        <div className="inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-500/10 px-4 py-2 shadow-[0_0_18px_rgba(249,115,22,0.14)]">
-                            <span className="text-sm font-bold text-orange-200 tracking-wide uppercase">
-                                Verified On-Chain
-                            </span>
-                        </div>
-                    )}
+
                 </div>
 
                 <GlassCard variant="heavy" className="p-8 relative overflow-hidden">
@@ -506,7 +500,7 @@ const MobilePaymentPage = () => {
                             </div>
                         ) : (
                             <>
-                                <div className="rounded-2xl border border-white/10 bg-black/25 p-4 space-y-4 mb-4">
+                                <div className="rounded-2xl bg-black/25 p-4 space-y-4 mb-4">
                                     <div>
                                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Payer Note</label>
                                         <textarea
@@ -514,43 +508,46 @@ const MobilePaymentPage = () => {
                                             onChange={(e) => setPayerNote(e.target.value)}
                                             rows={3}
                                             placeholder="Private note for your own paid-invoice history"
-                                            className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${payerNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-neon-primary/40'}`}
+                                            className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${payerNoteTooLong ? 'border-red-500/60' : 'border-transparent focus:border-neon-primary/40'}`}
                                         />
                                         <p className={`mt-2 text-[11px] ${payerNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
                                             Payer note: {payerNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
                                         </p>
                                     </div>
-                                    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                                    <div className={`rounded-xl transition-all duration-300 ${shareMerchantNote ? 'bg-neon-primary/[0.03] shadow-[0_0_20px_rgba(var(--neon-primary-rgb),0.05)]' : 'bg-white/[0.02] hover:bg-white/[0.04]'} p-4`}>
                                         <div className="flex items-center justify-between gap-3">
-                                            <div>
-                                                <p className="text-sm font-semibold text-white">Share note with merchant</p>
-                                                <p className="text-[11px] text-gray-500">Optional note the merchant can see in their dashboard.</p>
+                                            <div className="flex-1">
+                                                <p className={`text-sm font-semibold transition-colors duration-300 ${shareMerchantNote ? 'text-white' : 'text-gray-300'}`}>Share note with merchant</p>
+                                                <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">Enable this to send a separate, private message directly to the merchant's dashboard.</p>
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={() => setShareMerchantNote((current) => !current)}
                                                 aria-pressed={shareMerchantNote}
-                                                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-white/10 transition-colors ${shareMerchantNote ? 'bg-neon-primary/90 justify-end' : 'bg-white/10 justify-start'}`}
+                                                className={`group relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-all duration-300 ${shareMerchantNote ? 'bg-white justify-end shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'bg-white/10 justify-start'}`}
                                             >
-                                                <span className="mx-1 h-5 w-5 rounded-full bg-white shadow-[0_2px_10px_rgba(255,255,255,0.25)] transition-transform" />
+                                                <span className={`mx-1 h-5 w-5 rounded-full shadow-[0_2px_10px_rgba(255,255,255,0.2)] transition-all duration-500 ${shareMerchantNote ? 'bg-black' : 'bg-white/70 group-hover:bg-white'}`} />
                                             </button>
                                         </div>
-                                    </div>
-                                    {shareMerchantNote && (
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Merchant Note</label>
+                                        {shareMerchantNote && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                className="mt-4 border-t border-white/10 pt-4 space-y-3"
+                                            >
                                             <textarea
                                                 value={merchantNote}
                                                 onChange={(e) => setMerchantNote(e.target.value)}
                                                 rows={3}
                                                 placeholder="Optional note visible to the merchant"
-                                                className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${merchantNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-neon-primary/40'}`}
+                                                className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${merchantNoteTooLong ? 'border-red-500/60' : 'border-transparent focus:border-neon-primary/40'}`}
                                             />
-                                            <p className={`mt-2 text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
-                                                Merchant note: {merchantNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
-                                            </p>
-                                        </div>
-                                    )}
+                                                <p className={`px-1 text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                                                    Merchant note: {merchantNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
+                                                </p>
+                                            </motion.div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-3 bg-black/40 p-1 rounded-xl mb-4 border border-white/5 gap-1">

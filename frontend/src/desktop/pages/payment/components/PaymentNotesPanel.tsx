@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from '../../../../shared/components/ui/Button';
 import { LEO_PAYMENT_NOTE_MAX_BYTES } from '../../../../shared/utils/core/leoInputLimits';
 import { PROGRAM_ID } from '../../../../shared/utils/aleo/aleoUtils';
@@ -42,7 +43,7 @@ export const PaymentNotesPanel = ({
     const isMultiPay = programId === PROGRAM_ID;
 
     return (
-        <div className="bg-black/20 rounded-[28px] p-6 lg:p-8 border border-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.28)] flex flex-col space-y-6 h-full justify-center">
+        <div className="bg-black/20 rounded-[28px] p-6 lg:p-8 flex flex-col space-y-6 h-full justify-center">
             {(step === 'SUCCESS' || step === 'ALREADY_PAID') ? (
                 <div className="text-center space-y-4 mb-auto mt-auto">
                     <p className="text-gray-400">
@@ -51,11 +52,11 @@ export const PaymentNotesPanel = ({
                             : 'The transaction has been settled on-chain.'}
                     </p>
                     {isMultiPay && step !== 'ALREADY_PAID' && (
-                        <div className="bg-black/40 border border-orange-400/20 p-4 rounded-xl text-left space-y-3">
+                        <div className="bg-black/40 p-4 rounded-xl text-left space-y-3">
                             <p className="text-xs text-white uppercase font-bold mb-1">Your Receipt Hash</p>
 
                             {receiptHash ? (
-                                <div className="bg-white/10 border border-white/20 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-white/15 transition-colors" onClick={() => {
+                                <div className="bg-white/10 p-2 rounded break-all font-mono text-xs text-white relative cursor-copy hover:bg-white/15 transition-colors" onClick={() => {
                                     navigator.clipboard.writeText(receiptHash);
                                     setCopiedHash(true);
                                     setTimeout(() => setCopiedHash(false), 2000);
@@ -66,7 +67,7 @@ export const PaymentNotesPanel = ({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="bg-white/5 border border-white/10 p-3 rounded-lg text-center">
+                                <div className="bg-white/5 p-3 rounded-lg text-center">
                                     {receiptSearchFailed ? (
                                         <p className="text-xs text-gray-400 italic">
                                             You can get your payment receipt from the profiles page in paid invoices section.
@@ -96,59 +97,66 @@ export const PaymentNotesPanel = ({
                 </div>
             ) : (
                 <div className="space-y-6 mb-auto mt-auto w-full">
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Payer Note</label>
-                        <textarea
-                            value={payerNote}
-                            onChange={(e) => setPayerNote(e.target.value)}
-                            rows={3}
-                            placeholder="Private note for your own paid-invoice history"
-                            className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${payerNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-neon-primary/40'}`}
-                        />
-                        <p className={`mt-2 text-[11px] ${payerNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
-                            Payer note uses one Leo field: {payerNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
-                        </p>
-                    </div>
-                    <div className={`rounded-2xl border transition-all duration-300 ${shareMerchantNote ? 'border-neon-primary/30 bg-neon-primary/[0.03] shadow-[0_0_20px_rgba(var(--neon-primary-rgb),0.05)]' : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'} p-5`}>
-                        <div className="flex items-center justify-between gap-6">
-                            <div className="flex-1">
-                                <h4 className={`text-sm font-bold transition-colors duration-300 ${shareMerchantNote ? 'text-white' : 'text-gray-300'}`}>Share note with merchant</h4>
-                                <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">Enable this to send a separate, private message directly to the merchant's dashboard.</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setShareMerchantNote((current) => !current)}
-                                className={`group relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border transition-all duration-300 ease-in-out outline-none focus:ring-2 focus:ring-neon-primary/20 ${
-                                    shareMerchantNote
-                                        ? 'bg-white border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]'
-                                        : 'bg-white/10 border-white/10'
-                                    }`}
-                            >
-                                <span
-                                    className={`pointer-events-none block h-5 w-5 rounded-full shadow-lg transition-all duration-500 ease-in-out transform ${
-                                        shareMerchantNote
-                                            ? 'translate-x-[24px] scale-90 bg-black'
-                                            : 'translate-x-1 scale-90 opacity-40 bg-white group-hover:opacity-60'
-                                        }`}
-                                />
-                            </button>
-                        </div>
-                    </div>
-                    {shareMerchantNote && (
+                    <div className="rounded-2xl bg-black/30 p-4 space-y-4">
                         <div>
-                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Merchant Note</label>
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 text-left ml-1">Payer Note</label>
                             <textarea
-                                value={merchantNote}
-                                onChange={(e) => setMerchantNote(e.target.value)}
+                                value={payerNote}
+                                onChange={(e) => setPayerNote(e.target.value)}
                                 rows={3}
-                                placeholder="Optional note visible to the merchant"
-                                className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${merchantNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-neon-primary/40'}`}
+                                placeholder="Private note for your own paid-invoice history"
+                                className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${payerNoteTooLong ? 'border-red-500/60' : 'border-transparent focus:border-neon-primary/40'}`}
                             />
-                            <p className={`mt-2 text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
-                                Merchant note: {merchantNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
+                            <p className={`mt-2 text-[11px] ${payerNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                                Payer note uses one Leo field: {payerNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
                             </p>
                         </div>
-                    )}
+                        <div className={`rounded-xl transition-all duration-300 ${shareMerchantNote ? 'bg-neon-primary/[0.03] shadow-[0_0_20px_rgba(var(--neon-primary-rgb),0.05)]' : 'bg-white/[0.02] hover:bg-white/[0.04]'} p-4`}>
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1">
+                                    <h4 className={`text-sm font-bold transition-colors duration-300 ${shareMerchantNote ? 'text-white' : 'text-gray-300'}`}>Share note with merchant</h4>
+                                    <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">Enable this to send a separate, private message directly to the merchant's dashboard.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShareMerchantNote((current) => !current)}
+                                    className={`group relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-all duration-300 ease-in-out outline-none focus:ring-2 focus:ring-neon-primary/20 ${
+                                        shareMerchantNote
+                                            ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.2)]'
+                                            : 'bg-white/10'
+                                        }`}
+                                >
+                                    <span
+                                        className={`pointer-events-none block h-5 w-5 rounded-full shadow-lg transition-all duration-500 ease-in-out transform ${
+                                            shareMerchantNote
+                                                ? 'translate-x-[24px] scale-90 bg-black'
+                                                : 'translate-x-1 scale-90 opacity-40 bg-white group-hover:opacity-60'
+                                            }`}
+                                    />
+                                </button>
+                            </div>
+                            {shareMerchantNote && (
+                                <motion.div 
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="mt-4 pt-4 border-t border-white/10 space-y-3"
+                                >
+                                    <textarea
+                                        value={merchantNote}
+                                        onChange={(e) => setMerchantNote(e.target.value)}
+                                        rows={3}
+                                        placeholder="Optional note visible to the merchant"
+                                        className={`w-full resize-none rounded-xl border bg-black/40 px-4 py-3 text-sm text-white outline-none transition-colors ${merchantNoteTooLong ? 'border-red-500/60' : 'border-transparent focus:border-neon-primary/40'}`}
+                                    />
+                                    <div className="flex justify-between items-center px-1">
+                                        <p className={`text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
+                                            Merchant note: {merchantNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

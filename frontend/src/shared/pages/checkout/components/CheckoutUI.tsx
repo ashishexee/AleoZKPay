@@ -227,7 +227,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                 <p className="text-lg font-bold text-white">{session.merchant_name}</p>
                             </div>
 
-                            <div className="text-center pb-8 pt-2 border-b border-white/10 flex flex-col items-center">
+                            <div className="text-center pb-7 pt-2 border-b border-white/10 flex flex-col items-center">
                                 {isDonation ? (
                                     <div className="w-full flex flex-col items-center animate-fade-in">
                                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">Amount to Donate</p>
@@ -239,7 +239,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                 value={donationAmount}
                                                 onChange={(e) => setDonationAmount(e.target.value)}
                                                 placeholder="0.00"
-                                                className="w-[180px] sm:w-[220px] bg-transparent outline-none text-4xl sm:text-5xl font-bold tracking-tight text-white p-4 text-center placeholder:text-white/10"
+                                                className="w-[170px] sm:w-[210px] bg-transparent outline-none text-[2.5rem] sm:text-[3rem] font-bold tracking-tight text-white p-4 text-center placeholder:text-white/10"
                                             />
                                         </div>
                                     </div>
@@ -247,7 +247,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     <div className="flex flex-col items-center animate-fade-in">
                                         <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Total Amount</p>
                                         <div className="relative inline-block">
-                                            <p className="text-6xl sm:text-7xl font-black text-white tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.15)] leading-none">
+                                            <p className="text-5xl sm:text-6xl font-black text-white tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.15)] leading-none">
                                                 {quote ? quote.expected_amount : session.amount} 
                                             </p>
                                             {quote && (
@@ -312,21 +312,13 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             })}
                                         </div>
                                     </div>
-                                ) : (
-                                    <div className="mt-8 flex justify-center items-center gap-2 bg-white/[0.03] border border-white/10 px-5 py-2.5 rounded-full shadow-inner animate-fade-in">
-                                        <span className="relative flex h-2.5 w-2.5">
-                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500"></span>
-                                        </span>
-                                        <span className="text-[11px] font-bold text-gray-300 uppercase tracking-widest">{displayTokenLabel} Network</span>
-                                    </div>
-                                )}
+                                ) : null}
                             </div>
 
-                            <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start xl:grid-cols-[360px_minmax(0,1fr)]">
-                                <div className="rounded-[28px] border border-white/8 bg-black/25 p-5 lg:p-6 shadow-[0_16px_50px_rgba(0,0,0,0.24)] lg:sticky lg:top-6">
-                                    <div className="space-y-5">
-                                        <div className="flex justify-center">
+                            <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-stretch xl:grid-cols-[360px_minmax(0,1fr)]">
+                                <div className="rounded-[28px] bg-black/25 p-5 lg:p-6 shadow-[0_16px_50px_rgba(0,0,0,0.24)] lg:sticky lg:top-6 h-full">
+                                    <div className="flex h-full flex-col justify-between gap-6">
+                                        <div className="flex justify-center pt-1">
                                             <div className="relative p-3 bg-white rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                                                 <QRCodeSVG
                                                     value={paymentLink}
@@ -349,7 +341,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             <div>
                                                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payment Link</label>
                                                 <div className="flex gap-2">
-                                                    <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-gray-300 truncate flex items-center">
+                                                    <div className="flex min-h-11 flex-1 items-center rounded-xl bg-black/40 px-3 py-2 font-mono text-xs text-gray-300 truncate shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                                                         {paymentLink}
                                                     </div>
                                                     <Button
@@ -375,7 +367,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                             setTimeout(() => setCopiedHash(false), 2000);
                                                         }
                                                     }}
-                                                    className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-white/30 transition-colors group cursor-pointer active:scale-95"
+                                                    className="p-3 rounded-xl bg-black/30 transition-colors group cursor-pointer active:scale-95 hover:bg-black/40"
                                                 >
                                                     <div className="flex justify-between items-center mb-1">
                                                         <span className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Hash</span>
@@ -400,7 +392,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                             setTimeout(() => setCopiedSalt(false), 2000);
                                                         }
                                                     }}
-                                                    className="p-3 rounded-xl border border-white/5 bg-black/30 hover:border-purple-500/30 transition-colors group cursor-pointer active:scale-95"
+                                                    className="p-3 rounded-xl bg-black/30 transition-colors group cursor-pointer active:scale-95 hover:bg-black/40"
                                                 >
                                                     <div className="flex justify-between items-center mb-1">
                                                         <span className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest">Salt</span>
@@ -421,8 +413,8 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     </div>
                                 </div>
 
-                            <div className="space-y-4 rounded-[28px] border border-white/8 bg-black/20 p-5 lg:p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
-                                <div className="rounded-2xl border border-white/10 bg-black/30 p-4 space-y-4">
+                            <div className="rounded-[28px] bg-black/20 p-5 lg:p-6 shadow-[0_20px_70px_rgba(0,0,0,0.28)] h-full flex flex-col gap-5">
+                                <div className="rounded-2xl bg-black/30 p-4 space-y-4">
                                     <div>
                                         <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 text-left ml-1">Payer Note</label>
                                         <textarea
@@ -430,22 +422,25 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                             onChange={(e) => setPayerNote(e.target.value)}
                                             rows={3}
                                             placeholder="Private note for your own records"
-                                            className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${payerNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-white/40'}`}
+                                            className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${payerNoteTooLong ? 'border-red-500/60' : 'border-transparent focus:border-white/40'}`}
                                         />
                                         <p className={`mt-2 text-[11px] ${payerNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
                                             Stored in one Leo field: {payerNoteBytes}/{LEO_PAYMENT_NOTE_MAX_BYTES} bytes.
                                         </p>
                                     </div>
-                                    <div className={`rounded-xl border transition-all duration-300 ${shareMerchantNote ? 'border-white/20 bg-white/[0.04]' : 'border-white/5 bg-white/[0.02]'} p-4`}>
+                                    <div className={`rounded-xl transition-all duration-300 ${shareMerchantNote ? 'bg-white/[0.04] shadow-[0_0_20px_rgba(255,255,255,0.04)]' : 'bg-white/[0.02] hover:bg-white/[0.035]'} p-4`}>
                                         <div className="flex items-center justify-between gap-4">
-                                            <p className="text-sm font-semibold text-white">Share the note with the merchant</p>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-semibold text-white">Share the note with the merchant</p>
+                                                <p className="mt-1 text-[11px] text-gray-500 leading-relaxed">Enable this to send a separate, private message directly to the merchant dashboard.</p>
+                                            </div>
                                             <button
                                                 type="button"
                                                 onClick={() => setShareMerchantNote((current) => !current)}
                                                 aria-pressed={shareMerchantNote}
-                                                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-white/10 transition-colors ${shareMerchantNote ? 'bg-white justify-end' : 'bg-white/10 justify-start'}`}
+                                                className={`group relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-all duration-300 ${shareMerchantNote ? 'bg-white justify-end shadow-[0_0_15px_rgba(255,255,255,0.18)]' : 'bg-white/10 justify-start'}`}
                                             >
-                                                <span className="mx-1 h-5 w-5 rounded-full bg-white shadow-[0_2px_10px_rgba(255,255,255,0.25)] transition-transform" />
+                                                <span className={`mx-1 h-5 w-5 rounded-full shadow-[0_2px_10px_rgba(255,255,255,0.2)] transition-all duration-500 ${shareMerchantNote ? 'bg-black' : 'bg-white/70 group-hover:bg-white'}`} />
                                             </button>
                                         </div>
                                         
@@ -460,7 +455,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                     onChange={(e) => setMerchantNote(e.target.value)}
                                                     rows={3}
                                                     placeholder="Optional note visible to the merchant"
-                                                    className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${merchantNoteTooLong ? 'border-red-500/60' : 'border-white/10 focus:border-white/40'}`}
+                                                    className={`w-full resize-none bg-black/40 border rounded-xl text-sm text-white p-4 transition-colors outline-none ${merchantNoteTooLong ? 'border-red-500/60' : 'border-transparent focus:border-white/40'}`}
                                                 />
                                                 <div className="flex justify-between items-center px-1">
                                                     <p className={`text-[11px] ${merchantNoteTooLong ? 'text-red-400' : 'text-gray-500'}`}>
@@ -472,7 +467,8 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 bg-black/40 p-1 rounded-xl mb-6 border border-white/5 gap-1">
+                                <div className="mt-auto">
+                                <div className="grid grid-cols-3 bg-black/40 p-1 rounded-xl mb-6 gap-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                                     <button
                                         onClick={() => setPaymentMethod('wallet')}
                                         className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${
@@ -513,7 +509,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                     setCardNumber(grouped);
                                                 }}
                                                 placeholder="4123 4567 8910 1112"
-                                                className="w-full bg-black/40 border border-white/10 focus:border-white/50 outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors tracking-[0.22em] text-center"
+                                                className="w-full bg-black/40 border border-transparent focus:border-white/20 outline-none rounded-xl text-sm font-mono text-white p-4 transition-colors tracking-[0.22em] text-center"
                                             />
                                         </div>
                                         <div>
@@ -526,7 +522,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                     value={cardPin}
                                                     onChange={(e) => setCardPin(e.target.value.replace(/\D/g, '').slice(0, CARD_PIN_LENGTH))}
                                                     placeholder="••••••"
-                                                    className="w-full rounded-xl border border-white/10 bg-black/30 px-10 py-3 text-center text-sm tracking-[0.28em] text-white outline-none transition-colors focus:border-white/20"
+                                                    className="w-full rounded-xl border border-transparent bg-black/30 px-10 py-3 text-center text-sm tracking-[0.28em] text-white outline-none transition-colors focus:border-white/15"
                                                 />
                                                 <LockKeyhole className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
                                                 <button type="button" onClick={() => setShowCardPin((current) => !current)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 transition-colors hover:text-white/70">
@@ -542,7 +538,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                     value={cardSecret}
                                                     onChange={(e) => setCardSecret(e.target.value)}
                                                     placeholder="Card secret"
-                                                    className="w-full rounded-xl border border-white/10 bg-black/30 px-10 py-3 text-center text-sm text-white outline-none transition-colors focus:border-white/20"
+                                                    className="w-full rounded-xl border border-transparent bg-black/30 px-10 py-3 text-center text-sm text-white outline-none transition-colors focus:border-white/15"
                                                 />
                                                 <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
                                                 <button type="button" onClick={() => setShowCardSecret((current) => !current)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 transition-colors hover:text-white/70">
@@ -578,7 +574,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                                     value={giftCardPayerAddress}
                                                     onChange={(e) => setGiftCardPayerAddress(e.target.value)}
                                                     placeholder="aleo1..."
-                                                    className={`w-full bg-black/40 border outline-none rounded-xl text-xs font-mono text-white p-4 transition-all ${giftCardPayerAddressInvalid ? 'border-red-500/40 focus:border-red-500/60 bg-red-500/5' : 'border-white/10 focus:border-white/20'}`}
+                                                    className={`w-full bg-black/40 border outline-none rounded-xl text-xs font-mono text-white p-4 transition-all ${giftCardPayerAddressInvalid ? 'border-red-500/40 focus:border-red-500/60 bg-red-500/5' : 'border-transparent focus:border-white/15'}`}
                                                 />
                                                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none opacity-40">
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -652,6 +648,7 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         error={error}
                                     />
                                 )}
+                                </div>
                             </div>
                             </div>
                         </div>
