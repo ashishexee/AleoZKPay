@@ -130,6 +130,21 @@ export const recordsSection: DocsSection = {
                 </div>
             </GlassCard>
 
+            <GlassCard className="overflow-hidden p-0 border-emerald-500/20">
+                <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
+                    <div className="flex items-center gap-3">
+                        <Database className="h-4 w-4 text-emerald-300" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Type: record MerchantReceipt</p>
+                    </div>
+                </div>
+                <div className="px-6 py-5">
+                    <p className="mb-4 text-sm text-gray-400">
+                        The <code className="text-white/80">MerchantReceipt</code> is generated alongside the PayerReceipt during the pay_invoice transition. It is owned by the merchant and serves as cryptographic proof that a specific payment was received for a specific invoice.
+                    </p>
+                    <CodeBlock title="Merchant-Owned Settlement Receipt" language="leo" code={merchantReceiptRecordExample} />
+                </div>
+            </GlassCard>
+
             <GlassCard className="p-6">
                 <h3 className="mb-4 text-xl font-bold text-white">Record Sharding: The Burner Strategy</h3>
                 <p className="mb-4 text-sm text-gray-400 leading-relaxed">

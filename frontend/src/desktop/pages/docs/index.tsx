@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, X, ChevronUp, ChevronLeft, ChevronRight, ArrowUpRight, BookOpen, Menu, X as XIcon, ClipboardCopy, Bot, FileText, Hash } from 'lucide-react';
+import { Search, ChevronUp, ChevronLeft, ChevronRight, ArrowUpRight, BookOpen, Menu, X as XIcon, ClipboardCopy, Bot, FileText, Hash } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { DocsChatbot } from '../../../shared/components/docs/DocsChatbot';
 import { pageVariants, staggerContainer, fadeInUp } from '../../../shared/utils/core/animations';
