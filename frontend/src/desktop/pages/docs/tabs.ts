@@ -1,4 +1,4 @@
-import { Blocks, Bot, FileCode2, Package, Rocket } from 'lucide-react';
+import { Blocks, BookOpen, Bot, FileCode2, Globe, Package, Rocket } from 'lucide-react';
 import type { DocsTab } from './types';
 
 export const docsTabs: DocsTab[] = [
@@ -12,13 +12,19 @@ export const docsTabs: DocsTab[] = [
         id: 'smart-contract',
         label: 'Smart Contract',
         icon: FileCode2,
-        blurb: 'Records, mappings, token-specific payment paths, and transition groups from the Leo contract.',
+        blurb: 'Records, mappings, token-specific payment paths, Oracle conversion, and transition groups from the Leo contract.',
     },
     {
         id: 'sdk',
         label: 'SDK',
         icon: Package,
-        blurb: 'Node SDK, CLI, nullpay.json, and the testing-website backend integration flow.',
+        blurb: 'Node.js SDK, Python SDK, CLI, nullpay.json, checkout sessions, webhooks, and the testing-website integration flow.',
+    },
+    {
+        id: 'api-reference',
+        label: 'API Reference',
+        icon: Globe,
+        blurb: 'Complete backend REST API reference: invoices, checkout, DPS, Oracle, merchants, users, MCP, and scanner endpoints.',
     },
     {
         id: 'integrations',
@@ -30,6 +36,12 @@ export const docsTabs: DocsTab[] = [
         id: 'architecture',
         label: 'Architecture',
         icon: Blocks,
-        blurb: 'How the UI, backend, relayer, MCP, and Aleo contract fit together.',
+        blurb: 'How the UI, backend, relayer, MCP, smart contracts, and Aleo network fit together.',
+    },
+    {
+        id: 'quick-reference',
+        label: 'Quick Ref',
+        icon: BookOpen,
+        blurb: 'Dense cheat sheets: transitions, API endpoints, SDK methods, and error codes for rapid lookup.',
     },
 ];

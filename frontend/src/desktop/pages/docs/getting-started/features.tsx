@@ -9,61 +9,61 @@ export const featuresSection: DocsSection = {
     eyebrow: 'Features',
     title: 'Core product features',
     summary:
-        'NullPay already spans far beyond a single invoice contract. The codebase includes private payment primitives, merchant infrastructure, SDK and CLI tooling, hosted checkout, MCP integrations, and merchant-facing operational features.',
+        'NullPay spans far beyond a single invoice contract. The codebase includes private payment primitives, multi-token support, merchant infrastructure, SDK and CLI tooling, hosted checkout, MCP integrations, Oracle price feeds, gift cards, batch payments, and merchant-facing operational features.',
     content: (
         <div className="space-y-6">
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 <MetricCard
                     icon={Shield}
-                    title="Private checkout sessions"
-                    description="Hosted checkout gives merchants a clean buyer flow while the underlying settlement path still relies on private transfer logic and contract-backed invoice validation."
+                    title="Zero-Knowledge Invoices"
+                    description="Merchant addresses and amounts are hashed on-chain using BHP256, preserving privacy. Only the invoice hash appears publicly; the actual commercial details stay off-chain or encrypted."
                 />
                 <MetricCard
                     icon={Wallet}
                     title="Credits, USDCx, and USAD"
-                    description="The smart contract contains separate token-aware invoice creation and payment paths for the supported private assets, plus ANY-token donation support."
+                    description="Full support for three private token types with dedicated contract transitions. ANY-token donation support lets payers pick their preferred asset at checkout."
                 />
                 <MetricCard
                     icon={GitBranch}
-                    title="Standard, multipay, and donation flows"
-                    description="NullPay supports single-settlement invoices, campaign-style multi-contributor payments, and donation flows where amount and token can be flexible."
+                    title="Standard, Multipay, and Donation"
+                    description="Single-settlement invoices for one-time payments, multi-contributor campaigns for crowdfunding, and open-ended donation flows where amount and token can be flexible."
                 />
                 <MetricCard
                     icon={Package}
-                    title="Node SDK"
-                    description="The backend SDK creates hosted checkout sessions, retrieves sessions, verifies webhooks, and reads local invoice manifests so merchant apps stay server-first."
+                    title="Node &amp; Python SDKs"
+                    description="Backend SDKs for Node.js and Python create hosted checkout sessions, retrieve sessions, verify webhooks, and read local invoice manifests so merchant apps stay server-first."
                 />
                 <MetricCard
                     icon={Sparkles}
-                    title="CLI onboarding"
-                    description="The CLI handles onboarding, invoice generation, relayer-assisted setup, and writing nullpay.json so merchants do not need to hand-roll salts and manifest files."
+                    title="CLI Onboarding Wizard"
+                    description="Interactive onboarding handles invoice generation, salt creation, relayer-assisted setup, and writing nullpay.json so merchants don't hand-roll salts and manifest files."
                 />
                 <MetricCard
                     icon={Bot}
-                    title="MCP integrations"
-                    description="NullPay MCP makes invoice creation, payment, and transaction inspection available in clients like Claude, Codex, OpenClaw, and other MCP-capable tools."
+                    title="MCP Server for AI Clients"
+                    description="NullPay MCP makes invoice creation, payment, and transaction inspection available in clients like Claude, Codex, OpenClaw, Cursor, and Antigravity."
                 />
                 <MetricCard
                     icon={Activity}
-                    title="Realtime merchant monitoring"
-                    description="The platform includes merchant dashboards, status tracking, and live payment feedback so operators can follow settlement without writing a custom monitor."
+                    title="Oracle-Backed Conversions"
+                    description="Pay invoices in any supported token regardless of the invoice's base currency. Signed quotes, verified on-chain by the smart contract, ensure price integrity."
                 />
                 <MetricCard
                     icon={QrCode}
-                    title="Profile QR and payment links"
-                    description="The product includes payment-link and QR-driven flows for easier buyer handoff, especially for donation and recurring merchant scenarios."
+                    title="Profile QR &amp; Payment Links"
+                    description="Persistent payment links tied to merchant wallet. Shareable QR codes and copy-link buttons for fast buyer handoff without backend integration."
                 />
                 <MetricCard
                     icon={Gift}
-                    title="Extended payment infrastructure"
-                    description="Gift cards, burner wallet support, and receipt-centric verification push the system beyond a narrow checkout-only implementation."
+                    title="Gift Cards &amp; Batch Payments"
+                    description="On-chain gift card records with private ownership. Batch payment UIs for payroll, disbursements, and multi-recipient transfers from a single interface."
                 />
             </div>
 
             <Callout title="Feature takeaway" tone="emerald">
                 The biggest thing to understand is that NullPay is already opinionated about the whole merchant lifecycle:
-                invoice definition, checkout session creation, buyer payment UX, backend fulfillment, realtime status, and
-                AI-assisted operations all share one underlying payment model.
+                invoice definition, checkout session creation, buyer payment UX, backend fulfillment, realtime status, Oracle
+                conversion integrity, and AI-assisted operations all share one underlying payment model backed by Aleo ZK proofs.
             </Callout>
         </div>
     ),

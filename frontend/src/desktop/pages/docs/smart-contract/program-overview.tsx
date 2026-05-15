@@ -15,7 +15,7 @@ program zk_pay_proofs_privacy_v29.aleo {
     // Structs:  InvoiceData
     // Records:  Invoice, PayerReceipt, MerchantReceipt
     // Mappings: invoices, salt_to_invoice
-    // Functions: 12 total (4 creation + 6 payment + 2 settlement)
+    // Functions: 13 total (4 creation + 6 payment + 3 settlement/read)
 }
 
 // ─── Wallet & Card Program ────────────────────────────────────────
@@ -23,14 +23,14 @@ import credits.aleo;
 import test_usdcx_stablecoin.aleo;
 import test_usad_stablecoin.aleo;
 
-program zk_pay_proofs_privacy_wallet_v3.aleo {
+program zk_pay_proofs_privacy_wallet_v6.aleo {
     @admin(address="aleo1yu926k0jqqzfv06js4jlsxnf2ejah47rfqsxmwfx6tvuxxgvrqpqdlq5y0")
     constructor() { ... }
 
-    // Structs:  CardLookupData
+    // Structs:  OracleQuote
     // Records:  BurnerWalletRecord, CardProfileRecord, GiftCardRecord
-    // Mappings: card_lookup
-    // Functions: 5 total (backup x2, card profile x2, gift card x1)
+    // Mappings: oracle_address
+    // Functions: 12 total (5 wallet + 1 admin + 6 cross-token oracle)
 }`;
 
 const importedProgramsExample = `// Three external programs are imported by both contracts:
@@ -58,7 +58,7 @@ export const programOverviewSection: DocsSection = {
     eyebrow: 'Smart Contract',
     title: 'Contract programs, imports, and admin',
     summary:
-        'NullPay is deployed as two separate Leo programs on the Aleo network: the core payment program (v26) and the wallet/card helper program (v1). Both import the native Credits and two stablecoin programs for private token transfers.',
+        'NullPay is deployed as two separate Leo programs on the Aleo network: the core payment program (v29) and the wallet/card helper program (v6). Both import the native Credits and two stablecoin programs for private token transfers.',
     content: (
         <div className="space-y-6">
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -69,8 +69,8 @@ export const programOverviewSection: DocsSection = {
                 />
                 <MetricCard
                     icon={Shield}
-                    title="zk_pay_proofs_privacy_wallet_v3"
-                    description="The wallet helper program. Handles burner wallet backup, password backup, card profiles, and gift card minting."
+                    title="zk_pay_proofs_privacy_wallet_v6"
+                    description="The wallet helper program. Handles burner wallet backup, card profiles, gift cards, Oracle cross-token payments, and admin configuration."
                 />
                 <MetricCard
                     icon={GitBranch}
@@ -93,7 +93,7 @@ export const programOverviewSection: DocsSection = {
                 </p>
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2 rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-                        <p className="text-sm font-bold text-white">Core program (<code className="text-orange-300 text-sm">v26</code>)</p>
+                        <p className="text-sm font-bold text-white">Core program (<code className="text-orange-300 text-sm">v29</code>)</p>
                         <ul className="space-y-1 text-xs leading-relaxed text-gray-400">
                             <li>• Owns all invoice state (mappings)</li>
                             <li>• Handles money movement (cross-program calls to token programs)</li>
@@ -102,7 +102,7 @@ export const programOverviewSection: DocsSection = {
                         </ul>
                     </div>
                     <div className="space-y-2 rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-                        <p className="text-sm font-bold text-white">Wallet program (<code className="text-orange-300 text-sm">v1</code>)</p>
+                        <p className="text-sm font-bold text-white">Wallet program (<code className="text-orange-300 text-sm">v6</code>)</p>
                         <ul className="space-y-1 text-xs leading-relaxed text-gray-400">
                             <li>• Owns identity and card lookup state</li>
                             <li>• Creates private records for wallet recovery</li>

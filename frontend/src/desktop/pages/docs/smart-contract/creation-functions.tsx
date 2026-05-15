@@ -15,6 +15,7 @@ fn create_invoice(
     private merchant:      address, // Payout destination
     private amount:        u64,     // Fixed price (microunits)
     private salt:          field,   // Random commitment entropy
+    private title:         field,   // Short invoice title
     private memo:          field,   // Packed text data
     public  expiry_hours:  u32,     // Duration in hours
     public  invoice_type:  u8,      // Standard=0, Multi=1, Donation=2

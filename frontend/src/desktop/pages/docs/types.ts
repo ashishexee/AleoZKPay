@@ -5,8 +5,10 @@ export type DocsTabId =
     | 'getting-started'
     | 'smart-contract'
     | 'sdk'
+    | 'api-reference'
     | 'integrations'
-    | 'architecture';
+    | 'architecture'
+    | 'quick-reference';
 
 export type DocsTab = {
     id: DocsTabId;

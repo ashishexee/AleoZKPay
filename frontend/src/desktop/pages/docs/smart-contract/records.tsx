@@ -18,6 +18,7 @@ record Invoice {
     token_type:   u8,       // Currency ID
     invoice_type: u8,       // Context ID
     salt:         field,    // Hash entropy
+    title:        field,    // Short invoice title
     memo:         field,    // Merchant description
     wallet_type:  u8        // Receipt destination contextual identifier
 }
@@ -46,7 +47,24 @@ record PayerReceipt {
     amount:       u64,      // Final paid amount
     token_type:   u8,       // Currency used
     payer_note:   field,    // Private buyer memo
-    timestamp:    u64       // Zero (Place-holder)
+    timestamp:    u64       // Block height at payment time
+}`;
+
+const merchantReceiptRecordExample = `/**
+ * TRANSACTION PROOF: record MerchantReceipt
+ * 
+ * Generated during the pay_invoice transition. 
+ * Owned by the MERCHANT. Proves that a specific 
+ * payment was received for a specific invoice.
+ */
+
+record MerchantReceipt {
+    owner:          address,  // The Merchant
+    receipt_hash:   field,    // Unique Payment ID (matches PayerReceipt)
+    invoice_hash:   field,    // Link to the settled invoice
+    amount:         u64,      // Amount received
+    token_type:     u8,       // Currency used
+    merchant_note:  field     // Merchant-visible note
 }`;
 
 export const recordsSection: DocsSection = {

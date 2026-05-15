@@ -92,7 +92,7 @@ export const mappingsSection: DocsSection = {
                 </div>
                 <div className="px-6 py-5">
                     <p className="mb-4 text-sm text-gray-400">
-                        The <code className="text-orange-300">invoices</code> mapping stores the static data for every payment request. This includes the <code className="text-white/80">merchant_address</code> and the <code className="text-white/80">amount_paid</code>.
+                        The <code className="text-orange-300">invoices</code> mapping stores the static metadata for every payment request: <code className="text-white/80">expiry_height</code>, <code className="text-white/80">status</code>, <code className="text-white/80">invoice_type</code>, <code className="text-white/80">token_type</code>, and <code className="text-white/80">wallet_type</code>.
                     </p>
                     <CodeBlock title="invoices: field => InvoiceData" language="leo" code={invoicesMappingExample} />
                 </div>

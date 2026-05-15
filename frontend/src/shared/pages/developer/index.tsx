@@ -15,7 +15,7 @@ import { SdkMethodsGuide } from './components/SdkMethodsGuide';
 import { WebhooksGuide } from './components/WebhooksGuide';
 import { SdkReference } from './components/SdkReference';
 import { DocsChatbot } from '../../components/docs/DocsChatbot';
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
 
 const fadeInUp = {
     hidden: { opacity: 0, y: 30 },

@@ -20,18 +20,20 @@ struct InvoiceData {
     wallet_type:   u8      // Context: Main(0) | Burner(1)
 }`;
 
-const cardLookupStructExample = `/**
- * WALLET DIRECTORY: struct CardLookupData
+const oracleQuoteStructExample = `/**
+ * CROSS-TOKEN STATE: struct OracleQuote
  * 
- * Minimal public mapping for gift cards. It stores only 
- * enough information to verify the owner—keeping the 
- * card details themselves in private records.
+ * This struct represents a price quote from the NullPay Oracle.
+ * It is used in cross-token payment transitions to convert 
+ * between Credits, USDCx, and USAD at verified rates.
  */
 
-struct CardLookupData {
-    main_owner:      address, // Creator of the profile
-    card_status:     u8,      // Active(0) | Inactive(1)
-    profile_version: u8       // Upgradability marker
+struct OracleQuote {
+    original_amount_micro:  u64,   // Amount in source token
+    converted_amount_micro: u64,   // Amount in target token
+    from_token_type:        u8,    // Source: Credits(0) | USDCx(1) | USAD(2)
+    to_token_type:          u8,    // Target: Credits(0) | USDCx(1) | USAD(2)
+    expires_at:             u32    // Block height expiry
 }`;
 
 export const structsSection: DocsSection = {
@@ -100,14 +102,14 @@ export const structsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Shield className="h-4 w-4 text-blue-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">Definition: CardLookupData</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">Definition: OracleQuote</p>
                     </div>
                 </div>
                 <div className="px-6 py-5">
                     <p className="mb-4 text-sm text-gray-400">
-                        Used exclusively in the <code className="text-white/80">zk_pay_proofs_privacy_wallet_v3.aleo</code> program to manage gift card and burner wallet permissions.
+                        Used exclusively in the <code className="text-white/80">zk_pay_proofs_privacy_wallet_v6.aleo</code> program for cross-token Oracle price quotes.
                     </p>
-                    <CodeBlock title="Wallet Registry Schema" language="leo" code={cardLookupStructExample} />
+                    <CodeBlock title="Oracle Quote Schema" language="leo" code={oracleQuoteStructExample} />
                 </div>
             </GlassCard>
 
