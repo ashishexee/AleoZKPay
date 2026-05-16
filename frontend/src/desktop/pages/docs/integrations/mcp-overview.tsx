@@ -158,7 +158,7 @@ export const mcpOverviewSection: DocsSection = {
                     <div className="space-y-4">
                         <h3 className="text-sm font-black uppercase tracking-widest text-blue-300">Burner Wallet Model</h3>
                         <p className="text-sm text-gray-400 leading-relaxed font-light">
-                            The MCP server encourages the use of **Burner Wallets** for automated agent workflows. This provides a sandbox for AI-driven transactions without needing to authorize your main cold-storage wallet for every interaction.
+                            The MCP server encourages the use of <b>Burner Wallets</b> for automated agent workflows. This provides a sandbox for AI-driven transactions without needing to authorize your main cold-storage wallet for every interaction.
                         </p>
                     </div>
                 </div>

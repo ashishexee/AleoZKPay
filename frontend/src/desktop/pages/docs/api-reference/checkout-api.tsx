@@ -5,7 +5,6 @@ import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
 const checkoutEndpoints = `// ─── Checkout API ──────────────────────────────────────────────
 // Base: /api/checkout
-// Source: backend/src/routes/checkout.routes.js
 // Auth: Bearer token (secret key) required for POST
 
 // POST /api/checkout/sessions — Create checkout session

@@ -68,7 +68,7 @@ export const oracleSection: DocsSection = {
                             <h4 className="text-sm font-bold text-white">Pillar 1: Live Price Feed</h4>
                         </div>
                         <p className="text-sm text-gray-400 leading-relaxed">
-                            The backend Oracle controller (<code className="rounded bg-white/5 px-1.5 py-0.5 text-orange-300">backend/src/controllers/oracle.controller.js</code>) 
+                            The backend Oracle route (<code className="rounded bg-white/5 px-1.5 py-0.5 text-orange-300">/api/oracle</code>) 
                             fetches the current CREDITS/USD price from the Provable Explorer API. The result is cached for 60 seconds to balance freshness 
                             against API rate limits. Stablecoins (USDCx, USAD) are treated as $1.00 USD pegged — no price feed needed.
                         </p>

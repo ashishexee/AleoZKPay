@@ -173,7 +173,7 @@ export const securityBoundariesSection: DocsSection = {
                 <h3 className="mb-4 text-xl font-bold text-white">Off-chain encryption</h3>
                 <p className="mb-3 text-sm leading-relaxed text-gray-400">
                     Invoice metadata stored in the NullPay backend (merchant addresses, payer info, notes) is encrypted using
-                    AES-256-GCM before being persisted in Supabase:
+                    AES-256-GCM before being persisted in the backend database:
                 </p>
                 <div className="grid gap-4 md:grid-cols-3">
                     <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">

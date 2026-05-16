@@ -5,8 +5,6 @@ import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
 const oracleEndpoints = `// ─── Oracle API ────────────────────────────────────────────────
 // Base: /api/oracle
-// Source: backend/src/routes/oracle.routes.js
-// Controller: backend/src/controllers/oracle.controller.js
 
 // GET /api/oracle/quote — Get a signed conversion quote
 // Query params:

@@ -129,7 +129,7 @@ export const invoiceHelpersSection: DocsSection = {
                 </p>
                 <CodeBlock title="Dynamic Express.js Registration" language="js" code={routeAutomationExample} />
                 <Callout title="Why not use these for 'Standard' invoices?" tone="orange">
-                    Standard (one-time) invoices are physically spent after a single payment. Storing them in a static JSON file would result in "Already Spent" errors for all subsequent users. **Standard invoices must always use Pattern 2 (Dynamic Session Creation).**
+                    Standard (one-time) invoices are physically spent after a single payment. Storing them in a static JSON file would result in "Already Spent" errors for all subsequent users. <b>Standard invoices must always use Pattern 2 (Dynamic Session Creation).</b>
                 </Callout>
             </GlassCard>
 

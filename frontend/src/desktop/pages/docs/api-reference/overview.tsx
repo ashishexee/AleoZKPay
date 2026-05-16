@@ -3,7 +3,7 @@ import type { DocsSection } from '../types';
 import { Callout, CodeBlock, MetricCard } from '../ui';
 
 const backendBaseExample = `// NullPay Backend API
-// Base URL: https://nullpay-backend-ib5q4.ondigitalocean.app/api
+// Base URL: https://api.nullpay.xyz
 // All endpoints return JSON. Auth via secret key or wallet address.
 
 // Authentication methods:
@@ -47,7 +47,7 @@ export const apiOverviewSection: DocsSection = {
             <CodeBlock title="Response format" language="text" code={commonResponseExample} />
 
             <Callout title="Production URL" tone="blue">
-                The production backend is hosted at <code className="rounded bg-white/10 px-1.5 py-0.5">https://nullpay-backend-ib5q4.ondigitalocean.app/api</code>.
+                The production backend is hosted at <code className="rounded bg-white/10 px-1.5 py-0.5">https://api.nullpay.xyz</code>.
                 All API routes are unversioned (no <code className="rounded bg-white/10 px-1.5 py-0.5">/v1</code> prefix) for stability.
             </Callout>
         </div>

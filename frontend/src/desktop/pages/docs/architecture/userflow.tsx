@@ -51,7 +51,7 @@ export const userflowSection: DocsSection = {
                             <h3 className="text-sm font-bold text-white">Onboard & Configure</h3>
                         </div>
                         <p className="text-xs text-gray-400 leading-relaxed">
-                            Merchant runs <code className="text-orange-300/80">nullpay onboard</code> via CLI. This generates <code className="text-orange-300/80">nullpay.json</code>, creates the merchant Supabase record, and registers the wallet adaptor.
+                            Merchant runs <code className="text-orange-300/80">nullpay onboard</code> via CLI. This generates <code className="text-orange-300/80">nullpay.json</code>, registers the merchant account, and sets up the wallet adaptor.
                         </p>
                     </GlassCard>
 

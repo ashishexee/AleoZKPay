@@ -27,7 +27,7 @@ const nullpay = new NullPay({
     // OPTIONAL: override the API base URL (defaults to production backend)
     // Useful for local development when proxying through a different tunnel.
     baseURL: process.env.NULLPAY_BASE_URL
-          || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api',
+          || 'https://api.nullpay.xyz',
 
     // OPTIONAL: directory where nullpay.json lives (defaults to process.cwd())
     // Essential for Vercel/Next.js where process.cwd() might point to a root
@@ -121,8 +121,8 @@ export const nodeSdkSection: DocsSection = {
                     <p className="mb-1 text-sm font-bold text-white">Technical Manifest</p>
                     <ul className="mt-2 space-y-2 text-xs text-gray-400">
                         <li>• <code className="rounded bg-white/5 px-1 py-0.5">NullPay</code>: The primary controller class for all operations.</li>
-                        <li>• **Full Type Safety**: Exported TypeScript interfaces for every request, response, and event object.</li>
-                        <li>• **Auto-Dependency**: Includes <code className="rounded bg-white/5 px-1 py-0.5">node-fetch</code> (embedded) for universal HTTP support.</li>
+                        <li>• <b>Full Type Safety</b>: Exported TypeScript interfaces for every request, response, and event object.</li>
+                        <li>• <b>Auto-Dependency</b>: Includes <code className="rounded bg-white/5 px-1 py-0.5">node-fetch</code> (embedded) for universal HTTP support.</li>
                     </ul>
                 </div>
             </GlassCard>

@@ -115,7 +115,7 @@ export const nullpayJsonSection: DocsSection = {
             <GlassCard className="p-6 border-emerald-500/20 bg-emerald-500/5">
                 <h3 className="mb-4 text-xl font-bold text-white">Cryptographic Theory: BHP256 Hashing</h3>
                 <p className="mb-4 text-sm text-gray-400 leading-relaxed">
-                    Unlike standard web hashes (MD5, SHA256), NullPay uses **BHP256 (Pedersen Hash)**. This algorithm is optimized for Zero-Knowledge circuits, allowing the buyer to prove they paid exactly the amount specified in the manifest without revealing the manifest content to the entire network.
+                    Unlike standard web hashes (MD5, SHA256), NullPay uses <b>BHP256 (Pedersen Hash)</b>. This algorithm is optimized for Zero-Knowledge circuits, allowing the buyer to prove they paid exactly the amount specified in the manifest without revealing the manifest content to the entire network.
                 </p>
                 <CodeBlock title="Hash Derivation Logic" language="js" code={hashingLogicExample} />
             </GlassCard>

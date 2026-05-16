@@ -131,8 +131,8 @@ export const overviewSection: DocsSection = {
                             </tr>
                             <tr className="border-b border-white/[0.04]">
                                 <td className="px-4 py-3 font-semibold text-white">Backend</td>
-                                <td className="px-4 py-3 font-mono text-xs text-orange-300">Node.js + Express + Supabase</td>
-                                <td className="px-4 py-3 text-sm text-gray-400">REST API, AES-256-GCM encryption, Supabase Realtime, relayer, DPS integration, Telegram bot, Oracle price feeds.</td>
+                                <td className="px-4 py-3 font-mono text-xs text-orange-300">Node.js + Express</td>
+                                <td className="px-4 py-3 text-sm text-gray-400">REST API, AES-256-GCM encryption, real-time events, relayer, DPS integration, Telegram bot, Oracle price feeds.</td>
                             </tr>
                             <tr className="border-b border-white/[0.04]">
                                 <td className="px-4 py-3 font-semibold text-white">SDKs</td>

@@ -56,7 +56,7 @@ export const apiCheatSheetSection: DocsSection = {
             </GlassCard>
 
             <Callout title="Base URL" tone="blue">
-                Production: <code className="text-orange-300">https://nullpay-backend-ib5q4.ondigitalocean.app/api</code>
+                Production: <code className="text-orange-300">https://api.nullpay.xyz</code>
                 <br />
                 All routes are unversioned. No <code className="text-gray-400">/v1</code> prefix. CORS is enabled for nullpay.app and localhost:5173.
             </Callout>

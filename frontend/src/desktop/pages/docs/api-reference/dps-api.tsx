@@ -5,7 +5,6 @@ import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
 const dpsEndpoints = `// ─── DPS (Delegated Proving Service) API ────────────────────
 // Base: /api/dps
-// Source: backend/src/routes/dps.routes.js
 
 // POST /api/dps/jwt — Get a JWT token for DPS authentication
 // Body: { consumer_id, api_key }

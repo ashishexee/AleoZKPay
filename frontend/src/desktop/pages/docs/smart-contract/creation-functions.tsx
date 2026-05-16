@@ -72,7 +72,7 @@ export const creationFunctionsSection: DocsSection = {
                         <h3 className="text-lg font-bold text-white">Privacy First</h3>
                     </div>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                        Notice that <code className="text-white/80">merchant</code>, <code className="text-white/80">amount</code>, and <code className="text-white/80">salt</code> are all **PRIVATE** inputs. Even though the resulting hash is public, the inputs remains shielded on-chain.
+                        Notice that <code className="text-white/80">merchant</code>, <code className="text-white/80">amount</code>, and <code className="text-white/80">salt</code> are all <b>PRIVATE</b> inputs. Even though the resulting hash is public, the inputs remains shielded on-chain.
                     </p>
                 </GlassCard>
             </div>
@@ -81,7 +81,7 @@ export const creationFunctionsSection: DocsSection = {
                 <div className="border-b border-white/[0.08] bg-white/[0.02] px-6 py-4">
                     <div className="flex items-center gap-3">
                         <Plus className="h-4 w-4 text-orange-300" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">Transition: create_invoice</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">Function: create_invoice</p>
                     </div>
                 </div>
                 <div className="px-6 py-5">
@@ -95,7 +95,7 @@ export const creationFunctionsSection: DocsSection = {
                     <h3 className="text-xl font-bold">Cryptographic Commitment Design</h3>
                 </div>
                 <p className="mb-4 text-sm text-gray-400 leading-relaxed">
-                    NullPay uses **Homomorphic Commitment** principles. By hashing each input part individually and then summing them, we allow for future protocol upgrades where "blinded amounts" or "merchant groups" can be verified without breaking the original hash format.
+                    NullPay uses <b>Homomorphic Commitment</b> principles. By hashing each input part individually and then summing them, we allow for future protocol upgrades where "blinded amounts" or "merchant groups" can be verified without breaking the original hash format.
                 </p>
                 <CodeBlock title="Protocol Hashing Strategy" language="js" code={hashDerivationDeepDive} />
             </GlassCard>

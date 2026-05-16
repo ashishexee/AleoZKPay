@@ -21,7 +21,7 @@ nullpay = NullPay({
 
     # OPTIONAL: override the API base URL (defaults to production backend)
     # Useful for local development when proxying through a different tunnel.
-    "base_url": os.getenv("NULLPAY_BASE_URL", "https://nullpay-backend-ib5q4.ondigitalocean.app/api"),
+    "base_url": os.getenv("NULLPAY_BASE_URL", "https://api.nullpay.xyz"),
 
     # OPTIONAL: directory where nullpay.json lives (defaults to Path.cwd())
     "project_root": str(Path(__file__).parent),
@@ -125,8 +125,8 @@ export const pythonSdkSection: DocsSection = {
                     <p className="mb-1 text-sm font-bold text-white">Technical Manifest</p>
                     <ul className="mt-2 space-y-2 text-xs text-gray-400">
                         <li>• <code className="rounded bg-white/5 px-1 py-0.5">NullPay</code>: The primary client class for all operations.</li>
-                        <li>• **Configuration**: Accepts dictionary config with snake_case or camelCase keys for ease of use.</li>
-                        <li>• **Auto-Dependency**: Minimal dependencies, heavily relying on the Python standard library.</li>
+                        <li>• <b>Configuration</b>: Accepts dictionary config with snake_case or camelCase keys for ease of use.</li>
+                        <li>• <b>Auto-Dependency</b>: Minimal dependencies, heavily relying on the Python standard library.</li>
                     </ul>
                 </div>
             </GlassCard>

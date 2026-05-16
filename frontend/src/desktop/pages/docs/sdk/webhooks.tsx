@@ -41,7 +41,7 @@ app.use(cors());
 
 const nullpay = new NullPay({
     secretKey: process.env.NULLPAY_SECRET_KEY,
-    baseURL: process.env.NULLPAY_BASE_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api',
+    baseURL: process.env.NULLPAY_BASE_URL || 'https://api.nullpay.xyz',
     projectRoot: __dirname,
     configPath: path.join(__dirname, 'nullpay.json')
 });`;

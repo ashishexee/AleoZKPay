@@ -86,9 +86,9 @@ export const architectureOverviewSection: DocsSection = {
                             Node.js nodes managing session lifecycles, gas sponsorship for gasless UX, and proof propagation to the Aleo L1 network.
                         </p>
                         <div className="mt-4 flex flex-wrap gap-2">
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">checkout.controller</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">invoices.controller</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">sdk.controller</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">Checkout Routes</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">Invoice Routes</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">SDK Routes</span>
                         </div>
                     </GlassCard>
                     <GlassCard className="p-6 border-white/[0.05] bg-white/[0.01] border-l-2 border-l-orange-500/10" hoverEffect={false}>
@@ -96,12 +96,12 @@ export const architectureOverviewSection: DocsSection = {
                             <ShieldCheck className="h-3.5 w-3.5 text-orange-400/70" /> Blind Database Model
                         </h3>
                         <p className="text-xs text-gray-500 leading-relaxed font-light">
-                            Private orchestration using Supabase. Minimal metadata storage; sensitive credentials remain isolated in secure local user sessions.
+                            Private orchestration with minimal metadata storage; sensitive credentials remain isolated in secure local user sessions.
                         </p>
                         <div className="mt-4 flex flex-wrap gap-2">
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">supabase</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">users.controller</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">merchants.controller</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">Encrypted Store</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">User Routes</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[9px] text-gray-500">Merchant Routes</span>
                         </div>
                     </GlassCard>
                 </div>

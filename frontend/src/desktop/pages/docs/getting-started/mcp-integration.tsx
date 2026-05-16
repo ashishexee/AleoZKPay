@@ -25,7 +25,28 @@ const mcpToolsExample = `// NullPay MCP exposes the following tools to AI client
 // ─ Transaction History ────────────────────────────────────────
 // mcp_nullpay_get_transaction_info
 //   Retrieve a single invoice by hash, or list recent transactions
-//   for the active wallet.`;
+//   for the active wallet.
+//
+// ─ Fund Management ────────────────────────────────────────────
+// mcp_nullpay_sweep_funds
+//   Sweep settled balances from records to cold storage.
+//   Supports main and burner wallet targets.
+//
+// mcp_nullpay_check_burner_balance
+//   Check the balance of the current burner wallet.
+//   Returns available credits and token balances.
+//
+// ─ Alternative Payment Methods ────────────────────────────────
+// mcp_nullpay_pay_with_giftcard
+//   Pay an invoice using a gift card record.
+//
+// mcp_nullpay_pay_with_card
+//   Pay an invoice using a card profile record.
+//
+// ─ Analytics ──────────────────────────────────────────────────
+// mcp_nullpay_get_analytics
+//   Return payment volume and settlement statistics.
+//   Filters by date range, token type, and wallet.`;
 
 const mcpStandardInvoiceToolExample = `// Example: AI agent creates a standard invoice
 // (The model drives this based on your conversation context)

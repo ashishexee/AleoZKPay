@@ -4,8 +4,6 @@ import { Callout, CodeBlock, MetricCard } from '../ui';
 import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
 const merchantsEndpoints = `// ─── Merchants & Users API ──────────────────────────────────────
-// Source: backend/src/routes/merchants.routes.js
-//         backend/src/routes/users.routes.js
 
 // Merchants routes (/api/merchants):
 // POST /api/merchants/register — Register as a merchant

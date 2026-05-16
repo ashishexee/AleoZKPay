@@ -4,7 +4,7 @@ import { installCliCommand, installMcpCommand, installNodeCommand, nodeInitExamp
 import { Callout, CodeBlock, MetricCard } from '../ui';
 
 const backendEnvExample = `NULLPAY_SECRET_KEY=your_api_key_here
-NULLPAY_BASE_URL=https://nullpay-backend-ib5q4.ondigitalocean.app/api
+NULLPAY_BASE_URL=https://api.nullpay.xyz
 FRONTEND_URL=https://your-frontend.example.com`;
 
 const createSessionRouteExample = `app.post('/api/checkout/create', async (req, res) => {

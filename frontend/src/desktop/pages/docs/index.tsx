@@ -380,7 +380,7 @@ const SectionNav = ({
 };
 
 const NULLPAY_AI_CONTEXT = {
-    about: `NullPay is a privacy-first payment protocol built on Aleo (a zero-knowledge proof blockchain). It enables merchants to create invoices and accept payments without exposing transaction details on-chain. Invoice details are hashed with BHP256, payments run through private transfer paths, and both merchant and payer receive private receipts verified by zero-knowledge proofs. The platform includes: a hosted checkout UI, merchant backend (Node.js/Express + Supabase), Node.js SDK (@nullpay/node), Python SDK (@nullpay/python), CLI onboarding tool (@nullpay/cli), MCP server for AI clients (@nullpay/mcp), and merchant dashboards.`,
+    about: `NullPay is a privacy-first payment protocol built on Aleo (a zero-knowledge proof blockchain). It enables merchants to create invoices and accept payments without exposing transaction details on-chain. Invoice details are hashed with BHP256, payments run through private transfer paths, and both merchant and payer receive private receipts verified by zero-knowledge proofs. The platform includes: a hosted checkout UI, merchant backend (Node.js/Express), Node.js SDK (@nullpay/node), Python SDK (@nullpay/python), CLI onboarding tool (@nullpay/cli), MCP server for AI clients (@nullpay/mcp), and merchant dashboards.`,
     contracts: [
         'zk_pay_proofs_privacy_v29.aleo — Core payment contract (invoice creation, payment, settlement, Oracle quotes)',
         'zk_pay_proofs_privacy_wallet_v6.aleo — Wallet helper (burner backup, card profiles, gift cards, cross-token Oracle payments)',

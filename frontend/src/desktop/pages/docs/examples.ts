@@ -8,7 +8,7 @@ const { NullPay } = require('@nullpay/node');
 
 const nullpay = new NullPay({
   secretKey: process.env.NULLPAY_SECRET_KEY,
-  baseURL: process.env.NULLPAY_BASE_URL || 'https://nullpay-backend-ib5q4.ondigitalocean.app/api',
+  baseURL: process.env.NULLPAY_BASE_URL || 'https://api.nullpay.xyz',
   projectRoot: __dirname,
   configPath: path.join(__dirname, 'nullpay.json'),
 });`;
@@ -17,7 +17,7 @@ export const pythonInitExample = `from nullpay import NullPay
 
 client = NullPay(
     secret_key="sk_test_...",
-    base_url="https://nullpay-backend-ib5q4.ondigitalocean.app/api"
+    base_url="https://api.nullpay.xyz"
 )`;
 
 export const testingWebsiteBackendExample = `for (const invoice of nullpay.invoices.getAll()) {
@@ -240,8 +240,7 @@ Admin:
 - set_oracle_address`;
 
 export const invoiceCreateLeoCode = `// Leo: create_invoice (Credits)
-// Located in: contracts/zk_pay/src/main.leo
-transition create_invoice(
+fn create_invoice(
     private merchant: address,
     private amount: u64,
     private salt: field,
@@ -295,8 +294,7 @@ transition create_invoice(
 }`;
 
 export const payInvoiceLeoCode = `// Leo: pay_invoice (Credits)
-// Located in: contracts/zk_pay/src/main.leo
-transition pay_invoice(
+fn pay_invoice(
     pay_record: credits.aleo::credits,
     merchant: address,
     public payer_owner: address,
@@ -375,7 +373,6 @@ transition pay_invoice(
 }`;
 
 export const oracleQuoteLeoCode = `// Leo: OracleQuote struct (wallet program)
-// Located in: contracts/zk_pay_wallet/src/main.leo
 struct OracleQuote {
     original_amount_micro: u64,    // Invoice amount in base token micros
     converted_amount_micro: u64,   // Payer amount in their token micros
@@ -385,7 +382,7 @@ struct OracleQuote {
 }
 
 // Example: pay_invoice_credits_via_usdcx
-transition pay_invoice_credits_via_usdcx(
+fn pay_invoice_credits_via_usdcx(
     pay_record: test_usdcx_stablecoin.aleo::Token,
     merchant: address,
     public payer_owner: address,
@@ -427,7 +424,7 @@ transition pay_invoice_credits_via_usdcx(
     }
 }`;
 
-export const mcpToolsExample = `// NullPay MCP exposes four tools to AI clients:
+export const mcpToolsExample = `// NullPay MCP exposes nine tools to AI clients:
 //
 // 1. login
 //    - Creates or resumes an MCP session
@@ -448,6 +445,26 @@ export const mcpToolsExample = `// NullPay MCP exposes four tools to AI clients:
 // 4. get_transaction_info
 //    - Fetches one invoice by hash or lists recent invoices
 //    - Enriches with record-backed amount if private key available
+//
+// 5. sweep_funds
+//    - Sweeps settled balances from records to cold storage
+//    - Supports main and burner wallet targets
+//
+// 6. pay_with_giftcard
+//    - Pays an invoice using a gift card record
+//    - Redeems the gift card balance on-chain
+//
+// 7. pay_with_card
+//    - Pays an invoice using a card profile
+//    - Debits from the linked card record balance
+//
+// 8. get_analytics
+//    - Returns payment volume and settlement statistics
+//    - Filters by date range, token type, and wallet
+//
+// 9. check_burner_balance
+//    - Checks the balance of the current burner wallet
+//    - Returns available credits and token balances
 //
 // Session model:
 // - Per-process in-memory session

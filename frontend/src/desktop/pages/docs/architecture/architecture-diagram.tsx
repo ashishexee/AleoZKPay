@@ -83,15 +83,14 @@ export const architectureDiagramSection: DocsSection = {
                             <h3 className="text-lg font-bold">L2 — Infrastructure Layer</h3>
                         </div>
                         <p className="text-sm leading-relaxed text-gray-400 mb-4">
-                            The backend orchestration layer: Node.js/Express controllers manage checkout sessions, invoice CRUD, DPS relay, Oracle quotes, and webhook dispatch. Supabase stores minimal metadata while private keys remain local.
+                            The backend orchestration layer: Express routes manage checkout sessions, invoice CRUD, DPS relay, Oracle quotes, and webhook dispatch. Metadata is persisted server-side while private keys remain local.
                         </p>
                         <div className="flex flex-wrap gap-2">
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">checkout.controller</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">invoices.controller</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">dps.controller</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">sdk.controller</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">oracle.controller</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">Supabase</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">Checkout Routes</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">Invoice Routes</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">DPS Relay</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">SDK Routes</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">Oracle Routes</span>
                         </div>
                     </GlassCard>
 
@@ -105,8 +104,8 @@ export const architectureDiagramSection: DocsSection = {
                         </p>
                         <div className="flex flex-wrap gap-2">
                             <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">Relayer Node</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">DPS Controller</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">HSM Key Vault</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">DPS Service</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">Key Management</span>
                         </div>
                     </GlassCard>
 
@@ -131,11 +130,11 @@ export const architectureDiagramSection: DocsSection = {
                             <h3 className="text-lg font-bold">L-1 — Trust & Identity</h3>
                         </div>
                         <p className="text-sm leading-relaxed text-gray-400 mb-4">
-                            The cryptographic foundation: BHP256 commitment hashes, Poseidon salts, AES-256-GCM encrypted local storage, and Aleo account identity (view key / private key / address triple). No seed phrase ever leaves the local device.
+                            The cryptographic foundation: BHP256 commitment hashes, random field salts, AES-256-GCM encrypted local storage, and Aleo account identity (view key / private key / address triple). No seed phrase ever leaves the local device.
                         </p>
                         <div className="flex flex-wrap gap-2">
                             <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">BHP256</span>
-                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">Poseidon</span>
+                            <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">Pedersen Commitment</span>
                             <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">AES-256-GCM</span>
                             <span className="px-2 py-0.5 rounded bg-white/[0.03] text-[10px] text-gray-500 font-mono">aleo-wallet-adaptor</span>
                         </div>

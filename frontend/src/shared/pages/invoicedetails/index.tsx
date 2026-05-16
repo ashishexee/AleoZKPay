@@ -417,7 +417,31 @@ const InvoiceDetailsPage: React.FC = () => {
         } finally { setPdfLoading(false); }
     };
 
-    const handleCopyLink = () => { navigator.clipboard.writeText(window.location.href); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+    const handleCopyLink = () => {
+        if (!invoice) return;
+        const merchant = invoice.designated_address || invoice.merchant_address || '';
+        if (merchant && invoice.salt) {
+            const params = new URLSearchParams({
+                merchant,
+                amount: invoice.invoice_type === 2 ? '0' : String(invoice.amount ?? 0),
+                salt: invoice.salt
+            });
+            if (invoice.token_type === 1) params.append('token', 'usdcx');
+            if (invoice.token_type === 2) params.append('token', 'usad');
+            if (invoice.token_type === 3) params.append('token', 'any');
+            if (invoice.invoice_type === 1) params.append('type', 'multipay');
+            if (invoice.invoice_type === 2) params.append('type', 'donation');
+            if (invoice.title) params.append('title', invoice.title);
+            if (invoice.memo) params.append('memo', invoice.memo);
+            navigator.clipboard.writeText(`${window.location.origin}/pay?${params.toString()}`);
+        } else if (invoice.invoice_hash) {
+            navigator.clipboard.writeText(`${window.location.origin}/pay?hash=${encodeURIComponent(invoice.invoice_hash)}`);
+        } else {
+            navigator.clipboard.writeText(window.location.href);
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     const paymentTxIds: string[] = invoice?.payment_tx_ids?.length
         ? invoice.payment_tx_ids

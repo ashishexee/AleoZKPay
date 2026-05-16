@@ -92,7 +92,7 @@ export const cryptographySection: DocsSection = {
                     <h3 className="text-xl font-bold">The Hashing Strategy</h3>
                 </div>
                 <p className="mb-4 text-sm text-gray-400 leading-relaxed">
-                    NullPay uses **Homomorphic Hashing**. By hashing each component (Merchant, Amount, Salt) individually and then adding the results, we create a composite hash. This is more circuit-efficient than hashing a concatenated string of inputs.
+                    NullPay uses <b>Homomorphic Hashing</b>. By hashing each component (Merchant, Amount, Salt) individually and then adding the results, we create a composite hash. This is more circuit-efficient than hashing a concatenated string of inputs.
                 </p>
                 <CodeBlock title="BHP256 field addition" language="leo" code={hashDerivationExample} />
             </GlassCard>

@@ -5,7 +5,6 @@ import { GlassCard } from '../../../../shared/components/ui/GlassCard';
 
 const invoicesEndpoints = `// ─── Invoices API ──────────────────────────────────────────────
 // Base: /api/invoices
-// Source: backend/src/routes/invoices.routes.js
 
 // GET /api/invoices — List all invoices
 // Query: ?merchant=aleo1... (optional filter)
