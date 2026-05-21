@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, ChevronLeft, ChevronRight, ArrowUpRight, Bot, MessageCircle, Copy, Check, ExternalLink } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ArrowUpRight, Bot, MessageCircle, Copy, Check, ExternalLink, KeyRound, Globe, Fingerprint, ArrowRight, ShieldCheck } from 'lucide-react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { pageVariants, staggerContainer, fadeInUp } from '../../utils/core/animations';
-import { Callout, CodeBlock, MetricCard } from '../../../desktop/pages/docs/ui';
+import { Callout, MetricCard } from '../../../desktop/pages/docs/ui';
 
 /* ── Types ───────────────────────────────────────────────── */
 type TBSection = {
@@ -84,28 +84,61 @@ const sections: TBSection[] = [
         title: 'Wallet Linking Flow',
         summary: 'Link your Aleo wallet to Telegram via a secure browser flow with signature verification. One-time setup, persistent across sessions.',
         content: (
-            <div className="space-y-6">
-                <div className="space-y-6">
-                    {[
-                        { title: '1. Session Creation', body: 'Merchant runs /start or /link in Telegram. The backend creates a short-lived link session with telegram_id, chat_id, nonce, and expiry.' },
-                        { title: '2. Browser Redirect', body: 'Bot opens the /telegram/link page in the browser, reusing the same wallet-connect stack as the main app.' },
-                        { title: '3. Password Gate', body: 'User connects their Aleo wallet and creates/unlocks their NullPay password before linking can complete.' },
-                        { title: '4. Signature Verification', body: 'User signs a message containing Telegram session metadata. Backend verifies the Aleo signature and marks the session consumed.' },
-                        { title: '5. Automatic Return', body: 'After success, the site redirects back to Telegram and the bot sends a confirmation message automatically.' },
-                    ].map((item) => (
-                        <div key={item.title} className="relative pl-8 border-l-2 border-orange-400/30">
-                            <div className="absolute -left-[11px] top-0 w-5 h-5 rounded-full bg-orange-400 border-4 border-black" />
-                            <h3 className="text-lg font-bold text-white mb-1">{item.title}</h3>
-                            <p className="text-sm text-gray-400 leading-relaxed">{item.body}</p>
-                        </div>
-                    ))}
+            <div className="space-y-8">
+                {/* Flow Steps */}
+                <div className="relative">
+                    {/* Connector Line */}
+                    <div className="absolute left-[19px] top-4 bottom-4 w-px bg-gradient-to-b from-orange-400/40 via-orange-400/20 to-transparent" />
+
+                    <div className="space-y-6">
+                        {[
+                            { step: '01', icon: MessageCircle, title: 'Session Creation', body: 'Merchant runs /start or /link in Telegram. The backend creates a short-lived link session with telegram_id, chat_id, nonce, and expiry.' },
+                            { step: '02', icon: Globe, title: 'Browser Redirect', body: 'Bot opens the /telegram/link page in the browser, reusing the same wallet-connect stack as the main app.' },
+                            { step: '03', icon: KeyRound, title: 'Password Gate', body: 'User connects their Aleo wallet and creates/unlocks their NullPay password before linking can complete.' },
+                            { step: '04', icon: Fingerprint, title: 'Signature Verification', body: 'User signs a message containing Telegram session metadata. Backend verifies the Aleo signature and marks the session consumed.' },
+                            { step: '05', icon: ArrowRight, title: 'Automatic Return', body: 'After success, the site redirects back to Telegram and the bot sends a confirmation message automatically.' },
+                        ].map((item, i, arr) => (
+                            <div key={item.title} className="relative flex items-start gap-4 group">
+                                <div className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-400/10 border border-orange-400/20 group-hover:bg-orange-400/20 transition-colors">
+                                    <item.icon className="h-4 w-4 text-orange-400" />
+                                </div>
+                                <div className="flex-1 pt-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[10px] font-bold text-orange-400/70 uppercase tracking-wider">Step {item.step}</span>
+                                        {i < arr.length - 1 && <ArrowRight className="h-3 w-3 text-gray-600" />}
+                                    </div>
+                                    <h3 className="text-base font-bold text-white mb-1.5">{item.title}</h3>
+                                    <p className="text-sm text-gray-400 leading-relaxed">{item.body}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
-                <CodeBlock title="Signed Message Purpose" language="text" code="Link your wallet to the NullPay Telegram Bot" />
+                {/* Signed Message */}
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                    <div className="flex items-center gap-2 px-5 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+                        <Fingerprint className="h-4 w-4 text-orange-400" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Signed Message</span>
+                    </div>
+                    <div className="px-5 py-4">
+                        <p className="text-sm font-mono text-gray-300 leading-relaxed">Link your wallet to the NullPay Telegram Bot</p>
+                        <p className="text-xs text-gray-500 mt-2">This exact message is signed by the user to prove wallet ownership during the linking flow.</p>
+                    </div>
+                </div>
 
-                <Callout title="Security Note" tone="emerald">
-                    The link session expires after a short time and can only be consumed once. The Telegram ID is hashed (SHA-256) and sensitive fields are AES-encrypted before storage. Even if the database is compromised, raw Telegram IDs cannot be recovered without the encryption key.
-                </Callout>
+                {/* Security Note */}
+                <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/[0.03] p-5">
+                    <div className="flex items-start gap-3">
+                        <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+                        <div>
+                            <h4 className="text-sm font-bold text-emerald-400 mb-1">Security Note</h4>
+                            <p className="text-sm text-gray-400 leading-relaxed">
+                                The link session expires after a short time and can only be consumed once. The Telegram ID is hashed (SHA-256) and sensitive fields are AES-encrypted before storage. Even if the database is compromised, raw Telegram IDs cannot be recovered without the encryption key.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         ),
     },
@@ -261,6 +294,22 @@ const sections: TBSection[] = [
     },
 ];
 
+/* ── Highlight Match ──────────────────────────────────────── */
+const highlightMatch = (text: string, query: string): React.ReactNode => {
+    if (!query.trim()) return text;
+    const lower = text.toLowerCase();
+    const q = query.toLowerCase();
+    const idx = lower.indexOf(q);
+    if (idx === -1) return text;
+    return (
+        <>
+            {text.slice(0, idx)}
+            <mark className="bg-orange-400/30 text-orange-200 rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
+            {text.slice(idx + query.length)}
+        </>
+    );
+};
+
 /* ── Text Extraction ────────────────────────────────────────── */
 const extractText = (node: React.ReactNode): string => {
     if (typeof node === 'string') return node;
@@ -412,8 +461,8 @@ const SearchOverlay = ({ query, onQueryChange, searchIndex, sections, onClose, o
                                     <div className="flex items-start gap-3">
                                         <MessageCircle className="h-4 w-4 shrink-0 text-gray-500 mt-0.5" />
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-[14px] font-medium text-gray-200">{r.section.label}</p>
-                                            <p className="text-[12px] text-gray-500 leading-relaxed line-clamp-2 mt-1">{r.snippet}</p>
+                                            <p className="text-[14px] font-medium text-gray-200">{highlightMatch(r.section.label, query)}</p>
+                                            <p className="text-[12px] text-gray-500 leading-relaxed line-clamp-2 mt-1">{highlightMatch(r.snippet, query)}</p>
                                         </div>
                                         {r.matchCount > 1 && <span className="shrink-0 text-[10px] font-mono text-gray-600 bg-white/[0.03] rounded px-1.5 py-0.5">{r.matchCount}×</span>}
                                     </div>
