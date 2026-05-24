@@ -100,34 +100,19 @@ export const PaymentSummaryPanel = ({
                     </div>
                 ) : (
                     <div className="text-right flex flex-col items-end overflow-hidden max-w-[70%]">
-                        <div className="flex items-baseline gap-2 flex-wrap justify-end group/amount relative">
-                            <div className="relative">
-                                <span 
-                                    title={displayAmount.toString()}
-                                    className={`font-mono font-bold text-white tracking-tight leading-none cursor-help ${
-                                        displayAmount.toString().length > 12 ? 'text-xl' : 'text-2xl'
-                                    }`}
-                                >
-                                    {displayAmount.toLocaleString(undefined, { 
-                                        maximumFractionDigits: 6,
-                                        minimumFractionDigits: 2 
-                                    })}
-                                    {displayAmount.toString().includes('.') && displayAmount.toString().split('.')[1].length > 6 && (
-                                        <span className="text-gray-600 ml-0.5 opacity-60">...</span>
-                                    )}
-                                </span>
-                                
-                                {/* Full Value Tooltip */}
-                                <div className="absolute bottom-full right-0 mb-3 px-3 py-2 bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl pointer-events-none opacity-0 group-hover/amount:opacity-100 transition-all duration-300 transform translate-y-2 group-hover/amount:translate-y-0 z-50 whitespace-nowrap shadow-2xl">
-                                    <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 font-bold">Full Precision</div>
-                                    <div className="font-mono text-sm text-orange-200">{displayAmount.toString()}</div>
-                                    <div className="absolute bottom-[-6px] right-6 w-3 h-3 bg-black/90 border-r border-b border-white/10 rotate-45" />
-                                </div>
-                            </div>
-                            <span className="text-sm text-gray-500 font-medium uppercase tracking-wider">{currencyLabel}</span>
+                        <div className="flex items-baseline gap-3 flex-wrap justify-end">
+                            <span className="text-3xl font-bold text-white tracking-tight tabular-nums">
+                                {displayAmount.toLocaleString(undefined, {
+                                    maximumFractionDigits: 6,
+                                    minimumFractionDigits: 2,
+                                })}
+                            </span>
+                            <span className="px-2 py-1 rounded-md bg-white/[0.04] text-xs font-semibold text-gray-400 uppercase tracking-wider border border-white/[0.06]">
+                                {currencyLabel}
+                            </span>
                         </div>
                         {hasCrossTokenSelection && quote && (
-                            <p className="text-[10px] text-amber-300 font-medium mt-1 leading-tight text-right">
+                            <p className="text-[10px] text-amber-300 font-medium mt-1.5 leading-tight text-right">
                                 Equivalent to {invoice?.amount} {getTokenLabel(baseTokenType)}
                                 {quoteTimeRemaining > 0 && (
                                     <span className="text-gray-600 ml-1">

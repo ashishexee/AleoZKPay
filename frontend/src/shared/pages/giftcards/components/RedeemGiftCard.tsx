@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
@@ -8,6 +8,7 @@ import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from 
 import type { PrivateBalances } from '../../../types/burner';
 import { FloatingGiftCard } from './FloatingGiftCard';
 import { ScratchReveal } from './ScratchReveal';
+import { PaymentActivityConsole } from '../../../components/payments/PaymentActivityConsole';
 
 const fromHex = (hex: string) => new TextDecoder().decode(new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
 
@@ -23,11 +24,8 @@ export const RedeemGiftCard: React.FC = () => {
     const [logs, setLogs] = useState<string[]>([]);
     const [txId, setTxId] = useState<string | null>(null);
 
-    const logsEndRef = useRef<HTMLDivElement>(null);
-
     const addLog = (msg: string) => {
         setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
-        setTimeout(() => logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     };
 
     const handleScan = async (e: React.FormEvent) => {
@@ -349,14 +347,12 @@ export const RedeemGiftCard: React.FC = () => {
                                 <p className="text-xs text-white/30">Your private key never leaves your browser.</p>
                             </div>
                         </div>
-                        <div className="bg-white/[0.02] border border-white/[0.07] rounded-xl p-3 h-36 overflow-y-auto font-mono text-[11px] text-white/30 space-y-1">
-                            {logs.map((log, i) => (
-                                <div key={i} className={log.includes('✗') ? 'text-red-400/70' : log.includes('✓') ? 'text-green-400/70' : ''}>
-                                    {log}
-                                </div>
-                            ))}
-                            <div ref={logsEndRef} />
-                        </div>
+                        <PaymentActivityConsole
+                            method="giftcard"
+                            statusLog={logs}
+                            title="Redemption Progress"
+                            compact
+                        />
                         <button onClick={() => setStep('BALANCES')} className="text-xs text-white/25 hover:text-white/50">Go back</button>
                     </motion.div>
                 )}

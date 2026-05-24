@@ -271,6 +271,7 @@ const SingleInvoicePaymentPage = () => {
                             handleConnect={handleConnect}
                             handlePay={handlePay}
                             loading={loading}
+                            txId={txId}
                         />
                     </div>
                 </GlassCard>

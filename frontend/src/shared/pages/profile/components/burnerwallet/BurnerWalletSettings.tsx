@@ -146,7 +146,7 @@ export const BurnerWalletSettings: React.FC<BurnerWalletSettingsProps> = ({ item
                     isSweeping={a.isSweeping}
                     error={a.error}
                     sweepSuccess={a.sweepSuccess} sweepTxId={a.sweepTxId}
-                    sweepLogs={a.sweepLogs} logsEndRef={a.logsEndRef}
+                    sweepLogs={a.sweepLogs}
                     onSubmit={a.handleSweepFunds}
                     onClose={() => { a.setShowSweepModal(false); a.setSweepLogs([]); a.setSweepTxId(null); a.setSweepSuccess(''); }}
                 />

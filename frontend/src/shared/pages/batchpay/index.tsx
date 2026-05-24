@@ -17,6 +17,7 @@ import { AleoKeyProvider, AleoNetworkClient, NetworkRecordProvider, ProgramManag
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Button } from '../../components/ui/Button';
+import { PaymentActivityConsole } from '../../components/payments/PaymentActivityConsole';
 import { Input } from '../../components/ui/Input';
 import { PasswordPrompt } from '../../components/auth/PasswordPrompt';
 import { fetchInvoiceByHash, updateInvoiceStatus } from '../../services/api';
@@ -1223,7 +1224,12 @@ export const BatchPayPage = () => {
                                     className="w-full py-3.5 text-sm"
                                 >
                                     {loading
-                                        ? 'Processing...'
+                                        ? (
+                                            <div className="flex items-center justify-center gap-2">
+                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                                                <span className="font-medium">Processing...</span>
+                                            </div>
+                                        )
                                         : batchCompleted
                                             ? 'Payments Completed'
                                             : `Pay All with Burner${readyRows.length ? ` (${readyRows.length})` : ''}`}
@@ -1260,26 +1266,11 @@ export const BatchPayPage = () => {
                         </GlassCard>
 
                         {batchLogs.length > 0 && (
-                            <GlassCard className="border-white/10 p-5">
-                                <div className="mb-3 flex items-center justify-between border-b border-white/5 pb-3">
-                                    <p className="text-xs font-medium text-white">Live Progress Log</p>
-                                    <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                        Live
-                                    </span>
-                                </div>
-                                <div className="max-h-48 overflow-y-auto rounded-lg bg-black/40 p-3 font-mono text-[10px] sm:text-[11px] leading-relaxed text-gray-400 space-y-1.5 scrollbar-thin scrollbar-thumb-white/10">
-                                    {batchLogs.map((entry, index) => (
-                                        <div key={`${entry}-${index}`} className={
-                                            entry.toLowerCase().includes('failed') ? 'text-red-400' : 
-                                            entry.toLowerCase().includes('complete') || entry.toLowerCase().includes('confirmed') || entry.toLowerCase().includes('paid successfully') ? 'text-emerald-400' : 
-                                            entry.toLowerCase().includes('sync') || entry.toLowerCase().includes('authorizing') ? 'text-white' : ''
-                                        }>
-                                            {entry}
-                                        </div>
-                                    ))}
-                                </div>
-                            </GlassCard>
+                            <PaymentActivityConsole
+                                method="wallet"
+                                statusLog={batchLogs}
+                                title="Batch Progress"
+                            />
                         )}
                     </div>
                 </div>

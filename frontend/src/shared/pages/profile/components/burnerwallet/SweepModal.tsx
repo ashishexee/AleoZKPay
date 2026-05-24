@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { PrivateBalances, SweepCurrency } from '../../../../types/burner';
 import { Edit2, Lock } from 'lucide-react';
+import { PaymentActivityConsole } from '../../../../components/payments/PaymentActivityConsole';
 
 interface SweepModalProps {
     privateBalances: PrivateBalances;
@@ -17,7 +18,6 @@ interface SweepModalProps {
     sweepSuccess: string;
     sweepTxId: string | null;
     sweepLogs: string[];
-    logsEndRef: React.RefObject<HTMLDivElement | null>;
     onSubmit: (e: React.FormEvent) => void;
     onClose: () => void;
 }
@@ -26,7 +26,7 @@ export const SweepModal: React.FC<SweepModalProps> = ({
     privateBalances, isScanningBalances, onScanBalances,
     sweepCurrency, setSweepCurrency, sweepAmount, setSweepAmount,
     sweepDestination, setSweepDestination,
-    isSweeping, error, sweepSuccess, sweepTxId, sweepLogs, logsEndRef,
+    isSweeping, error, sweepSuccess, sweepTxId, sweepLogs,
     onSubmit, onClose,
 }) => {
     const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -202,19 +202,13 @@ export const SweepModal: React.FC<SweepModalProps> = ({
                     </div>
                 </div>
 
-                {/* Live Log Feed */}
                 {sweepLogs.length > 0 && (
-                    <div className="mb-4">
-                        <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">Live Progress</div>
-                        <div className="bg-black/60 border border-white/10 rounded-xl p-3 h-32 overflow-y-auto font-mono text-[11px] text-gray-400 space-y-0.5">
-                            {sweepLogs.map((log, i) => (
-                                <div key={i} className={log.includes('✗') ? 'text-red-400' : log.includes('✓') ? 'text-green-400' : ''}>
-                                    {log}
-                                </div>
-                            ))}
-                            <div ref={logsEndRef} />
-                        </div>
-                    </div>
+                    <PaymentActivityConsole
+                        method="wallet"
+                        statusLog={sweepLogs}
+                        title="Sweep Progress"
+                        compact
+                    />
                 )}
 
                 {/* Action Buttons */}
@@ -227,7 +221,7 @@ export const SweepModal: React.FC<SweepModalProps> = ({
                     {!sweepTxId && (
                         <button type="submit"
                             disabled={isSweeping || !sweepAmount || !sweepDestination || privateBalances[sweepCurrency] <= 0 || isAmountTooHigh}
-                            className={`flex-[2] py-3 text-white font-bold rounded-xl transition-all flex justify-center items-center gap-2 ${isAmountTooHigh ? 'bg-gray-600 cursor-not-allowed opacity-50' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90 disabled:opacity-50'}`}>
+                            className={`flex-[2] py-3 rounded-xl transition-all flex justify-center items-center gap-2 ${isAmountTooHigh ? 'bg-gray-600 cursor-not-allowed opacity-50 text-white font-bold' : isSweeping ? 'bg-white/5 text-white/90 font-medium border border-white/10' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:opacity-90 disabled:opacity-50'}`}>
                             {isSweeping ? (
                                 <>
                                     <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />

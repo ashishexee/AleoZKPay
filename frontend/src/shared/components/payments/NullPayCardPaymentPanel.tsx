@@ -16,6 +16,7 @@ interface NullPayCardPaymentPanelProps {
     statusLog: string[];
     error?: string | null;
     compact?: boolean;
+    txId?: string | null;
     onCardNumberChange: (value: string) => void;
     onCardPinChange: (value: string) => void;
     onCardSecretChange: (value: string) => void;
@@ -37,6 +38,7 @@ export const NullPayCardPaymentPanel = ({
     statusLog,
     error,
     compact = false,
+    txId,
     onCardNumberChange,
     onCardPinChange,
     onCardSecretChange,
@@ -181,21 +183,28 @@ export const NullPayCardPaymentPanel = ({
                                             </motion.div>
                                         )}
 
-                                        <Button
-                                            variant="bw"
-                                            onClick={onSubmit}
-                                            disabled={submitDisabled}
-                                            className={`w-full ${compact ? 'h-14 text-lg' : 'h-16 text-xl font-bold'} shadow-2xl shadow-white/5 mt-2`}
-                                        >
-                                            {isProcessing ? (
-                                                <div className="flex items-center justify-center gap-3">
-                                                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black shadow-[0_0_10px_rgba(0,0,0,0.1)]" />
-                                                    <span className="font-bold">Authorizing...</span>
-                                                </div>
-                                            ) : (
-                                                `Complete ${amountLabel} Payment`
-                                            )}
-                                        </Button>
+                                        {txId ? (
+                                            <div className={`w-full ${compact ? 'h-14' : 'h-16'} rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center gap-3 text-white font-medium ${compact ? 'text-lg' : 'text-xl'}`}>
+                                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                                <span>Waiting for network...</span>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                variant="bw"
+                                                onClick={onSubmit}
+                                                disabled={isProcessing || submitDisabled}
+                                                className={`w-full ${compact ? 'h-14 text-lg' : 'h-16 text-xl font-bold'} shadow-2xl shadow-white/5 mt-2`}
+                                            >
+                                                {isProcessing && !txId ? (
+                                                    <div className="flex items-center justify-center gap-3">
+                                                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                                                        <span className="font-bold">Authorizing...</span>
+                                                    </div>
+                                                ) : (
+                                                    `Complete ${amountLabel} Payment`
+                                                )}
+                                            </Button>
+                                        )}
                                     </div>
 
                                     {hasLogs && (

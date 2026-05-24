@@ -17,9 +17,7 @@ let workerState = null;
 function buildMessage(invoice, eventType, paymentTxId) {
     const amount = deriveInvoiceAmount(invoice);
     const token = tokenTypeToLabel(invoice.token_type);
-    let text = eventType === 'payment_received'
-        ? `✅ Payment received for \`${invoice.invoice_hash}\``
-        : `🏁 Invoice settled: \`${invoice.invoice_hash}\``;
+    let text = `✅ Payment received for \`${invoice.invoice_hash}\``;
 
     text += `\nToken: ${token}`;
     if (amount !== null) {
@@ -89,10 +87,6 @@ async function processInvoiceUpdate(bot, oldRecord, newRecord) {
         // Collapse a burst of newly-added tx ids into a single Telegram alert for this update.
         const latestTxId = addedTxIds[addedTxIds.length - 1];
         await notifyRecipients(bot, newRecord, 'payment_received', latestTxId);
-    }
-
-    if (newRecord?.status === 'SETTLED' && oldRecord?.status !== 'SETTLED') {
-        await notifyRecipients(bot, newRecord, 'settled', null);
     }
 }
 
