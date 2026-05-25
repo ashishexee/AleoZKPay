@@ -33,6 +33,7 @@ interface CheckoutUIProps {
     quote?: { expected_amount: number; expires_at: number; signature: string; from_token: string; to_token: string } | null;
     quoteTimeRemaining?: number;
     checkOracleQuote?: (from: string, to: string, amount: number) => void;
+    onResetConversionStep?: () => void;
 }
 
 export const CheckoutUI: React.FC<CheckoutUIProps> = ({
@@ -51,13 +52,15 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     quote,
     quoteTimeRemaining,
     checkOracleQuote,
-    txId
+    txId,
+    onResetConversionStep
 }) => {
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
     const [copiedSalt, setCopiedSalt] = useState(false);
     const [donationAmount, setDonationAmount] = useState<string>('');
     const [selectedPayerToken, setSelectedPayerToken] = useState<string>('CREDITS');
+    useEffect(() => { onResetConversionStep?.(); }, [selectedPayerToken]);
     const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'giftcard' | 'card'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
     const [giftCardPayerAddress, setGiftCardPayerAddress] = useState('');

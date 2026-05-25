@@ -27,7 +27,8 @@ export const CheckoutPage = () => {
         redeemGiftCardBalance,
         quote,
         quoteTimeRemaining,
-        checkOracleQuote
+        checkOracleQuote,
+        setStep
     } = useCheckoutPayment(session);
 
     const handlePay = (donationAmount?: number, selectedToken?: string, notes?: { payerNote?: string; merchantNote?: string | null }) => {
@@ -68,6 +69,7 @@ export const CheckoutPage = () => {
                 quote={quote}
                 quoteTimeRemaining={quoteTimeRemaining}
                 checkOracleQuote={checkOracleQuote}
+                onResetConversionStep={() => setStep('PAY')}
             />
 
             {/* CONVERSION MODAL */}

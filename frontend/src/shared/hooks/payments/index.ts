@@ -33,5 +33,6 @@ export const usePayment = () => {
         statusLog: shared.statusLog,
         clearStatusLog: shared.clearStatusLog,
         resetPaymentFeedback: shared.resetPaymentFeedback,
+        setStep: shared.setStep,
     };
 };
