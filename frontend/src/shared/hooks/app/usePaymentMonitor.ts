@@ -146,8 +146,11 @@ export const usePaymentMonitor = () => {
         return null;
     };
 
+    const LANDING_PATHS = ['/', '/vision', '/privacy', '/docs'];
+
     useEffect(() => {
         if (!publicKey || !supabaseUrl || !supabaseKey) return;
+        if (LANDING_PATHS.includes(window.location.pathname)) return;
 
         let cancelled = false;
         let supabaseChannel: { unsubscribe: () => void } | null = null;

@@ -4,7 +4,7 @@ import { Search, ChevronUp, ChevronLeft, ChevronRight, ArrowUpRight, BookOpen, M
 import { useSearchParams } from 'react-router-dom';
 import { DocsChatbot } from '../../../shared/components/docs/DocsChatbot';
 import { pageVariants, staggerContainer, fadeInUp } from '../../../shared/utils/core/animations';
-import { sectionContentByTab } from './sections';
+import { loadSectionsForTab, loadAllSections, getTabForSectionId } from './sections';
 import { docsTabs } from './tabs';
 import type { DocsSection, DocsTab } from './types';
 import type { ReactNode } from 'react';
@@ -30,10 +30,9 @@ type SearchResult = {
     matchCount: number;
 };
 
-const buildSearchIndex = (): Map<string, string> => {
+const buildSearchIndexForSections = (sections: DocsSection[]): Map<string, string> => {
     const index = new Map<string, string>();
-    const allSections = Object.values(sectionContentByTab).flat();
-    for (const s of allSections) {
+    for (const s of sections) {
         const text = [
             s.title,
             s.summary,
@@ -46,6 +45,8 @@ const buildSearchIndex = (): Map<string, string> => {
     }
     return index;
 };
+
+// getTabForSectionId is imported from sections.ts
 
 const getSnippet = (text: string, query: string, radius = 80): string => {
     const lower = text.toLowerCase();
@@ -77,28 +78,42 @@ const highlightMatch = (text: string, query: string) => {
 const SearchOverlay = ({
     query,
     onQueryChange,
-    searchIndex,
     onClose,
     onNavigate,
 }: {
     query: string;
     onQueryChange: (q: string) => void;
-    searchIndex: Map<string, string>;
     onClose: () => void;
     onNavigate: (tabId: DocsTab['id'], sectionId: string) => void;
 }) => {
     const [selectedIdx, setSelectedIdx] = useState(0);
     const listRef = useRef<HTMLDivElement>(null);
     const overlayInputRef = useRef<HTMLInputElement>(null);
+    const [allSections, setAllSections] = useState<DocsSection[]>([]);
+    const [searchIndexAll, setSearchIndexAll] = useState<Map<string, string>>(new Map());
+
+    useEffect(() => {
+        if (query.trim() && allSections.length === 0) {
+            loadAllSections().then(sections => {
+                setAllSections(sections);
+                const idx = new Map<string, string>();
+                for (const s of sections) {
+                    const text = [s.title, s.summary, s.eyebrow, s.label, s.group, extractText(s.content)].join(' ').toLowerCase();
+                    idx.set(s.id, text);
+                }
+                setSearchIndexAll(idx);
+            });
+        }
+    }, [query, allSections.length]);
 
     const results = useMemo<SearchResult[]>(() => {
-        if (!query.trim()) return [];
+        if (!query.trim() || allSections.length === 0) return [];
         const q = query.toLowerCase();
         const out: SearchResult[] = [];
         for (const tab of docsTabs) {
-            const sections = sectionContentByTab[tab.id] ?? [];
+            const sections = allSections.filter(s => getTabForSectionId(s.id) === tab.id);
             for (const section of sections) {
-                const text = searchIndex.get(section.id) ?? '';
+                const text = searchIndexAll.get(section.id) ?? '';
                 if (!text.includes(q)) continue;
                 const matchCount = text.split(q).length - 1;
                 out.push({
@@ -112,12 +127,13 @@ const SearchOverlay = ({
         }
         out.sort((a, b) => {
             if (a.tabId !== b.tabId) return 0;
-            const aIdx = sectionContentByTab[a.tabId].findIndex((s) => s.id === a.section.id);
-            const bIdx = sectionContentByTab[b.tabId].findIndex((s) => s.id === b.section.id);
+            const tabSections = allSections.filter(s => getTabForSectionId(s.id) === a.tabId);
+            const aIdx = tabSections.findIndex((s) => s.id === a.section.id);
+            const bIdx = tabSections.findIndex((s) => s.id === b.section.id);
             return aIdx - bIdx;
         });
         return out.slice(0, 50);
-    }, [query, searchIndex]);
+    }, [query, allSections, searchIndexAll]);
 
     useEffect(() => { setSelectedIdx(0); }, [query]);
 
@@ -490,7 +506,16 @@ const SectionContent = ({ section, activeTab, allSections, onNavigate }: {
         if (!navigator?.clipboard || !contentRef.current) return;
         try {
             const text = contentRef.current.innerText || '';
-            const context = buildAIContext(section, activeTab, text, docsTabs, sectionContentByTab);
+            const allSections = await loadAllSections();
+            const sectionsByTabAll: Partial<Record<DocsTab['id'], DocsSection[]>> = {};
+            for (const s of allSections) {
+                const tabId = getTabForSectionId(s.id);
+                if (tabId) {
+                    if (!sectionsByTabAll[tabId]) sectionsByTabAll[tabId] = [];
+                    sectionsByTabAll[tabId]!.push(s);
+                }
+            }
+            const context = buildAIContext(section, activeTab, text, docsTabs, sectionsByTabAll as Record<DocsTab['id'], DocsSection[]>);
             await navigator.clipboard.writeText(context);
             setAiCopied(true);
             setTimeout(() => setAiCopied(false), 2000);
@@ -553,25 +578,14 @@ const SectionContent = ({ section, activeTab, allSections, onNavigate }: {
 };
 
 /* ── Tab Resolvers ────────────────────────────────────────── */
-const getTabForSection = (sectionId: string | null): DocsTab['id'] | null => {
-    if (!sectionId) return null;
-    const matchingTab = docsTabs.find((tab) =>
-        sectionContentByTab[tab.id].some((section) => section.id === sectionId)
-    );
-    return matchingTab?.id ?? null;
-};
 
 const resolveTabAndSection = (searchParams: URLSearchParams) => {
     const requestedTab = searchParams.get('tab');
     const requestedSection = searchParams.get('section');
-    const fallbackTab = getTabForSection(requestedSection) ?? 'getting-started';
-    const activeTab = docsTabs.some((tab) => tab.id === requestedTab)
+    const activeTab = (requestedTab && docsTabs.some((tab) => tab.id === requestedTab))
         ? (requestedTab as DocsTab['id'])
-        : fallbackTab;
-    const sections = sectionContentByTab[activeTab];
-    const activeSection = sections.some((section) => section.id === requestedSection)
-        ? (requestedSection as string)
-        : sections[0].id;
+        : (requestedSection ? (getTabForSectionId(requestedSection) ?? 'getting-started') : 'getting-started');
+    const activeSection = requestedSection || '';
     return { activeTab, activeSection };
 };
 
@@ -582,13 +596,24 @@ const Docs = () => {
     const [searchFocused, setSearchFocused] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-    const sectionsByTab = useMemo(() => sectionContentByTab, []);
-    const searchIndex = useMemo(() => buildSearchIndex(), []);
+    const [sectionsByTab, setSectionsByTab] = useState<Partial<Record<DocsTab['id'], DocsSection[]>>>({});
     const initialState = resolveTabAndSection(searchParams);
     const [activeTab, setActiveTab] = useState<DocsTab['id']>(initialState.activeTab);
     const [activeSection, setActiveSection] = useState(initialState.activeSection);
 
-    const activeSections = sectionsByTab[activeTab];
+    useEffect(() => {
+        let cancelled = false;
+        loadSectionsForTab(activeTab).then(sections => {
+            if (cancelled) return;
+            setSectionsByTab(prev => ({ ...prev, [activeTab]: sections }));
+            if (activeSection && !sections.some(s => s.id === activeSection)) {
+                setActiveSection(sections[0]?.id || '');
+            }
+        });
+        return () => { cancelled = true; };
+    }, [activeTab]);
+
+    const activeSections = sectionsByTab[activeTab] || [];
     const selectedSection = activeSections.find((section) => section.id === activeSection) ?? activeSections[0];
 
     useEffect(() => {
@@ -617,12 +642,13 @@ const Docs = () => {
     const filteredGroups = useMemo(() => {
         if (!searchQuery.trim()) return groupedSections;
         const q = searchQuery.toLowerCase();
+        const idx = buildSearchIndexForSections(activeSections);
         return Object.entries(groupedSections).reduce((acc, [groupName, groupSections]) => {
             const matches = groupSections.filter((section) => {
                 const labelText = section.label.toLowerCase();
                 const summaryText = (section.summary ?? '').toLowerCase();
                 const idText = section.id.toLowerCase();
-                const contentText = searchIndex.get(section.id) ?? '';
+                const contentText = idx.get(section.id) ?? '';
                 return (
                     labelText.includes(q) ||
                     summaryText.includes(q) ||
@@ -633,7 +659,7 @@ const Docs = () => {
             if (matches.length) acc[groupName] = matches;
             return acc;
         }, {} as Record<string, DocsSection[]>);
-    }, [groupedSections, searchQuery, searchIndex]);
+    }, [groupedSections, searchQuery, activeSections]);
 
     useEffect(() => {
         const allFiltered = Object.values(filteredGroups).flat();
@@ -668,7 +694,7 @@ const Docs = () => {
 
     const handleTabChange = (tabId: DocsTab['id']) => {
         setActiveTab(tabId);
-        setActiveSection(sectionsByTab[tabId][0].id);
+        setActiveSection('');
         setSearchQuery('');
     };
 
@@ -890,13 +916,19 @@ const Docs = () => {
                             className="flex-1 min-w-0 py-8 pl-0 lg:pl-10"
                         >
                             <AnimatePresence mode="wait" initial={false}>
-                                <SectionContent
-                                    key={selectedSection.id}
-                                    section={selectedSection}
-                                    activeTab={activeTab}
-                                    allSections={allSectionsFlat}
-                                    onNavigate={handleSectionChange}
-                                />
+                                {selectedSection ? (
+                                    <SectionContent
+                                        key={selectedSection.id}
+                                        section={selectedSection}
+                                        activeTab={activeTab}
+                                        allSections={allSectionsFlat}
+                                        onNavigate={handleSectionChange}
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center py-20">
+                                        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                    </div>
+                                )}
                             </AnimatePresence>
                         </motion.main>
                     </div>
@@ -911,7 +943,6 @@ const Docs = () => {
                     <SearchOverlay
                         query={searchQuery}
                         onQueryChange={setSearchQuery}
-                        searchIndex={searchIndex}
                         onClose={() => { setSearchFocused(false); setSearchQuery(''); }}
                         onNavigate={handleSearchNavigate}
                     />

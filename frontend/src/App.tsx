@@ -8,7 +8,7 @@ import { LeaveGuardProvider } from './shared/hooks/app/LeaveGuardProvider';
 import './index.css';
 
 const MobileApp = lazy(() => import('./mobile/MobileApp').then(module => ({ default: module.MobileApp })));
-const DesktopApp = lazy(() => import('./desktop/DesktopApp'));
+import DesktopApp from './desktop/DesktopApp';
 
 const useIsMobile = () => {
     const [isMobile, setIsMobile] = useState(false);
