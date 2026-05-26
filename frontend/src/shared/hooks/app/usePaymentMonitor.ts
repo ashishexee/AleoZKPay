@@ -11,6 +11,13 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const RECORD_CACHE_TTL_MS = 15_000;
 const RECORD_SCAN_THROTTLE_MS = 10_000;
 
+// Module-level state persists across provider mount/unmount cycles
+const moduleNotifiedInvoices = new Set<string>();
+const moduleLastSoundPlayed = new Map<string, number>();
+let moduleCachedRecords: { fetchedAt: number; records: any[] } | null = null;
+let moduleRecordsRequestInFlight: Promise<any[]> | null = null;
+let moduleScanThrottleUntil = 0;
+
 function playPaymentSound() {
     try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -47,14 +54,34 @@ function formatAmount(amountRaw: number | string | null | undefined, isMicro: bo
 }
 
 export const usePaymentMonitor = () => {
-    const { address: publicKey, requestRecords, decrypt } = useWallet();
-    const { handleWalletError } = useWalletErrorHandler();
+    let publicKey: string | null = null;
+    let requestRecords: ((program: string, unspent: boolean) => Promise<any>) | undefined = undefined;
+    let decrypt: ((cipher: string) => Promise<string>) | undefined = undefined;
+    let handleWalletError: ((error: unknown) => boolean) = () => false;
 
-    const notifiedInvoices = useRef<Set<string>>(new Set());
-    const lastSoundPlayed = useRef<Map<string, number>>(new Map());
-    const cachedRecords = useRef<{ fetchedAt: number; records: any[] } | null>(null);
-    const recordsRequestInFlight = useRef<Promise<any[]> | null>(null);
-    const scanThrottleUntil = useRef(0);
+    try {
+        const wallet = useWallet();
+        publicKey = wallet.address || null;
+        requestRecords = wallet.requestRecords;
+        decrypt = wallet.decrypt;
+    } catch {
+        // Wallet providers not mounted — landing page, skip monitoring
+        return;
+    }
+
+    try {
+        const errorHandler = useWalletErrorHandler();
+        handleWalletError = errorHandler.handleWalletError;
+    } catch {
+        // Wallet error boundary not mounted — use no-op fallback
+    }
+
+    // Module-level persistence across provider mount/unmount cycles
+    const notifiedInvoices = useRef<Set<string>>(moduleNotifiedInvoices);
+    const lastSoundPlayed = useRef<Map<string, number>>(moduleLastSoundPlayed);
+    const cachedRecords = useRef<{ fetchedAt: number; records: any[] } | null>(moduleCachedRecords);
+    const recordsRequestInFlight = useRef<Promise<any[]> | null>(moduleRecordsRequestInFlight);
+    const scanThrottleUntil = useRef(moduleScanThrottleUntil);
 
     const getMergedWalletRecords = async (forceFresh: boolean = false): Promise<any[]> => {
         if (!requestRecords) return [];
@@ -146,11 +173,9 @@ export const usePaymentMonitor = () => {
         return null;
     };
 
-    const LANDING_PATHS = ['/', '/vision', '/privacy', '/docs'];
-
     useEffect(() => {
         if (!publicKey || !supabaseUrl || !supabaseKey) return;
-        if (LANDING_PATHS.includes(window.location.pathname)) return;
+        if (window.location.pathname === '/') return; // skip on home page
 
         let cancelled = false;
         let supabaseChannel: { unsubscribe: () => void } | null = null;
@@ -235,6 +260,16 @@ export const usePaymentMonitor = () => {
                                     triggerNotification(finalMsg, newRecord.invoice_hash, false);
                                 } catch (error) {
                                     console.error('Failed to process payment event:', error);
+                                }
+                            } else if (newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
+                                const dedupKey = `${newRecord.invoice_hash}_SETTLED`;
+                                if (notifiedInvoices.current.has(dedupKey)) return;
+                                notifiedInvoices.current.add(dedupKey);
+
+                                try {
+                                    triggerNotification(`Invoice ${newRecord.invoice_hash.slice(0, 6)}... settled!`, newRecord.invoice_hash, false);
+                                } catch (error) {
+                                    console.error('Failed to process settled event:', error);
                                 }
                             }
                         }
