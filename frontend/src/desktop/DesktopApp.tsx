@@ -1,10 +1,12 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/layout/Navbar';
 import Home from './pages/home';
 import { ChangelogOverlay } from './components/overlays/ChangelogOverlay';
-import { ProtectedRoute } from '../shared/components/routing/ProtectedRoute';
+
+const WalletProviderShell = lazy(() => import('../shared/hooks/wallet/WalletProviderShell'));
+const ProtectedRoute = lazy(() => import('../shared/components/routing/ProtectedRoute').then(m => ({ default: m.ProtectedRoute })));
 
 const Explorer = lazy(() => import('./pages/explorer'));
 const CreateInvoice = lazy(() => import('./pages/createinvoice'));
@@ -31,6 +33,15 @@ const RouteFallback = () => (
     </div>
 );
 
+const AppLayout = () => (
+    <Suspense fallback={<RouteFallback />}>
+        <WalletProviderShell>
+            <Navbar />
+            <Outlet />
+        </WalletProviderShell>
+    </Suspense>
+);
+
 const DesktopAnimatedRoutes = () => {
     const location = useLocation();
     const routeKey = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/profile') ? '/dashboard' : location.pathname;
@@ -47,9 +58,6 @@ const DesktopAnimatedRoutes = () => {
                     <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
                     <Route path="/profile-qr" element={<ProtectedRoute><ProfileQRPage /></ProtectedRoute>} />
                     <Route path="/support-feedback" element={<ProtectedRoute><SupportFeedbackPage /></ProtectedRoute>} />
-                    <Route path="/vision" element={<Vision />} />
-                    <Route path="/docs" element={<Docs />} />
-                    <Route path="/privacy" element={<Privacy />} />
                     <Route path="/verify" element={<Verification />} />
                     <Route path="/developer" element={<DeveloperPortal />} />
                     <Route path="/telegram-bot" element={<TelegramBotPage />} />
@@ -72,23 +80,25 @@ const DesktopApp = () => {
                 <div className="absolute bottom-[-10%] left-[20%] w-[35%] h-[35%] bg-white/5 rounded-full blur-[120px] animate-pulse-slow" />
             </div>
 
-            <Navbar />
             <ChangelogOverlay />
 
             <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/cards" element={
-                    <main className="relative z-10 pt-24 w-full">
-                        <Suspense fallback={<RouteFallback />}>
+                <Route path="/" element={<><Navbar /><Home /></>} />
+                <Route path="/vision" element={<><Navbar /><Vision /></>} />
+                <Route path="/privacy" element={<><Navbar /><Privacy /></>} />
+                <Route path="/docs" element={<><Navbar /><Docs /></>} />
+                <Route element={<AppLayout />}>
+                    <Route path="/cards" element={
+                        <main className="relative z-10 pt-24 w-full">
                             <ProtectedRoute><CardsPage /></ProtectedRoute>
-                        </Suspense>
-                    </main>
-                } />
-                <Route path="*" element={
-                    <main className="relative z-10 pt-24 px-4 pb-12 container-custom">
-                        <DesktopAnimatedRoutes />
-                    </main>
-                } />
+                        </main>
+                    } />
+                    <Route path="*" element={
+                        <main className="relative z-10 pt-24 px-4 pb-12 container-custom">
+                            <DesktopAnimatedRoutes />
+                        </main>
+                    } />
+                </Route>
             </Routes>
         </div>
     );
