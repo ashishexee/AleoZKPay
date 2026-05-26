@@ -24,7 +24,7 @@ const Privacy: React.FC = () => {
                 />
             </div>
 
-            <div className="w-full pt-8 relative z-10 pb-24">
+            <div className="w-full pt-32 relative z-10 pb-24 container-custom">
                 {/* HERO HEADER */}
                 <motion.div
                     initial={{ opacity: 0, y: -20 }}

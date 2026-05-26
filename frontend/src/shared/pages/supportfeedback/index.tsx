@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { submitSupportFeedback } from '../../services/api';
@@ -56,22 +56,27 @@ const SupportFeedbackPage = () => {
             <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative z-10 mx-auto mt-10 w-full max-w-2xl"
+                className="relative z-10 mx-auto mt-6 w-full max-w-2xl px-4"
             >
-                <div className="mb-6 flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-white">Register Complaint / Feedback</h1>
-                        <p className="mt-2 text-sm leading-6 text-white/60">
-                            Send your issue or product feedback to NullPay support and receive a confirmation email.
-                        </p>
-                    </div>
+                {/* Back Button */}
+                <div className="mb-8">
                     <Link
                         to="/dashboard"
-                        className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-white transition-colors hover:border-white/20 hover:bg-white/[0.08]"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/50 hover:text-white transition-colors group uppercase tracking-wider"
                     >
-                        <ArrowLeft className="h-4 w-4" />
-                        Back
+                        <ArrowLeft className="h-3.5 w-3.5 transform group-hover:-translate-x-0.5 transition-transform" />
+                        Back to Dashboard
                     </Link>
+                </div>
+
+                {/* Header Section */}
+                <div className="mb-10 text-center">
+                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-300 to-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+                        Register Complaint / Feedback
+                    </h1>
+                    <p className="mt-3 text-sm leading-relaxed text-white/50 max-w-md mx-auto">
+                        Send your issue or product feedback to NullPay support and receive a confirmation email.
+                    </p>
                 </div>
 
                 <div className="rounded-[28px] border border-white/10 bg-[#0A0A0A]/90 p-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] backdrop-blur-[32px]">
@@ -133,9 +138,13 @@ const SupportFeedbackPage = () => {
                             type="button"
                             onClick={handleSubmit}
                             disabled={submitting}
-                            className="inline-flex items-center justify-center rounded-2xl border border-orange-400/20 bg-gradient-to-r from-orange-400 to-amber-300 px-5 py-3 text-sm font-semibold text-black transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+                            className="relative group w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 via-orange-400 to-amber-500 px-5 py-3.5 text-sm font-bold uppercase tracking-wider text-black transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_0_30px_rgba(249,115,22,0.3)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none overflow-hidden"
                         >
-                            {submitting ? 'Sending...' : 'Submit'}
+                            {/* Hover shine effect */}
+                            <div className="absolute inset-0 -translate-x-full group-hover:animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+                            
+                            <span>{submitting ? 'Sending...' : 'Submit'}</span>
+                            {!submitting && <Send className="h-4 w-4 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />}
                         </button>
                     </div>
                 </div>

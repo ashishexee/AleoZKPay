@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, ChevronUp, ChevronLeft, ChevronRight, ArrowUpRight, BookOpen, Menu, X as XIcon, ClipboardCopy, Bot, FileText, Hash } from 'lucide-react';
+import { Search, ChevronUp, ChevronLeft, ChevronRight, ArrowUpRight, Menu, X as XIcon, ClipboardCopy, Bot, FileText, Hash } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { DocsChatbot } from '../../../shared/components/docs/DocsChatbot';
 import { pageVariants, staggerContainer, fadeInUp } from '../../../shared/utils/core/animations';
@@ -770,11 +770,7 @@ const Docs = () => {
             >
                 {/* ── Hero ─────────────────────────────────────────── */}
                 <motion.div variants={fadeInUp} className="border-b border-white/[0.05]">
-                    <div className="mx-auto max-w-7xl px-6 pt-12 pb-8 text-center">
-                        <div className="flex items-center justify-center gap-3 mb-4">
-                            <BookOpen className="h-5 w-5 text-orange-400" />
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500">Documentation</span>
-                        </div>
+                    <div className="mx-auto max-w-7xl px-6 pt-32 pb-8 text-center">
                         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
                             NullPay{' '}
                             <span className="bg-gradient-to-r from-orange-400 to-orange-300 bg-clip-text text-transparent">

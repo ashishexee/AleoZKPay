@@ -107,7 +107,7 @@ const Vision = () => {
                 variants={staggerContainer}
                 initial="hidden"
                 animate="show"
-                className="w-full pt-8 pb-20 relative z-10"
+                className="w-full pt-32 pb-20 relative z-10 container-custom"
             >
                 {/* HERO SECTION */}
                 <motion.div variants={fadeInUp} className="text-center mb-20">
