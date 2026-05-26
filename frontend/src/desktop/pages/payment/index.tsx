@@ -40,13 +40,15 @@ const SingleInvoicePaymentPage = () => {
         giftCardRedeemOption,
         redeemGiftCardBalance,
         statusLog,
-        resetPaymentFeedback
+        resetPaymentFeedback,
+        setStep
     } = usePayment();
 
     const [customConvertAmount, setCustomConvertAmount] = useState<string>('');
     const [showConvertModal, setShowConvertModal] = useState(false);
     const [selectedToken, setSelectedToken] = useState<number>(0);
     const [selectedTokenInitializedFor, setSelectedTokenInitializedFor] = useState<string | null>(null);
+    useEffect(() => { if (step === 'CONVERT') setStep('PAY'); }, [selectedToken]);
     const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card' | 'giftcard'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
     const [giftCardPayerAddress, setGiftCardPayerAddress] = useState('');
@@ -271,6 +273,7 @@ const SingleInvoicePaymentPage = () => {
                             handleConnect={handleConnect}
                             handlePay={handlePay}
                             loading={loading}
+                            txId={txId}
                         />
                     </div>
                 </GlassCard>

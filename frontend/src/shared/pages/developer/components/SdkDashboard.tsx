@@ -8,6 +8,7 @@ import { Invoice, InvoiceRecord } from '../../../types/invoice';
 import { MerchantReceipt } from '../../../types/receipt';
 import {
     PROGRAM_ID,
+    WALLET_PROGRAM_ID,
     estimateExecutionFee,
     parseInvoice,
     parseMerchantReceipt,
@@ -271,13 +272,17 @@ export const SdkDashboard: React.FC = () => {
         setLoadingReceipts(true);
 
         try {
-            const records = await requestRecords(PROGRAM_ID, true);
+            const [coreRecords, walletRecords] = await Promise.all([
+                requestRecords(PROGRAM_ID, true),
+                requestRecords(WALLET_PROGRAM_ID, true)
+            ]);
             if (fetchId !== fetchMerchantReceiptsRef.current) return;
 
             const validReceipts: MerchantReceipt[] = [];
+            const allRecords = [...((coreRecords as any[]) || []), ...((walletRecords as any[]) || [])];
 
-            if (records) {
-                for (const record of records as any[]) {
+            if (allRecords.length > 0) {
+                for (const record of allRecords) {
                     if (record.spent) continue;
 
                     let plaintext = record.plaintext;
@@ -451,11 +456,15 @@ export const SdkDashboard: React.FC = () => {
         try {
             setVerifyStatus('CHECKING');
             setVerifiedRecord(null);
-            const records = await requestRecords(PROGRAM_ID, true);
+            const [coreRecords, walletRecords] = await Promise.all([
+                requestRecords(PROGRAM_ID, true),
+                requestRecords(WALLET_PROGRAM_ID, true)
+            ]);
             let foundRecord = null;
+            const allRecords = [...((coreRecords as any[]) || []), ...((walletRecords as any[]) || [])];
 
-            if (records) {
-                for (const record of records as any[]) {
+            if (allRecords.length > 0) {
+                for (const record of allRecords) {
                     if (record.spent) continue;
 
                     let plaintext = record.plaintext;

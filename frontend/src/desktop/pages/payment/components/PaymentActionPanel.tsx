@@ -44,6 +44,7 @@ interface PaymentActionPanelProps {
     handleConnect: () => void;
     handlePay: () => void;
     loading: boolean;
+    txId?: string | null;
 }
 
 export const PaymentActionPanel = ({
@@ -84,6 +85,7 @@ export const PaymentActionPanel = ({
     handleConnect,
     handlePay,
     loading,
+    txId,
 }: PaymentActionPanelProps) => {
     if (step === 'SUCCESS' || step === 'ALREADY_PAID') return null;
 
@@ -161,22 +163,29 @@ export const PaymentActionPanel = ({
                             onRedeem={redeemGiftCardBalance}
                         />
                     )}
-                    <Button
-                        variant="primary"
-                        onClick={handleGiftCardPay}
-                        disabled={isProcess || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || giftCardPayerAddressInvalid || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
-                        className="w-full text-lg h-14"
-                        glow
-                    >
-                        {isProcess ? (
-                            <div className="flex items-center justify-center gap-3">
-                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
-                                <span className="font-bold">Authorizing...</span>
-                            </div>
-                        ) : (
-                            `Pay ${displayAmount} ${currencyLabel}`
-                        )}
-                    </Button>
+                    {txId ? (
+                        <div className="w-full h-14 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center gap-3 text-white font-medium text-lg">
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                            <span>Waiting for network...</span>
+                        </div>
+                    ) : (
+                        <Button
+                            variant="primary"
+                            onClick={handleGiftCardPay}
+                            disabled={loading || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || giftCardPayerAddressInvalid || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
+                            className="w-full text-lg h-14"
+                            glow
+                        >
+                            {loading && !txId ? (
+                                <div className="flex items-center justify-center gap-3">
+                                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                                    <span className="font-bold">Authorizing...</span>
+                                </div>
+                            ) : (
+                                `Pay ${displayAmount} ${currencyLabel}`
+                            )}
+                        </Button>
+                    )}
 
                     <PaymentActivityConsole
                         method="giftcard"
@@ -195,6 +204,7 @@ export const PaymentActionPanel = ({
                         isProcessing={isProcess}
                         statusLog={statusLog}
                         error={error}
+                        txId={txId}
                         onCardNumberChange={setCardNumber}
                         onCardPinChange={setCardPin}
                         onCardSecretChange={setCardSecret}
@@ -235,6 +245,11 @@ export const PaymentActionPanel = ({
                         <Button variant="primary" onClick={handleConnect} className="w-full">
                             Verify Hash & Records
                         </Button>
+                    ) : txId ? (
+                        <div className="w-full h-14 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center gap-3 text-white font-medium text-lg">
+                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                            <span>Waiting for network...</span>
+                        </div>
                     ) : (
                         <Button
                             variant="primary"
@@ -243,7 +258,7 @@ export const PaymentActionPanel = ({
                             className="w-full"
                             glow
                         >
-                            {loading ? (
+                            {loading && !txId ? (
                                 <div className="flex items-center justify-center gap-3">
                                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
                                     <span className="font-bold">Authorizing...</span>

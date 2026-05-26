@@ -236,16 +236,6 @@ export const usePaymentMonitor = () => {
                                 } catch (error) {
                                     console.error('Failed to process payment event:', error);
                                 }
-                            } else if (newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
-                                const dedupKey = `${newRecord.invoice_hash}_SETTLED`;
-                                if (notifiedInvoices.current.has(dedupKey)) return;
-                                notifiedInvoices.current.add(dedupKey);
-
-                                try {
-                                    triggerNotification(`Invoice ${newRecord.invoice_hash.slice(0, 6)}... settled!`, newRecord.invoice_hash, false);
-                                } catch (error) {
-                                    console.error('Failed to process settled event:', error);
-                                }
                             }
                         }
                     )

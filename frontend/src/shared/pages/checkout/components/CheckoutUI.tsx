@@ -33,6 +33,7 @@ interface CheckoutUIProps {
     quote?: { expected_amount: number; expires_at: number; signature: string; from_token: string; to_token: string } | null;
     quoteTimeRemaining?: number;
     checkOracleQuote?: (from: string, to: string, amount: number) => void;
+    onResetConversionStep?: () => void;
 }
 
 export const CheckoutUI: React.FC<CheckoutUIProps> = ({
@@ -51,13 +52,15 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
     quote,
     quoteTimeRemaining,
     checkOracleQuote,
-    txId
+    txId,
+    onResetConversionStep
 }) => {
     const [copiedLink, setCopiedLink] = useState(false);
     const [copiedHash, setCopiedHash] = useState(false);
     const [copiedSalt, setCopiedSalt] = useState(false);
     const [donationAmount, setDonationAmount] = useState<string>('');
     const [selectedPayerToken, setSelectedPayerToken] = useState<string>('CREDITS');
+    useEffect(() => { onResetConversionStep?.(); }, [selectedPayerToken]);
     const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'giftcard' | 'card'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
     const [giftCardPayerAddress, setGiftCardPayerAddress] = useState('');
@@ -605,6 +608,11 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                     <div className="wallet-adapter-wrapper w-full [&>button]:!w-full [&>button]:!justify-center">
                                         <WalletMultiButton className="!w-full !bg-white !text-black !font-bold !rounded-xl !h-12 hover:!bg-gray-200 transition-colors" />
                                     </div>
+                                ) : txId && !success ? (
+                                    <div className="w-full h-14 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center gap-3 text-white font-medium text-lg">
+                                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                        <span>Waiting for network...</span>
+                                    </div>
                                 ) : (
                                     <Button
                                         variant="primary"
@@ -617,7 +625,6 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         }
                                         disabled={
                                             paymentLoading ||
-                                            (txId && !success) ||
                                             payerNoteTooLong ||
                                             (shareMerchantNote && merchantNoteTooLong) ||
                                             (paymentMethod === 'giftcard' && giftCardPayerAddressInvalid) ||
@@ -628,12 +635,10 @@ export const CheckoutUI: React.FC<CheckoutUIProps> = ({
                                         glow
                                         className="w-full text-lg h-14"
                                     >
-                                        {(paymentLoading || (txId && !success)) ? (
+                                        {paymentLoading && !txId ? (
                                             <div className="flex items-center justify-center gap-3">
                                                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/20 border-t-black" />
-                                                <span className="font-bold">
-                                                    {txId ? `Paying ${isDonation ? (donationAmount || '0') : (quote ? quote.expected_amount : session.amount)} ${displayTokenLabel}...` : "Authorizing..."}
-                                                </span>
+                                                <span className="font-bold">Authorizing...</span>
                                             </div>
                                         ) : (
                                             isDonation ? `Pay ${donationAmount || '0'} ${displayTokenLabel}` : `Pay ${session.amount} ${displayTokenLabel}`

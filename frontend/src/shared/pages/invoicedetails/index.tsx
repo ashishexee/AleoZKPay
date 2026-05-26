@@ -6,6 +6,7 @@ import { generateInvoicePdf } from '../../utils/invoice/generateInvoicePdf';
 import { PROGRAM_ID, WALLET_PROGRAM_ID, parseInvoice, parseMerchantReceipt, fetchBurnerRecordsFromTx } from '../../utils/aleo/aleoUtils';
 import { MerchantReceipt } from '../../types/receipt';
 import { VerifyModal } from '../profile/components/modals/VerifyModal';
+import { ConfirmModal } from '../../components/modals/ConfirmModal';
 import { hashAddress } from '../../utils/core/crypto';
 import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
 import { useWalletErrorHandler } from '../../hooks/wallet/WalletErrorBoundary';
@@ -212,6 +213,9 @@ const InvoiceDetailsPage: React.FC = () => {
     const [verifyStatus, setVerifyStatus]       = useState<'IDLE' | 'CHECKING' | 'FOUND' | 'NOT_FOUND' | 'ERROR' | 'MISMATCH'>('IDLE');
     const [verifiedRecord, setVerifiedRecord]   = useState<any>(null);
 
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting]             = useState(false);
+
     useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, []);
 
     useEffect(() => {
@@ -417,6 +421,26 @@ const InvoiceDetailsPage: React.FC = () => {
         } finally { setPdfLoading(false); }
     };
 
+    const handleConfirmDelete = async () => {
+        if (!invoice) return;
+        setIsDeleting(true);
+        try {
+            const { deleteInvoice: deleteInvoiceEntry } = await import('../../services/api');
+            const merchantHash = await hashAddress(invoice.merchant_address || '');
+            await deleteInvoiceEntry(invoice.invoice_hash, {
+                merchant_address_hash: merchantHash,
+                deletion_transaction_id: ''
+            });
+            setShowDeleteModal(false);
+            navigate('/dashboard');
+        } catch (err) {
+            console.error('Delete failed', err);
+            alert('Failed to delete invoice: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const handleCopyLink = () => {
         if (!invoice) return;
         const merchant = invoice.designated_address || invoice.merchant_address || '';
@@ -495,6 +519,39 @@ const InvoiceDetailsPage: React.FC = () => {
                 merchantReceipts={receipts} onVerify={handleVerifyReceipt}
             />
 
+            <ConfirmModal
+                open={showDeleteModal}
+                tone="danger"
+                title="Delete Invoice"
+                description={
+                    <div className="space-y-3">
+                        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-100/90">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-300">What Happens Next</div>
+                            <p className="mt-2 leading-relaxed">
+                                This removes the active on-chain invoice record and deletes the mirrored dashboard database entry.
+                            </p>
+                        </div>
+                        <p className="leading-relaxed text-gray-300">
+                            This only works for invoices with <span className="font-semibold text-white">no recorded payments</span>.
+                        </p>
+                        {invoice?.is_burner ? (
+                            <p className="leading-relaxed text-gray-300">
+                                This is a <span className="font-semibold text-white">burner-owned invoice</span>. NullPay will use the unlocked burner wallet to submit the on-chain deletion first, then clear the database entry.
+                            </p>
+                        ) : (
+                            <p className="leading-relaxed text-gray-300">
+                                NullPay will request approval from your connected main wallet, wait for on-chain confirmation, and then remove the database entry.
+                            </p>
+                        )}
+                    </div>
+                }
+                confirmLabel="Delete Invoice"
+                cancelLabel="Keep Invoice"
+                onConfirm={handleConfirmDelete}
+                onClose={() => setShowDeleteModal(false)}
+                loading={isDeleting}
+            />
+
             {/* ── STICKY NAV ─────────────────────────────────────────────────── */}
             <motion.nav
                 initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }}
@@ -566,28 +623,7 @@ const InvoiceDetailsPage: React.FC = () => {
                         {/* Delete - only show for non-settled invoices with no payments */}
                         {invoice.status !== 'SETTLED' && (!invoice.payment_tx_ids || invoice.payment_tx_ids.length === 0) && (
                             <button
-                                onClick={() => {
-                                    const confirmed = window.confirm(
-                                        invoice.is_burner
-                                            ? 'Delete this burner-owned invoice? This removes it from on-chain state and clears the database entry.'
-                                            : 'Delete this invoice permanently from active on-chain state and the dashboard database?'
-                                    );
-                                    if (!confirmed) return;
-                                    (async () => {
-                                        try {
-                                            const { deleteInvoice: deleteInvoiceEntry } = await import('../../services/api');
-                                            const merchantHash = await hashAddress(invoice.merchant_address || '');
-                                            await deleteInvoiceEntry(invoice.invoice_hash, {
-                                                merchant_address_hash: merchantHash,
-                                                deletion_transaction_id: ''
-                                            });
-                                            navigate('/dashboard');
-                                        } catch (err) {
-                                            console.error('Delete failed', err);
-                                            alert('Failed to delete invoice: ' + (err instanceof Error ? err.message : 'Unknown error'));
-                                        }
-                                    })();
-                                }}
+                                onClick={() => setShowDeleteModal(true)}
                                 className="flex items-center justify-center p-2 rounded-xl border text-[11px] font-bold uppercase tracking-wider transition-all"
                                 style={{ background: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.35)', color: '#ef4444' }}
                                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.22)'; }}

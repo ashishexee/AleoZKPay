@@ -31,6 +31,7 @@ const MobilePaymentPage = () => {
     const [showConvertModal, setShowConvertModal] = useState(false);
     const [selectedToken, setSelectedToken] = useState<number>(0);
     const [selectedTokenInitializedFor, setSelectedTokenInitializedFor] = useState<string | null>(null);
+    useEffect(() => { if (step === 'CONVERT') setStep('PAY'); }, [selectedToken]);
     const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'card' | 'giftcard'>('wallet');
     const [giftCode, setGiftCode] = useState<string>('');
     const [giftCardPayerAddress, setGiftCardPayerAddress] = useState('');
@@ -65,7 +66,8 @@ const MobilePaymentPage = () => {
         giftCardRedeemOption,
         redeemGiftCardBalance,
         statusLog,
-        resetPaymentFeedback
+        resetPaymentFeedback,
+        setStep
     } = usePayment();
 
     const { address } = useWallet();
@@ -378,7 +380,17 @@ const MobilePaymentPage = () => {
                                     </div>
                                 ) : (
                                     <div className="text-right">
-                                        <span className="text-xl font-bold text-white tracking-tight">{displayAmount} <span className="text-xs text-gray-500 font-normal">{currencyLabel}</span></span>
+                                        <div className="flex items-baseline gap-2 justify-end">
+                                            <span className="text-2xl font-bold text-white tracking-tight tabular-nums">
+                                                {Number(displayAmount ?? 0).toLocaleString(undefined, {
+                                                    maximumFractionDigits: 6,
+                                                    minimumFractionDigits: 2,
+                                                })}
+                                            </span>
+                                            <span className="px-1.5 py-0.5 rounded bg-white/[0.04] text-[10px] font-semibold text-gray-400 uppercase tracking-wider border border-white/[0.06]">
+                                                {currencyLabel}
+                                            </span>
+                                        </div>
                                         {hasCrossTokenSelection && quote && (
                                             <p className="text-[10px] text-amber-300 mt-1">
                                                 Equivalent to {invoice?.amount} {getTokenLabel(baseTokenType)}
@@ -615,22 +627,29 @@ const MobilePaymentPage = () => {
                                                 onRedeem={redeemGiftCardBalance}
                                             />
                                         )}
-                                        <Button
-                                            variant="primary"
-                                            onClick={handleGiftCardPay}
-                                            disabled={isProcess || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || giftCardPayerAddressInvalid || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
-                                            className="w-full text-lg h-14"
-                                            glow
-                                        >
-                                            {isProcess ? (
-                                                <span className="flex items-center gap-2">
-                                                    <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                                    Processing...
-                                                </span>
-                                            ) : (
-                                                `Pay ${displayAmount} ${currencyLabel}`
-                                            )}
-                                        </Button>
+                                        {txId ? (
+                                            <div className="w-full h-14 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center gap-3 text-white font-medium text-lg">
+                                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                                <span>Waiting for network...</span>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                variant="primary"
+                                                onClick={handleGiftCardPay}
+                                                disabled={isProcess || payerNoteTooLong || (shareMerchantNote && merchantNoteTooLong) || giftCardPayerAddressInvalid || !giftCode || (invoice?.amount === 0 && (!donationAmount || parseFloat(donationAmount) <= 0))}
+                                                className="w-full text-lg h-14"
+                                                glow
+                                            >
+                                                {isProcess && !txId ? (
+                                                    <span className="flex items-center gap-2">
+                                                        <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                                        <span className="font-bold">Authorizing...</span>
+                                                    </span>
+                                                ) : (
+                                                    `Pay ${displayAmount} ${currencyLabel}`
+                                                )}
+                                            </Button>
+                                        )}
                                         <PaymentActivityConsole method="giftcard" statusLog={statusLog} error={error} compact />
                                     </div>
                                 ) : paymentMethod === 'card' ? (
@@ -645,6 +664,7 @@ const MobilePaymentPage = () => {
                                             statusLog={statusLog}
                                             error={error}
                                             compact
+                                            txId={txId}
                                             onCardNumberChange={setCardNumber}
                                             onCardPinChange={setCardPin}
                                             onCardSecretChange={setCardSecret}
@@ -680,6 +700,11 @@ const MobilePaymentPage = () => {
                                             <Button variant="primary" onClick={handleConnect} className="w-full">
                                                 Verify Hash & Records
                                             </Button>
+                                        ) : txId ? (
+                                            <div className="w-full h-14 rounded-xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center gap-3 text-white font-medium text-lg">
+                                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                                <span>Waiting for network...</span>
+                                            </div>
                                         ) : (
                                             <Button
                                                 variant="primary"
@@ -688,10 +713,10 @@ const MobilePaymentPage = () => {
                                                 className="w-full"
                                                 glow
                                             >
-                                                {isProcess ? (
+                                                {isProcess && !txId ? (
                                                     <span className="flex items-center gap-2">
                                                         <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                                        Processing...
+                                                        <span className="font-bold">Authorizing...</span>
                                                     </span>
                                                 ) : step === 'CONVERT' ? (
                                                     'Convert Public to Private'

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { PrivateKey } from '@provablehq/sdk';
 import { useBurnerWallet } from '../wallet/BurnerWalletProvider';
@@ -46,11 +46,8 @@ export function useBurnerActions() {
 
     const [privateBalances, setPrivateBalances] = useState<PrivateBalances>({ ALEO: -1, USDCx: -1, USAD: -1 });
 
-    const logsEndRef = useRef<HTMLDivElement>(null);
-
     const addLog = useCallback((msg: string) => {
         setSweepLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
-        setTimeout(() => logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     }, []);
 
     const openSweepModal = useCallback(() => {
@@ -315,7 +312,7 @@ export function useBurnerActions() {
         sweepCurrency, setSweepCurrency,
         sweepDestination, setSweepDestination,
         sweepSuccess, setSweepSuccess, sweepTxId, setSweepTxId,
-        sweepLogs, setSweepLogs, logsEndRef,
+        sweepLogs, setSweepLogs,
         privateBalances, setPrivateBalances, isScanningBalances,
         handleGenerateBurner, handleUnlockBurner, handleBackupRecord,
         handleSweepFunds, handleCopyKey, fetchPrivateBalances, openSweepModal,
