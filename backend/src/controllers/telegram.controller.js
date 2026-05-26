@@ -3,6 +3,7 @@ const {
     createLinkSession,
     getLinkSession,
     completeLinkSession,
+    getLinkedTelegramUsersByAddressHash,
     unlinkTelegramUser
 } = require('../services/telegram.service');
 const { getBotInstance } = require('../bot');
@@ -119,6 +120,27 @@ const unlinkTelegramAccount = async (req, res) => {
     }
 };
 
+const getLinkedTelegramAccounts = async (req, res) => {
+    try {
+        const { addressHash } = req.params;
+        if (!addressHash) {
+            return res.status(400).json({ error: 'addressHash is required.' });
+        }
+
+        const users = await getLinkedTelegramUsersByAddressHash(addressHash);
+        res.json(users.map((user) => ({
+            id: user.id,
+            username: user.username || null,
+            telegram_id: user.telegram_id ? String(user.telegram_id).slice(0, 2) + '***' : null,
+            chat_id: user.chat_id ? String(user.chat_id).slice(0, 2) + '***' : null,
+            notifications_enabled: user.notifications_enabled,
+            linked_at: user.linked_at
+        })));
+    } catch (error) {
+        handleTelegramError(res, error);
+    }
+};
+
 const handleTelegramWebhook = async (req, res) => {
     try {
         if (TELEGRAM_WEBHOOK_SECRET) {
@@ -146,6 +168,7 @@ module.exports = {
     createTelegramLinkSession,
     getTelegramLinkSession,
     completeTelegramLinkSession,
+    getLinkedTelegramAccounts,
     unlinkTelegramAccount,
     handleTelegramWebhook
 };

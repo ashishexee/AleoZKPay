@@ -634,6 +634,52 @@ async function createTelegramInvoice(user, draft) {
     };
 }
 
+async function getNotifyOnSettled(merchantAddressHash) {
+    const { data, error } = await supabase
+        .from('users')
+        .select('notify_on_settled')
+        .eq('address_hash', merchantAddressHash)
+        .maybeSingle();
+
+    if (error) {
+        throw new TelegramServiceError(error.message);
+    }
+
+    return Boolean(data?.notify_on_settled);
+}
+
+async function setNotifyOnSettled(merchantAddressHash, enabled) {
+    const now = new Date().toISOString();
+    const existing = await getNullPayProfile(merchantAddressHash);
+
+    const payload = {
+        address_hash: merchantAddressHash,
+        notify_on_settled: Boolean(enabled),
+        updated_at: now
+    };
+
+    if (existing) {
+        const { data, error } = await supabase
+            .from('users')
+            .update(payload)
+            .eq('address_hash', merchantAddressHash)
+            .select()
+            .maybeSingle();
+
+        if (error) throw new TelegramServiceError(error.message);
+        return Boolean(data?.notify_on_settled);
+    }
+
+    const { data, error } = await supabase
+        .from('users')
+        .insert(payload)
+        .select()
+        .maybeSingle();
+
+    if (error) throw new TelegramServiceError(error.message);
+    return Boolean(data?.notify_on_settled);
+}
+
 async function getNotificationRecipients(merchantAddressHash) {
     const { data, error } = await supabase
         .from('telegram_users')
@@ -676,14 +722,30 @@ async function recordNotificationDelivery({ telegramId, chatId, invoiceHash, eve
     throw new TelegramServiceError(error.message);
 }
 
+async function getLinkedTelegramUsersByAddressHash(addressHash) {
+    const { data, error } = await supabase
+        .from('telegram_users')
+        .select('*')
+        .eq('aleo_address_hash', addressHash);
+
+    if (error) {
+        throw new TelegramServiceError(error.message);
+    }
+
+    return (data || []).map((user) => decorateTelegramUser(user)).filter(Boolean);
+}
+
 module.exports = {
     TelegramServiceError,
     createLinkSession,
     getLinkSession,
     completeLinkSession,
     getLinkedTelegramUser,
+    getLinkedTelegramUsersByAddressHash,
     unlinkTelegramUser,
     setNotificationsEnabled,
+    getNotifyOnSettled,
+    setNotifyOnSettled,
     listInvoicesForTelegramUser,
     getDashboardForTelegramUser,
     getInvoiceForTelegramUser,

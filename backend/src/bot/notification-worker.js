@@ -1,6 +1,7 @@
 const supabase = require('../config/supabase');
 const {
     getNotificationRecipients,
+    getNotifyOnSettled,
     recordNotificationDelivery,
     normalizePaymentTxIds,
     deriveInvoiceAmount
@@ -17,7 +18,9 @@ let workerState = null;
 function buildMessage(invoice, eventType, paymentTxId) {
     const amount = deriveInvoiceAmount(invoice);
     const token = tokenTypeToLabel(invoice.token_type);
-    let text = `✅ Payment received for \`${invoice.invoice_hash}\``;
+    let text = eventType === 'settled'
+        ? `🏁 Invoice settled: \`${invoice.invoice_hash}\``
+        : `✅ Payment received for \`${invoice.invoice_hash}\``;
 
     text += `\nToken: ${token}`;
     if (amount !== null) {
@@ -84,9 +87,15 @@ async function processInvoiceUpdate(bot, oldRecord, newRecord) {
     const addedTxIds = newTxIds.filter((txId) => !oldTxIds.includes(txId));
 
     if (addedTxIds.length > 0) {
-        // Collapse a burst of newly-added tx ids into a single Telegram alert for this update.
         const latestTxId = addedTxIds[addedTxIds.length - 1];
         await notifyRecipients(bot, newRecord, 'payment_received', latestTxId);
+    }
+
+    if (newRecord?.status === 'SETTLED' && oldRecord?.status !== 'SETTLED') {
+        const settledPref = await getNotifyOnSettled(newRecord.merchant_address_hash);
+        if (settledPref) {
+            await notifyRecipients(bot, newRecord, 'settled', null);
+        }
     }
 }
 
