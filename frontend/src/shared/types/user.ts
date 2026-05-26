@@ -7,6 +7,7 @@ export interface UserProfile {
     profile_main_invoice_hash?: string | null;
     profile_burner_invoice_hash?: string | null;
     encrypted_address_check?: string | null;
+    notify_on_settled?: boolean;
     updated_at?: string;
 }
 
