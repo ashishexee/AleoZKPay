@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { PrivateKey } from '@provablehq/sdk';
 import { Copy, CheckCircle2, Loader2 } from 'lucide-react';
+import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import toast from 'react-hot-toast';
 import { FloatingGiftCard } from './FloatingGiftCard';
 import { estimateExecutionFee, WALLET_PROGRAM_ID } from '../../../utils/aleo/aleoUtils';
@@ -322,18 +323,21 @@ export const CreateGiftCard: React.FC = () => {
                             <p className="text-[10px] uppercase tracking-widest text-white/20">
                                 Powered by <span className="font-semibold text-white/40">Aleo Zk</span>
                             </p>
-                            <button
-                                type="submit"
-                                disabled={isGenerating || !address || (!amounts.ALEO && !amounts.USDCx && !amounts.USAD) || labelTooLong}
-                                className="px-6 py-4 text-sm font-semibold bg-white text-black rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] shrink-0 group relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <span className="relative z-10">{isGenerating ? 'Minting...' : 'Mint Card'}</span>
-                            </button>
+                            {address ? (
+                                <button
+                                    type="submit"
+                                    disabled={isGenerating || (!amounts.ALEO && !amounts.USDCx && !amounts.USAD) || labelTooLong}
+                                    className="px-6 py-4 text-sm font-semibold bg-white text-black rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] shrink-0 group relative overflow-hidden"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <span className="relative z-10">{isGenerating ? 'Minting...' : 'Mint Card'}</span>
+                                </button>
+                            ) : (
+                                <div className="wallet-adapter-wrapper [&>button]:!rounded-xl [&>button]:!h-12 [&>button]:!px-6 [&>button]:!text-sm [&>button]:!font-semibold [&>button]:!bg-white [&>button]:!text-black [&>button]:!shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                    <WalletMultiButton />
+                                </div>
+                            )}
                         </div>
-                        {!address && (
-                            <p className="text-xs text-red-400/70 text-center">Connect your wallet to mint.</p>
-                        )}
                     </motion.form>
                 )}
 

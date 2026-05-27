@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, ArrowUpRight, Copy, Eye, EyeOff, Lock, RefreshCw, ShieldCheck, Trash2, Unlock, Wallet } from 'lucide-react';
+import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
+import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import toast from 'react-hot-toast';
 import { GlassCard } from '../../../components/ui/GlassCard';
 import { Shimmer } from '../../../components/ui/Shimmer';
@@ -149,6 +151,7 @@ const PrimaryAction = ({
 );
 
 export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }) => {
+    const { connected } = useWallet();
     const {
         card,
         isLoading,
@@ -440,14 +443,20 @@ export const CardWalletPanel: React.FC<CardWalletPanelProps> = ({ itemVariants }
                         <p className="text-xs leading-relaxed text-gray-500">
                             Your hint should never contain the actual PIN or secret. NullPay waits for the on-chain card record to confirm before treating setup as complete.
                         </p>
-                        <PrimaryAction
-                            type="submit"
-                            icon={Wallet}
-                            label="Create NullPay Card"
-                            loading={isInitializing}
-                            loadingLabel="Creating card"
-                            disabled={!label || !pin || !secret || labelTooLong || hintTooLong}
-                        />
+                        {connected ? (
+                            <PrimaryAction
+                                type="submit"
+                                icon={Wallet}
+                                label="Create NullPay Card"
+                                loading={isInitializing}
+                                loadingLabel="Creating card"
+                                disabled={!label || !pin || !secret || labelTooLong || hintTooLong}
+                            />
+                        ) : (
+                            <div className="wallet-adapter-wrapper w-full [&>button]:!w-full [&>button]:!justify-center [&>button]:!rounded-xl [&>button]:!h-12 [&>button]:!font-bold [&>button]:!bg-white [&>button]:!text-black">
+                                <WalletMultiButton />
+                            </div>
+                        )}
                     </form>
                 </GlassCard>
 

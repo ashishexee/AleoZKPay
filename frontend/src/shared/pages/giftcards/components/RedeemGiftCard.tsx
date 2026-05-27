@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { PrivateKey, AleoNetworkClient, AleoKeyProvider, ProgramManager, NetworkRecordProvider } from '@provablehq/sdk';
 import { Search, Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import toast from 'react-hot-toast';
 import { getScannerSession, fetchAllPrivateBalances, findSpendableRecord } from '../../profile/components/burnerwallet/scanner';
 import type { PrivateBalances } from '../../../types/burner';
@@ -304,19 +305,22 @@ export const RedeemGiftCard: React.FC = () => {
                                                 placeholder={`Max: ${balances[sweepToken].toFixed(2)}`}
                                             />
                                         </div>
-                                        <button
-                                            onClick={handleSweep}
-                                            disabled={!address || !sweepAmount}
-                                            className="px-6 py-4 text-sm font-semibold bg-white text-black rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] shrink-0 group relative overflow-hidden"
-                                        >
-                                            <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <span className="relative z-10">Withdraw</span>
-                                            <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
-                                        </button>
+                                        {address ? (
+                                            <button
+                                                onClick={handleSweep}
+                                                disabled={!sweepAmount}
+                                                className="px-6 py-4 text-sm font-semibold bg-white text-black rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] shrink-0 group relative overflow-hidden"
+                                            >
+                                                <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <span className="relative z-10">Withdraw</span>
+                                                <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
+                                            </button>
+                                        ) : (
+                                            <div className="wallet-adapter-wrapper shrink-0 [&>button]:!rounded-xl [&>button]:!h-full [&>button]:!px-6 [&>button]:!text-sm [&>button]:!font-semibold [&>button]:!bg-white [&>button]:!text-black [&>button]:!shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                                <WalletMultiButton />
+                                            </div>
+                                        )}
                                     </div>
-                                    {!address && (
-                                        <p className="text-xs text-red-400/70 text-center">Connect your wallet to receive funds.</p>
-                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>
