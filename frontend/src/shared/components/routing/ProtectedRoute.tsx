@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
 import { WalletMultiButton } from '@provablehq/aleo-wallet-adaptor-react-ui';
 import { Link } from 'react-router-dom';
-import { ExternalLink, Shield, ArrowRight } from 'lucide-react';
 import { useBurnerWallet } from '../../hooks/wallet/BurnerWalletProvider';
 import { PasswordPrompt } from '../auth/PasswordPrompt';
 
