@@ -9,7 +9,8 @@ import { encryptWithPassword, decryptWithPassword } from '../../utils/core/crypt
 import { getUtf8ByteLength, LEO_PASSWORD_BACKUP_MAX_BYTES } from '../../utils/core/leoInputLimits';
 import { updateUserProfile } from '../../services/api';
 
-export const PasswordPrompt: React.FC = () => {
+export const PasswordPrompt: React.FC<{ variant?: 'full' | 'compact' }> = ({ variant = 'full' }) => {
+    const isCompact = variant === 'compact';
     const { address } = useWallet();
     const { hasProfile, userProfileMainAddress, setAppPassword, setIsUnlocked, refreshProfile } = useBurnerWallet();
 
@@ -19,7 +20,7 @@ export const PasswordPrompt: React.FC = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const isNewUser = hasProfile === false; // null means loading, false means definitely no profile
+    const isNewUser = hasProfile === false;
     const needsPasswordUpgrade = Boolean(hasProfile && !userProfileMainAddress);
     const isCreatingPassword = isNewUser || needsPasswordUpgrade;
     const passwordBytes = getUtf8ByteLength(password);
@@ -76,14 +77,11 @@ export const PasswordPrompt: React.FC = () => {
                 setLoading(false);
             }
         } else {
-            // Existing user, verify password
             if (!password) {
                 toast.error("Please enter your password");
                 return;
             }
             if (!userProfileMainAddress) {
-                // If they have a profile but no password set (e.g. older account),
-                // we should allow them to set one now.
                 toast.error("Account needs a password setup. Please contact support or clear profile data.");
                 return;
             }
@@ -107,6 +105,13 @@ export const PasswordPrompt: React.FC = () => {
     };
 
     if (hasProfile === null) {
+        if (isCompact) {
+            return (
+                <div className="flex items-center justify-center py-8">
+                    <div className="w-8 h-8 rounded-full border-2 border-orange-400/20 border-t-orange-400 animate-spin" />
+                </div>
+            );
+        }
         return (
             <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden">
                 <div className="fixed inset-0 pointer-events-none opacity-70">
@@ -125,8 +130,77 @@ export const PasswordPrompt: React.FC = () => {
         );
     }
 
-    // Edge case handling for old users without a password
     if (needsPasswordUpgrade) {
+        if (isCompact) {
+            return (
+                <div className="flex flex-col items-center text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-orange-400/20 bg-orange-500/10 text-orange-300">
+                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.26em] text-orange-300/80">Security Upgrade</p>
+                    <h2 className="mb-3 text-xl font-bold tracking-tight text-white">
+                        Update <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-amber-200 to-orange-500">Required</span>
+                    </h2>
+                    <p className="mb-5 text-xs leading-relaxed text-white/60">
+                        Your account needs a password to protect private app data.
+                    </p>
+                    <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!address || password.length < 6) {
+                            toast.error("Password must be at least 6 characters");
+                            return;
+                        }
+                        if (passwordTooLong) {
+                            toast.error(`Password is too large for the Leo backup field. Keep it within ${LEO_PASSWORD_BACKUP_MAX_BYTES} bytes.`);
+                            return;
+                        }
+                        setLoading(true);
+                        try {
+                            const encryptedCheck = await encryptWithPassword(address, password);
+                            await updateUserProfile(address, encryptedCheck);
+                            setAppPassword(password);
+                            setIsUnlocked(true);
+                            toast.success('Password updated successfully!');
+                            await refreshProfile();
+                        } catch (err: any) {
+                            toast.error(err.message || "Failed to update profile");
+                        } finally {
+                            setLoading(false);
+                        }
+                    }} className="flex flex-col gap-3 w-full">
+                        <div className="relative">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="New Secure Password"
+                                className={`w-full rounded-xl border bg-white/[0.04] px-4 py-3 pr-12 text-center text-white outline-none transition-colors focus:border-orange-400/50 ${passwordTooLong ? 'border-red-500/60' : 'border-white/10'}`}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-white/45 transition-colors hover:text-orange-300"
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                        <p className={`text-left text-xs leading-relaxed ${passwordTooLong ? 'text-red-400' : 'text-white/55'}`}>
+                            {passwordBytes}/{LEO_PASSWORD_BACKUP_MAX_BYTES} bytes
+                        </p>
+                        <button
+                            type="submit"
+                            disabled={loading || passwordTooLong}
+                            className="w-full rounded-xl bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 py-3 font-bold text-black shadow-[0_10px_35px_rgba(249,115,22,0.22)] transition-all hover:brightness-110 disabled:opacity-50"
+                        >
+                            {loading ? 'Securing...' : 'Set Password'}
+                        </button>
+                    </form>
+                </div>
+            );
+        }
         return (
             <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden px-4 py-10">
                 <div className="fixed inset-0 pointer-events-none opacity-70">
@@ -222,6 +296,85 @@ export const PasswordPrompt: React.FC = () => {
                             ))}
                         </div>
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (isCompact) {
+        return (
+            <div className="flex flex-col items-center text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-orange-400/20 bg-orange-500/10">
+                    <svg className="w-7 h-7 text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.26em] text-orange-300/80">Privacy Unlock</p>
+                <h2 className="mb-2 text-xl font-bold tracking-tight text-white">
+                    {isNewUser ? 'Create Password' : 'Enter Password'}
+                </h2>
+                <p className="mb-5 text-xs text-white/60">
+                    {isNewUser
+                        ? <>Set up a secure password to encrypt your <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-amber-200 to-orange-500">private platform data</span>.</>
+                        : <>Unlock your <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-amber-200 to-orange-500">private platform data</span> to continue.</>}
+                </p>
+
+                <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full">
+                    <div className="relative">
+                        <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Password"
+                            className={`w-full rounded-xl border bg-white/[0.04] px-4 py-3 pr-12 text-white outline-none transition-colors focus:border-orange-400/50 ${passwordTooLong ? 'border-red-500/60' : 'border-white/10'}`}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            autoFocus
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-white/45 transition-colors hover:text-orange-300"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                    </div>
+                    {isNewUser && (
+                        <p className={`-mt-1 text-xs leading-relaxed text-left ${passwordTooLong ? 'text-red-400' : 'text-white/55'}`}>
+                            {passwordBytes}/{LEO_PASSWORD_BACKUP_MAX_BYTES} bytes
+                        </p>
+                    )}
+                    {isNewUser && (
+                        <div className="relative">
+                            <input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                placeholder="Confirm Password"
+                                className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 pr-12 text-white outline-none transition-colors focus:border-orange-400/50"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-white/45 transition-colors hover:text-orange-300"
+                                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                            >
+                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                    )}
+                    <button
+                        type="submit"
+                        disabled={loading || !password || (isNewUser && !confirmPassword) || passwordTooLong}
+                        className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 py-3 font-bold text-black shadow-[0_10px_35px_rgba(249,115,22,0.22)] transition-all hover:brightness-110 disabled:opacity-50"
+                    >
+                        {loading && <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />}
+                        {isNewUser ? 'Secure Account' : 'Unlock Access'}
+                    </button>
+                </form>
+
+                <div className="mt-4 w-full rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-300/70 mb-1">Why We Ask</p>
+                    <p className="text-xs text-white/50 leading-relaxed">{passwordReason}</p>
                 </div>
             </div>
         );
