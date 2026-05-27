@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 import { hashAddress } from '../utils/core/crypto';
 import { CardTokenCode } from '../types/tokens';
-import { SupportFeedbackPayload, TelegramLinkSession, CompleteTelegramLinkSessionResponse } from '../types/common';
+import { SupportFeedbackPayload, TelegramLinkSession, CompleteTelegramLinkSessionResponse, LinkedTelegramAccount } from '../types/common';
 import { Invoice } from '../types/invoice';
 import { UserProfile, CardWalletProfile, CardWalletUpsertPayload } from '../types/user';
 import { 
@@ -240,6 +240,15 @@ export const completeTelegramLinkSession = async (payload: {
     return body;
 };
 
+export const fetchLinkedTelegramAccounts = async (address: string): Promise<LinkedTelegramAccount[]> => {
+    const hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/telegram/linked-accounts/${hash}`);
+    if (!response.ok) {
+        return [];
+    }
+    return response.json();
+};
+
 export const lookupCardWalletByNumberHash = async (
     cardNumberHash: string
 ): Promise<CardWalletProfile | null> => {
@@ -391,6 +400,32 @@ export const chatWithDeveloperAssistant = async (
     }
 
     return payload.reply;
+};
+
+export const getNotificationPreferences = async (address: string): Promise<{ notify_on_settled: boolean }> => {
+    const hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/users/notifications/${hash}`);
+    if (!response.ok) {
+        if (response.status === 404) return { notify_on_settled: false };
+        throw new Error('Failed to fetch notification preferences');
+    }
+    return response.json();
+};
+
+export const updateNotificationPreferences = async (
+    address: string,
+    prefs: { notify_on_settled: boolean }
+): Promise<{ notify_on_settled: boolean }> => {
+    const address_hash = await hashAddress(address);
+    const response = await fetch(`${API_URL}/users/notifications`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address_hash, ...prefs })
+    });
+    if (!response.ok) {
+        throw new Error('Failed to update notification preferences');
+    }
+    return response.json();
 };
 
 export const submitSupportFeedback = async (

@@ -8,7 +8,9 @@ const {
     lookupCardWallet,
     verifyCardLimitChange,
     deleteCardWallet,
-    recordCardSpend
+    recordCardSpend,
+    getNotificationPreferences,
+    updateNotificationPreferences
 } = require('../controllers/users.controller');
 
 const router = express.Router();
@@ -16,6 +18,8 @@ const router = express.Router();
 router.post('/profile', updateProfile);
 router.get('/profile/:address', getProfile);
 router.post('/profile/clear-burner', clearBurner);
+router.get('/notifications/:address', getNotificationPreferences);
+router.patch('/notifications', updateNotificationPreferences);
 router.get('/card/:address', getCardWallet);
 router.post('/card', upsertCardWallet);
 router.post('/card/lookup', lookupCardWallet);

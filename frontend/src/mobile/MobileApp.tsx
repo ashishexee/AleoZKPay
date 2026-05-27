@@ -18,6 +18,7 @@ const TelegramLinkPage = lazy(() => import('../shared/pages/telegramlink'));
 const TelegramBotPage = lazy(() => import('../shared/pages/telegrambot'));
 const AuditVerifyPage = lazy(() => import('../shared/pages/auditverify'));
 const SupportFeedbackPage = lazy(() => import('../shared/pages/supportfeedback'));
+const SettingsPage = lazy(() => import('../shared/pages/settings'));
 
 const RouteFallback = () => (
     <div className="min-h-screen bg-black flex items-center justify-center">
@@ -73,6 +74,7 @@ const MobileAnimatedAppRoutes = () => {
                             <Route path="/pay" element={<PaymentPage />} />
                             <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
                             <Route path="/dashboard/*" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
                             <Route path="/profile/*" element={<Navigate to="/dashboard" replace />} />
                         </>
                     ) : (

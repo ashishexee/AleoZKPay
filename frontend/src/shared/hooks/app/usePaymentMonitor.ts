@@ -179,6 +179,7 @@ export const usePaymentMonitor = () => {
 
         let cancelled = false;
         let supabaseChannel: { unsubscribe: () => void } | null = null;
+        let notifyOnSettled = false;
 
         const triggerNotification = (message: string, invoiceHash: string, withSound: boolean = true) => {
             console.log(`📣 [Notification Triggered]: ${message} | Sound: ${withSound}`);
@@ -203,6 +204,12 @@ export const usePaymentMonitor = () => {
             try {
                 const currentHash = await hashAddress(publicKey);
                 if (cancelled) return;
+
+                try {
+                    const { getNotificationPreferences } = await import('../../services/api');
+                    const prefs = await getNotificationPreferences(publicKey);
+                    notifyOnSettled = prefs.notify_on_settled;
+                } catch {}
 
                 const supabase = createClient(supabaseUrl, supabaseKey);
                 supabaseChannel = supabase
@@ -261,7 +268,7 @@ export const usePaymentMonitor = () => {
                                 } catch (error) {
                                     console.error('Failed to process payment event:', error);
                                 }
-                            } else if (newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
+                            } else if (notifyOnSettled && newRecord.status === 'SETTLED' && oldRecord.status !== 'SETTLED') {
                                 const dedupKey = `${newRecord.invoice_hash}_SETTLED`;
                                 if (notifiedInvoices.current.has(dedupKey)) return;
                                 notifiedInvoices.current.add(dedupKey);

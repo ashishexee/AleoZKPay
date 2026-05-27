@@ -24,6 +24,7 @@ const TelegramLinkPage = lazy(() => import('../shared/pages/telegramlink'));
 const TelegramBotPage = lazy(() => import('../shared/pages/telegrambot'));
 const AuditVerifyPage = lazy(() => import('../shared/pages/auditverify'));
 const SupportFeedbackPage = lazy(() => import('../shared/pages/supportfeedback'));
+const SettingsPage = lazy(() => import('../shared/pages/settings'));
 const CardsPage = lazy(() => import('./pages/CardsPage'));
 const Docs = lazy(() => import('./pages/docs'));
 
@@ -58,6 +59,7 @@ const DesktopAnimatedRoutes = () => {
                     <Route path="/giftcards" element={<ProtectedRoute><GiftCardsPage /></ProtectedRoute>} />
                     <Route path="/profile-qr" element={<ProtectedRoute><ProfileQRPage /></ProtectedRoute>} />
                     <Route path="/support-feedback" element={<ProtectedRoute><SupportFeedbackPage /></ProtectedRoute>} />
+                    <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
                     <Route path="/verify" element={<Verification />} />
                     <Route path="/developer" element={<DeveloperPortal />} />
                     <Route path="/telegram-bot" element={<TelegramBotPage />} />

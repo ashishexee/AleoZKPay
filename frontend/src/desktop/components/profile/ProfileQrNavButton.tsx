@@ -1,23 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { useWallet } from '@provablehq/aleo-wallet-adaptor-react';
-import { ArrowUpRight, Copy, LoaderCircle, Settings2, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Copy, LoaderCircle, Settings2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useBurnerWallet } from '../../../shared/hooks/wallet/BurnerWalletProvider';
 import { useProfileQR } from '../../../shared/hooks/profile/useProfileQR';
-import { FEE_PREFERENCE_EVENT, FIXED_FEE_MICROCREDITS, FeePreferenceMode, getFeePreferenceMode, setFeePreferenceMode } from '../../../shared/utils/core/feePreference';
 
 const ProfileQrNavButton = () => {
     const { address } = useWallet();
     const { burnerAddress, decryptedBurnerAddress } = useBurnerWallet();
     const { initialized, loading, status, mainHash, mainSalt, burnerHash, burnerSalt } = useProfileQR();
     const [walletMode, setWalletMode] = useState<'main' | 'burner'>('main');
-    const [feeMode, setFeeMode] = useState<FeePreferenceMode>(() => getFeePreferenceMode());
-    const [settingsOpen, setSettingsOpen] = useState(false);
-    const settingsRef = useRef<HTMLDivElement | null>(null);
-    const settingsCloseTimeoutRef = useRef<number | null>(null);
 
     const hasBurnerWallet = !!burnerAddress;
 
@@ -26,50 +20,6 @@ const ProfileQrNavButton = () => {
             setWalletMode('main');
         }
     }, [hasBurnerWallet, walletMode]);
-
-    useEffect(() => {
-        const syncFeeMode = () => setFeeMode(getFeePreferenceMode());
-        const handleCustomEvent = (event: Event) => {
-            const customEvent = event as CustomEvent<FeePreferenceMode>;
-            if (customEvent.detail === 'estimate' || customEvent.detail === 'fixed') {
-                setFeeMode(customEvent.detail);
-                return;
-            }
-            syncFeeMode();
-        };
-
-        window.addEventListener('storage', syncFeeMode);
-        window.addEventListener(FEE_PREFERENCE_EVENT, handleCustomEvent as EventListener);
-
-        return () => {
-            window.removeEventListener('storage', syncFeeMode);
-            window.removeEventListener(FEE_PREFERENCE_EVENT, handleCustomEvent as EventListener);
-        };
-    }, []);
-
-    useEffect(() => {
-        const handleOutsideClick = (event: MouseEvent) => {
-            if (!settingsRef.current) return;
-            if (!settingsRef.current.contains(event.target as Node)) {
-                if (settingsCloseTimeoutRef.current !== null) {
-                    window.clearTimeout(settingsCloseTimeoutRef.current);
-                    settingsCloseTimeoutRef.current = null;
-                }
-                setSettingsOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleOutsideClick);
-        return () => document.removeEventListener('mousedown', handleOutsideClick);
-    }, []);
-
-    useEffect(() => {
-        return () => {
-            if (settingsCloseTimeoutRef.current !== null) {
-                window.clearTimeout(settingsCloseTimeoutRef.current);
-            }
-        };
-    }, []);
 
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
     const activeHash = walletMode === 'burner' ? burnerHash : mainHash;
@@ -96,33 +46,7 @@ const ProfileQrNavButton = () => {
         }
     };
 
-    const handleFeeModeChange = (mode: FeePreferenceMode) => {
-        setFeePreferenceMode(mode);
-        setFeeMode(mode);
-        toast.success(
-            mode === 'estimate'
-                ? 'Dynamic fee estimation enabled.'
-                : `Fixed fee mode enabled at ${(FIXED_FEE_MICROCREDITS / 1_000_000).toFixed(2)} credits.`
-        );
-    };
 
-    const openSettings = () => {
-        if (settingsCloseTimeoutRef.current !== null) {
-            window.clearTimeout(settingsCloseTimeoutRef.current);
-            settingsCloseTimeoutRef.current = null;
-        }
-        setSettingsOpen(true);
-    };
-
-    const closeSettingsSoon = () => {
-        if (settingsCloseTimeoutRef.current !== null) {
-            window.clearTimeout(settingsCloseTimeoutRef.current);
-        }
-        settingsCloseTimeoutRef.current = window.setTimeout(() => {
-            setSettingsOpen(false);
-            settingsCloseTimeoutRef.current = null;
-        }, 140);
-    };
 
     const renderContent = () => {
         if (!address) {
@@ -253,107 +177,13 @@ const ProfileQrNavButton = () => {
                 </div>
             </div>
 
-            <div
-                ref={settingsRef}
-                className="relative"
-                onMouseEnter={openSettings}
-                onMouseLeave={closeSettingsSoon}
+            <Link
+                to="/settings"
+                className="flex h-[50px] w-[50px] items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/70 backdrop-blur-[24px] transition-all duration-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                aria-label="Open Settings"
             >
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (settingsOpen) {
-                            if (settingsCloseTimeoutRef.current !== null) {
-                                window.clearTimeout(settingsCloseTimeoutRef.current);
-                                settingsCloseTimeoutRef.current = null;
-                            }
-                            setSettingsOpen(false);
-                            return;
-                        }
-                        openSettings();
-                    }}
-                    aria-expanded={settingsOpen}
-                    aria-label="Fee settings"
-                    className={`flex h-[50px] w-[50px] items-center justify-center rounded-full border text-white/70 backdrop-blur-[24px] transition-all duration-300 ${settingsOpen
-                        ? 'border-orange-400/35 bg-orange-500/12 text-orange-100'
-                        : 'border-white/10 bg-white/[0.05] hover:border-white/20 hover:bg-white/[0.08] hover:text-white'
-                        }`}
-                >
-                    <Settings2 className="h-4 w-4" />
-                </button>
-
-                <AnimatePresence>
-                    {settingsOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 15, scale: 0.95, filter: 'blur(4px)' }}
-                            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                            exit={{ opacity: 0, y: 15, scale: 0.95, filter: 'blur(4px)' }}
-                            transition={{
-                                duration: 0.45,
-                                ease: [0.16, 1, 0.3, 1], // fluid easeOutQuart
-                            }}
-                            className="absolute right-0 top-full z-50 mt-3 w-[320px] overflow-hidden rounded-[24px] border border-white/[0.1] bg-[#0A0A0A]/95 p-1.5 backdrop-blur-[32px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] origin-top-right"
-                        >
-                            <div className="rounded-[20px] bg-white/[0.03] p-4">
-                                <div className="space-y-4 text-left">
-                                    <div className="flex items-center justify-between gap-4">
-                                        <div className="flex-1">
-                                            <p className="text-[17px] font-semibold tracking-[-0.02em] text-white">Use Estimation</p>
-                                            <p className="mt-1.5 text-[13px] leading-6 text-white/70">
-                                                Match fees to current network conditions.
-                                            </p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleFeeModeChange(feeMode === 'estimate' ? 'fixed' : 'estimate')}
-                                            aria-pressed={feeMode === 'estimate'}
-                                            className={`group relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-all duration-300 border border-white/5 ${feeMode === 'estimate'
-                                                ? 'bg-orange-500/20'
-                                                : 'bg-white/5'
-                                                }`}
-                                        >
-                                            <span
-                                                className={`flex h-4 w-4 items-center justify-center rounded-full transition-all duration-300 shadow-lg ${feeMode === 'estimate'
-                                                    ? 'translate-x-6 bg-gradient-to-br from-orange-400 to-amber-200 text-black'
-                                                    : 'translate-x-1 bg-white/20 text-white/40'
-                                                    }`}
-                                            >
-                                                <Sparkles className={`h-2.5 w-2.5 transition-transform duration-300 ${feeMode === 'estimate' ? 'scale-110' : 'scale-90 opacity-50 text-white/0'}`} />
-                                            </span>
-                                        </button>
-                                    </div>
-
-                                    <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3.5">
-                                        <p className="text-[12px] leading-5 text-white/60">
-                                            {feeMode === 'estimate'
-                                                ? 'Live fee estimation is active with a safety buffer.'
-                                                : `Fixed fee: ${(FIXED_FEE_MICROCREDITS / 1_000_000).toFixed(2)} credits per transaction.`}
-                                        </p>
-                                    </div>
-
-                                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.04] p-3.5">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <p className="text-[15px] font-semibold text-white">Register Complaint / Feedback</p>
-                                                <p className="mt-1 text-[12px] leading-5 text-white/60">
-                                                    Open the support page to send your issue or product feedback and receive a confirmation email.
-                                                </p>
-                                            </div>
-                                            <Link
-                                                to="/support-feedback"
-                                                onClick={() => setSettingsOpen(false)}
-                                                className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70 transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-                                            >
-                                                Open
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
+                <Settings2 className="h-4 w-4" />
+            </Link>
         </div>
     );
 };

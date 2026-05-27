@@ -614,6 +614,36 @@ const recordCardSpend = async (req, res) => {
     }
 };
 
+const getNotificationPreferences = async (req, res) => {
+    const { address } = req.params;
+    if (!address) return res.status(400).json({ error: 'Missing address hash' });
+
+    try {
+        const data = await getUserByAddressHash(address);
+        if (!data) return res.status(404).json({ error: 'Profile not found' });
+        res.json({ notify_on_settled: Boolean(data.notify_on_settled) });
+    } catch (err) {
+        console.error('Error fetching notification preferences:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
+const updateNotificationPreferences = async (req, res) => {
+    const { address_hash } = req.body;
+    const { notify_on_settled } = req.body;
+
+    if (!address_hash) return res.status(400).json({ error: 'Missing address_hash' });
+    if (notify_on_settled === undefined) return res.status(400).json({ error: 'Missing notify_on_settled' });
+
+    try {
+        const data = await saveUser(address_hash, { notify_on_settled: Boolean(notify_on_settled) });
+        res.json({ notify_on_settled: Boolean(data.notify_on_settled) });
+    } catch (err) {
+        console.error('Error updating notification preferences:', err);
+        res.status(500).json({ error: err.message });
+    }
+};
+
 module.exports = {
     updateProfile,
     getProfile,
@@ -623,5 +653,7 @@ module.exports = {
     lookupCardWallet,
     verifyCardLimitChange,
     deleteCardWallet,
-    recordCardSpend
+    recordCardSpend,
+    getNotificationPreferences,
+    updateNotificationPreferences
 };

@@ -33,3 +33,12 @@ export interface CompleteTelegramLinkSessionResponse {
     telegram_app_url?: string | null;
     telegram_web_url?: string | null;
 }
+
+export interface LinkedTelegramAccount {
+    id: number;
+    username: string | null;
+    telegram_id: string | null;
+    chat_id: string | null;
+    notifications_enabled: boolean;
+    linked_at: string | null;
+}

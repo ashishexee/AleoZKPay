@@ -167,20 +167,13 @@ const Navbar = () => {
                             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </Link>
                     )}
-                    <div className="wallet-adapter-wrapper transform hover:scale-105 transition-transform duration-300">
-                        {isLanding ? (
-                            <Link
-                                to="/explorer"
-                                className="inline-flex items-center gap-2 bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 px-6 py-3 rounded-full backdrop-blur-[24px] transition-all duration-300 text-sm font-semibold text-white"
-                            >
-                                Connect Wallet
-                            </Link>
-                        ) : (
+                    {!isLanding && (
+                        <div className="wallet-adapter-wrapper transform hover:scale-105 transition-transform duration-300">
                             <Suspense fallback={<WalletButtonSkeleton />}>
                                 <LazyWalletMultiButton className="!bg-white/[0.05] !backdrop-blur-[24px] !border !border-white/10 !rounded-full !py-3 !px-6 !h-auto !font-sans !font-semibold !text-sm !text-white hover:!bg-white/[0.1] hover:!border-white/20 transition-all shadow-[0_8px_32px_0_rgba(0,0,0,0.2)]" />
                             </Suspense>
-                        )}
-                    </div>
+                        </div>
+                    )}
                     {!isLanding && (
                         <Suspense fallback={null}>
                             <ProfileQrNavButton />
